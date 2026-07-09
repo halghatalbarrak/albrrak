@@ -1,0 +1,14 @@
+# مفاتيح الاتصال — لا تُرفع
+js/config.js
+.env
+.env.local
+
+# أدوات
+node_modules/
+.DS_Store
+*.log
+
+# ملفات مؤقتة
+shot*.png
+v-*.png
+*.tmp
