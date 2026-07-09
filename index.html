@@ -997,11 +997,108 @@ function applyRemote(d){
   if(d.harvest&&d.harvest.length){HARVEST.length=0;d.harvest.forEach(h=>{const st=STUDENTS.find(x=>x.id===h.student_id);HARVEST.push({id:String(h.id),student:st?st.name:'طالب',parts:h.parts,scope:h.scope,status:h.status==='pending'?'بانتظار':h.status==='passed'?'اجتاز':'إعادة',note:h.note||''});});}
   if(d.audit&&d.audit.length){AUDIT.length=0;d.audit.forEach(a=>AUDIT.push({who:a.actor,act:a.action,time:'—'}));}
 }
+/* ============================================================
+   المصادقة — حسابٌ مستقل لكل مستخدم (جوال + كلمة سر)
+   ============================================================ */
+let CURRENT_USER=null;
+const ROLE_LABELS={general:'مشرف عام',teacher:'معلم حلقة',admin:'إداري',examiner:'مُسمِّع',parent:'ولي أمر',student:'طالب',sponsor:'داعم'};
+
+function showLogin(mode){
+  mode=mode||'in'; const signup=mode==='up';
+  let el=document.getElementById('authGate');
+  if(!el){ el=document.createElement('div'); el.id='authGate'; document.body.appendChild(el); }
+  el.setAttribute('style','position:fixed;inset:0;z-index:500;background:linear-gradient(160deg,#4A4A3A,#26261d);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto');
+  el.innerHTML=`
+   <div style="background:#FBF7EF;border-radius:22px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden">
+     <div style="background:linear-gradient(135deg,#B8860B,#9a7109);color:#fff;padding:26px;text-align:center">
+       <div style="font-size:40px;line-height:1">☾</div>
+       <h1 style="font-size:19px;font-weight:800;margin-top:8px">حلقات الشيخ محمد البراك</h1>
+       <p style="font-size:12px;opacity:.85;margin-top:3px">${signup?'إنشاء حساب جديد':'تسجيل الدخول'}</p>
+     </div>
+     <div style="padding:22px">
+       ${signup?`<div class="field"><label>الاسم الكامل</label><input id="auName" placeholder="مثال: عبدالله الغامدي"></div>`:''}
+       <div class="field"><label>رقم الجوال</label><input id="auPhone" inputmode="numeric" placeholder="05xxxxxxxx"></div>
+       <div class="field"><label>كلمة السر</label><input id="auPass" type="password" placeholder="٦ أحرف فأكثر"></div>
+       ${signup?`<div class="field"><label>الصفة</label><select id="auRole">
+          <option value="parent">ولي أمر</option><option value="teacher">معلم حلقة</option>
+          <option value="student">طالب</option><option value="examiner">مُسمِّع</option>
+          <option value="admin">إداري</option><option value="sponsor">داعم / كافل</option>
+          <option value="general">مشرف عام</option></select></div>`:''}
+       <div id="auErr" style="color:#C62828;font-size:12.5px;font-weight:700;min-height:18px;margin-bottom:6px"></div>
+       <button class="btn btn-p" style="width:100%" onclick="${signup?'doSignup()':'doLogin()'}">${signup?'إنشاء الحساب والدخول':'دخول'}</button>
+       <div style="text-align:center;margin-top:14px;font-size:12.5px;color:#7a745f">
+         ${signup?'لديك حساب؟ ':'ليس لديك حساب؟ '}
+         <a onclick="showLogin('${signup?'in':'up'}')" style="color:#9a7109;font-weight:800;cursor:pointer">${signup?'سجّل الدخول':'أنشئ حساباً'}</a>
+       </div>
+     </div>
+   </div>`;
+  el.style.display='flex';
+}
+function authErr(m){ const e=document.getElementById('auErr'); if(e) e.textContent=m; }
+function hideLogin(){ const el=document.getElementById('authGate'); if(el) el.remove(); }
+
+async function doLogin(){
+  const phone=(document.getElementById('auPhone').value||'').trim();
+  const pass=document.getElementById('auPass').value||'';
+  if(phone.replace(/\D/g,'').length<9) return authErr('أدخل رقم جوال صحيح');
+  if(pass.length<6) return authErr('كلمة السر ٦ أحرف فأكثر');
+  authErr('جارٍ الدخول…');
+  const {error}=await DB.signIn({phone,password:pass});
+  if(error) return authErr('تعذّر الدخول — تحقّق من الجوال وكلمة السر');
+  await afterAuth();
+}
+async function doSignup(){
+  const name=(document.getElementById('auName').value||'').trim();
+  const phone=(document.getElementById('auPhone').value||'').trim();
+  const pass=document.getElementById('auPass').value||'';
+  const role=document.getElementById('auRole').value;
+  if(!name) return authErr('أدخل الاسم');
+  if(phone.replace(/\D/g,'').length<9) return authErr('أدخل رقم جوال صحيح');
+  if(pass.length<6) return authErr('كلمة السر ٦ أحرف فأكثر');
+  authErr('جارٍ إنشاء الحساب…');
+  const {error,needsConfirm}=await DB.signUp({phone,password:pass,name,role});
+  if(error){
+    if(String(error.message).includes('registered')) return authErr('هذا الجوال مسجّل — سجّل الدخول');
+    return authErr('تعذّر الإنشاء: '+error.message);
+  }
+  if(needsConfirm) return authErr('أُنشئ الحساب. فعّل «تعطيل تأكيد البريد» في Supabase ثم سجّل الدخول.');
+  await afterAuth();
+}
+async function doLogout(){ await DB.signOut(); location.reload(); }
+
+function applyProfileRole(p){
+  if(p&&p.role&&ROLES[p.role]) ROLE=p.role;
+  const rs=document.querySelector('.roleswitch'); if(rs) rs.style.display='none';
+  const who=document.getElementById('whoBox');
+  who.style.gap='8px';
+  who.innerHTML=`<span class="dot"></span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p&&p.full_name)||'مستخدم'} — ${ROLE_LABELS[ROLE]||''}</span><button onclick="doLogout()" style="background:rgba(255,255,255,.14);color:#fff;border-radius:8px;padding:6px 11px;font-size:11px;font-weight:700;flex-shrink:0">خروج ⏻</button>`;
+}
+async function loadData(){
+  const data=await DB.loadAll(); if(data) applyRemote(data);
+  const badge=document.querySelector('.offline');
+  if(DB.isOnline()) badge.innerHTML='<span class="dot"></span> متصل بقاعدة البيانات';
+}
+async function afterAuth(){
+  const session=await DB.getSession();
+  const profile=session?await DB.getProfile(session.user.id):null;
+  CURRENT_USER=profile;
+  hideLogin();
+  await loadData();
+  applyProfileRole(profile);
+  buildRoleSelect(); buildNav(); render();
+}
+
 async function boot(){
   const ok=DB.init();
-  if(ok){ const data=await DB.loadAll(); if(data) applyRemote(data); }
-  const badge=document.querySelector('.offline');
-  if(DB.isOnline()){ badge.innerHTML='<span class="dot"></span> متصل بقاعدة البيانات'; }
+  if(!ok){ /* لا اتصال بقاعدة البيانات — وضع عرض تجريبي بلا تسجيل دخول */
+    buildRoleSelect(); buildNav(); render(); return;
+  }
+  const session=await DB.getSession();
+  if(!session){ showLogin('in'); return; }
+  const profile=await DB.getProfile(session.user.id);
+  CURRENT_USER=profile;
+  await loadData();
+  applyProfileRole(profile);
   buildRoleSelect(); buildNav(); render();
 }
 boot();
