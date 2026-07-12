@@ -153,9 +153,10 @@ function buildNav(){
     if(badge==='nf'&&unreadNotif()) cnt=`<span class="cnt">${arNum(unreadNotif())}</span>`;
     return `<button data-v="${v}" class="${v===VIEW?'active':''}" onclick="switchTo('${v}')"><span class="ic">${ic}</span> ${label}${cnt}</button>`;
   }).join('')).join('');
-  $('#whoName').textContent=r.who;
-  $('#bellCnt').textContent=arNum(unreadNotif());
-  $('#bellCnt').style.display=unreadNotif()?'flex':'none';
+  // بعد تسجيل الدخول يُستبدَل محتوى #whoBox فيختفي #whoName — نحصّن ضد null.
+  const whoName=$('#whoName'); if(whoName) whoName.textContent=r.who;
+  const bell=$('#bellCnt');
+  if(bell){ bell.textContent=arNum(unreadNotif()); bell.style.display=unreadNotif()?'flex':'none'; }
 }
 function switchRole(r){
   ROLE=r; VIEW=ROLES[r].nav[0][1][0][0];
