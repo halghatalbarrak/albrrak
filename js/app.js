@@ -81,7 +81,7 @@ let HARVEST=[
 /* ---------- الأدوار وقوائمها ---------- */
 const ROLES={
   general:{name:'المشرف العام',who:'د. المشرف العام',nav:[
-    ['الإشراف',[['dash','📊','لوحة القيادة'],['reports','📈','التقارير والمؤشرات'],['audit','🛡️','سجل التدقيق'],['users','👥','إدارة المستخدمين']]],
+    ['الإشراف',[['dash','📊','لوحة القيادة'],['reports','📈','التقارير والمؤشرات'],['circlemgmt','🏫','إدارة الحلقات'],['audit','🛡️','سجل التدقيق'],['users','👥','إدارة المستخدمين']]],
     ['التشغيل',[['exchange','📿','بورصة الإنجاز'],['admissions','📝','القبول والانتظار','wl'],['teacherapps','🧑‍🏫','طلبات المعلمين'],['excuses','📄','الأعذار'],['linking','🔗','الربط والمراجعة']]],
     ['التربية',[['market','🛒','سوق الحلقة'],['kiosk','🖥️','شاشة المسجد'],['notif','🔔','الإشعارات','nf']]],
     ['المالية',[['finance','💳','البوابة المالية']]],
@@ -110,6 +110,7 @@ const ROLES={
 };
 let ROLE='teacher', VIEW='tasmee', activeCircle='sabah', sheetStudent=1, marketStudent=7, childSel=1;
 let TEACHER_APPS=[];
+let TEACHERS_ROSTER=[];
 
 /* ---------- عناوين الشاشات ---------- */
 const TITLES={
@@ -118,6 +119,7 @@ const TITLES={
   audit:['سجل التدقيق','توثيقُ العمليات الحسّاسة — SRS 10.7'],
   users:['إدارة المستخدمين','منح الأدوار وتعطيل/تفعيل الحسابات — للمشرف العام'],
   teacherapps:['طلبات المعلمين','مراجعة المتقدّمين لشغل وظيفة معلم'],
+  circlemgmt:['إدارة الحلقات والمعلمين','إضافة وتعديل الحلقات وتعيين المعلّمين'],
   exchange:['بورصة الإنجاز اليومية','تصوّرٌ حيّ لوضع كل الطلاب اليوم — FR-ADM-01'],
   admissions:['القبول وقائمة الانتظار','مراجعة الطلبات وإدارة الانتظار — FR-ADM-04'],
   excuses:['إدارة الأعذار','تسجيل الأعذار وأثرها على الحضور — SRS 7.9'],
@@ -195,7 +197,7 @@ function render(){
     admissions:renderAdmissions,excuses:renderExcuses,linking:renderLinking,market:renderMarket,
     kiosk:renderKiosk,notif:renderNotif,finance:renderFinance,tasmee:renderTasmee,sheet:renderSheet,
     harvest:renderHarvest,children:renderChildren,approvals:renderApprovals,myprog:renderMyprog,
-    qr:renderQR,impact:renderImpact,users:renderUsers,teacherapps:renderTeacherApps};
+    qr:renderQR,impact:renderImpact,users:renderUsers,teacherapps:renderTeacherApps,circlemgmt:renderCircleMgmt};
   (map[VIEW]||renderDash)(c);
 }
 
@@ -761,6 +763,75 @@ function renderTeacherApps(c){
       ${apps.map(a=>`<tr><td class="s">${esc(a.full_name)}</td><td>${esc(a.phone)}</td><td>${esc(a.nationality)}</td><td>${a.birth_date?arNum(calcAge(a.birth_date)):'—'}</td><td>${esc(a.qualification)}</td><td>${appStatusTag(a.status)}</td><td>${fmtDate(a.created_at)}</td></tr>`).join('')}
     </tbody></table>`:'<div style="text-align:center;color:#9a9482;padding:24px">لا طلبات بعد — شاركوا رابط التقديم أو أضيفوا متقدّماً يدوياً.</div>'}</div></div>`;
 }
+
+/* ============================================================
+   إدارة الحلقات والمعلمين (للمشرف العام)
+   ============================================================ */
+function circleRow(cc){
+  const count=STUDENTS.filter(s=>s.circle===cc.id).length;
+  const cap=cc.capacity||50;
+  return `<tr><td class="s">${esc(cc.name)}</td><td>${esc(cc.mosque)||'—'}</td><td>${esc(cc.teacher)||'—'}</td><td>${arNum(count)} / ${arNum(cap)}</td>
+    <td><button class="btn btn-o btn-sm" onclick="openCircleModal('${esc(cc.id)}')">✎ تعديل</button></td></tr>`;
+}
+function renderCircleMgmt(c){
+  c.innerHTML=`
+  <div class="note"><b>إدارة الحلقات:</b> أضِف حلقةً جديدة أو عدّل القائمة، وعيّن المعلّم والسعة. المعلّمون قائمةٌ بالحسابات التي دورها «معلم» (تُمنح الصفة من «إدارة المستخدمين»).</div>
+  <div class="kpis">
+    <div class="kpi"><div class="v">${arNum(CIRCLES.length)}</div><div class="l">الحلقات</div><div class="t" style="color:#9a9482">مُفعّلة</div></div>
+    <div class="kpi"><div class="v" id="cmTeachersCount">…</div><div class="l">المعلمون</div><div class="t" style="color:#9a9482">حسابات معلمين</div></div>
+    <div class="kpi"><div class="v">${arNum(STUDENTS.length)}</div><div class="l">إجمالي الطلاب</div><div class="t" style="color:#9a9482">في كل الحلقات</div></div>
+  </div>
+  <div class="panel"><div class="panel-h"><h3>الحلقات</h3><button class="btn btn-p btn-sm" onclick="openCircleModal(null)">＋ إضافة حلقة</button></div>
+    <div class="panel-b" style="padding:0;overflow:auto">${CIRCLES.length?`<table><thead><tr><th>الحلقة</th><th>المسجد</th><th>المعلّم</th><th>الطلاب / السعة</th><th>إجراء</th></tr></thead><tbody>
+      ${CIRCLES.map(circleRow).join('')}
+    </tbody></table>`:'<div style="text-align:center;color:#9a9482;padding:24px">لا حلقات — أضِف أول حلقة.</div>'}</div></div>
+  <div class="panel"><div class="panel-h"><h3>المعلمون</h3><span class="hint">حسابات دورها «معلم»</span></div>
+    <div class="panel-b" id="cmTeachers"><div style="text-align:center;color:#9a9482;padding:16px">جارٍ التحميل…</div></div></div>`;
+  loadTeachersRoster();
+}
+async function loadTeachersRoster(){
+  TEACHERS_ROSTER = await DB.loadStaffTeachers();
+  const box=$('#cmTeachers'), cnt=$('#cmTeachersCount');
+  if(cnt) cnt.textContent=arNum(TEACHERS_ROSTER.length);
+  if(box) box.innerHTML = TEACHERS_ROSTER.length
+    ? TEACHERS_ROSTER.map(t=>`<div class="lrow"><div class="av">🧑‍🏫</div><div class="info"><div class="t">${esc(t.full_name)||'—'}</div><div class="d">${esc(t.phone)||'—'}</div></div></div>`).join('')
+    : '<div style="text-align:center;color:#9a9482;padding:16px">لا حسابات معلمين بعد — تُمنح صفة «معلم» من «إدارة المستخدمين».</div>';
+}
+function openCircleModal(id){
+  const cc = id ? CIRCLES.find(x=>x.id===id) : null;
+  const manualTeacher = cc && cc.teacher && !TEACHERS_ROSTER.some(t=>t.full_name===cc.teacher) ? cc.teacher : '';
+  const teacherOpts = `<option value="">— بلا معلّم —</option>`+TEACHERS_ROSTER.map(t=>`<option value="${esc(t.full_name)}" ${cc&&cc.teacher===t.full_name?'selected':''}>${esc(t.full_name)}</option>`).join('');
+  $('#modal').innerHTML=`
+  <div class="modal-h"><div><h3>${cc?'تعديل حلقة':'إضافة حلقة'}</h3><small>${cc?esc(cc.name):'حلقة جديدة'}</small></div><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b">
+    <div class="field"><label>المعرّف (إنجليزي بلا مسافات)</label><input id="cm_id" value="${cc?esc(cc.id):''}" ${cc?'disabled':''} placeholder="مثال: maghrib"></div>
+    <div class="field"><label>اسم الحلقة</label><input id="cm_name" value="${cc?esc(cc.name):''}" placeholder="مثال: حلقة المغرب"></div>
+    <div class="field"><label>المسجد</label><input id="cm_mosque" value="${cc&&cc.mosque?esc(cc.mosque):''}"></div>
+    <div class="field"><label>المعلّم (من الحسابات)</label><select id="cm_teacher">${teacherOpts}</select></div>
+    <div class="field"><label>أو اسم معلّم يدوياً (اختياري — يُقدَّم على الأعلى)</label><input id="cm_teacher_manual" value="${esc(manualTeacher)}" placeholder="اسم المعلّم"></div>
+    <div class="field"><label>السعة</label><input id="cm_cap" type="number" min="1" value="${cc&&cc.capacity?cc.capacity:50}"></div>
+    <div id="cm_err" class="autherr"></div>
+  </div>
+  <div class="modal-f"><button class="btn btn-g" onclick="closeModal()">إلغاء</button><button class="btn btn-p" onclick="saveCircleForm(${cc?'true':'false'})">حفظ</button></div>`;
+  $('#overlay').classList.add('show');
+}
+async function saveCircleForm(isEdit){
+  const v=id=>{const el=document.getElementById(id);return el?String(el.value).trim():'';};
+  const id=v('cm_id'), name=v('cm_name');
+  const err=document.getElementById('cm_err');
+  if(!id||!name){ if(err) err.textContent='المعرّف واسم الحلقة إلزاميان'; return; }
+  if(!/^[a-z0-9_-]+$/i.test(id)){ if(err) err.textContent='المعرّف بالإنجليزية/الأرقام فقط بلا مسافات'; return; }
+  const teacher = v('cm_teacher_manual') || v('cm_teacher');
+  const circle={ id, name, mosque:v('cm_mosque'), teacher, capacity:Number(v('cm_cap'))||50 };
+  if(err) err.textContent='جارٍ الحفظ…';
+  const {error}=await DB.saveCircle(circle);
+  if(error){ if(err) err.textContent='تعذّر الحفظ: '+error.message; return; }
+  logAudit('المشرف العام',(isEdit?'تعديل حلقة: ':'إضافة حلقة: ')+name);
+  closeModal();
+  await loadData();
+  render();
+  toast('🏫', isEdit?'حُدّثت الحلقة':'أُضيفت الحلقة', name);
+}
 async function changeUserRole(id,role){
   const {error}=await DB.adminSetRole(id,role);
   if(error){ toast('⚠','تعذّر تغيير الدور',error.message||'العملية للمشرف العام فقط'); loadUsers(); return; }
@@ -926,7 +997,7 @@ function toast(em,tt,ts){const el=$('#toast');if(!el)return;el.innerHTML=`<span 
 
 /* ---------- ربط بيانات Supabase (مع سقوط تلقائي للبذور المحلية) ---------- */
 function applyRemote(d){
-  if(d.circles&&d.circles.length){CIRCLES.length=0;d.circles.forEach(c=>CIRCLES.push({id:c.id,name:c.name,teacher:c.teacher,mosque:c.mosque}));}
+  if(d.circles&&d.circles.length){CIRCLES.length=0;d.circles.forEach(c=>CIRCLES.push({id:c.id,name:c.name,teacher:c.teacher,mosque:c.mosque,capacity:c.capacity}));}
   if(d.guardians&&d.guardians.length){Object.keys(GUARDIANS).forEach(k=>delete GUARDIANS[k]);d.guardians.forEach(g=>GUARDIANS[g.id]={name:g.name,phone:g.phone});}
   if(d.students&&d.students.length){STUDENTS.length=0;d.students.forEach(s=>STUDENTS.push({
     id:s.id,name:s.full_name,circle:s.circle_id,age:s.age,guardian:s.guardian_id,program:s.program||'معارج',

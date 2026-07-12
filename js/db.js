@@ -200,6 +200,23 @@ window.DB = (function () {
     });
   }
 
+  /* ---------- إدارة الحلقات والمعلمين ---------- */
+  // إضافة/تعديل حلقة (upsert على المفتاح النصّي id) — تحميه سياسة الكادر
+  async function saveCircle(circle) {
+    if (!sb) return { error: { message: 'لا يوجد اتصال بقاعدة البيانات' } };
+    return await sb.from('circles').upsert(circle);
+  }
+  // كشف المعلمين: الحسابات التي دورها 'teacher'
+  async function loadStaffTeachers() {
+    if (!sb) return [];
+    try {
+      const { data, error } = await sb.from('profiles')
+        .select('id,full_name,phone,role').eq('role', 'teacher');
+      if (error) throw error;
+      return data || [];
+    } catch (e) { console.warn('loadStaffTeachers:', e.message); return []; }
+  }
+
   /* ---------- طلبات توظيف المعلمين ---------- */
   // إرسال طلب تقديم معلم (من الرابط العام أو إدخال المشرف)
   async function submitTeacherApp(app) {
@@ -224,5 +241,6 @@ window.DB = (function () {
     addPayment, updateReward, updateStudentPoints,
     listProfiles, adminSetRole, adminSetStatus, linkUser,
     submitTeacherApp, loadTeacherApps,
+    saveCircle, loadStaffTeachers,
   };
 })();
