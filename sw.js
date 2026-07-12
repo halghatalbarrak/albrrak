@@ -1,58 +1,22 @@
 /* ============================================================
-   Service Worker — يجعل المنصة تعمل دون اتصال (Offline-first)
-   الاستراتيجية: «الشبكة أولاً» لصفحات وملفات الموقع (فتظهر أحدث نسخة
-   فور نشرها عند وجود اتصال)، ومع غياب الشبكة نخدم آخر نسخة محفوظة.
-   نداءات Supabase تمرّ للشبكة دائماً (تُدار المزامنة في db.js).
+   Service Worker — نسخة «ذاتية الإلغاء» (Kill-switch)
+   الغرض: التعافي من أي تخزينٍ قديم عالق على أجهزة المستخدمين.
+   عند تحديث هذا الملف، يمسح المتصفّح كل الذواكر ويُلغي تسجيل SW
+   ويعيد تحميل الصفحات المفتوحة، فتُجلب أحدث نسخة من الشبكة مباشرةً.
+   (العمل دون اتصال يبقى مؤمّناً في طبقة البيانات db.js — طابور المزامنة.)
    ============================================================ */
-const CACHE = 'albrrak-v2';
-const SHELL = [
-  './',
-  './index.html',
-  './css/styles.css',
-  './js/app.js',
-  './js/db.js',
-  './assets/favicon.svg',
-  './manifest.webmanifest',
-];
-
-self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
-});
+self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
+  e.waitUntil((async () => {
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+      await self.registration.unregister();
+      const clients = await self.clients.matchAll({ type: 'window' });
+      clients.forEach((c) => { try { c.navigate(c.url); } catch (_) {} });
+    } catch (_) {}
+  })());
 });
 
-self.addEventListener('fetch', (e) => {
-  const req = e.request;
-  if (req.method !== 'GET') return;
-  const url = new URL(req.url);
-
-  // لا نتدخّل في نداءات قاعدة البيانات أو المصادقة — تمرّ للشبكة مباشرة.
-  if (url.hostname.endsWith('supabase.co') || url.hostname.endsWith('supabase.in')) return;
-
-  // نفس الأصل (هيكل التطبيق): الشبكة أولاً ثم الذاكرة كخطة بديلة عند الانقطاع.
-  if (url.origin === self.location.origin) {
-    e.respondWith(
-      fetch(req).then((res) => {
-        if (res && res.status === 200) {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy));
-        }
-        return res;
-      }).catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
-    );
-    return;
-  }
-
-  // موارد خارجية (خطوط، Supabase SDK): الشبكة أولاً ثم الذاكرة كخطة بديلة.
-  e.respondWith(fetch(req).then((res) => {
-    const copy = res.clone();
-    caches.open(CACHE).then((c) => c.put(req, copy));
-    return res;
-  }).catch(() => caches.match(req)));
-});
+// لا نتدخّل في أي طلب — كل شيء يمرّ للشبكة مباشرةً.

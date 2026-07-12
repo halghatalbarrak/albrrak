@@ -80,12 +80,11 @@
 <script src="js/db.js"></script>
 <!-- التطبيق -->
 <script src="js/app.js"></script>
-<!-- تسجيل Service Worker للعمل دون اتصال -->
+<!-- تعافٍ من أي Service Worker قديم عالق: نُلغي التسجيل ونمسح المخزّن -->
 <script>
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch((e) => console.info('SW skipped:', e.message));
-    });
+    navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+    if (window.caches && caches.keys) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {});
   }
 </script>
 </body>
