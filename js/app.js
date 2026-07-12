@@ -142,33 +142,36 @@ function logAudit(who,act){AUDIT.unshift({who,act,time:'الآن'});DB.log(who,a
 
 /* ---------- بناء القائمة الجانبية حسب الدور ---------- */
 function buildRoleSelect(){
-  $('#roleSel').innerHTML=Object.entries(ROLES).map(([k,r])=>`<option value="${k}" ${k===ROLE?'selected':''}>${r.name}</option>`).join('');
+  const sel=$('#roleSel');
+  if(sel) sel.innerHTML=Object.entries(ROLES).map(([k,r])=>`<option value="${k}" ${k===ROLE?'selected':''}>${r.name}</option>`).join('');
 }
 function buildNav(){
   const r=ROLES[ROLE];
-  $('#nav').innerHTML=r.nav.map(([grp,items])=>`<div class="grp">${grp}</div>`+items.map(it=>{
+  const nav=$('#nav');
+  if(nav) nav.innerHTML=r.nav.map(([grp,items])=>`<div class="grp">${grp}</div>`+items.map(it=>{
     const [v,ic,label,badge]=it;
     let cnt='';
     if(badge==='wl') cnt=`<span class="cnt">${arNum(WAITLIST.filter(w=>w.status==='pending').length)}</span>`;
     if(badge==='nf'&&unreadNotif()) cnt=`<span class="cnt">${arNum(unreadNotif())}</span>`;
     return `<button data-v="${v}" class="${v===VIEW?'active':''}" onclick="switchTo('${v}')"><span class="ic">${ic}</span> ${label}${cnt}</button>`;
   }).join('')).join('');
-  $('#whoName').textContent=r.who;
-  $('#bellCnt').textContent=arNum(unreadNotif());
-  $('#bellCnt').style.display=unreadNotif()?'flex':'none';
+  const whoName=$('#whoName'); if(whoName) whoName.textContent=r.who;
+  const bell=$('#bellCnt');
+  if(bell){ bell.textContent=arNum(unreadNotif()); bell.style.display=unreadNotif()?'flex':'none'; }
 }
 function switchRole(r){
   ROLE=r; VIEW=ROLES[r].nav[0][1][0][0];
   buildNav(); render();
-  document.getElementById('sidebar').classList.remove('open');
+  const sb=document.getElementById('sidebar'); if(sb) sb.classList.remove('open');
 }
-function switchTo(v){ VIEW=v; buildNav(); render(); document.getElementById('sidebar').classList.remove('open'); }
+function switchTo(v){ VIEW=v; buildNav(); render(); const sb=document.getElementById('sidebar'); if(sb) sb.classList.remove('open'); }
 
 /* ---------- الراوتر ---------- */
 function render(){
-  $('#viewTitle').textContent=TITLES[VIEW]?TITLES[VIEW][0]:'';
-  $('#viewSub').textContent=TITLES[VIEW]?TITLES[VIEW][1]:'';
+  const vt=$('#viewTitle'); if(vt) vt.textContent=TITLES[VIEW]?TITLES[VIEW][0]:'';
+  const vs=$('#viewSub');   if(vs) vs.textContent=TITLES[VIEW]?TITLES[VIEW][1]:'';
   const c=$('#content');
+  if(!c) return;
   const map={dash:renderDash,reports:renderReports,audit:renderAudit,exchange:renderExchange,
     admissions:renderAdmissions,excuses:renderExcuses,linking:renderLinking,market:renderMarket,
     kiosk:renderKiosk,notif:renderNotif,finance:renderFinance,tasmee:renderTasmee,sheet:renderSheet,
@@ -718,7 +721,7 @@ function renderImpact(c){
 
 /* ---------- Toast ---------- */
 let toastT=null;
-function toast(em,tt,ts){const el=$('#toast');el.innerHTML=`<span class="em">${em}</span><div><div class="tt">${tt}</div><div class="ts">${ts||''}</div></div>`;
+function toast(em,tt,ts){const el=$('#toast');if(!el)return;el.innerHTML=`<span class="em">${em}</span><div><div class="tt">${tt}</div><div class="ts">${ts||''}</div></div>`;
   el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),3800);}
 
 /* ---------- ربط بيانات Supabase (مع سقوط تلقائي للبذور المحلية) ---------- */
@@ -808,13 +811,14 @@ function applyProfileRole(p){
   if(p&&p.role&&ROLES[p.role]) ROLE=p.role;
   const rs=document.querySelector('.roleswitch'); if(rs) rs.style.display='none';
   const who=document.getElementById('whoBox');
+  if(!who) return;
   who.style.gap='8px';
   who.innerHTML=`<span class="dot"></span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p&&p.full_name)||'مستخدم'} — ${ROLE_LABELS[ROLE]||''}</span><button onclick="doLogout()" style="background:rgba(255,255,255,.14);color:#fff;border-radius:8px;padding:6px 11px;font-size:11px;font-weight:700;flex-shrink:0">خروج ⏻</button>`;
 }
 async function loadData(){
   const data=await DB.loadAll(); if(data) applyRemote(data);
   const badge=document.querySelector('.offline');
-  if(DB.isOnline()) badge.innerHTML='<span class="dot"></span> متصل بقاعدة البيانات';
+  if(badge&&DB.isOnline()) badge.innerHTML='<span class="dot"></span> متصل بقاعدة البيانات';
 }
 async function afterAuth(){
   const session=await DB.getSession();
