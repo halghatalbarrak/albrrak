@@ -82,7 +82,7 @@ let HARVEST=[
 const ROLES={
   general:{name:'المشرف العام',who:'د. المشرف العام',nav:[
     ['الإشراف',[['dash','📊','لوحة القيادة'],['reports','📈','التقارير والمؤشرات'],['audit','🛡️','سجل التدقيق'],['users','👥','إدارة المستخدمين']]],
-    ['التشغيل',[['exchange','📿','بورصة الإنجاز'],['admissions','📝','القبول والانتظار','wl'],['excuses','📄','الأعذار'],['linking','🔗','الربط والمراجعة']]],
+    ['التشغيل',[['exchange','📿','بورصة الإنجاز'],['admissions','📝','القبول والانتظار','wl'],['teacherapps','🧑‍🏫','طلبات المعلمين'],['excuses','📄','الأعذار'],['linking','🔗','الربط والمراجعة']]],
     ['التربية',[['market','🛒','سوق الحلقة'],['kiosk','🖥️','شاشة المسجد'],['notif','🔔','الإشعارات','nf']]],
     ['المالية',[['finance','💳','البوابة المالية']]],
   ]},
@@ -91,7 +91,7 @@ const ROLES={
     ['أدوات',[['linking','🔗','الربط والمراجعة'],['excuses','📄','الأعذار'],['notif','🔔','الإشعارات','nf']]],
   ]},
   admin:{name:'الإداري (شؤون الطالب)',who:'أ. ماجد — شؤون الطالب',nav:[
-    ['القبول',[['admissions','📝','القبول والانتظار','wl'],['excuses','📄','إدارة الأعذار']]],
+    ['القبول',[['admissions','📝','القبول والانتظار','wl'],['teacherapps','🧑‍🏫','طلبات المعلمين'],['excuses','📄','إدارة الأعذار']]],
     ['المتابعة',[['dash','📊','لوحة القيادة'],['reports','📈','التقارير'],['notif','🔔','الإشعارات','nf']]],
   ]},
   examiner:{name:'المُسمِّع (الحصاد)',who:'الشيخ المُسمِّع',nav:[
@@ -109,6 +109,7 @@ const ROLES={
   ]},
 };
 let ROLE='teacher', VIEW='tasmee', activeCircle='sabah', sheetStudent=1, marketStudent=7, childSel=1;
+let TEACHER_APPS=[];
 
 /* ---------- عناوين الشاشات ---------- */
 const TITLES={
@@ -116,6 +117,7 @@ const TITLES={
   reports:['التقارير ومؤشرات النجاح','قياسٌ حيّ مقابل أهداف الوثيقة'],
   audit:['سجل التدقيق','توثيقُ العمليات الحسّاسة — SRS 10.7'],
   users:['إدارة المستخدمين','منح الأدوار وتعطيل/تفعيل الحسابات — للمشرف العام'],
+  teacherapps:['طلبات المعلمين','مراجعة المتقدّمين لشغل وظيفة معلم'],
   exchange:['بورصة الإنجاز اليومية','تصوّرٌ حيّ لوضع كل الطلاب اليوم — FR-ADM-01'],
   admissions:['القبول وقائمة الانتظار','مراجعة الطلبات وإدارة الانتظار — FR-ADM-04'],
   excuses:['إدارة الأعذار','تسجيل الأعذار وأثرها على الحضور — SRS 7.9'],
@@ -144,6 +146,15 @@ function currentStudent(){
   const sid = CURRENT_USER && CURRENT_USER.student_id;
   return STUDENTS.find(x=>x.id===sid) || STUDENTS[0];
 }
+function calcAge(birthDate){
+  if(!birthDate) return '';
+  const b=new Date(birthDate), t=new Date();
+  let a=t.getFullYear()-b.getFullYear();
+  const m=t.getMonth()-b.getMonth();
+  if(m<0||(m===0&&t.getDate()<b.getDate())) a--;
+  return a;
+}
+function fmtDate(ts){ if(!ts) return '—'; try{ return new Date(ts).toLocaleDateString('ar-EG'); }catch(e){ return '—'; } }
 function openChildSheet(id){ sheetStudent=id; switchTo('sheet'); }
 function openStudentMarket(){ const st=currentStudent(); marketStudent=st.id; switchTo('market'); }
 function logAudit(who,act){AUDIT.unshift({who,act,time:'الآن'});DB.log(who,act);}
@@ -184,7 +195,7 @@ function render(){
     admissions:renderAdmissions,excuses:renderExcuses,linking:renderLinking,market:renderMarket,
     kiosk:renderKiosk,notif:renderNotif,finance:renderFinance,tasmee:renderTasmee,sheet:renderSheet,
     harvest:renderHarvest,children:renderChildren,approvals:renderApprovals,myprog:renderMyprog,
-    qr:renderQR,impact:renderImpact,users:renderUsers};
+    qr:renderQR,impact:renderImpact,users:renderUsers,teacherapps:renderTeacherApps};
   (map[VIEW]||renderDash)(c);
 }
 
@@ -643,6 +654,113 @@ async function linkParentUser(id, guardianId){
   await loadUsers();
   toast('🔗','تم الربط','رُبط الحساب بالعائلة — سيرى أبناءه عند الدخول');
 }
+
+/* ============================================================
+   نظام إدارة المعلمين (مرحلة ١) — طلبات التوظيف
+   نموذج تقديم عام + شاشة عرض/إدخال للمشرف والإداري
+   ============================================================ */
+function appStatusTag(s){
+  const map={new:['جديد','b'],reviewing:['قيد المراجعة','a'],accepted:['مقبول','g'],rejected:['مرفوض','r']};
+  const m=map[s]||[s||'—','n'];
+  return `<span class="tag ${m[1]}">${esc(m[0])}</span>`;
+}
+/* حقول النموذج المشتركة (نموذج عام ونافذة الإدخال اليدوي) */
+function applyFields(){
+  return `
+  <div class="field"><label>الاسم كما في الهوية</label><input id="ap_name" autocomplete="name"></div>
+  <div class="field"><label>رقم الهوية</label><input id="ap_id" inputmode="numeric"></div>
+  <div class="field"><label>نوع الهوية</label><select id="ap_idtype"><option value="">— اختر —</option><option value="مواطن">مواطن</option><option value="مقيم">مقيم</option><option value="زائر">زائر</option></select></div>
+  <div class="field"><label>الجنسية</label><input id="ap_nat"></div>
+  <div class="field"><label>تاريخ الميلاد (ميلادي)</label>
+    <div style="display:flex;gap:10px;align-items:center"><input id="ap_birth" type="date" oninput="updateApplyAge()" style="flex:1"><span id="ap_age" class="hint" style="white-space:nowrap"></span></div></div>
+  <div class="field"><label>الجنس</label><select id="ap_gender"><option value="">— اختر —</option><option value="ذكر">ذكر</option><option value="أنثى">أنثى</option></select></div>
+  <div class="field"><label>الحالة الاجتماعية</label><select id="ap_marital"><option value="">— اختر —</option><option value="أعزب">أعزب</option><option value="متزوج">متزوج</option><option value="مطلّق">مطلّق</option><option value="أرمل">أرمل</option></select></div>
+  <div class="field"><label>تاريخ انتهاء الهوية (ميلادي)</label><input id="ap_expiry" type="date"></div>
+  <div class="field"><label>رقم الجوال</label><input id="ap_phone" inputmode="tel" autocomplete="tel"></div>
+  <div class="field"><label>المؤهّل الدراسي</label><input id="ap_qual"></div>
+  <div class="field"><label>هل تم تعيينه في الجمعية سابقاً؟</label><select id="ap_hired"><option value="">— اختر —</option><option value="yes">نعم</option><option value="no">لا</option></select></div>`;
+}
+function updateApplyAge(){
+  const b=document.getElementById('ap_birth'), a=document.getElementById('ap_age');
+  if(b&&a){ const age=calcAge(b.value); a.textContent=age===''?'':('العمر: '+arNum(age)+' سنة'); }
+}
+async function submitApply(source){
+  const v=id=>{const el=document.getElementById(id);return el?String(el.value).trim():'';};
+  const app={
+    full_name:v('ap_name'), id_number:v('ap_id'), id_type:v('ap_idtype'),
+    nationality:v('ap_nat'), birth_date:v('ap_birth'), gender:v('ap_gender'),
+    marital_status:v('ap_marital'), id_expiry:v('ap_expiry'), phone:v('ap_phone'),
+    qualification:v('ap_qual'), hired_before:v('ap_hired')==='yes',
+    status:'new', source:source||'form'
+  };
+  const err=document.getElementById('ap_err');
+  const required=['full_name','id_number','id_type','nationality','birth_date','gender','marital_status','id_expiry','phone','qualification'];
+  if(required.some(k=>!app[k]) || v('ap_hired')===''){ if(err) err.textContent='رجاءً املأ جميع الحقول'; return; }
+  if(err) err.textContent='جارٍ الإرسال…';
+  const {error}=await DB.submitTeacherApp(app);
+  if(error){ if(err) err.textContent='تعذّر الإرسال: '+error.message; return; }
+  if(source==='manual'){
+    closeModal();
+    TEACHER_APPS = await DB.loadTeacherApps() || TEACHER_APPS;
+    render();
+    toast('🧑‍🏫','أُضيف المتقدّم','سُجّل الطلب في قائمة طلبات المعلمين');
+  } else {
+    applyThankYou();
+  }
+}
+/* النموذج العام (بلا تسجيل دخول) */
+function showApply(){
+  hideLogin();
+  let el=document.getElementById('applyGate');
+  if(!el){ el=document.createElement('div'); el.id='applyGate'; document.body.appendChild(el); }
+  el.className='authgate'; el.removeAttribute('style');
+  el.innerHTML=`
+   <div class="authcard" style="max-width:520px">
+     <div class="head"><div class="logo">☾</div><h2>التقديم لوظيفة معلم</h2><p>حلقات الشيخ محمد البراك</p></div>
+     <div class="body">
+       ${applyFields()}
+       <div id="ap_err" class="autherr"></div>
+       <button class="btn btn-p" style="width:100%" onclick="submitApply('form')">إرسال الطلب</button>
+       <div class="authswitch">لديك حساب؟ <a onclick="closeApply()">تسجيل الدخول</a></div>
+     </div>
+   </div>`;
+}
+function closeApply(){ const el=document.getElementById('applyGate'); if(el) el.remove(); showLogin('in'); }
+function openApplyFromLogin(){ hideLogin(); showApply(); }
+function applyThankYou(){
+  const el=document.getElementById('applyGate'); if(!el) return;
+  el.innerHTML=`
+   <div class="authcard">
+     <div class="head"><div class="logo">☾</div><h2>تم استلام طلبك</h2><p>سيتواصل معك المشرف قريباً بإذن الله</p></div>
+     <div class="body">
+       <div style="text-align:center;color:var(--muted-2);font-size:13px;line-height:2">شكراً لتقديمك للانضمام إلى فريق المعلمين.<br>سنراجع طلبك ونعاود التواصل عبر الجوال الذي أدخلته.</div>
+       <button class="btn btn-p" style="width:100%;margin-top:16px" onclick="location.href='./'">العودة للصفحة الرئيسية</button>
+     </div>
+   </div>`;
+}
+/* الإدخال اليدوي من الإدارة (نافذة داخل التطبيق) */
+function openApplyModal(){
+  $('#modal').innerHTML=`
+  <div class="modal-h"><div><h3>إضافة متقدّم يدوياً</h3><small>تسجيل طلب معلم من قبل الإدارة</small></div><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b">${applyFields()}<div id="ap_err" class="autherr"></div></div>
+  <div class="modal-f"><button class="btn btn-g" onclick="closeModal()">إلغاء</button><button class="btn btn-p" onclick="submitApply('manual')">حفظ الطلب</button></div>`;
+  $('#overlay').classList.add('show');
+}
+/* شاشة عرض الطلبات — للمشرف والإداري فقط */
+function renderTeacherApps(c){
+  const apps=TEACHER_APPS;
+  const fresh=apps.filter(a=>a.status==='new').length;
+  c.innerHTML=`
+  <div class="note"><b>طلبات التوظيف:</b> يُقدّم المعلم عبر الرابط العام أو تُدخله الإدارة يدوياً، ثم تُراجَع الطلبات هنا. بيانات الهوية حسّاسة (PDPL) ولا يراها إلا الكادر المخوّل.</div>
+  <div class="kpis">
+    <div class="kpi ${fresh?'warn':'ok'}"><div class="v">${arNum(fresh)}</div><div class="l">طلبات جديدة</div><div class="t" style="color:${fresh?'var(--amber)':'var(--green)'}">${fresh?'بحاجة مراجعة':'لا جديد'}</div></div>
+    <div class="kpi"><div class="v">${arNum(apps.length)}</div><div class="l">إجمالي المتقدّمين</div><div class="t" style="color:#9a9482">كل الحالات</div></div>
+  </div>
+  <div class="panel"><div class="panel-h"><h3>المتقدّمون لوظيفة معلم</h3><button class="btn btn-p btn-sm" onclick="openApplyModal()">＋ إضافة متقدّم يدوياً</button></div>
+    <div class="panel-b" style="padding:0;overflow:auto">${apps.length?`<table><thead><tr><th>الاسم</th><th>الجوال</th><th>الجنسية</th><th>العمر</th><th>المؤهّل</th><th>الحالة</th><th>تاريخ التقديم</th></tr></thead><tbody>
+      ${apps.map(a=>`<tr><td class="s">${esc(a.full_name)}</td><td>${esc(a.phone)}</td><td>${esc(a.nationality)}</td><td>${a.birth_date?arNum(calcAge(a.birth_date)):'—'}</td><td>${esc(a.qualification)}</td><td>${appStatusTag(a.status)}</td><td>${fmtDate(a.created_at)}</td></tr>`).join('')}
+    </tbody></table>`:'<div style="text-align:center;color:#9a9482;padding:24px">لا طلبات بعد — شاركوا رابط التقديم أو أضيفوا متقدّماً يدوياً.</div>'}</div></div>`;
+}
 async function changeUserRole(id,role){
   const {error}=await DB.adminSetRole(id,role);
   if(error){ toast('⚠','تعذّر تغيير الدور',error.message||'العملية للمشرف العام فقط'); loadUsers(); return; }
@@ -854,6 +972,7 @@ function showLogin(mode){
          ${signup?'لديك حساب؟ ':'ليس لديك حساب؟ '}
          <a onclick="showLogin('${signup?'in':'up'}')">${signup?'سجّل الدخول':'أنشئ حساباً'}</a>
        </div>
+       <div class="authswitch" style="margin-top:6px">معلّم جديد؟ <a onclick="openApplyFromLogin()">قدّم طلب توظيف</a></div>
      </div>
    </div>`;
 }
@@ -899,6 +1018,7 @@ function applyProfileRole(p){
 }
 async function loadData(){
   const data=await DB.loadAll(); if(data) applyRemote(data);
+  TEACHER_APPS = await DB.loadTeacherApps() || [];
   const badge=document.querySelector('.offline');
   if(badge&&DB.isOnline()) badge.innerHTML='<span class="dot"></span> متصل بقاعدة البيانات';
 }
@@ -923,8 +1043,11 @@ async function guardDisabled(profile){
   return false;
 }
 
+function isApplyMode(){ return location.search.indexOf('apply')>-1 || location.hash.indexOf('apply')>-1; }
+
 async function boot(){
   const ok=DB.init();
+  if(isApplyMode()){ showApply(); return; } // رابط التقديم العام — بلا تسجيل دخول
   if(!ok){ /* لا اتصال بقاعدة البيانات — وضع عرض تجريبي بلا تسجيل دخول */
     buildRoleSelect(); buildNav(); render(); return;
   }

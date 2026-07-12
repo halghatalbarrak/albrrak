@@ -200,11 +200,29 @@ window.DB = (function () {
     });
   }
 
+  /* ---------- طلبات توظيف المعلمين ---------- */
+  // إرسال طلب تقديم معلم (من الرابط العام أو إدخال المشرف)
+  async function submitTeacherApp(app) {
+    if (!sb) return { error: { message: 'لا اتصال' } };
+    return await sb.from('teacher_applications').insert(app);
+  }
+  // جلب طلبات المعلمين (للكادر فقط — تحميه RLS)
+  async function loadTeacherApps() {
+    if (!sb) return null;
+    try {
+      const { data, error } = await sb.from('teacher_applications')
+        .select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    } catch (e) { console.warn('loadTeacherApps:', e.message); return null; }
+  }
+
   return {
     init, hasClient, isOnline: () => online, pendingCount, flush,
     signUp, signIn, signOut, getSession, getProfile,
     loadAll, saveSession, log, acceptStudent, updateWaitlist,
     addPayment, updateReward, updateStudentPoints,
     listProfiles, adminSetRole, adminSetStatus, linkUser,
+    submitTeacherApp, loadTeacherApps,
   };
 })();
