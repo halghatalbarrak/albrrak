@@ -1,0 +1,16 @@
+{
+  "name": "منصة حلقات الشيخ محمد البراك",
+  "short_name": "حلقات البراك",
+  "description": "منصة رقمية لإدارة حلقات تحفيظ القرآن الكريم — التسميع، الحفظ، التحفيز، والمتابعة الأسرية.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F4EEE1",
+  "theme_color": "#333829",
+  "icons": [
+    { "src": "assets/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
