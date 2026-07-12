@@ -757,7 +757,7 @@ function showLogin(mode){
      </div>
      <div class="body">
        ${signup?`<div class="field"><label>الاسم الكامل</label><input id="auName" placeholder="مثال: عبدالله الغامدي" autocomplete="name"></div>`:''}
-       <div class="field"><label>رقم الجوال</label><input id="auPhone" inputmode="numeric" placeholder="05xxxxxxxx" autocomplete="username"></div>
+       <div class="field"><label>رقم الجوال أو البريد الإلكتروني</label><input id="auPhone" placeholder="05xxxxxxxx أو you@email.com" autocomplete="username"></div>
        <div class="field"><label>كلمة السر</label><input id="auPass" type="password" placeholder="٦ أحرف فأكثر" autocomplete="${signup?'new-password':'current-password'}"></div>
        ${signup?`<div class="field"><label>الصفة</label><select id="auRole">
           <option value="parent">ولي أمر</option>
@@ -778,7 +778,7 @@ function hideLogin(){ const el=document.getElementById('authGate'); if(el) el.re
 async function doLogin(){
   const phone=(document.getElementById('auPhone').value||'').trim();
   const pass=document.getElementById('auPass').value||'';
-  if(phone.replace(/\D/g,'').length<9) return authErr('أدخل رقم جوال صحيح');
+  if(!phone.includes('@') && phone.replace(/\D/g,'').length<9) return authErr('أدخل رقم جوال أو بريدًا إلكترونيًا صحيحًا');
   if(pass.length<6) return authErr('كلمة السر ٦ أحرف فأكثر');
   authErr('جارٍ الدخول…');
   const {error}=await DB.signIn({phone,password:pass});
@@ -791,7 +791,7 @@ async function doSignup(){
   const pass=document.getElementById('auPass').value||'';
   const role=document.getElementById('auRole').value;
   if(!name) return authErr('أدخل الاسم');
-  if(phone.replace(/\D/g,'').length<9) return authErr('أدخل رقم جوال صحيح');
+  if(!phone.includes('@') && phone.replace(/\D/g,'').length<9) return authErr('أدخل رقم جوال أو بريدًا إلكترونيًا صحيحًا');
   if(pass.length<6) return authErr('كلمة السر ٦ أحرف فأكثر');
   authErr('جارٍ إنشاء الحساب…');
   const {error,needsConfirm}=await DB.signUp({phone,password:pass,name,role});

@@ -1,9 +1,10 @@
 /* ============================================================
    Service Worker — يجعل المنصة تعمل دون اتصال (Offline-first)
-   نُخزّن هيكل التطبيق (App Shell) ونخدمه من الذاكرة عند غياب الشبكة،
-   ونترك نداءات Supabase تمرّ عبر الشبكة دائماً (تُدار المزامنة في db.js).
+   الاستراتيجية: «الشبكة أولاً» لصفحات وملفات الموقع (فتظهر أحدث نسخة
+   فور نشرها عند وجود اتصال)، ومع غياب الشبكة نخدم آخر نسخة محفوظة.
+   نداءات Supabase تمرّ للشبكة دائماً (تُدار المزامنة في db.js).
    ============================================================ */
-const CACHE = 'albrrak-v1';
+const CACHE = 'albrrak-v2';
 const SHELL = [
   './',
   './index.html',
@@ -34,24 +35,21 @@ self.addEventListener('fetch', (e) => {
   // لا نتدخّل في نداءات قاعدة البيانات أو المصادقة — تمرّ للشبكة مباشرة.
   if (url.hostname.endsWith('supabase.co') || url.hostname.endsWith('supabase.in')) return;
 
-  // هيكل التطبيق ونفس الأصل: من الذاكرة أولاً ثم تحديثها من الشبكة (stale-while-revalidate).
+  // نفس الأصل (هيكل التطبيق): الشبكة أولاً ثم الذاكرة كخطة بديلة عند الانقطاع.
   if (url.origin === self.location.origin) {
     e.respondWith(
-      caches.match(req).then((cached) => {
-        const network = fetch(req).then((res) => {
-          if (res && res.status === 200) {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy));
-          }
-          return res;
-        }).catch(() => cached);
-        return cached || network;
-      })
+      fetch(req).then((res) => {
+        if (res && res.status === 200) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy));
+        }
+        return res;
+      }).catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
     );
     return;
   }
 
-  // موارد خارجية (خطوط، Supabase SDK): من الشبكة ثم الذاكرة كخطة بديلة.
+  // موارد خارجية (خطوط، Supabase SDK): الشبكة أولاً ثم الذاكرة كخطة بديلة.
   e.respondWith(fetch(req).then((res) => {
     const copy = res.clone();
     caches.open(CACHE).then((c) => c.put(req, copy));
