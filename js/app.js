@@ -660,7 +660,7 @@ async function linkParentUser(id, guardianId){
    نموذج تقديم عام + شاشة عرض/إدخال للمشرف والإداري
    ============================================================ */
 function appStatusTag(s){
-  const map={new:['جديد','b'],reviewing:['قيد المراجعة','a'],accepted:['مقبول','g'],rejected:['مرفوض','r']};
+  const map={new:['جديد','b'],review:['قيد المراجعة','a'],interview:['مقابلة','a'],accepted:['مقبول','g'],assigned:['أُسنِد لحلقة','g'],rejected:['مرفوض','r']};
   const m=map[s]||[s||'—','n'];
   return `<span class="tag ${m[1]}">${esc(m[0])}</span>`;
 }
