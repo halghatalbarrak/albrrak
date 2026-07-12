@@ -1,11 +1,13 @@
 /* ============================================================
    طبقة الوصول للبيانات + المصادقة — تربط الواجهة بـ Supabase
-   Offline-first: إن لم تتوفر الإعدادات أو فشل الاتصال،
-   تعمل المنصة ببيانات محلية (بذور) دون توقّف — مطابقةً لمتطلب 10.1.
+   Offline-first (SRS 10.1): إن غابت الإعدادات أو الشبكة، تعمل المنصة
+   ببيانات محلية دون توقّف، وتُخزَّن الكتابات في طابور مزامنة محلي
+   يُعاد إرساله تلقائياً عند عودة الاتصال — دون فقدان أي عملية.
    ============================================================ */
 window.DB = (function () {
   let sb = null;
   let online = false;
+  const QKEY = 'albrrak_sync_queue_v1';
 
   function init() {
     try {
@@ -25,14 +27,17 @@ window.DB = (function () {
     const d = String(phone).replace(/\D/g, '');
     return `u${d}@albrrak.app`;
   }
+  // أدوار التسجيل الذاتي المسموح بها فقط — دفاعٌ في العمق (تُفرض أيضاً في RLS).
+  const SELF_ROLES = ['parent', 'student'];
   async function signUp({ phone, password, name, role }) {
     if (!sb) return { error: { message: 'لا يوجد اتصال بقاعدة البيانات' } };
+    const safeRole = SELF_ROLES.includes(role) ? role : 'parent';
     const email = phoneToEmail(phone);
     const { data, error } = await sb.auth.signUp({ email, password });
     if (error) return { error };
     const uid = data.user && data.user.id;
     if (uid) {
-      try { await sb.from('profiles').insert({ id: uid, phone, full_name: name, role }); }
+      try { await sb.from('profiles').insert({ id: uid, phone, full_name: name, role: safeRole }); }
       catch (e) { console.warn('profile insert:', e.message); }
     }
     return { data, needsConfirm: !data.session };
@@ -56,6 +61,72 @@ window.DB = (function () {
     } catch (e) { return null; }
   }
 
+  /* ---------- طابور المزامنة المحلي (Offline queue) ---------- */
+  function loadQueue() {
+    try { return JSON.parse(localStorage.getItem(QKEY) || '[]'); } catch (e) { return []; }
+  }
+  function saveQueue(q) {
+    try { localStorage.setItem(QKEY, JSON.stringify(q)); } catch (e) {}
+  }
+  function enqueue(entry) {
+    const q = loadQueue();
+    q.push(entry);
+    saveQueue(q);
+  }
+  function pendingCount() { return loadQueue().length; }
+
+  // تنفيذ عملية واحدة على القاعدة (تُرمى إن فشلت لتبقى في الطابور).
+  async function applyEntry(e) {
+    if (e.t === 'session') {
+      const s = e.p;
+      await sb.from('students').update({
+        points: s.points, streak: s.streak, last_stop_ayah: s.lastStopAyah,
+      }).eq('id', s.studentId);
+      const { data: sess, error } = await sb.from('sessions').insert({
+        student_id: s.studentId, start_ayah: s.startAyah, stop_ayah: s.stopAyah,
+        achieved_lines: s.lines, attendance: s.attendance, itqan: s.itqan,
+        performance: s.performance, sync_state: 'synced',
+      }).select().single();
+      if (error) throw error;
+      if (sess && s.mistakes) {
+        const reps = (type) => type === 'lafzi' ? 100 : type === 'adi' ? 45 : 20;
+        const rows = Object.entries(s.mistakes).filter(([, v]) => v > 0)
+          .flatMap(([type, v]) => Array.from({ length: v }, () => ({
+            session_id: sess.id, type, required_reps: reps(type), remaining_reps: reps(type),
+          })));
+        if (rows.length) await sb.from('mistakes').insert(rows);
+      }
+      if (s.earned > 0) await sb.from('points').insert({
+        student_id: s.studentId, value: s.earned, reason: s.reason, source_event: 'tasmee',
+      });
+      return;
+    }
+    let q = sb.from(e.table);
+    if (e.op === 'insert') { const { error } = await q.insert(e.values); if (error) throw error; }
+    else if (e.op === 'update') { const { error } = await q.update(e.values).eq(e.eq.col, e.eq.val); if (error) throw error; }
+  }
+
+  // إعادة إرسال كل ما في الطابور بالترتيب؛ يتوقّف عند أول فشل ليُعاد لاحقاً.
+  async function flush() {
+    if (!sb || !online) return;
+    let q = loadQueue();
+    while (q.length) {
+      try { await applyEntry(q[0]); }
+      catch (e) { console.warn('sync retry later:', e.message); break; }
+      q.shift();
+      saveQueue(q);
+    }
+  }
+
+  // كتابة «أفضل جهد»: تُنفَّذ فوراً إن كنّا متصلين، وإلا (أو عند الفشل) تُخزَّن للمزامنة.
+  async function write(entry) {
+    if (sb && online) {
+      try { await applyEntry(entry); return; }
+      catch (e) { console.warn('write queued after failure:', e.message); }
+    }
+    enqueue(entry);
+  }
+
   /* ---------- تحميل البيانات ---------- */
   async function loadAll() {
     if (!sb) return null;
@@ -73,6 +144,7 @@ window.DB = (function () {
         ]);
       if (students.error) throw students.error;
       online = true;
+      flush(); // أعد إرسال أي عمليات مؤجّلة فور نجاح الاتصال.
       return {
         students: students.data, circles: circles.data, guardians: guardians.data,
         waitlist: waitlist.data, payments: payments.data, rewards: rewards.data,
@@ -85,59 +157,17 @@ window.DB = (function () {
     }
   }
 
-  /* ---------- كتابات «أفضل جهد» ---------- */
-  async function saveSession(s) {
-    if (!sb || !online) return;
-    try {
-      await sb.from('students').update({
-        points: s.points, streak: s.streak, last_stop_ayah: s.lastStopAyah,
-      }).eq('id', s.studentId);
-      const { data: sess } = await sb.from('sessions').insert({
-        student_id: s.studentId, start_ayah: s.startAyah, stop_ayah: s.stopAyah,
-        achieved_lines: s.lines, attendance: s.attendance, itqan: s.itqan,
-        performance: s.performance, sync_state: 'synced',
-      }).select().single();
-      if (sess && s.mistakes) {
-        const rows = Object.entries(s.mistakes).filter(([, v]) => v > 0)
-          .flatMap(([type, v]) => Array.from({ length: v }, () => ({
-            session_id: sess.id, type,
-            required_reps: type === 'lafzi' ? 100 : type === 'adi' ? 45 : 20,
-            remaining_reps: type === 'lafzi' ? 100 : type === 'adi' ? 45 : 20,
-          })));
-        if (rows.length) await sb.from('mistakes').insert(rows);
-      }
-      if (s.earned > 0) await sb.from('points').insert({
-        student_id: s.studentId, value: s.earned, reason: s.reason, source_event: 'tasmee',
-      });
-    } catch (e) { console.warn('saveSession:', e.message); }
-  }
-  async function log(actor, action) {
-    if (!sb || !online) return;
-    try { await sb.from('audit_log').insert({ actor, action }); } catch (e) {}
-  }
-  async function acceptStudent(st) {
-    if (!sb || !online) return;
-    try { await sb.from('students').insert(st); } catch (e) {}
-  }
-  async function updateWaitlist(id, status) {
-    if (!sb || !online) return;
-    try { await sb.from('waitlist').update({ status }).eq('id', id); } catch (e) {}
-  }
-  async function addPayment(p) {
-    if (!sb || !online) return;
-    try { await sb.from('payments').insert(p); } catch (e) {}
-  }
-  async function updateReward(id, stock) {
-    if (!sb || !online) return;
-    try { await sb.from('rewards').update({ stock }).eq('id', id); } catch (e) {}
-  }
-  async function updateStudentPoints(id, points) {
-    if (!sb || !online) return;
-    try { await sb.from('students').update({ points }).eq('id', id); } catch (e) {}
-  }
+  /* ---------- كتابات عبر الطابور (نفس الواجهة العامة السابقة) ---------- */
+  async function saveSession(s) { return write({ t: 'session', p: s }); }
+  async function log(actor, action) { return write({ op: 'insert', table: 'audit_log', values: { actor, action } }); }
+  async function acceptStudent(st) { return write({ op: 'insert', table: 'students', values: st }); }
+  async function updateWaitlist(id, status) { return write({ op: 'update', table: 'waitlist', values: { status }, eq: { col: 'id', val: id } }); }
+  async function addPayment(p) { return write({ op: 'insert', table: 'payments', values: p }); }
+  async function updateReward(id, stock) { return write({ op: 'update', table: 'rewards', values: { stock }, eq: { col: 'id', val: id } }); }
+  async function updateStudentPoints(id, points) { return write({ op: 'update', table: 'students', values: { points }, eq: { col: 'id', val: id } }); }
 
   return {
-    init, hasClient, isOnline: () => online,
+    init, hasClient, isOnline: () => online, pendingCount, flush,
     signUp, signIn, signOut, getSession, getProfile,
     loadAll, saveSession, log, acceptStudent, updateWaitlist,
     addPayment, updateReward, updateStudentPoints,
