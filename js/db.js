@@ -206,6 +206,18 @@ window.DB = (function () {
     if (!sb) return { error: { message: 'لا يوجد اتصال بقاعدة البيانات' } };
     return await sb.from('circles').upsert(circle);
   }
+  // إضافة/تعديل طالب — إدراج جديد أو تحديث بالمعرّف
+  async function saveStudent(student) {
+    if (!sb) return { error: { message: 'لا يوجد اتصال بقاعدة البيانات' } };
+    const { id, ...vals } = student;
+    if (id) return await sb.from('students').update(vals).eq('id', id);
+    return await sb.from('students').insert(vals);
+  }
+  // إضافة/تعديل عائلة (upsert على المفتاح النصّي id)
+  async function saveGuardian(g) {
+    if (!sb) return { error: { message: 'لا يوجد اتصال بقاعدة البيانات' } };
+    return await sb.from('guardians').upsert(g);
+  }
   // كشف المعلمين: الحسابات التي دورها 'teacher'
   async function loadStaffTeachers() {
     if (!sb) return [];
@@ -241,6 +253,6 @@ window.DB = (function () {
     addPayment, updateReward, updateStudentPoints,
     listProfiles, adminSetRole, adminSetStatus, linkUser,
     submitTeacherApp, loadTeacherApps,
-    saveCircle, loadStaffTeachers,
+    saveCircle, loadStaffTeachers, saveStudent, saveGuardian,
   };
 })();

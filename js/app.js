@@ -82,6 +82,7 @@ let HARVEST=[
 const ROLES={
   general:{name:'المشرف العام',who:'د. المشرف العام',nav:[
     ['الإشراف',[['dash','📊','لوحة القيادة'],['reports','📈','التقارير والمؤشرات'],['circlemgmt','🏫','إدارة الحلقات'],['audit','🛡️','سجل التدقيق'],['users','👥','إدارة المستخدمين']]],
+    ['السجلّات',[['studentmgmt','🎓','إدارة الطلاب'],['guardianmgmt','👪','أولياء الأمور']]],
     ['التشغيل',[['exchange','📿','بورصة الإنجاز'],['admissions','📝','القبول والانتظار','wl'],['teacherapps','🧑‍🏫','طلبات المعلمين'],['excuses','📄','الأعذار'],['linking','🔗','الربط والمراجعة']]],
     ['التربية',[['market','🛒','سوق الحلقة'],['kiosk','🖥️','شاشة المسجد'],['notif','🔔','الإشعارات','nf']]],
     ['المالية',[['finance','💳','البوابة المالية']]],
@@ -120,6 +121,8 @@ const TITLES={
   users:['إدارة المستخدمين','منح الأدوار وتعطيل/تفعيل الحسابات — للمشرف العام'],
   teacherapps:['طلبات المعلمين','مراجعة المتقدّمين لشغل وظيفة معلم'],
   circlemgmt:['إدارة الحلقات والمعلمين','إضافة وتعديل الحلقات وتعيين المعلّمين'],
+  studentmgmt:['إدارة الطلاب','إضافة وتعديل سجلّات الطلاب وربطهم بالحلقات والعائلات'],
+  guardianmgmt:['إدارة أولياء الأمور','سجلّات العائلات التي يُربط بها الطلاب والحسابات'],
   exchange:['بورصة الإنجاز اليومية','تصوّرٌ حيّ لوضع كل الطلاب اليوم — FR-ADM-01'],
   admissions:['القبول وقائمة الانتظار','مراجعة الطلبات وإدارة الانتظار — FR-ADM-04'],
   excuses:['إدارة الأعذار','تسجيل الأعذار وأثرها على الحضور — SRS 7.9'],
@@ -197,7 +200,8 @@ function render(){
     admissions:renderAdmissions,excuses:renderExcuses,linking:renderLinking,market:renderMarket,
     kiosk:renderKiosk,notif:renderNotif,finance:renderFinance,tasmee:renderTasmee,sheet:renderSheet,
     harvest:renderHarvest,children:renderChildren,approvals:renderApprovals,myprog:renderMyprog,
-    qr:renderQR,impact:renderImpact,users:renderUsers,teacherapps:renderTeacherApps,circlemgmt:renderCircleMgmt};
+    qr:renderQR,impact:renderImpact,users:renderUsers,teacherapps:renderTeacherApps,circlemgmt:renderCircleMgmt,
+    studentmgmt:renderStudentMgmt,guardianmgmt:renderGuardianMgmt};
   (map[VIEW]||renderDash)(c);
 }
 
@@ -604,22 +608,29 @@ function renderAudit(c){
 /* ============================================================
    إدارة المستخدمين (للمشرف العام) — منح الأدوار وتعطيل الحسابات
    ============================================================ */
-let USERS_CACHE=[];
+let USERS_CACHE=[], USERS_FILTER='all';
 function renderUsers(c){
+  const filterOpts=[['all','كل الأدوار']].concat(Object.entries(ROLE_LABELS)).map(([k,l])=>`<option value="${k}" ${USERS_FILTER===k?'selected':''}>${l}</option>`).join('');
   c.innerHTML=`
-  <div class="note"><b>للمشرف العام فقط:</b> منح الأدوار وتعطيل/تفعيل الحسابات. كل عملية تُنفَّذ عبر دالة محميّة في القاعدة (RPC) وتُوثَّق في سجل التدقيق تلقائياً.</div>
-  <div class="panel"><div class="panel-h"><h3>مستخدمو المنصّة</h3><span class="hint" id="usersHint">جارٍ التحميل…</span></div>
+  <div class="note"><b>للمشرف العام فقط:</b> منح الأدوار (إداري/داعم/معلم/مُسمِّع/ولي أمر…) وتعطيل/تفعيل الحسابات والربط بالبيانات. كل عملية تُنفَّذ عبر دالة محميّة في القاعدة وتُوثَّق في سجل التدقيق. صفِّ بالدور لإدارة فئةٍ بعينها.</div>
+  <div class="panel"><div class="panel-h"><h3>مستخدمو المنصّة</h3>
+    <div style="display:flex;align-items:center;gap:8px"><select onchange="setUsersFilter(this.value)" aria-label="تصفية بالدور">${filterOpts}</select><span class="hint" id="usersHint">جارٍ التحميل…</span></div></div>
     <div class="panel-b" id="usersBody"><div style="text-align:center;color:#9a9482;padding:20px">جارٍ التحميل…</div></div></div>`;
   loadUsers();
 }
 async function loadUsers(){
   const data=await DB.listProfiles();
-  const body=$('#usersBody'), hint=$('#usersHint');
-  if(!data){ if(body) body.innerHTML='<div style="text-align:center;color:#9a9482;padding:20px">تعذّر تحميل المستخدمين — تتطلب صلاحية مشرف عام واتصالاً بالقاعدة.</div>'; if(hint) hint.textContent=''; return; }
+  if(!data){ const body=$('#usersBody'), hint=$('#usersHint'); if(body) body.innerHTML='<div style="text-align:center;color:#9a9482;padding:20px">تعذّر تحميل المستخدمين — تتطلب صلاحية مشرف عام واتصالاً بالقاعدة.</div>'; if(hint) hint.textContent=''; return; }
   USERS_CACHE=data;
-  if(hint) hint.textContent=arNum(data.length)+' مستخدم';
-  if(body) body.innerHTML=data.length?data.map(userRow).join(''):'<div style="text-align:center;color:#9a9482;padding:20px">لا مستخدمون</div>';
+  paintUsers();
 }
+function paintUsers(){
+  const body=$('#usersBody'), hint=$('#usersHint');
+  const list=USERS_FILTER==='all'?USERS_CACHE:USERS_CACHE.filter(u=>u.role===USERS_FILTER);
+  if(hint) hint.textContent=arNum(list.length)+' مستخدم';
+  if(body) body.innerHTML=list.length?list.map(userRow).join(''):'<div style="text-align:center;color:#9a9482;padding:20px">لا مستخدمين بهذا الدور</div>';
+}
+function setUsersFilter(v){ USERS_FILTER=v; paintUsers(); }
 function userRow(u){
   const roles=Object.entries(ROLE_LABELS).map(([k,l])=>`<option value="${k}" ${u.role===k?'selected':''}>${l}</option>`).join('');
   const off=u.status==='disabled';
@@ -832,6 +843,114 @@ async function saveCircleForm(isEdit){
   render();
   toast('🏫', isEdit?'حُدّثت الحلقة':'أُضيفت الحلقة', name);
 }
+
+/* ============================================================
+   إدارة الطلاب (للمشرف العام)
+   ============================================================ */
+const PROGRAMS=['معارج','مراقي','مُذّكِر'];
+const STUDENT_STATES=[['active','نشط'],['tajribi','تجريبي'],['excused','معذور'],['interrupted','منقطع'],['graduated','متخرّج'],['deleted','محذوف']];
+function studentStateTag(s){
+  const map={active:['نشط','g'],tajribi:['تجريبي','b'],excused:['معذور','a'],interrupted:['منقطع','r'],graduated:['متخرّج','g'],deleted:['محذوف','n']};
+  const m=map[s]||['نشط','g']; return `<span class="tag ${m[1]}">${esc(m[0])}</span>`;
+}
+function studentMgmtRow(st){
+  const g=GUARDIANS[st.guardian], cc=CIRCLES.find(x=>x.id===st.circle);
+  return `<tr><td class="s">${esc(st.name)}</td><td>${cc?esc(cc.name):'—'}</td><td>${g?esc(g.name):'—'}</td><td>${st.age?arNum(st.age):'—'}</td><td>${esc(st.program)||'—'}</td><td>${arNum(st.dailyTarget||0)}</td><td>${studentStateTag(st.status)}</td>
+    <td><button class="btn btn-o btn-sm" onclick="openStudentModal(${st.id})">✎ تعديل</button></td></tr>`;
+}
+function renderStudentMgmt(c){
+  c.innerHTML=`
+  <div class="note"><b>إدارة الطلاب:</b> أضِف طالباً أو عدّل سجلّه (الحلقة، العائلة، البرنامج، الهدف، الحالة). الطلاب المقبولون من قائمة الانتظار يظهرون هنا أيضاً. لإخراج طالب اجعل حالته «منقطع» أو «محذوف» بدل الحذف النهائي.</div>
+  <div class="kpis">
+    <div class="kpi"><div class="v">${arNum(STUDENTS.length)}</div><div class="l">إجمالي الطلاب</div><div class="t" style="color:#9a9482">كل الحلقات</div></div>
+    <div class="kpi"><div class="v">${arNum(CIRCLES.length)}</div><div class="l">الحلقات</div><div class="t" style="color:#9a9482">مُتاحة للإسناد</div></div>
+    <div class="kpi"><div class="v">${arNum(Object.keys(GUARDIANS).length)}</div><div class="l">العائلات</div><div class="t" style="color:#9a9482">أولياء الأمور</div></div>
+  </div>
+  <div class="panel"><div class="panel-h"><h3>الطلاب</h3><button class="btn btn-p btn-sm" onclick="openStudentModal(null)">＋ إضافة طالب</button></div>
+    <div class="panel-b" style="padding:0;overflow:auto">${STUDENTS.length?`<table><thead><tr><th>الاسم</th><th>الحلقة</th><th>ولي الأمر</th><th>العمر</th><th>البرنامج</th><th>الهدف</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>
+      ${STUDENTS.map(studentMgmtRow).join('')}
+    </tbody></table>`:'<div style="text-align:center;color:#9a9482;padding:24px">لا طلاب — أضِف أول طالب.</div>'}</div></div>`;
+}
+function openStudentModal(id){
+  const st = id ? STUDENTS.find(x=>x.id===id) : null;
+  const circleOpts = CIRCLES.map(cc=>`<option value="${esc(cc.id)}" ${st&&st.circle===cc.id?'selected':''}>${esc(cc.name)}</option>`).join('')||'<option value="">— لا حلقات —</option>';
+  const guardOpts = `<option value="">— بلا —</option>`+Object.entries(GUARDIANS).map(([k,g])=>`<option value="${esc(k)}" ${st&&st.guardian===k?'selected':''}>${esc(g.name)}</option>`).join('');
+  const progOpts = PROGRAMS.map(p=>`<option value="${p}" ${st&&st.program===p?'selected':''}>${p}</option>`).join('');
+  const statusOpts = STUDENT_STATES.map(([v,l])=>`<option value="${v}" ${st&&st.status===v?'selected':''}>${l}</option>`).join('');
+  $('#modal').innerHTML=`
+  <div class="modal-h"><div><h3>${st?'تعديل طالب':'إضافة طالب'}</h3><small>${st?esc(st.name):'طالب جديد'}</small></div><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b">
+    <div class="field"><label>الاسم الكامل</label><input id="st_name" value="${st?esc(st.name):''}"></div>
+    <div class="field"><label>الحلقة</label><select id="st_circle">${circleOpts}</select></div>
+    <div class="field"><label>ولي الأمر (العائلة)</label><select id="st_guardian">${guardOpts}</select></div>
+    <div class="field"><label>العمر</label><input id="st_age" type="number" min="4" max="30" value="${st&&st.age?st.age:''}"></div>
+    <div class="field"><label>البرنامج</label><select id="st_program">${progOpts}</select></div>
+    <div class="field"><label>الهدف اليومي (أسطر)</label><input id="st_target" type="number" min="1" value="${st&&st.dailyTarget?st.dailyTarget:8}"></div>
+    <div class="field"><label>الحالة</label><select id="st_status">${statusOpts}</select></div>
+    <div id="st_err" class="autherr"></div>
+  </div>
+  <div class="modal-f"><button class="btn btn-g" onclick="closeModal()">إلغاء</button><button class="btn btn-p" onclick="saveStudentForm(${st?st.id:'null'})">حفظ</button></div>`;
+  $('#overlay').classList.add('show');
+}
+async function saveStudentForm(id){
+  const v=x=>{const el=document.getElementById(x);return el?String(el.value).trim():'';};
+  const name=v('st_name'), err=document.getElementById('st_err');
+  if(!name){ if(err) err.textContent='الاسم إلزامي'; return; }
+  const existing = id ? STUDENTS.find(x=>x.id===id) : null;
+  const student={
+    full_name:name, circle_id:v('st_circle')||null, guardian_id:v('st_guardian')||null,
+    age:Number(v('st_age'))||null, program:v('st_program'), daily_target:Number(v('st_target'))||8,
+    status:v('st_status')||'active',
+    last_stop_surah: existing?existing.lastStop.surah:2,
+    last_stop_ayah:  existing?existing.lastStop.ayah:1
+  };
+  if(id) student.id=id;
+  if(err) err.textContent='جارٍ الحفظ…';
+  const {error}=await DB.saveStudent(student);
+  if(error){ if(err) err.textContent='تعذّر الحفظ: '+error.message; return; }
+  logAudit('المشرف العام',(id?'تعديل طالب: ':'إضافة طالب: ')+name.split(' ').slice(0,2).join(' '));
+  closeModal(); await loadData(); render();
+  toast('🎓', id?'حُدّث الطالب':'أُضيف الطالب', name.split(' ').slice(0,2).join(' '));
+}
+
+/* ============================================================
+   إدارة أولياء الأمور (العائلات) — للمشرف العام
+   ============================================================ */
+function renderGuardianMgmt(c){
+  const entries=Object.entries(GUARDIANS);
+  c.innerHTML=`
+  <div class="note"><b>سجلّات العائلات (أولياء الأمور):</b> أضِف عائلةً أو عدّل بياناتها؛ يُربط بها الطلاب وحسابات أولياء الأمور (من «إدارة المستخدمين»). الجوال بيانات حسّاسة (PDPL).</div>
+  <div class="panel"><div class="panel-h"><h3>العائلات</h3><button class="btn btn-p btn-sm" onclick="openGuardianModal(null)">＋ إضافة عائلة</button></div>
+    <div class="panel-b" style="padding:0;overflow:auto">${entries.length?`<table><thead><tr><th>المعرّف</th><th>الاسم</th><th>الجوال</th><th>الأبناء</th><th>إجراء</th></tr></thead><tbody>
+      ${entries.map(([k,g])=>{const kids=STUDENTS.filter(s=>s.guardian===k).length;return `<tr><td class="s">${esc(k)}</td><td>${esc(g.name)}</td><td>${esc(g.phone)||'—'}</td><td>${arNum(kids)}</td><td><button class="btn btn-o btn-sm" onclick="openGuardianModal('${esc(k)}')">✎ تعديل</button></td></tr>`;}).join('')}
+    </tbody></table>`:'<div style="text-align:center;color:#9a9482;padding:24px">لا عائلات — أضِف أول عائلة.</div>'}</div></div>`;
+}
+function openGuardianModal(id){
+  const g = id ? GUARDIANS[id] : null;
+  $('#modal').innerHTML=`
+  <div class="modal-h"><div><h3>${g?'تعديل عائلة':'إضافة عائلة'}</h3><small>${g?esc(g.name):'عائلة جديدة'}</small></div><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b">
+    <div class="field"><label>المعرّف (إنجليزي/أرقام بلا مسافات)</label><input id="g_id" value="${id?esc(id):''}" ${id?'disabled':''} placeholder="مثال: g4"></div>
+    <div class="field"><label>اسم العائلة/ولي الأمر</label><input id="g_name" value="${g?esc(g.name):''}"></div>
+    <div class="field"><label>الجوال</label><input id="g_phone" inputmode="tel" value="${g&&g.phone?esc(g.phone):''}"></div>
+    <div id="g_err" class="autherr"></div>
+  </div>
+  <div class="modal-f"><button class="btn btn-g" onclick="closeModal()">إلغاء</button><button class="btn btn-p" onclick="saveGuardianForm(${g?'true':'false'})">حفظ</button></div>`;
+  $('#overlay').classList.add('show');
+}
+async function saveGuardianForm(isEdit){
+  const v=x=>{const el=document.getElementById(x);return el?String(el.value).trim():'';};
+  const id=v('g_id'), name=v('g_name'), err=document.getElementById('g_err');
+  if(!id||!name){ if(err) err.textContent='المعرّف والاسم إلزاميان'; return; }
+  if(!/^[a-z0-9_-]+$/i.test(id)){ if(err) err.textContent='المعرّف بالإنجليزية/الأرقام فقط بلا مسافات'; return; }
+  const g={id,name,phone:v('g_phone')};
+  if(err) err.textContent='جارٍ الحفظ…';
+  const {error}=await DB.saveGuardian(g);
+  if(error){ if(err) err.textContent='تعذّر الحفظ: '+error.message; return; }
+  logAudit('المشرف العام',(isEdit?'تعديل عائلة: ':'إضافة عائلة: ')+name);
+  closeModal(); await loadData(); render();
+  toast('👪', isEdit?'حُدّثت العائلة':'أُضيفت العائلة', name);
+}
 async function changeUserRole(id,role){
   const {error}=await DB.adminSetRole(id,role);
   if(error){ toast('⚠','تعذّر تغيير الدور',error.message||'العملية للمشرف العام فقط'); loadUsers(); return; }
@@ -1002,7 +1121,7 @@ function applyRemote(d){
   if(d.students&&d.students.length){STUDENTS.length=0;d.students.forEach(s=>STUDENTS.push({
     id:s.id,name:s.full_name,circle:s.circle_id,age:s.age,guardian:s.guardian_id,program:s.program||'معارج',
     lastStop:{surah:s.last_stop_surah||2,ayah:s.last_stop_ayah||1},dailyTarget:s.daily_target||8,
-    points:s.points||0,streak:s.streak||0,
+    points:s.points||0,streak:s.streak||0,status:s.status||'active',
     today:{status:null,achievedLines:null,mistakes:{lafzi:0,adi:0,shak:0},itqan:false,done:false,late:false}}));}
   if(d.waitlist){WAITLIST.length=0;d.waitlist.filter(w=>w.status==='pending').forEach(w=>WAITLIST.push({id:String(w.id),name:w.full_name,age:w.age,phone:w.phone,date:'—',status:'pending'}));}
   if(d.payments&&d.payments.length){PAYMENTS.length=0;d.payments.forEach(p=>PAYMENTS.push({id:String(p.id),payer:p.payer,amount:Number(p.amount),kind:p.kind==='fees'?'رسوم':p.kind==='donation'?'تبرّع':'جائزة',target:p.target||'—',status:p.status==='success'?'ناجحة':p.status==='refunded'?'مستردّة':'فاشلة',date:'—'}));}
