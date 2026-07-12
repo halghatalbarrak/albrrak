@@ -5,7 +5,7 @@
    الموارد الخارجية (Supabase SDK، خطوط Google، Supabase API) تُترك
    للمتصفّح مباشرةً دون اعتراضٍ ولا نسخٍ إلى الكاش — منعاً لكسرها بسبب CSP.
    ============================================================ */
-const CACHE = 'albrrak-v3';
+const CACHE = 'albrrak-v4';
 const SHELL = [
   './',
   './index.html',

@@ -1043,7 +1043,7 @@ async function guardDisabled(profile){
   return false;
 }
 
-function isApplyMode(){ return location.search.indexOf('apply')>-1 || location.hash.indexOf('apply')>-1; }
+function isApplyMode(){ return (location.pathname+location.search+location.hash).indexOf('apply')>-1; }
 
 async function boot(){
   const ok=DB.init();
