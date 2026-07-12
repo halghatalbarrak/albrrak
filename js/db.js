@@ -34,7 +34,7 @@ window.DB = (function () {
   }
   // أدوار التسجيل الذاتي المسموح بها فقط — دفاعٌ في العمق (تُفرض أيضاً في RLS).
   const SELF_ROLES = ['parent', 'student'];
-  async function signUp({ phone, password, name, role }) {
+  async function signUp({ phone, password, name, role, guardianId, studentId }) {
     if (!sb) return { error: { message: 'لا يوجد اتصال بقاعدة البيانات' } };
     const safeRole = SELF_ROLES.includes(role) ? role : 'parent';
     const email = phoneToEmail(phone);
@@ -42,7 +42,10 @@ window.DB = (function () {
     if (error) return { error };
     const uid = data.user && data.user.id;
     if (uid) {
-      try { await sb.from('profiles').insert({ id: uid, phone, full_name: name, role: safeRole }); }
+      const profile = { id: uid, phone, full_name: name, role: safeRole };
+      if (safeRole === 'parent'  && guardianId) profile.guardian_id = guardianId;
+      if (safeRole === 'student' && studentId)  profile.student_id  = studentId;
+      try { await sb.from('profiles').insert(profile); }
       catch (e) { console.warn('profile insert:', e.message); }
     }
     return { data, needsConfirm: !data.session };
@@ -171,10 +174,37 @@ window.DB = (function () {
   async function updateReward(id, stock) { return write({ op: 'update', table: 'rewards', values: { stock }, eq: { col: 'id', val: id } }); }
   async function updateStudentPoints(id, points) { return write({ op: 'update', table: 'students', values: { points }, eq: { col: 'id', val: id } }); }
 
+  /* ---------- إدارة المستخدمين (للمشرف العام — الحماية داخل دوال القاعدة) ---------- */
+  async function listProfiles() {
+    if (!sb) return null;
+    try {
+      const { data, error } = await sb.from('profiles').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    } catch (e) { console.warn('listProfiles:', e.message); return null; }
+  }
+  async function adminSetRole(targetId, newRole) {
+    if (!sb) return { error: { message: 'لا يوجد اتصال بقاعدة البيانات' } };
+    return await sb.rpc('admin_set_role', { target_id: targetId, new_role: newRole });
+  }
+  async function adminSetStatus(targetId, newStatus) {
+    if (!sb) return { error: { message: 'لا يوجد اتصال بقاعدة البيانات' } };
+    return await sb.rpc('admin_set_status', { target_id: targetId, new_status: newStatus });
+  }
+  async function linkUser(targetId, studentId, guardianId) {
+    if (!sb) return { error: { message: 'لا اتصال' } };
+    return await sb.rpc('admin_link_user', {
+      target_id: targetId,
+      p_student_id: studentId || null,
+      p_guardian_id: guardianId || null
+    });
+  }
+
   return {
     init, hasClient, isOnline: () => online, pendingCount, flush,
     signUp, signIn, signOut, getSession, getProfile,
     loadAll, saveSession, log, acceptStudent, updateWaitlist,
     addPayment, updateReward, updateStudentPoints,
+    listProfiles, adminSetRole, adminSetStatus, linkUser,
   };
 })();

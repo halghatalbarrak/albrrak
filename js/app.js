@@ -6,6 +6,7 @@
    ============================================================ */
 const $ = s=>document.querySelector(s);
 const arNum = n => Number(n).toLocaleString('ar-EG');
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
 /* ---------- مراجع القواعد ---------- */
 const ERR = {
@@ -80,7 +81,7 @@ let HARVEST=[
 /* ---------- الأدوار وقوائمها ---------- */
 const ROLES={
   general:{name:'المشرف العام',who:'د. المشرف العام',nav:[
-    ['الإشراف',[['dash','📊','لوحة القيادة'],['reports','📈','التقارير والمؤشرات'],['audit','🛡️','سجل التدقيق']]],
+    ['الإشراف',[['dash','📊','لوحة القيادة'],['reports','📈','التقارير والمؤشرات'],['audit','🛡️','سجل التدقيق'],['users','👥','إدارة المستخدمين']]],
     ['التشغيل',[['exchange','📿','بورصة الإنجاز'],['admissions','📝','القبول والانتظار','wl'],['excuses','📄','الأعذار'],['linking','🔗','الربط والمراجعة']]],
     ['التربية',[['market','🛒','سوق الحلقة'],['kiosk','🖥️','شاشة المسجد'],['notif','🔔','الإشعارات','nf']]],
     ['المالية',[['finance','💳','البوابة المالية']]],
@@ -97,7 +98,7 @@ const ROLES={
     ['الحصاد',[['harvest','🌾','جلسات الحصاد'],['exchange','📿','بورصة الإنجاز']]],
   ]},
   parent:{name:'ولي الأمر',who:'أبو محمد الغامدي',nav:[
-    ['أبنائي',[['children','👨‍👦','أبنائي ومتابعتهم'],['approvals','✅','الموافقات والدفع']]],
+    ['أبنائي',[['children','👨‍👦','أبنائي ومتابعتهم'],['sheet','📋','ورقة المتابعة'],['approvals','✅','الموافقات والدفع']]],
     ['حساب',[['notif','🔔','الإشعارات','nf']]],
   ]},
   student:{name:'الطالب البالغ',who:'أنس بن ماجد الحربي',nav:[
@@ -114,6 +115,7 @@ const TITLES={
   dash:['لوحة القيادة','نظرةٌ حيّة على حال الحلقات اليوم'],
   reports:['التقارير ومؤشرات النجاح','قياسٌ حيّ مقابل أهداف الوثيقة'],
   audit:['سجل التدقيق','توثيقُ العمليات الحسّاسة — SRS 10.7'],
+  users:['إدارة المستخدمين','منح الأدوار وتعطيل/تفعيل الحسابات — للمشرف العام'],
   exchange:['بورصة الإنجاز اليومية','تصوّرٌ حيّ لوضع كل الطلاب اليوم — FR-ADM-01'],
   admissions:['القبول وقائمة الانتظار','مراجعة الطلبات وإدارة الانتظار — FR-ADM-04'],
   excuses:['إدارة الأعذار','تسجيل الأعذار وأثرها على الحضور — SRS 7.9'],
@@ -138,6 +140,12 @@ function achievePct(l,t){return t>0?Math.min(999,Math.round(l/t*100)):0;}
 function statusClass(st){return st==='green'?'st-green':st==='red'?'st-red':st==='grad'?'st-grad':'st-empty';}
 function barColor(st){return st==='green'?'var(--green)':st==='red'?'var(--red)':st==='grad'?'var(--amber)':'#ddd';}
 function unreadNotif(){return NOTIFS.filter(n=>!n.read).length;}
+function currentStudent(){
+  const sid = CURRENT_USER && CURRENT_USER.student_id;
+  return STUDENTS.find(x=>x.id===sid) || STUDENTS[0];
+}
+function openChildSheet(id){ sheetStudent=id; switchTo('sheet'); }
+function openStudentMarket(){ const st=currentStudent(); marketStudent=st.id; switchTo('market'); }
 function logAudit(who,act){AUDIT.unshift({who,act,time:'الآن'});DB.log(who,act);}
 
 /* ---------- بناء القائمة الجانبية حسب الدور ---------- */
@@ -176,7 +184,7 @@ function render(){
     admissions:renderAdmissions,excuses:renderExcuses,linking:renderLinking,market:renderMarket,
     kiosk:renderKiosk,notif:renderNotif,finance:renderFinance,tasmee:renderTasmee,sheet:renderSheet,
     harvest:renderHarvest,children:renderChildren,approvals:renderApprovals,myprog:renderMyprog,
-    qr:renderQR,impact:renderImpact};
+    qr:renderQR,impact:renderImpact,users:renderUsers};
   (map[VIEW]||renderDash)(c);
 }
 
@@ -581,6 +589,76 @@ function renderAudit(c){
 }
 
 /* ============================================================
+   إدارة المستخدمين (للمشرف العام) — منح الأدوار وتعطيل الحسابات
+   ============================================================ */
+let USERS_CACHE=[];
+function renderUsers(c){
+  c.innerHTML=`
+  <div class="note"><b>للمشرف العام فقط:</b> منح الأدوار وتعطيل/تفعيل الحسابات. كل عملية تُنفَّذ عبر دالة محميّة في القاعدة (RPC) وتُوثَّق في سجل التدقيق تلقائياً.</div>
+  <div class="panel"><div class="panel-h"><h3>مستخدمو المنصّة</h3><span class="hint" id="usersHint">جارٍ التحميل…</span></div>
+    <div class="panel-b" id="usersBody"><div style="text-align:center;color:#9a9482;padding:20px">جارٍ التحميل…</div></div></div>`;
+  loadUsers();
+}
+async function loadUsers(){
+  const data=await DB.listProfiles();
+  const body=$('#usersBody'), hint=$('#usersHint');
+  if(!data){ if(body) body.innerHTML='<div style="text-align:center;color:#9a9482;padding:20px">تعذّر تحميل المستخدمين — تتطلب صلاحية مشرف عام واتصالاً بالقاعدة.</div>'; if(hint) hint.textContent=''; return; }
+  USERS_CACHE=data;
+  if(hint) hint.textContent=arNum(data.length)+' مستخدم';
+  if(body) body.innerHTML=data.length?data.map(userRow).join(''):'<div style="text-align:center;color:#9a9482;padding:20px">لا مستخدمون</div>';
+}
+function userRow(u){
+  const roles=Object.entries(ROLE_LABELS).map(([k,l])=>`<option value="${k}" ${u.role===k?'selected':''}>${l}</option>`).join('');
+  const off=u.status==='disabled';
+  const link=linkControl(u);
+  return `<div class="lrow"><div class="av">${off?'🚫':'👤'}</div>
+    <div class="info"><div class="t">${esc(u.full_name)||'—'} ${off?'<span class="tag r">معطَّل</span>':''}</div>
+      <div class="d">${esc(u.phone)||'—'} ، الدور الحالي: ${ROLE_LABELS[u.role]||esc(u.role)||'—'}</div>
+      ${link?`<div class="field" style="margin-top:8px;margin-bottom:0"><label>الربط بالبيانات</label>${link}</div>`:''}</div>
+    <div class="acts">
+      <select onchange="changeUserRole('${u.id}',this.value)" ${off?'disabled':''} aria-label="تغيير الدور">${roles}</select>
+      <button class="btn ${off?'btn-green':'btn-g'} btn-sm" onclick="toggleUserStatus('${u.id}','${off?'active':'disabled'}')">${off?'تفعيل':'تعطيل'}</button>
+    </div></div>`;
+}
+function linkControl(u){
+  if(u.role==='student'){
+    const opts=`<option value="">— اختر الطالب —</option>`+STUDENTS.map(s=>`<option value="${s.id}" ${String(u.student_id)===String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('');
+    return `<select onchange="linkStudentUser('${u.id}',this.value)" aria-label="ربط الحساب بالطالب">${opts}</select>`;
+  }
+  if(u.role==='parent'){
+    const opts=`<option value="">— اختر العائلة —</option>`+Object.entries(GUARDIANS).map(([k,g])=>`<option value="${k}" ${u.guardian_id===k?'selected':''}>${esc(g.name)}</option>`).join('');
+    return `<select onchange="linkParentUser('${u.id}',this.value)" aria-label="ربط الحساب بالعائلة">${opts}</select>`;
+  }
+  return '';
+}
+async function linkStudentUser(id, studentId){
+  const {error}=await DB.linkUser(id, Number(studentId), null);
+  if(error){ toast('⚠','تعذّر الربط',error.message); return; }
+  await loadUsers();
+  toast('🔗','تم الربط','رُبط الحساب بالطالب — سيرى بياناته عند الدخول');
+}
+async function linkParentUser(id, guardianId){
+  const {error}=await DB.linkUser(id, null, guardianId);
+  if(error){ toast('⚠','تعذّر الربط',error.message); return; }
+  await loadUsers();
+  toast('🔗','تم الربط','رُبط الحساب بالعائلة — سيرى أبناءه عند الدخول');
+}
+async function changeUserRole(id,role){
+  const {error}=await DB.adminSetRole(id,role);
+  if(error){ toast('⚠','تعذّر تغيير الدور',error.message||'العملية للمشرف العام فقط'); loadUsers(); return; }
+  const u=USERS_CACHE.find(x=>x.id===id); if(u) u.role=role;
+  AUDIT.unshift({who:'المشرف العام',act:'تغيير دور مستخدم إلى '+(ROLE_LABELS[role]||role),time:'الآن'});
+  toast('✅','تم تغيير الدور','أصبح المستخدم: '+(ROLE_LABELS[role]||role));
+}
+async function toggleUserStatus(id,newStatus){
+  const {error}=await DB.adminSetStatus(id,newStatus);
+  if(error){ toast('⚠','تعذّرت العملية',error.message||'العملية للمشرف العام فقط'); return; }
+  AUDIT.unshift({who:'المشرف العام',act:(newStatus==='disabled'?'تعطيل':'تفعيل')+' مستخدم',time:'الآن'});
+  toast(newStatus==='disabled'?'🚫':'✅',newStatus==='disabled'?'عُطّل الحساب':'فُعّل الحساب','حُدِّثت حالة المستخدم');
+  loadUsers();
+}
+
+/* ============================================================
    14) جلسات الحصاد (FR-EXM-01)
    ============================================================ */
 function renderHarvest(c){
@@ -610,7 +688,11 @@ function harvestFail(id){
 /* ============================================================
    15) بوابة ولي الأمر — أبنائي (FR-PAR-01)
    ============================================================ */
-function guardianChildren(){return STUDENTS.filter(s=>s.guardian==='g1');}
+function guardianChildren(){
+  const gid = CURRENT_USER && CURRENT_USER.guardian_id;
+  if(!gid) return [];
+  return STUDENTS.filter(s=>s.guardian===gid);
+}
 function renderChildren(c){
   const kids=guardianChildren();
   c.innerHTML=`
@@ -621,7 +703,7 @@ function renderChildren(c){
         <div class="lrow" style="margin:0 0 10px"><div class="av">📖</div><div class="info"><div class="t" style="font-size:13px">${CIRCLES.find(x=>x.id===st.circle).name} ، ${st.program}</div><div class="d">${SURAHS[st.lastStop.surah]} ، هدف اليوم ${arNum(st.dailyTarget)} أسطر</div></div></div>
         <div class="bar"><i style="width:${Math.min(100,pct)}%;background:${barColor(t.status)}"></i></div>
         <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin-top:7px"><span>إنجاز اليوم ${arNum(pct)}٪</span><span style="color:var(--gold-d)">◆ ${arNum(st.points)} نقطة</span></div>
-        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-o btn-sm" onclick="sheetStudent=${st.id};ROLE='general';switchTo('sheet')">📋 ورقة المتابعة</button>${t.status==='red'?'<span class="tag r" style="align-self:center">⚠ يحتاج متابعتك</span>':''}</div>
+        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-o btn-sm" onclick="openChildSheet(${st.id})">📋 ورقة المتابعة</button>${t.status==='red'?'<span class="tag r" style="align-self:center">⚠ يحتاج متابعتك</span>':''}</div>
       </div></div>`;}).join('')}</div>`;
 }
 
@@ -655,7 +737,7 @@ function donate(){PAYMENTS.unshift({id:'p'+Date.now(),payer:'أبو محمد ا�
    17) بوابة الطالب — برنامجي ونقاطي (FR-STU-01)
    ============================================================ */
 function renderMyprog(c){
-  const st=STUDENTS.find(x=>x.id===7);
+  const st=currentStudent();
   const lvl=Math.floor(st.points/100)+1,next=lvl*100,prog=(st.points%100);
   c.innerHTML=`
   <div class="levbar"><div class="top"><span>المستوى ${arNum(lvl)} — ${st.program}</span><span style="color:var(--gold-d)">◆ ${arNum(st.points)} نقطة</span></div>
@@ -672,7 +754,7 @@ function renderMyprog(c){
       </tbody></table>
     </div></div>
     <div class="panel"><div class="panel-h"><h3>رصيدي وسوق الحلقة</h3></div><div class="panel-b">
-      <div class="lrow"><div class="av">◆</div><div class="info"><div class="t">${arNum(st.points)} نقطة متاحة</div><div class="d">اكسب أكثر بالحضور في وقته والإتقان والحصاد</div></div><button class="btn btn-p btn-sm" onclick="marketStudent=7;ROLE='general';switchTo('market')">🛒 السوق</button></div>
+      <div class="lrow"><div class="av">◆</div><div class="info"><div class="t">${arNum(st.points)} نقطة متاحة</div><div class="d">اكسب أكثر بالحضور في وقته والإتقان والحصاد</div></div><button class="btn btn-p btn-sm" onclick="openStudentMarket()">🛒 السوق</button></div>
       <div class="lrow"><div class="av">💳</div><div class="info"><div class="t">رسوم الاشتراك</div><div class="d">دفع إلكتروني آمن</div></div><button class="btn btn-o btn-sm" onclick="payFee()">ادفع</button></div>
     </div></div>
   </div>`;
@@ -682,7 +764,7 @@ function renderMyprog(c){
    18) سجل الطالب QR (FR-REC-01)
    ============================================================ */
 function renderQR(c){
-  const st=STUDENTS.find(x=>x.id===7);
+  const st=currentStudent();
   const seed=[1,0,1,1,0,1,0,0,1,1,0, 0,1,1,0,1,0,1,1,0,0,1, 1,0,0,1,1,0,1,0,1,1,0, 0,1,1,0,0,1,0,1,1,0,1, 1,0,1,0,1,1,0,0,1,0,1, 0,1,0,1,1,0,1,1,0,1,0, 1,1,0,0,1,0,1,0,1,1,0, 0,1,1,0,1,1,0,1,0,0,1, 1,0,0,1,0,1,1,0,1,1,0, 0,1,1,0,1,0,0,1,0,1,1, 1,0,1,1,0,1,0,1,1,0,0];
   c.innerHTML=`
   <div class="note"><b>رابطٌ موقّت ومحدود الصلاحية:</b> افتح سجلك مباشرةً برابط أو QR دون تسجيل معقّد، ويمنع تخمين سجلات الآخرين (FR-REC-01).</div>
@@ -823,11 +905,22 @@ async function loadData(){
 async function afterAuth(){
   const session=await DB.getSession();
   const profile=session?await DB.getProfile(session.user.id):null;
+  if(await guardDisabled(profile)) return;
   CURRENT_USER=profile;
   hideLogin();
   await loadData();
   applyProfileRole(profile);
   buildRoleSelect(); buildNav(); render();
+}
+
+async function guardDisabled(profile){
+  if(profile && profile.status==='disabled'){
+    await DB.signOut();
+    showLogin('in');
+    authErr('هذا الحساب معطَّل — راجع إدارة المنصّة');
+    return true;
+  }
+  return false;
 }
 
 async function boot(){
@@ -838,6 +931,7 @@ async function boot(){
   const session=await DB.getSession();
   if(!session){ showLogin('in'); return; }
   const profile=await DB.getProfile(session.user.id);
+  if(await guardDisabled(profile)) return;
   CURRENT_USER=profile;
   await loadData();
   applyProfileRole(profile);
