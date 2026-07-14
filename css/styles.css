@@ -493,3 +493,88 @@ td.s{text-align:start}
   .topbar h2{font-size:17px}
   .modal-b,.panel-b{padding:16px}
 }
+
+/* ============================================================
+   سوق الحلقة — متجر إلكتروني بالنقاط
+   ============================================================ */
+.shop-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.wallet{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--pattern-gold),linear-gradient(135deg,var(--olive-2),var(--olive));color:#fff;border-radius:var(--r-md);padding:15px 20px;box-shadow:var(--shadow-md);flex:1;min-width:250px}
+.wallet .wl{font-size:11px;opacity:.7;font-weight:600}
+.wallet .wv{font-size:26px;font-weight:800;color:var(--gold-l);line-height:1.1}
+.wallet .wsel{margin-inline-start:auto;font-size:12px;opacity:.9;display:flex;align-items:center;gap:7px}
+.wallet .wsel select{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:7px 10px;font-weight:700;font-size:12.5px;cursor:pointer}
+.cartbtn{position:relative;background:var(--surface);border:1.5px solid var(--gold);color:var(--gold-d);border-radius:14px;padding:14px 22px;font-weight:800;font-size:14.5px;box-shadow:var(--shadow-xs);transition:var(--t-fast) var(--ease);white-space:nowrap}
+.cartbtn:hover{background:var(--gold-l)}
+.cartbtn .cbadge{position:absolute;top:-8px;inset-inline-start:-8px;background:var(--red);color:#fff;font-size:11px;font-weight:800;min-width:22px;height:22px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;border:2px solid var(--canvas)}
+.shop-tabs{display:flex;gap:9px;margin-bottom:18px}
+.shop-tabs button{background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:10px 18px;font-weight:800;font-size:13.5px;color:var(--olive);transition:var(--t-fast) var(--ease)}
+.shop-tabs button.active{background:linear-gradient(135deg,var(--olive-2),var(--olive));color:#fff;border-color:var(--olive)}
+.shop-tabs .tcount{background:var(--gold);color:#fff;border-radius:9px;padding:1px 7px;font-size:11px;margin-inline-start:3px}
+.shop-toolbar{display:flex;gap:11px;margin-bottom:13px;flex-wrap:wrap}
+.search{flex:1;min-width:220px;display:flex;align-items:center;gap:9px;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:0 14px;transition:var(--t-fast)}
+.search:focus-within{border-color:var(--gold);box-shadow:var(--ring)}
+.search span{opacity:.5;font-size:15px}
+.search input{flex:1;border:none;background:none;padding:12px 0;font-size:14px;color:var(--ink);outline:none}
+.sortsel{border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:0 14px;font-weight:700;font-size:13px;color:var(--olive);cursor:pointer}
+.catrow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.catrow button{background:var(--surface);border:1.5px solid var(--line);border-radius:20px;padding:7px 15px;font-weight:700;font-size:12.5px;color:var(--muted);transition:var(--t-fast) var(--ease)}
+.catrow button:hover{border-color:var(--gold);color:var(--olive)}
+.catrow button.active{background:var(--gold);color:#fff;border-color:var(--gold)}
+/* بطاقة المنتج (تعيد تشكيل .mcard كمتجر) */
+.market{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+.mcard{text-align:start;position:relative;display:flex;flex-direction:column;cursor:pointer;overflow:hidden}
+.mcard .hot{position:absolute;top:0;inset-inline-end:0;background:linear-gradient(135deg,#E8663B,#C1443A);color:#fff;font-size:10px;font-weight:800;padding:4px 10px;border-radius:0 0 0 12px}
+.mcard .ic{font-size:46px;margin:4px auto 10px;text-align:center}
+.mcard .ptag{align-self:flex-start;background:var(--cream);color:var(--muted);font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:8px;margin-bottom:6px}
+.mcard .pdesc{font-size:11.5px;color:var(--muted-2);line-height:1.55;margin:2px 0 11px;flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mcard .prow{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.mcard .prow .cost{font-weight:800;color:var(--gold-d);font-size:16px}
+.mcard .prow .stk{font-size:11px;font-weight:700;color:var(--green-d)}
+.mcard .prow .stk.low{color:var(--amber)}
+.mcard .addbtn{width:100%}
+.mcard .short{font-size:10.5px;color:var(--red);text-align:center;margin-top:7px;font-weight:600}
+.mcard.out{opacity:.62}
+.mcard.out .ic{filter:grayscale(1)}
+.empty{grid-column:1/-1;text-align:center;color:var(--muted-2);padding:40px 20px;font-size:13.5px;font-weight:600}
+/* صفحة المنتج */
+.prod{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.prod-ic{font-size:72px;background:var(--cream);border:1px solid var(--line);border-radius:18px;width:120px;height:120px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.prod-info{flex:1;min-width:200px}
+.prod-cost{font-size:24px;font-weight:800;color:var(--gold-d)}
+.prod-cost span{font-size:13px;color:var(--muted-2);font-weight:600}
+.prod-stk{display:inline-block;margin-top:6px;font-size:12px;font-weight:700;color:var(--green-d);background:var(--green-l);padding:3px 11px;border-radius:20px}
+.prod-stk.o{color:var(--red);background:var(--red-l)}
+.prod-desc{font-size:13.5px;color:#6E6857;line-height:1.75;margin:13px 0}
+.prod-bal{font-size:12.5px;color:var(--muted);font-weight:700}
+/* عناصر السلّة */
+.citem{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.citem:last-child{border-bottom:none}
+.ci-ic{font-size:30px;width:52px;height:52px;background:var(--cream);border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ci-info{flex:1;min-width:0}
+.ci-n{font-weight:800;font-size:13.5px;color:var(--ink)}
+.ci-c{font-size:11.5px;color:var(--muted-2);margin-top:2px}
+.qty{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
+.qty button{width:32px;height:32px;background:var(--cream);color:var(--gold-d);font-size:18px;font-weight:800}
+.qty button:hover{background:var(--gold-l)}
+.qty span{min-width:34px;text-align:center;font-weight:800;font-size:13.5px}
+.ci-sum{font-weight:800;color:var(--gold-d);font-size:14px;min-width:70px;text-align:end}
+.ci-rm{color:var(--muted-2);font-size:16px;padding:4px}
+.ci-rm:hover{color:var(--red)}
+.cartfoot{flex-direction:column;align-items:stretch;gap:11px}
+.ctotals{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:700;color:var(--ink)}
+.ctotals b{font-size:20px;font-weight:800;color:var(--gold-d)}
+.ctotals b.bad{color:var(--red)}
+.cartfoot .btn{width:100%}
+/* الطلبات */
+.order{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:16px 18px;margin-bottom:12px;box-shadow:var(--shadow-xs)}
+.o-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
+.o-head b{font-size:14px;color:var(--ink)}
+.o-date{font-size:11.5px;color:var(--muted-2);margin-inline-start:6px}
+.o-items{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.o-it{background:var(--cream);border:1px solid var(--line);border-radius:9px;padding:5px 11px;font-size:12px;font-weight:600;color:var(--olive)}
+.o-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px dashed var(--line);padding-top:11px}
+.o-foot b{color:var(--gold-d)}
+@media(max-width:560px){
+  .prod-ic{width:88px;height:88px;font-size:52px}
+  .ci-sum{min-width:56px;font-size:13px}
+}

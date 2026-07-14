@@ -53,14 +53,24 @@ let PAYMENTS=[
   {id:'p2',payer:'داعم — م. سعد',amount:2000,kind:'تبرّع',target:'برنامج مُذّكِر',status:'ناجحة',date:'٣ يوليو'},
   {id:'p3',payer:'أبو يوسف الدوسري',amount:300,kind:'رسوم',target:'—',status:'مستردّة',date:'٤ يوليو'},
 ];
+const CATS={all:'الكل',books:'مصاحف وكتب',tools:'أدوات القارئ',gifts:'هدايا وبطاقات',badges:'أوسمة وشارات',trips:'رحلات وتجارب'};
 let REWARDS=[
-  {id:'r1',name:'مصحف مجزّأ فاخر',cost:400,stock:5,ic:'📗'},
-  {id:'r2',name:'قلم قرائي إلكتروني',cost:650,stock:3,ic:'🖊️'},
-  {id:'r3',name:'حقيبة الحلقة',cost:250,stock:8,ic:'🎒'},
-  {id:'r4',name:'بطاقة هدية مكتبة',cost:500,stock:4,ic:'🎁'},
-  {id:'r5',name:'وسام المواظبة',cost:150,stock:20,ic:'🏅'},
-  {id:'r6',name:'رحلة الحلقة',cost:800,stock:2,ic:'🚌'},
+  {id:'r1',name:'مصحف مجزّأ فاخر',cost:400,stock:5,ic:'📗',cat:'books',hot:false,desc:'مصحف بتقسيم الأجزاء وجودة طباعة عالية وغلاف فاخر — رفيقٌ للحفظ والمراجعة.'},
+  {id:'r2',name:'قلم قرائي إلكتروني',cost:650,stock:3,ic:'🖊️',cat:'tools',hot:true,desc:'قلم يقرأ الآيات صوتيًا عند لمسها، يعين على ضبط التلاوة والحفظ.'},
+  {id:'r3',name:'حقيبة الحلقة',cost:250,stock:8,ic:'🎒',cat:'gifts',hot:false,desc:'حقيبة عملية بشعار الحلقة لحمل المصحف والأدوات.'},
+  {id:'r4',name:'بطاقة هدية مكتبة',cost:500,stock:4,ic:'🎁',cat:'gifts',hot:false,desc:'بطاقة شراء من مكتبة معتمدة تُصرف على الكتب والأدوات.'},
+  {id:'r5',name:'وسام المواظبة',cost:150,stock:20,ic:'🏅',cat:'badges',hot:false,desc:'وسامٌ يُمنح للمواظبين — رمزٌ تحفيزيّ أنيق يُقتنى بفخر.'},
+  {id:'r6',name:'رحلة الحلقة',cost:800,stock:2,ic:'🚌',cat:'trips',hot:true,desc:'رحلة ترفيهية تعليمية مع الحلقة — مقاعد محدودة.'},
+  {id:'r7',name:'سجّادة صلاة فاخرة',cost:300,stock:10,ic:'🕌',cat:'gifts',hot:false,desc:'سجّادة ناعمة عالية الجودة بتصميم أنيق.'},
+  {id:'r8',name:'سمّاعات للمراجعة',cost:550,stock:6,ic:'🎧',cat:'tools',hot:false,desc:'سمّاعات لسماع التلاوات والمراجعة الصوتية بوضوح عالٍ.'},
+  {id:'r9',name:'كتاب سيرة مصوّر',cost:220,stock:12,ic:'📚',cat:'books',hot:false,desc:'سيرةٌ نبوية مصوّرة مبسّطة للناشئة.'},
+  {id:'r10',name:'ساعة الطالب الرقمية',cost:480,stock:5,ic:'⌚',cat:'gifts',hot:false,desc:'ساعة عملية بمنبّهٍ لأوقات الحلقة والمراجعة.'},
+  {id:'r11',name:'وسام الإتقان الذهبي',cost:700,stock:4,ic:'🥇',cat:'badges',hot:false,desc:'أرفع الأوسمة — للمتقنين بلا خطأ ولا شكّ.'},
+  {id:'r12',name:'عمرة مع المشرف',cost:1500,stock:1,ic:'🕋',cat:'trips',hot:true,desc:'رحلة عمرة برفقة المشرف — أنفَس المكافآت. مقعدٌ واحد.'},
 ];
+// حالة المتجر (سلّة، طلبات، فلاتر)
+let CART=[], ORDERS=[];
+let mktCat='all', mktSort='pop', mktQuery='', mktTab='shop';
 let NOTIFS=[
   {id:'n1',ev:'حاضر بلا إنجاز',to:'ولي الأمر',ch:'تطبيق + رسالة',when:'فور إغلاق الجلسة',time:'اليوم ٥:٤٠ ص',read:false,kind:'r'},
   {id:'n2',ev:'منح شارة إنجاز',to:'الطالب + ولي الأمر',ch:'تطبيق',when:'فور الاستحقاق',time:'أمس ٤:١٠ م',read:false,kind:'g'},
@@ -483,23 +493,155 @@ function adjustLink(kind){
 /* ============================================================
    9) سوق الحلقة (SRS 9.5)
    ============================================================ */
-function renderMarket(c){
-  const st=STUDENTS.find(x=>x.id===marketStudent);
-  c.innerHTML=`
-  <div class="note"><b>الجوائز عينية:</b> النقاط تُصرف في جوائز حقيقية لا تُشترى بالمال. الاستبدال يُسجَّل ويُخصم الرصيد، ويُبنى كل صرف على حدثٍ نظامي موثّق (SRS 9.4).</div>
-  <div class="selrow">${STUDENTS.map(x=>`<button class="${x.id===marketStudent?'active':''}" onclick="marketStudent=${x.id};render()">${x.name.split(' ').slice(0,2).join(' ')}</button>`).join('')}</div>
-  <div class="levbar"><div class="top"><span>رصيد ${st.name.split(' ').slice(0,2).join(' ')}</span><span style="color:var(--gold-d)">◆ ${arNum(st.points)} نقطة</span></div>
-    <div class="track"><i style="width:${Math.min(100,st.points/10)}%"></i></div></div>
-  <div class="market">${REWARDS.map(r=>`<div class="mcard"><div class="ic">${r.ic}</div><div class="n">${r.name}</div><div class="stk">متوفّر: ${arNum(r.stock)}</div><div class="cost">◆ ${arNum(r.cost)}</div>
-    <button class="btn ${st.points>=r.cost&&r.stock>0?'btn-p':'btn-g'} btn-sm" style="width:100%" ${st.points>=r.cost&&r.stock>0?'':'disabled'} onclick="redeem('${r.id}')">${r.stock<=0?'نفد':st.points>=r.cost?'استبدال':'نقاط غير كافية'}</button></div>`).join('')}</div>`;
+function mktStudent(){ return STUDENTS.find(x=>x.id===marketStudent) || STUDENTS[0]; }
+function cartCount(){ return CART.reduce((a,c)=>a+c.qty,0); }
+function cartTotal(){ return CART.reduce((a,c)=>{const r=REWARDS.find(x=>x.id===c.id);return a+(r?r.cost*c.qty:0);},0); }
+function cartQtyOf(id){ const c=CART.find(x=>x.id===id); return c?c.qty:0; }
+function studentOrders(){ return ORDERS.filter(o=>o.studentId===marketStudent); }
+function canManageOrders(){ return ['general','admin','teacher'].includes(ROLE); }
+function mktProducts(){
+  let list=REWARDS.slice();
+  if(mktCat!=='all') list=list.filter(r=>r.cat===mktCat);
+  const q=mktQuery.trim(); if(q) list=list.filter(r=>r.name.includes(q)||r.desc.includes(q));
+  if(mktSort==='low') list.sort((a,b)=>a.cost-b.cost);
+  else if(mktSort==='high') list.sort((a,b)=>b.cost-a.cost);
+  else list.sort((a,b)=>(b.hot-a.hot)||((b.stock>0)-(a.stock>0)));
+  return list;
 }
-function redeem(id){
-  const r=REWARDS.find(x=>x.id===id),st=STUDENTS.find(x=>x.id===marketStudent);
-  if(st.points<r.cost||r.stock<=0)return;
-  st.points-=r.cost;r.stock--;
-  DB.updateReward(r.id,r.stock); DB.updateStudentPoints(st.id,st.points);
-  logAudit('سوق الحلقة','استبدال «'+r.name+'» ('+r.cost+' نقطة) — '+st.name.split(' ')[0]);
-  render();toast(r.ic,'تم الاستبدال',r.name+' — خُصم ◆ '+arNum(r.cost)+' وسُجّل التسليم');
+function renderMarket(c){
+  const st=mktStudent();
+  c.innerHTML=`
+  <div class="shop-head">
+    <div class="wallet"><div class="wl">رصيد النقاط</div><div class="wv">◆ ${arNum(st.points)}</div>
+      <div class="wsel">المتسوّق: <select onchange="marketStudent=Number(this.value);render()">${STUDENTS.map(x=>`<option value="${x.id}" ${x.id===marketStudent?'selected':''}>${x.name.split(' ').slice(0,2).join(' ')}</option>`).join('')}</select></div>
+    </div>
+    <button class="cartbtn" onclick="openCart()">🛒 السلّة<span class="cbadge" id="cartBadge" style="${cartCount()?'':'display:none'}">${arNum(cartCount())}</span></button>
+  </div>
+  <div class="shop-tabs">
+    <button class="${mktTab==='shop'?'active':''}" onclick="mktTab='shop';render()">🏬 المتجر</button>
+    <button class="${mktTab==='orders'?'active':''}" onclick="mktTab='orders';render()">📦 طلباتي${studentOrders().length?` <span class="tcount">${arNum(studentOrders().length)}</span>`:''}</button>
+  </div>
+  <div id="mktBody"></div>`;
+  if(mktTab==='shop') mktRenderBody(); else mktRenderOrders();
+}
+function mktRenderBody(){
+  const el=document.getElementById('mktBody'); if(!el) return;
+  el.innerHTML=`
+  <div class="shop-toolbar">
+    <div class="search"><span>🔎</span><input placeholder="ابحث عن جائزة…" value="${mktQuery.replace(/"/g,'&quot;')}" oninput="mktQuery=this.value;mktRenderGrid()"></div>
+    <select class="sortsel" onchange="mktSort=this.value;mktRenderGrid()">
+      <option value="pop" ${mktSort==='pop'?'selected':''}>الأكثر رواجًا</option>
+      <option value="low" ${mktSort==='low'?'selected':''}>الأقل نقاطًا</option>
+      <option value="high" ${mktSort==='high'?'selected':''}>الأعلى نقاطًا</option>
+    </select>
+  </div>
+  <div class="catrow">${Object.entries(CATS).map(([k,v])=>`<button class="${k===mktCat?'active':''}" onclick="mktCat='${k}';mktRenderBody()">${v}</button>`).join('')}</div>
+  <div class="market" id="mktGrid"></div>`;
+  mktRenderGrid();
+}
+function mktRenderGrid(){
+  const el=document.getElementById('mktGrid'); if(!el) return;
+  const st=mktStudent(), list=mktProducts();
+  if(!list.length){ el.innerHTML=`<div class="empty">لا نتائج مطابقة — جرّب بحثًا أو فئة أخرى.</div>`; return; }
+  el.innerHTML=list.map(r=>{
+    const out=r.stock<=0, inCart=cartQtyOf(r.id), afford=st.points>=r.cost;
+    return `<div class="mcard ${out?'out':''}" onclick="openProduct('${r.id}')">
+      ${r.hot?'<span class="hot">🔥 الأكثر طلبًا</span>':''}
+      <div class="ic">${r.ic}</div>
+      <span class="ptag">${CATS[r.cat]}</span>
+      <div class="n">${r.name}</div>
+      <div class="pdesc">${r.desc}</div>
+      <div class="prow"><span class="cost">◆ ${arNum(r.cost)}</span><span class="stk ${r.stock<=3&&!out?'low':''}">${out?'نفد':'متوفّر '+arNum(r.stock)}</span></div>
+      <button class="btn ${out?'btn-g':'btn-p'} btn-sm addbtn" ${out?'disabled':''} onclick="event.stopPropagation();addToCart('${r.id}')">${out?'نفد':inCart?('في السلّة ('+arNum(inCart)+') ＋'):'أضِف للسلّة'}</button>
+      ${!afford&&!out?`<div class="short">تحتاج ${arNum(r.cost-st.points)} نقطة إضافية</div>`:''}
+    </div>`;
+  }).join('');
+}
+function updateCartBadge(){ const b=document.getElementById('cartBadge'); if(b){ b.textContent=arNum(cartCount()); b.style.display=cartCount()?'':'none'; } }
+function addToCart(id){
+  const r=REWARDS.find(x=>x.id===id); if(!r||r.stock<=0) return;
+  const c=CART.find(x=>x.id===id), cur=c?c.qty:0;
+  if(cur>=r.stock){ toast('⚠','بلغت الحد المتاح',r.name+' — لا مخزون إضافي'); return; }
+  if(c) c.qty++; else CART.push({id,qty:1});
+  updateCartBadge(); mktRenderGrid();
+  toast(r.ic,'أُضيف للسلّة',r.name+' — ◆ '+arNum(r.cost));
+}
+function openProduct(id){
+  const r=REWARDS.find(x=>x.id===id); if(!r) return;
+  const st=mktStudent(), out=r.stock<=0, afford=st.points>=r.cost;
+  document.getElementById('modal').innerHTML=`
+    <div class="modal-h"><div><h3>${r.name}</h3><small>${CATS[r.cat]}</small></div><button class="x" onclick="closeModal()">×</button></div>
+    <div class="modal-b">
+      <div class="prod"><div class="prod-ic">${r.ic}</div>
+        <div class="prod-info">
+          <div class="prod-cost">◆ ${arNum(r.cost)} <span>نقطة</span></div>
+          <div class="prod-stk ${out?'o':''}">${out?'نفد المخزون':'متوفّر: '+arNum(r.stock)}</div>
+          <p class="prod-desc">${r.desc}</p>
+          <div class="prod-bal">رصيدك: ◆ ${arNum(st.points)} ${afford||out?'':'<b style="color:var(--red)">— لا يكفي</b>'}</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn-g" onclick="closeModal()">إغلاق</button>
+      <button class="btn btn-p btn-save" ${out?'disabled':''} onclick="addToCart('${r.id}');closeModal()">🛒 أضِف للسلّة</button>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+function openCart(){
+  const st=mktStudent(), total=cartTotal(), afford=st.points>=total;
+  const body=CART.length? CART.map(c=>{const r=REWARDS.find(x=>x.id===c.id);return `
+    <div class="citem"><div class="ci-ic">${r.ic}</div>
+      <div class="ci-info"><div class="ci-n">${r.name}</div><div class="ci-c">◆ ${arNum(r.cost)} للقطعة</div></div>
+      <div class="qty"><button onclick="cartQty('${c.id}',-1)">−</button><span>${arNum(c.qty)}</span><button onclick="cartQty('${c.id}',1)">＋</button></div>
+      <div class="ci-sum">◆ ${arNum(r.cost*c.qty)}</div>
+      <button class="ci-rm" onclick="removeFromCart('${c.id}')" title="حذف">🗑</button>
+    </div>`;}).join('')
+    : `<div class="empty">سلّتك فارغة — تصفّح المتجر وأضِف جوائزك ✨</div>`;
+  document.getElementById('modal').innerHTML=`
+    <div class="modal-h"><div><h3>سلّة التسوّق</h3><small>${arNum(cartCount())} قطعة</small></div><button class="x" onclick="closeModal()">×</button></div>
+    <div class="modal-b" id="cartBody">${body}</div>
+    <div class="modal-f cartfoot">
+      <div class="ctotals"><span>الإجمالي</span><b class="${afford?'':'bad'}">◆ ${arNum(total)}</b></div>
+      <button class="btn btn-p" ${CART.length&&afford?'':'disabled'} onclick="checkout()">${!CART.length?'السلّة فارغة':afford?'إتمام الطلب ◂':'النقاط لا تكفي'}</button>
+    </div>`;
+  document.getElementById('overlay').classList.add('show');
+}
+function cartQty(id,d){
+  const c=CART.find(x=>x.id===id); if(!c) return; const r=REWARDS.find(x=>x.id===id);
+  c.qty+=d;
+  if(c.qty<=0) CART=CART.filter(x=>x.id!==id);
+  else if(c.qty>r.stock){ c.qty=r.stock; toast('⚠','الحد المتاح',r.name+' — بلغت المخزون'); }
+  updateCartBadge(); openCart();
+}
+function removeFromCart(id){ CART=CART.filter(x=>x.id!==id); updateCartBadge(); openCart(); }
+function checkout(){
+  const st=mktStudent(), total=cartTotal();
+  if(!CART.length || st.points<total) return;
+  for(const c of CART){ const r=REWARDS.find(x=>x.id===c.id); if(!r||c.qty>r.stock){ toast('⚠','تعذّر الإتمام','تغيّر مخزون أحد المنتجات'); openCart(); return; } }
+  const items=CART.map(c=>{const r=REWARDS.find(x=>x.id===c.id); r.stock-=c.qty; DB.updateReward(r.id,r.stock); return {id:r.id,name:r.name,ic:r.ic,cost:r.cost,qty:c.qty};});
+  st.points-=total; DB.updateStudentPoints(st.id,st.points);
+  ORDERS.unshift({id:'o'+Date.now(),studentId:st.id,student:st.name,items,total,status:'بانتظار التسليم',date:'الآن'});
+  logAudit('سوق الحلقة','طلب جوائز ('+arNum(total)+' نقطة) — '+st.name.split(' ')[0]);
+  CART=[]; closeModal(); mktTab='orders'; render();
+  toast('🎉','تم الطلب بنجاح','خُصم ◆ '+arNum(total)+' — طلبك بانتظار التسليم من المشرف');
+}
+function mktRenderOrders(){
+  const el=document.getElementById('mktBody'); if(!el) return;
+  const list=studentOrders();
+  el.innerHTML = list.length ? list.map(o=>`
+    <div class="order">
+      <div class="o-head"><div><b>طلب #${o.id.slice(-4)}</b> <span class="o-date">${o.date}</span></div>
+        <span class="tag ${o.status==='سُلّم'?'g':'a'}">${o.status}</span></div>
+      <div class="o-items">${o.items.map(it=>`<span class="o-it">${it.ic} ${it.name} ×${arNum(it.qty)}</span>`).join('')}</div>
+      <div class="o-foot"><span>الإجمالي: <b>◆ ${arNum(o.total)}</b></span>
+        ${o.status!=='سُلّم'&&canManageOrders()?`<button class="btn btn-green btn-sm" onclick="markDelivered('${o.id}')">✓ تحديد كمُسلّم</button>`:''}</div>
+    </div>`).join('')
+    : `<div class="empty">لا طلبات بعد — اطلب أوّل جائزة من المتجر 🛍️</div>`;
+}
+function markDelivered(id){
+  const o=ORDERS.find(x=>x.id===id); if(!o) return; o.status='سُلّم';
+  logAudit('سوق الحلقة','تسليم طلب #'+id.slice(-4)+' — '+o.student.split(' ')[0]);
+  render(); toast('📦','تم التسليم','سُلّمت الجائزة وسُجّل ذلك في سجل التدقيق');
 }
 
 /* ============================================================
