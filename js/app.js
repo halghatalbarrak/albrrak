@@ -620,7 +620,9 @@ function checkout(){
   for(const c of CART){ const r=REWARDS.find(x=>x.id===c.id); if(!r||c.qty>r.stock){ toast('⚠','تعذّر الإتمام','تغيّر مخزون أحد المنتجات'); openCart(); return; } }
   const items=CART.map(c=>{const r=REWARDS.find(x=>x.id===c.id); r.stock-=c.qty; DB.updateReward(r.id,r.stock); return {id:r.id,name:r.name,ic:r.ic,cost:r.cost,qty:c.qty};});
   st.points-=total; DB.updateStudentPoints(st.id,st.points);
-  ORDERS.unshift({id:'o'+Date.now(),studentId:st.id,student:st.name,items,total,status:'بانتظار التسليم',date:'الآن'});
+  const order={id:'o'+Date.now(),studentId:st.id,student:st.name,items,total,status:'بانتظار التسليم',date:'الآن'};
+  ORDERS.unshift(order);
+  DB.addOrder({student_id:st.id,items,total}).then(row=>{ if(row&&row.id!=null) order.dbId=row.id; });
   logAudit('سوق الحلقة','طلب جوائز ('+arNum(total)+' نقطة) — '+st.name.split(' ')[0]);
   CART=[]; closeModal(); mktTab='orders'; render();
   toast('🎉','تم الطلب بنجاح','خُصم ◆ '+arNum(total)+' — طلبك بانتظار التسليم من المشرف');
@@ -640,6 +642,7 @@ function mktRenderOrders(){
 }
 function markDelivered(id){
   const o=ORDERS.find(x=>x.id===id); if(!o) return; o.status='سُلّم';
+  if(o.dbId!=null) DB.updateOrderStatus(o.dbId,'delivered');
   logAudit('سوق الحلقة','تسليم طلب #'+id.slice(-4)+' — '+o.student.split(' ')[0]);
   render(); toast('📦','تم التسليم','سُلّمت الجائزة وسُجّل ذلك في سجل التدقيق');
 }
@@ -875,9 +878,17 @@ function applyRemote(d){
     today:{status:null,achievedLines:null,mistakes:{lafzi:0,adi:0,shak:0},itqan:false,done:false,late:false}}));}
   if(d.waitlist){WAITLIST.length=0;d.waitlist.filter(w=>w.status==='pending').forEach(w=>WAITLIST.push({id:String(w.id),name:w.full_name,age:w.age,phone:w.phone,date:'—',status:'pending'}));}
   if(d.payments&&d.payments.length){PAYMENTS.length=0;d.payments.forEach(p=>PAYMENTS.push({id:String(p.id),payer:p.payer,amount:Number(p.amount),kind:p.kind==='fees'?'رسوم':p.kind==='donation'?'تبرّع':'جائزة',target:p.target||'—',status:p.status==='success'?'ناجحة':p.status==='refunded'?'مستردّة':'فاشلة',date:'—'}));}
-  if(d.rewards&&d.rewards.length){REWARDS.length=0;d.rewards.forEach(r=>REWARDS.push({id:r.id,name:r.name,cost:r.cost,stock:r.stock,ic:r.icon}));}
+  if(d.rewards&&d.rewards.length){
+    const meta=Object.fromEntries(REWARDS.map(r=>[r.id,r]));   // بيانات الكتالوج من البذور (فئة/وصف/رواج)
+    REWARDS.length=0;
+    d.rewards.forEach(r=>{const m=meta[r.id]||{};REWARDS.push({
+      id:r.id,name:r.name,cost:r.cost,stock:r.stock,ic:r.icon||m.ic||'🎁',
+      cat:r.category||m.cat||'gifts',desc:r.description||m.desc||'',hot:(r.hot!=null?r.hot:(m.hot||false))
+    });});
+  }
   if(d.harvest&&d.harvest.length){HARVEST.length=0;d.harvest.forEach(h=>{const st=STUDENTS.find(x=>x.id===h.student_id);HARVEST.push({id:String(h.id),student:st?st.name:'طالب',parts:h.parts,scope:h.scope,status:h.status==='pending'?'بانتظار':h.status==='passed'?'اجتاز':'إعادة',note:h.note||''});});}
   if(d.audit&&d.audit.length){AUDIT.length=0;d.audit.forEach(a=>AUDIT.push({who:a.actor,act:a.action,time:'—'}));}
+  if(d.orders){ORDERS.length=0;d.orders.forEach(o=>ORDERS.push({id:'o'+o.id,dbId:o.id,studentId:o.student_id,student:(STUDENTS.find(s=>s.id===o.student_id)||{}).name||'طالب',items:Array.isArray(o.items)?o.items:[],total:o.total,status:o.status==='delivered'?'سُلّم':o.status==='cancelled'?'أُلغي':'بانتظار التسليم',date:'—'}));}
 }
 /* ============================================================
    المصادقة — حسابٌ مستقل لكل مستخدم (جوال + كلمة سر)

@@ -150,10 +150,16 @@ window.DB = (function () {
       if (students.error) throw students.error;
       online = true;
       flush(); // أعد إرسال أي عمليات مؤجّلة فور نجاح الاتصال.
+      // الطلبات: جلبٌ مرن — إن لم يُنشأ جدول orders بعد، لا يتعطّل التحميل.
+      let orders = [];
+      try {
+        const r = await sb.from('orders').select('*').order('created_at', { ascending: false }).limit(200);
+        if (!r.error) orders = r.data;
+      } catch (e) { /* الجدول غير موجود بعد — تجاهل */ }
       return {
         students: students.data, circles: circles.data, guardians: guardians.data,
         waitlist: waitlist.data, payments: payments.data, rewards: rewards.data,
-        harvest: harvest.data, audit: audit.data,
+        harvest: harvest.data, audit: audit.data, orders,
       };
     } catch (e) {
       console.warn('DB.loadAll fallback to offline seed:', e.message);
@@ -171,10 +177,25 @@ window.DB = (function () {
   async function updateReward(id, stock) { return write({ op: 'update', table: 'rewards', values: { stock }, eq: { col: 'id', val: id } }); }
   async function updateStudentPoints(id, points) { return write({ op: 'update', table: 'students', values: { points }, eq: { col: 'id', val: id } }); }
 
+  // طلبات المتجر: إن كنّا متصلين نُرجع الصف (بمعرّفه) لربط الحالة لاحقاً؛ وإلا نُخزّن في الطابور.
+  async function addOrder(o) {
+    const values = { student_id: o.student_id, items: o.items, total: o.total, status: 'pending' };
+    if (sb && online) {
+      try {
+        const { data, error } = await sb.from('orders').insert(values).select().single();
+        if (error) throw error;
+        return data;
+      } catch (e) { console.warn('addOrder queued:', e.message); }
+    }
+    enqueue({ op: 'insert', table: 'orders', values });
+    return null;
+  }
+  async function updateOrderStatus(id, status) { return write({ op: 'update', table: 'orders', values: { status }, eq: { col: 'id', val: id } }); }
+
   return {
     init, hasClient, isOnline: () => online, pendingCount, flush,
     signUp, signIn, signOut, getSession, getProfile,
     loadAll, saveSession, log, acceptStudent, updateWaitlist,
-    addPayment, updateReward, updateStudentPoints,
+    addPayment, updateReward, updateStudentPoints, addOrder, updateOrderStatus,
   };
 })();
