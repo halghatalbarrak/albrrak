@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    name: tsc + lint + build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # npm ci يشغّل postinstall ⟵ prisma generate (يولّد أنواع @prisma/client).
+      # لا يلزم DATABASE_URL هنا: generate/lint/build لا تتصل بالقاعدة.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (tsc --noEmit)
+        run: npm run typecheck
+
+      - name: Lint (next lint)
+        run: npm run lint
+
+      - name: Build (next build)
+        run: npm run build
+
+  test:
+    name: server rule tests (Postgres)
+    runs-on: ubuntu-latest
+    # قاعدة العمل ٤: كل قاعدة مطلقة لها اختبار يثبت الرفض في الخادم.
+    # تُشغَّل على Postgres حقيقي بعد تطبيق الترحيلات.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: albrrak_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/albrrak_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/albrrak_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply migrations to test DB
+        run: npx prisma migrate deploy
+
+      # مفتاح تشفير عابر لقاعدة الاختبار فقط — ليس سرًّا إنتاجيًّا.
+      - name: Run tests
+        run: |
+          export NATIONAL_ID_ENC_KEY="$(openssl rand -base64 32)"
+          npm test

@@ -1,0 +1,59 @@
+name: Migrate (deploy)
+
+# تطبيق ترحيلات Prisma على قاعدة الإنتاج — يدويًّا فقط، بزرٍّ يُضغط بقصد.
+# لا on:push إطلاقًا: الترحيل التلقائي على كل دفعة خطر.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'اكتب APPLY حرفيًّا لتأكيد تطبيق الترحيل على قاعدة الإنتاج'
+        required: true
+        type: string
+
+# لا نمنح إذن كتابة على المستودع — مجرّد تطبيق ترحيل.
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: prisma migrate deploy
+    runs-on: ubuntu-latest
+    env:
+      # من أسرار المستودع — لا تُطبع أبدًا في السجل.
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - name: التحقق من التأكيد (يجب أن يساوي APPLY)
+        run: |
+          if [ "${{ inputs.confirm }}" != "APPLY" ]; then
+            echo "التأكيد غير صحيح — أرسلتَ قيمة لا تساوي APPLY. تم الإيقاف."
+            exit 1
+          fi
+          echo "التأكيد صحيح — المتابعة."
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # npm ci يشغّل postinstall ⟵ prisma generate (لا يتصل بالقاعدة).
+      - name: Install dependencies
+        run: npm ci
+
+      # الحالة قبل — إعلامية فقط. تُرجع خروجًا غير صفري عند وجود ترحيلات معلّقة،
+      # فلا نجعلها توقف المهمة (continue-on-error).
+      - name: Migrate status (قبل)
+        continue-on-error: true
+        run: npx prisma migrate status
+
+      # التطبيق — deploy فقط. لا dev، لا reset، لا db push.
+      - name: Migrate deploy
+        run: npx prisma migrate deploy
+
+      # الحالة بعد — صارمة: يجب أن تكون القاعدة محدَّثة (خروج صفري).
+      - name: Migrate status (بعد — تأكيد)
+        run: npx prisma migrate status

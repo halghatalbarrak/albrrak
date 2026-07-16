@@ -1,0 +1,528 @@
+// منصة إدارة حلقات التحفيظ — المخطط منقول من DESIGN.md §١٣ (نفس القيم والترتيب).
+// ملاحظة تنسيق: DESIGN كتب بعض الـenums مضغوطة في سطر واحد؛ Prisma يشترط قيمة
+// واحدة لكل سطر — فوُسّعت هنا بلا أي تغيير في القيم أو ترتيبها.
+// م٠: تعريفات الجداول والأنواع فقط. لا منطق، لا بذور، لا شاشات (القلب يُبنى في م١+).
+// كل تغيير لاحق = ترحيل مرقّم جديد (قاعدة العمل ٣: Prisma مصدر الحقيقة الوحيد).
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ═══════════════ الأساس ═══════════════
+
+enum Role {
+  SUPER_ADMIN
+  CIRCLE_MANAGER
+  REGISTRAR
+  TEACHER
+  RECITER
+  ARIF
+  STUDENT
+  GUARDIAN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+model User {
+  id            String   @id @default(cuid())
+  authId        String?  @unique    // auth.users.id — فارغٌ لمن دون ١٣ (يُنفِذ م٤ بنيةً)
+  nameAsInId    String              // كما في الهوية — تحقّق عند الإدخال
+  nationalId    String?  @unique    // ⚠️ م٥ — مشفَّر على مستوى التطبيق
+  nationality   String?
+  birthDate     DateTime?           // ميلادي — العمر محسوب لا مُدخَل
+  gender        Gender
+  phone         String?             // يبدأ بـ 966
+  email         String?  @unique
+  roles         Role[]              // صفات لا كيانات
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  student       Student?
+  teaching      CircleTeacher[]
+  guardianOf    GuardianLink[] @relation("Guardian")
+  nationalIdAccessLogs NationalIdAccessLog[]
+}
+
+// سجل الاطّلاع على رقم الهوية — م٥
+model NationalIdAccessLog {
+  id         String   @id @default(cuid())
+  subjectId  String                 // صاحب الهوية
+  viewerId   String                 // من اطّلع
+  viewer     User     @relation(fields: [viewerId], references: [id])
+  reason     String?
+  viewedAt   DateTime @default(now())
+  @@index([subjectId])
+}
+
+// ═══════════════ الحلقات ═══════════════
+
+enum TimeSlot {
+  ASR
+  MAGHRIB
+}
+
+enum ProgramKey {
+  QAIDAH_MADANIYYAH
+  MARAQI
+  WEEKLY
+}
+
+model Program {
+  id        String     @id @default(cuid())
+  key       ProgramKey @unique
+  nameAr    String
+  circles   Circle[]
+  stages    Stage[]
+  tracks    Track[]
+  settings  Setting[]
+}
+
+model Circle {
+  id         String    @id @default(cuid())
+  nameAr     String
+  timeSlot   TimeSlot
+  location   String?
+  gender     Gender                 // العزل لاحقاً — الحقل الآن
+  programId  String
+  program    Program   @relation(fields: [programId], references: [id])
+  teachers   CircleTeacher[]        // متعدد لمتعدد
+  enrollments Enrollment[]
+}
+
+model CircleTeacher {
+  circleId  String
+  teacherId String
+  circle    Circle @relation(fields: [circleId], references: [id])
+  teacher   User   @relation(fields: [teacherId], references: [id])
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  @@id([circleId, teacherId])
+}
+
+// ═══════════════ الطالب ═══════════════
+
+enum StudentState {
+  APPLIED
+  PENDING_ACCEPTANCE
+  WAITLISTED
+  REJECTED
+  AWAITING_READING_TEST
+  IN_QAIDAH
+  AWAITING_PACE_TEST
+  PACE_RETEST_SCHEDULED
+  IN_MARAQI
+  COMPLETED
+  WITHDRAWN
+}
+
+model Student {
+  id            String       @id @default(cuid())
+  userId        String       @unique
+  user          User         @relation(fields: [userId], references: [id])
+  state         StudentState @default(APPLIED)
+  schoolStage   String?                  // المرحلة الدراسية — للجهة
+  priorHifzAmount String?                // مقدار الحفظ — للجهة (الصيغة؟)
+  priorHifzLocations Json?               // مواضع الحفظ — لاختيار المقطع
+  enrollments   Enrollment[]
+  guardians     GuardianLink[] @relation("Student")
+  progress      StageProgress[]
+  sessions      DailySession[]
+  attendance    Attendance[]
+  hasads        Hasad[]
+  trackAssignments TrackAssignment[]
+  certificates  Certificate[]
+}
+
+model Enrollment {
+  id        String    @id @default(cuid())
+  studentId String
+  circleId  String
+  student   Student   @relation(fields: [studentId], references: [id])
+  circle    Circle    @relation(fields: [circleId], references: [id])
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?                    // النشط = null
+  @@index([studentId, endedAt])
+  // ⚠️ قيد: انتساب نشط واحد لكل طالب — partial unique index (يُضاف في م١ مع منطق الأعمار)
+}
+
+enum GuardianLinkStatus {
+  ACTIVE
+  UNLINK_REQUESTED
+  UNLINKED
+}
+
+model GuardianLink {
+  id           String  @id @default(cuid())
+  guardianId   String
+  studentId    String
+  guardian     User    @relation("Guardian", fields: [guardianId], references: [id])
+  student      Student @relation("Student", fields: [studentId], references: [id])
+  status       GuardianLinkStatus @default(ACTIVE)
+  // طلب فكّ الربط — لا يظهر للولي إطلاقاً
+  unlinkReason String?
+  unlinkDecidedBy String?
+  unlinkDecisionNote String?
+  @@unique([guardianId, studentId])
+}
+
+// ═══════════════ محرّك الاعتمادات ═══════════════
+
+enum ApprovalKind {
+  PLACEMENT_DECISION
+  MILESTONE_TRANSITION
+  SUBSTAGE_TRANSITION
+  STAGE_TRANSITION
+  ABSENCE_EXCUSE
+  TRACK_PROMOTION
+  TRACK_DEMOTION
+  GUARDIAN_UNLINK
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Approval {
+  id          String   @id @default(cuid())
+  kind        ApprovalKind
+  subjectType String                 // Hasad | Attendance | ...
+  subjectId   String
+  proposedBy  String
+  proposedAt  DateTime @default(now())
+  status      ApprovalStatus @default(PENDING)
+  decidedBy   String?
+  decidedAt   DateTime?
+  decisionNote String?               // إلزامي عند الرفض
+  payload     Json?                  // بيان القرار المعروض على المدير
+  @@index([status, kind])
+  @@index([proposedAt])              // عمر الطلب
+}
+
+// التفويض — على مستوى الأدوار لا الأفراد
+model PermissionDelegation {
+  id         String   @id @default(cuid())
+  capability String                  // ABSENCE_EXCUSE | ...
+  holderRole Role
+  grantedBy  String
+  grantedAt  DateTime @default(now())
+  revokedAt  DateTime?
+  @@index([capability, revokedAt])
+}
+
+// ═══════════════ المراحل — عام ═══════════════
+
+enum StageKind {
+  CHAPTER
+  MILESTONE
+  MAIN_STAGE
+  SUB_STAGE
+}
+
+model Stage {
+  id         String    @id @default(cuid())
+  programId  String
+  program    Program   @relation(fields: [programId], references: [id])
+  kind       StageKind
+  ordinal    Int
+  nameAr     String
+  parentId   String?
+  parent     Stage?    @relation("StageTree", fields: [parentId], references: [id])
+  children   Stage[]   @relation("StageTree")
+  weight     Int?                    // الوزن — الأبواب ليست متساوية
+  objectives Json?                   // أهداف الباب من صفحة «للمعلم»
+  teacherNotes String?               // إرشادات المؤلف — تُعرض في المنصة
+  // لمراقي: حدود الحزب
+  fromSurah  Int?
+  fromAyah   Int?
+  toSurah    Int?
+  toAyah     Int?
+  progress   StageProgress[]
+  @@unique([programId, kind, ordinal])
+}
+
+enum ProgressState {
+  NOT_STARTED
+  IN_PROGRESS
+  AWAITING_HASAD
+  REPAIRING
+  COMPLETED
+}
+
+model StageProgress {
+  id             String   @id @default(cuid())
+  studentId      String
+  stageId        String
+  student        Student  @relation(fields: [studentId], references: [id])
+  stage          Stage    @relation(fields: [stageId], references: [id])
+  state          ProgressState @default(NOT_STARTED)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  attendanceDays Int      @default(0)   // ⭐ القياس بأيام الحضور
+  readyDeclaredAt DateTime?             // إعلان الجاهزية
+  failureCount   Int      @default(0)   // للضربتين
+  @@unique([studentId, stageId])
+}
+
+// ═══════════════ المسارات ═══════════════
+
+model Track {
+  id           String  @id @default(cuid())
+  programId    String
+  program      Program @relation(fields: [programId], references: [id])
+  nameAr       String                 // «نصف صفحة»
+  linesPerDay  Float                  // ٧٫٥ — للترتيب والحساب
+  ordinal      Int
+  isActive     Boolean @default(true)
+  assignments  TrackAssignment[]
+  @@unique([programId, ordinal])
+}
+
+model TrackAssignment {
+  id         String   @id @default(cuid())
+  studentId  String
+  trackId    String
+  student    Student  @relation(fields: [studentId], references: [id])
+  track      Track    @relation(fields: [trackId], references: [id])
+  startedAt  DateTime @default(now())
+  endedAt    DateTime?
+  reason     String?                  // PACE_TEST | PROMOTION | DEMOTION
+  @@index([studentId, endedAt])
+}
+
+model PaceTest {
+  id            String   @id @default(cuid())
+  studentId     String
+  passageId     String                 // من البنك
+  administeredBy String                // المعلم
+  startedAt     DateTime
+  endedAt       DateTime?
+  linesMemorized Float?
+  assignedTrackId String?
+}
+
+model PacePassage {
+  id        String  @id @default(cuid())
+  nameAr    String
+  fromSurah Int
+  fromAyah  Int
+  toSurah   Int
+  toAyah    Int
+  isActive  Boolean @default(true)
+  // المعايرة بالبيانات: متوسط النتائج
+}
+
+// ═══════════════ الجلسة اليومية — مراقي فقط ═══════════════
+
+model DailySession {
+  id          String   @id @default(cuid())
+  studentId   String
+  circleId    String
+  student     Student  @relation(fields: [studentId], references: [id])
+  date        DateTime @db.Date
+
+  // الحفظ — المعلم وحده (م٢)
+  hifzFromSurah Int?
+  hifzFromAyah  Int?
+  hifzToSurah   Int?
+  hifzToAyah    Int?
+  hifzAttempts  Int?                  // ⭐ مقياس الاعتياد
+  hifzMastered  Boolean?
+  hifzTeacherId String?               // لا بد أن يكون معلم الطالب
+
+  // الترسيخ — تمّ/لم يتم فقط
+  tarseekhDone     Boolean?
+  tarseekhListenerId String?
+
+  // المراجعة — تمّ/لم يتم فقط
+  murajaahDone     Boolean?
+  murajaahListenerId String?
+
+  tajweedFlagged Boolean @default(false)  // زرّ العريف: «أشِر للمعلم»
+
+  @@unique([studentId, date])
+  @@index([circleId, date])
+}
+
+// ═══════════════ الحضور ═══════════════
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT_UNEXCUSED
+  ABSENT_EXCUSED
+  LATE
+  PRE_EXCUSED
+  LEFT_EARLY
+}
+
+model Attendance {
+  id         String   @id @default(cuid())
+  studentId  String
+  circleId   String
+  student    Student  @relation(fields: [studentId], references: [id])
+  date       DateTime @db.Date
+  status     AttendanceStatus @default(PRESENT)   // الافتراض: حاضر
+  recordedBy String
+  excuseAcceptedBy String?             // من قَبِل العذر — بأي تفويض
+  excuseAcceptedAt DateTime?
+  @@unique([studentId, date])
+  @@index([circleId, date])
+}
+
+// ═══════════════ الحصاد ═══════════════
+
+enum HasadResult {
+  EXCELLENT
+  PASS
+  FAIL
+}
+
+model Hasad {
+  id          String  @id @default(cuid())
+  studentId   String
+  stageId     String                   // فرعية أو أصلية
+  student     Student @relation(fields: [studentId], references: [id])
+  reciterId   String                   // م١ + م٣ — يُتحقَّق في الخادم
+  scheduledAt DateTime?
+  conductedAt DateTime?
+  fromSurah   Int
+  fromAyah    Int
+  toSurah     Int
+  toAyah      Int
+  result      HasadResult?
+  attemptNo   Int     @default(1)      // الضربتان
+  pageErrors  HasadPageError[]
+  @@index([studentId, stageId])
+}
+
+enum HasadErrorType {
+  WORD
+  LETTER
+  FORGOTTEN_AYAH
+}
+
+model HasadPageError {
+  id        String  @id @default(cuid())
+  hasadId   String
+  hasad     Hasad   @relation(fields: [hasadId], references: [id])
+  pageNo    Int                        // مصحف المدينة
+  errorType HasadErrorType
+  surah     Int?
+  ayah      Int?
+  @@index([pageNo])                    // خريطة مواضع الضعف
+}
+
+// ═══════════════ الشهادات ═══════════════
+
+enum CertificateTemplate {
+  QAIDAH
+  SUB_STAGE
+  MAIN_STAGE
+  KHATM
+}
+
+model Certificate {
+  id           String  @id @default(cuid())
+  studentId    String
+  student      Student @relation(fields: [studentId], references: [id])
+  template     CertificateTemplate
+  isExcellent  Boolean @default(false) // وسام لا قالب
+  stageId      String?
+  issuedAt     DateTime @default(now())
+  verifyToken  String  @unique         // ⚠️ عشوائي غير متسلسل
+  imageUrl     String?
+}
+
+// ═══════════════ الإعدادات ═══════════════
+
+model Setting {
+  id        String  @id @default(cuid())
+  programId String?
+  program   Program? @relation(fields: [programId], references: [id])
+  key       String
+  value     Json
+  @@unique([programId, key])
+}
+
+// ═══════════════ التسجيل والقيد (م١) ═══════════════
+// جدولان يملؤهما المدير — لا ثوابت في الكود. القيم تُخزَّن قانونيًّا،
+// والمطابقة مع صيغة الجهة الإشرافية تقع في طبقة التصدير لاحقًا.
+
+model Nationality {
+  id           String        @id @default(cuid())
+  nameAr       String        @unique
+  isActive     Boolean       @default(true)
+  ordinal      Int           @default(0)
+  applications Application[]
+}
+
+model SchoolStage {
+  id           String        @id @default(cuid())
+  nameAr       String        @unique
+  ordinal      Int
+  isActive     Boolean       @default(true)
+  applications Application[]
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WAITLISTED
+}
+
+// نموذج القيد العام (§٦٫١): يُرسَل إلى Route Handler لا إلى Supabase REST.
+// لا سياسة anon insert إطلاقًا. nationalIdEnc يُشفَّر قبل أن يمسّ القاعدة.
+// سجلٌّ ثابت لا يُحذف عند القبول — أثرٌ لكل من طرق الباب.
+model Application {
+  id                String   @id @default(cuid())
+  nameAsInId        String
+  nationalIdEnc     String              // م٥ — مشفَّر على مستوى التطبيق
+  nationalityId     String
+  nationality       Nationality @relation(fields: [nationalityId], references: [id])
+  birthDate         DateTime
+  gender            Gender
+  schoolStageId     String?
+  schoolStage       SchoolStage? @relation(fields: [schoolStageId], references: [id])
+  guardianPhone     String
+  guardianGender    Gender
+  studentPhone      String?             // فارغ لمن دون ١٣
+  priorHifzJuz      Int?
+  priorHifzNotes    String?
+  preferredCircleId String?
+
+  status            ApplicationStatus @default(PENDING)
+  decidedBy         String?
+  decidedAt         DateTime?
+  decisionNote      String?             // إلزامي عند الرفض
+  studentId         String?  @unique    // يُملأ عند القبول
+  createdAt         DateTime @default(now())
+
+  @@index([status, createdAt])
+}
+
+// ═══════════════ الأحداث (م١) ═══════════════
+// قاعدة العمل ٥: كل تغيير حالة يُصدِر حدثًا. سجلٌّ ملحق (append-only) يستهلكه
+// الاقتصاد لاحقًا بلا هجرة (م٦: points.source_event). النوع نصّي عمدًا — تيّارُ
+// أحداثٍ مفتوح لا enum مغلق يُقيّده كل استعمال جديد.
+model Event {
+  id          String   @id @default(cuid())
+  type        String                 // مثال: STUDENT_ACCEPTED, APPROVAL_DECIDED
+  subjectType String                 // Student | Approval | GuardianLink | ...
+  subjectId   String
+  actorId     String?                // من أحدث التغيير (null لأحداث النظام)
+  payload     Json?
+  createdAt   DateTime @default(now())
+  @@index([subjectType, subjectId])
+  @@index([type, createdAt])
+}

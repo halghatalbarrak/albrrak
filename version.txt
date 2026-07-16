@@ -1,4 +1,0 @@
-albrrak build: 1a2bcc0
-feature: teacher-applications (المرحلة 1)
-date: 2026-07-12
-marker: NEW-BUILD-OK
