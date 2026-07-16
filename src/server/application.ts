@@ -5,6 +5,7 @@ import {
   Role,
   StudentState,
 } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { accountPolicy, computeAge } from "./age-policy";
 import { findOrCreateGuardian, provisionStudentLogin } from "./account";
 import { emitEvent } from "./events";
@@ -22,6 +23,7 @@ export interface ApplicationInput {
   gender: Gender;
   schoolStageId?: string | null;
   guardianPhone: string;
+  guardianGender: Gender;
   studentPhone?: string | null;
   priorHifzJuz?: number | null;
   priorHifzNotes?: string | null;
@@ -29,7 +31,10 @@ export interface ApplicationInput {
 }
 
 /** القيد العام — يُستدعى من Route Handler (لا anon insert). يُشفّر الهوية. */
-export async function submitApplication(db: PrismaClient, input: ApplicationInput) {
+export async function submitApplication(
+  input: ApplicationInput,
+  db: PrismaClient = prisma,
+) {
   const nationalIdEnc = encryptNationalId(input.nationalId);
   return db.$transaction(async (tx) => {
     const app = await tx.application.create({
@@ -41,6 +46,7 @@ export async function submitApplication(db: PrismaClient, input: ApplicationInpu
         gender: input.gender,
         schoolStageId: input.schoolStageId ?? null,
         guardianPhone: input.guardianPhone,
+        guardianGender: input.guardianGender,
         studentPhone: input.studentPhone ?? null,
         priorHifzJuz: input.priorHifzJuz ?? null,
         priorHifzNotes: input.priorHifzNotes ?? null,
@@ -69,8 +75,8 @@ export interface AcceptResult {
  * ويربط الولي بحكم الولاية لمن دون ١٨. القيد سجلٌّ ثابت لا يُحذف.
  */
 export async function acceptApplication(
-  db: PrismaClient,
   args: { applicationId: string; decidedBy: string; asOf?: Date },
+  db: PrismaClient = prisma,
 ): Promise<AcceptResult> {
   const asOf = args.asOf ?? new Date();
   return db.$transaction(async (tx) => {
@@ -128,6 +134,7 @@ export async function acceptApplication(
     ) {
       const guardian = await findOrCreateGuardian(tx, {
         guardianPhone: app.guardianPhone,
+        guardianGender: app.guardianGender,
       });
       await tx.guardianLink.create({
         data: { guardianId: guardian.id, studentId: student.id },
@@ -162,10 +169,66 @@ export async function acceptApplication(
   });
 }
 
+export interface ReviewRow {
+  id: string;
+  name: string;
+  age: number;
+  gender: Gender;
+  nationality: string;
+  schoolStage: string | null;
+  guardianPhone: string;
+  studentPhone: string | null;
+  priorHifzJuz: number | null;
+  status: ApplicationStatus;
+  createdAt: Date;
+}
+
+/**
+ * الطلبات المعلّقة/المنتظرة للمراجعة — كل سطر يحمل خبره كاملاً.
+ * **بلا رقم الهوية** (م٥). العمر محسوب لا مُخزَّن.
+ */
+export async function listApplicationsForReview(
+  db: PrismaClient = prisma,
+  asOf: Date = new Date(),
+): Promise<ReviewRow[]> {
+  const apps = await db.application.findMany({
+    where: {
+      status: { in: [ApplicationStatus.PENDING, ApplicationStatus.WAITLISTED] },
+    },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      nameAsInId: true,
+      birthDate: true,
+      gender: true,
+      guardianPhone: true,
+      studentPhone: true,
+      priorHifzJuz: true,
+      status: true,
+      createdAt: true,
+      nationality: { select: { nameAr: true } },
+      schoolStage: { select: { nameAr: true } },
+    },
+  });
+  return apps.map((a) => ({
+    id: a.id,
+    name: a.nameAsInId,
+    age: computeAge(a.birthDate, asOf),
+    gender: a.gender,
+    nationality: a.nationality.nameAr,
+    schoolStage: a.schoolStage?.nameAr ?? null,
+    guardianPhone: a.guardianPhone,
+    studentPhone: a.studentPhone,
+    priorHifzJuz: a.priorHifzJuz,
+    status: a.status,
+    createdAt: a.createdAt,
+  }));
+}
+
 /** الرفض — بسبب مكتوب إلزامي (§٦٫٢). القيد يبقى سجلًّا ثابتًا. */
 export async function rejectApplication(
-  db: PrismaClient,
   args: { applicationId: string; decidedBy: string; note: string },
+  db: PrismaClient = prisma,
 ) {
   if (!args.note?.trim()) {
     throw new ValidationError("الرفض يستلزم سببًا مكتوبًا.");
@@ -192,8 +255,8 @@ export async function rejectApplication(
 
 /** قائمة الانتظار عند امتلاء الحلقات (§٦٫٢). */
 export async function waitlistApplication(
-  db: PrismaClient,
   args: { applicationId: string; decidedBy: string },
+  db: PrismaClient = prisma,
 ) {
   return db.$transaction(async (tx) => {
     const app = await tx.application.update({

@@ -1,13 +1,12 @@
 import crypto from "node:crypto";
-import type { Prisma, PrismaClient, Role } from "@prisma/client";
+import type { PrismaClient, Role } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { NATIONAL_ID_VIEWER_ROLES } from "./capabilities";
 import { AuthorizationError } from "./errors";
 
 // ═══ رقم الهوية — القاعدة المطلقة م٥ ═══
 // مشفَّر (لا يُخزَّن صريحًا)، محجوب في العرض، وكل قراءةٍ صريحة تُسجَّل.
 // لا يظهر في شهادة ولا تقرير ولا QR.
-
-type Db = PrismaClient | Prisma.TransactionClient;
 
 const ALGO = "aes-256-gcm";
 const IV_LEN = 12;
@@ -85,8 +84,8 @@ export interface ReadNationalIdArgs {
  * تُكتب سطرًا في سجل الاطّلاع. تُرجع النص الصريح.
  */
 export async function readNationalId(
-  db: Db,
   args: ReadNationalIdArgs,
+  db: PrismaClient = prisma,
 ): Promise<string> {
   const allowed = args.viewerRoles.some((r) =>
     NATIONAL_ID_VIEWER_ROLES.includes(r),

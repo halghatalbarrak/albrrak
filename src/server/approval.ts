@@ -4,6 +4,7 @@ import {
   type Prisma,
   type PrismaClient,
 } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { emitEvent } from "./events";
 import { ValidationError } from "./errors";
 
@@ -18,7 +19,7 @@ export interface ProposeArgs {
   payload?: Prisma.InputJsonValue;
 }
 
-export async function propose(db: PrismaClient, args: ProposeArgs) {
+export async function propose(args: ProposeArgs, db: PrismaClient = prisma) {
   return db.$transaction(async (tx) => {
     const approval = await tx.approval.create({
       data: {
@@ -49,7 +50,7 @@ export interface DecideArgs {
   note?: string;
 }
 
-export async function decide(db: PrismaClient, args: DecideArgs) {
+export async function decide(args: DecideArgs, db: PrismaClient = prisma) {
   if (args.decision === "REJECTED" && !args.note?.trim()) {
     throw new ValidationError("الرفض يستلزم سببًا مكتوبًا (§٣٫٤).");
   }

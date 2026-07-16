@@ -1,8 +1,8 @@
 import { Role } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { actorHasCapability } from "../authz";
-import { prisma, resetDb } from "../../test/helpers";
-import { createUser } from "../../test/factories";
+import { prisma, resetDb } from "../testing/helpers";
+import { createUser } from "../testing/factories";
 
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
@@ -13,7 +13,7 @@ describe("محرّك التفويض (§٣٫٣ — على مستوى الأدوا
     const teacher = await createUser(prisma, { roles: [Role.TEACHER] });
 
     // قبل التفويض: المعلم لا يملكها.
-    expect(await actorHasCapability(prisma, teacher.id, "ABSENCE_EXCUSE")).toBe(false);
+    expect(await actorHasCapability(teacher.id, "ABSENCE_EXCUSE")).toBe(false);
 
     // المدير يفوّضها لدور المعلم (سطرٌ في الجدول — لا كود ولا نشر).
     await prisma.permissionDelegation.create({
@@ -25,9 +25,9 @@ describe("محرّك التفويض (§٣٫٣ — على مستوى الأدوا
     });
 
     // بعد التفويض: أيّ معلم يملكها.
-    expect(await actorHasCapability(prisma, teacher.id, "ABSENCE_EXCUSE")).toBe(true);
+    expect(await actorHasCapability(teacher.id, "ABSENCE_EXCUSE")).toBe(true);
     // والمدير يملكها أصالةً.
-    expect(await actorHasCapability(prisma, manager.id, "ABSENCE_EXCUSE")).toBe(true);
+    expect(await actorHasCapability(manager.id, "ABSENCE_EXCUSE")).toBe(true);
   });
 
   it("سحب التفويض (revokedAt) ← تسقط الصلاحية", async () => {
@@ -41,6 +41,6 @@ describe("محرّك التفويض (§٣٫٣ — على مستوى الأدوا
         revokedAt: new Date(),
       },
     });
-    expect(await actorHasCapability(prisma, teacher.id, "ABSENCE_EXCUSE")).toBe(false);
+    expect(await actorHasCapability(teacher.id, "ABSENCE_EXCUSE")).toBe(false);
   });
 });

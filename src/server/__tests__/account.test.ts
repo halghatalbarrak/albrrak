@@ -1,8 +1,8 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { provisionStudentLogin, syntheticEmail } from "../account";
 import { AuthorizationError, ValidationError } from "../errors";
-import { prisma, resetDb } from "../../test/helpers";
-import { createUser } from "../../test/factories";
+import { prisma, resetDb } from "../testing/helpers";
+import { createUser } from "../testing/factories";
 
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());

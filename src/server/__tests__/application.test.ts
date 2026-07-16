@@ -7,8 +7,8 @@ import {
   waitlistApplication,
 } from "../application";
 import { ValidationError } from "../errors";
-import { prisma, resetDb } from "../../test/helpers";
-import { createNationality, createUser } from "../../test/factories";
+import { prisma, resetDb } from "../testing/helpers";
+import { createNationality, createUser } from "../testing/factories";
 
 const AS_OF = new Date("2026-07-16");
 
@@ -22,15 +22,16 @@ function birth(age: number): Date {
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
 
-async function submit(overrides: Partial<Parameters<typeof submitApplication>[1]> = {}) {
+async function submit(overrides: Partial<Parameters<typeof submitApplication>[0]> = {}) {
   const nat = await createNationality(prisma);
-  return submitApplication(prisma, {
+  return submitApplication({
     nameAsInId: "خالد بن عبدالله",
     nationalId: "1012345678",
     nationalityId: nat.id,
     birthDate: birth(15),
     gender: Gender.MALE,
     guardianPhone: "0555000001",
+    guardianGender: Gender.MALE,
     studentPhone: "0555000002",
     ...overrides,
   });
@@ -53,7 +54,7 @@ describe("القبول ← إنشاء الحساب ← ربط الولي (§٤،
     const registrar = await createUser(prisma);
     const app = await submit({ birthDate: birth(12), studentPhone: null });
 
-    const res = await acceptApplication(prisma, {
+    const res = await acceptApplication({
       applicationId: app.id,
       decidedBy: registrar.id,
       asOf: AS_OF,
@@ -75,7 +76,7 @@ describe("القبول ← إنشاء الحساب ← ربط الولي (§٤،
     const registrar = await createUser(prisma);
     const app = await submit({ birthDate: birth(15), studentPhone: "0555111222" });
 
-    const res = await acceptApplication(prisma, {
+    const res = await acceptApplication({
       applicationId: app.id,
       decidedBy: registrar.id,
       asOf: AS_OF,
@@ -97,7 +98,7 @@ describe("القبول ← إنشاء الحساب ← ربط الولي (§٤،
     const registrar = await createUser(prisma);
     const app = await submit({ birthDate: birth(15), studentPhone: null });
     await expect(
-      acceptApplication(prisma, {
+      acceptApplication({
         applicationId: app.id,
         decidedBy: registrar.id,
         asOf: AS_OF,
@@ -111,10 +112,10 @@ describe("الرفض والانتظار (§٦٫٢)", () => {
     const registrar = await createUser(prisma);
     const app = await submit();
     await expect(
-      rejectApplication(prisma, { applicationId: app.id, decidedBy: registrar.id, note: "" }),
+      rejectApplication({ applicationId: app.id, decidedBy: registrar.id, note: "" }),
     ).rejects.toBeInstanceOf(ValidationError);
 
-    const rejected = await rejectApplication(prisma, {
+    const rejected = await rejectApplication({
       applicationId: app.id,
       decidedBy: registrar.id,
       note: "خارج نطاق العمر",
@@ -125,13 +126,13 @@ describe("الرفض والانتظار (§٦٫٢)", () => {
   it("قائمة الانتظار ثم القبول منها", async () => {
     const registrar = await createUser(prisma);
     const app = await submit({ birthDate: birth(15) });
-    const wl = await waitlistApplication(prisma, {
+    const wl = await waitlistApplication({
       applicationId: app.id,
       decidedBy: registrar.id,
     });
     expect(wl.status).toBe(ApplicationStatus.WAITLISTED);
 
-    const res = await acceptApplication(prisma, {
+    const res = await acceptApplication({
       applicationId: app.id,
       decidedBy: registrar.id,
       asOf: AS_OF,

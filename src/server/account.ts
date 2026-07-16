@@ -1,4 +1,4 @@
-import { type Prisma, type PrismaClient, Role } from "@prisma/client";
+import { type Gender, type Prisma, type PrismaClient, Role } from "@prisma/client";
 import { AuthorizationError, ValidationError } from "./errors";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -38,12 +38,11 @@ export async function provisionStudentLogin(
 
 /**
  * ولي الأمر — النافذة الوحيدة (§٤). حسابٌ واحد لكل جوال (يتشارك الإخوة وليًّا).
- * ملاحظة: جنس الولي غير مُلتقَط في نموذج القيد ⟵ عنصر نائب حتى يُضاف الحقل
- * (العزل بالجنس مؤجَّل §١٫٢، ولا يمسّ منطق م١).
+ * جنس الولي يأتي من نموذج القيد (Application.guardianGender) — لا عنصر نائب.
  */
 export async function findOrCreateGuardian(
   db: Db,
-  args: { guardianPhone: string },
+  args: { guardianPhone: string; guardianGender: Gender },
 ): Promise<{ id: string }> {
   const email = syntheticEmail(args.guardianPhone);
   const existing = await db.user.findUnique({
@@ -62,7 +61,7 @@ export async function findOrCreateGuardian(
   const created = await db.user.create({
     data: {
       nameAsInId: `ولي أمر (${args.guardianPhone})`,
-      gender: "MALE", // عنصر نائب — جنس الولي غير مُلتقَط بعد
+      gender: args.guardianGender,
       roles: [Role.GUARDIAN],
       email,
       phone: args.guardianPhone,

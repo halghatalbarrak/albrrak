@@ -1,3 +1,24 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"]
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@/lib/prisma", "**/lib/prisma"],
+            "message": "لا تستورد عميل Prisma خارج src/server/**. كل كتابة تمرّ بدالّة خدمة — استورد من @/server/*."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/server/**"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ]
 }

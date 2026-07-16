@@ -6,8 +6,8 @@ import {
 } from "../account-eligibility";
 import { acceptApplication, submitApplication } from "../application";
 import { ValidationError } from "../errors";
-import { prisma, resetDb } from "../../test/helpers";
-import { createNationality, createUser } from "../../test/factories";
+import { prisma, resetDb } from "../testing/helpers";
+import { createNationality, createUser } from "../testing/factories";
 
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
@@ -16,16 +16,17 @@ afterAll(() => prisma.$disconnect());
 async function acceptTwelveYearOld() {
   const registrar = await createUser(prisma);
   const nat = await createNationality(prisma);
-  const app = await submitApplication(prisma, {
+  const app = await submitApplication({
     nameAsInId: "طفل",
     nationalId: "1099999999",
     nationalityId: nat.id,
     birthDate: new Date("2013-01-01"),
     gender: Gender.MALE,
     guardianPhone: "0555777888",
+    guardianGender: Gender.MALE,
     studentPhone: null,
   });
-  const res = await acceptApplication(prisma, {
+  const res = await acceptApplication({
     applicationId: app.id,
     decidedBy: registrar.id,
     asOf: new Date("2025-06-01"), // عمره ١٢
@@ -37,10 +38,10 @@ describe("بلوغ الثالثة عشرة — أهلية لا إنشاء تلق
   it("قبل ١٣ ← ليس في قائمة الأهلية؛ بعد ١٣ ← يظهر", async () => {
     const { res } = await acceptTwelveYearOld();
 
-    const before = await studentsReachingAccountEligibility(prisma, new Date("2025-06-01"));
+    const before = await studentsReachingAccountEligibility(new Date("2025-06-01"));
     expect(before.some((s) => s.studentId === res.studentId)).toBe(false);
 
-    const after = await studentsReachingAccountEligibility(prisma, new Date("2026-06-01"));
+    const after = await studentsReachingAccountEligibility(new Date("2026-06-01"));
     expect(after.some((s) => s.studentId === res.studentId)).toBe(true);
   });
 
@@ -52,7 +53,7 @@ describe("بلوغ الثالثة عشرة — أهلية لا إنشاء تلق
     expect(user.email).toBeNull();
 
     // فعلٌ صريح من المُسجِّل، بجوال ← يُنشأ الدخول.
-    await createAccountForStudentReachingThirteen(prisma, {
+    await createAccountForStudentReachingThirteen({
       studentId: res.studentId,
       phone: "0555222333",
       actorId: registrar.id,
@@ -65,7 +66,7 @@ describe("بلوغ الثالثة عشرة — أهلية لا إنشاء تلق
   it("قبل بلوغ ١٣ ← يُرفض الإنشاء ولو طُلب", async () => {
     const { registrar, res } = await acceptTwelveYearOld();
     await expect(
-      createAccountForStudentReachingThirteen(prisma, {
+      createAccountForStudentReachingThirteen({
         studentId: res.studentId,
         phone: "0555222333",
         actorId: registrar.id,

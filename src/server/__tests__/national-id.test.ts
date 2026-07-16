@@ -7,8 +7,8 @@ import {
   readNationalId,
 } from "../national-id";
 import { AuthorizationError } from "../errors";
-import { prisma, resetDb } from "../../test/helpers";
-import { createUser } from "../../test/factories";
+import { prisma, resetDb } from "../testing/helpers";
+import { createUser } from "../testing/factories";
 
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
@@ -33,7 +33,7 @@ describe("قراءة رقم الهوية — تحكّم وسجل (م٥)", () => 
     const teacher = await createUser(prisma, { roles: [Role.TEACHER] });
 
     await expect(
-      readNationalId(prisma, {
+      readNationalId({
         viewerId: teacher.id,
         viewerRoles: [Role.TEACHER],
         subjectUserId: subject.id,
@@ -50,7 +50,7 @@ describe("قراءة رقم الهوية — تحكّم وسجل (م٥)", () => 
     });
     const registrar = await createUser(prisma, { roles: [Role.REGISTRAR] });
 
-    const value = await readNationalId(prisma, {
+    const value = await readNationalId({
       viewerId: registrar.id,
       viewerRoles: [Role.REGISTRAR],
       subjectUserId: subject.id,

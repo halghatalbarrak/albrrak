@@ -1,8 +1,7 @@
-import type { PermissionDelegation, Prisma, PrismaClient, Role } from "@prisma/client";
+import type { PermissionDelegation, PrismaClient, Role } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { CAPABILITY_ORIGIN_ROLES, type Capability } from "./capabilities";
 import { AuthorizationError } from "./errors";
-
-type Db = PrismaClient | Prisma.TransactionClient;
 
 // نافذة تفويضٍ فعّالة = لم تُلغَ (revokedAt IS NULL).
 type ActiveDelegation = Pick<PermissionDelegation, "capability" | "holderRole" | "revokedAt">;
@@ -31,9 +30,9 @@ export function resolveCapability(
 
 /** يقرأ أدوار الفاعل والتفويضات الفعّالة من القاعدة ثم يحسم. */
 export async function actorHasCapability(
-  db: Db,
   actorId: string,
   capability: Capability,
+  db: PrismaClient = prisma,
 ): Promise<boolean> {
   const actor = await db.user.findUnique({
     where: { id: actorId },
@@ -51,11 +50,11 @@ export async function actorHasCapability(
 
 /** يرمي AuthorizationError إن لم يملك الفاعل الصلاحية. */
 export async function assertCapability(
-  db: Db,
   actorId: string,
   capability: Capability,
+  db: PrismaClient = prisma,
 ): Promise<void> {
-  if (!(await actorHasCapability(db, actorId, capability))) {
+  if (!(await actorHasCapability(actorId, capability, db))) {
     throw new AuthorizationError(`غير مخوّل بالصلاحية: ${capability}`);
   }
 }

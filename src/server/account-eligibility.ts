@@ -1,4 +1,5 @@
 import { type PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { computeAge } from "./age-policy";
 import { provisionStudentLogin } from "./account";
 import { emitEvent } from "./events";
@@ -16,8 +17,8 @@ export interface EligibleStudent {
 
 /** طلابٌ بلغوا ١٣ ولا حساب دخول لهم بعد — لتنبيه المُسجِّل. */
 export async function studentsReachingAccountEligibility(
-  db: PrismaClient,
   asOf: Date,
+  db: PrismaClient = prisma,
 ): Promise<EligibleStudent[]> {
   const students = await db.student.findMany({
     where: { user: { email: null, birthDate: { not: null } } },
@@ -37,8 +38,8 @@ export async function studentsReachingAccountEligibility(
  * يحتاج جوالًا، ويضمن ربط الولاية (١٣–١٧).
  */
 export async function createAccountForStudentReachingThirteen(
-  db: PrismaClient,
   args: { studentId: string; phone: string; actorId: string; asOf?: Date },
+  db: PrismaClient = prisma,
 ) {
   const asOf = args.asOf ?? new Date();
   return db.$transaction(async (tx) => {

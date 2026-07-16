@@ -1,7 +1,6 @@
-import { type Prisma, type PrismaClient, Role } from "@prisma/client";
+import { type PrismaClient, Role } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { AuthorizationError } from "./errors";
-
-type Db = PrismaClient | Prisma.TransactionClient;
 
 // قيود إسناد المُسمِّع للحصاد (DESIGN §٨٫٩):
 //   م١ — ليس معلم الطالب عبر *كل* حلقاته.
@@ -15,8 +14,8 @@ export interface ReciterCheckArgs {
 
 /** true إن جاز لهذا المُسمِّع أن يحصد هذا الطالب. */
 export async function canRecite(
-  db: Db,
   args: ReciterCheckArgs,
+  db: PrismaClient = prisma,
 ): Promise<boolean> {
   const reciter = await db.user.findUnique({
     where: { id: args.reciterUserId },
@@ -44,10 +43,10 @@ export async function canRecite(
 
 /** يرمي AuthorizationError إن لم يجز الإسناد. */
 export async function assertCanRecite(
-  db: Db,
   args: ReciterCheckArgs,
+  db: PrismaClient = prisma,
 ): Promise<void> {
-  if (!(await canRecite(db, args))) {
+  if (!(await canRecite(args, db))) {
     throw new AuthorizationError(
       "لا يجوز إسناد هذا المُسمِّع لهذا الطالب (م١/م٣).",
     );

@@ -1,13 +1,13 @@
 import { Role } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { canRecite } from "../reciter-eligibility";
-import { prisma, resetDb } from "../../test/helpers";
+import { prisma, resetDb } from "../testing/helpers";
 import {
   createCircle,
   createProgram,
   createStudent,
   createUser,
-} from "../../test/factories";
+} from "../testing/factories";
 
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
@@ -27,7 +27,7 @@ describe("أهلية المُسمِّع للحصاد (م١ + م٣)", () => {
     });
 
     expect(
-      await canRecite(prisma, { reciterUserId: teacher.id, studentId: student.id }),
+      await canRecite({ reciterUserId: teacher.id, studentId: student.id }),
     ).toBe(false);
   });
 
@@ -35,7 +35,7 @@ describe("أهلية المُسمِّع للحصاد (م١ + م٣)", () => {
     const { student } = await createStudent(prisma);
     const arif = await createUser(prisma, { roles: [Role.ARIF, Role.RECITER] });
     expect(
-      await canRecite(prisma, { reciterUserId: arif.id, studentId: student.id }),
+      await canRecite({ reciterUserId: arif.id, studentId: student.id }),
     ).toBe(false);
   });
 
@@ -43,7 +43,7 @@ describe("أهلية المُسمِّع للحصاد (م١ + م٣)", () => {
     const { student } = await createStudent(prisma);
     const reciter = await createUser(prisma, { roles: [Role.RECITER] });
     expect(
-      await canRecite(prisma, { reciterUserId: reciter.id, studentId: student.id }),
+      await canRecite({ reciterUserId: reciter.id, studentId: student.id }),
     ).toBe(true);
   });
 });

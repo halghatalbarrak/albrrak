@@ -1,8 +1,8 @@
 import { GuardianLinkStatus, Role } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { linksVisibleToGuardian, requestUnlink } from "../guardian";
-import { prisma, resetDb } from "../../test/helpers";
-import { createStudent, createUser } from "../../test/factories";
+import { prisma, resetDb } from "../testing/helpers";
+import { createStudent, createUser } from "../testing/factories";
 
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
@@ -15,14 +15,14 @@ describe("طلب فكّ الربط لا يظهر للولي (§٤)", () => {
       data: { guardianId: guardian.id, studentId: student.id },
     });
 
-    await requestUnlink(prisma, {
+    await requestUnlink({
       guardianLinkId: link.id,
       reason: "سببٌ خاصّ بالطالب",
       requestedByStudentId: studentUser.id,
     });
 
     // منظور الولي: الحالة ACTIVE (الطلب مخفيّ)، ولا حقل سبب إطلاقًا.
-    const visible = await linksVisibleToGuardian(prisma, guardian.id);
+    const visible = await linksVisibleToGuardian(guardian.id);
     expect(visible).toHaveLength(1);
     expect(visible[0]?.status).toBe("ACTIVE");
     expect(JSON.stringify(visible)).not.toContain("سببٌ خاصّ بالطالب");

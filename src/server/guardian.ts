@@ -1,20 +1,15 @@
-import {
-  GuardianLinkStatus,
-  type Prisma,
-  type PrismaClient,
-} from "@prisma/client";
+import { GuardianLinkStatus, type PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { emitEvent } from "./events";
 import { ValidationError } from "./errors";
-
-type Db = PrismaClient | Prisma.TransactionClient;
 
 // طلب فكّ ربط الولي (DESIGN §٤): يرفعه الطالب (١٣+)، ينظر فيه المدير، والرفض هو الأصل.
 // **لا يظهر للولي إطلاقًا** — لو رآه لانتفت فائدته في الحالة الوحيدة التي وُجد لها.
 
 /** الطالب يرفع طلب فكّ الربط. يُخزَّن السبب في سجلٍّ مغلق، ويُصدَّر حدث. */
 export async function requestUnlink(
-  db: PrismaClient,
   args: { guardianLinkId: string; reason: string; requestedByStudentId: string },
+  db: PrismaClient = prisma,
 ) {
   if (!args.reason?.trim()) {
     throw new ValidationError("طلب فكّ الربط يستلزم سببًا مكتوبًا من الطالب.");
@@ -50,8 +45,8 @@ export interface GuardianVisibleLink {
  * UNLINK_REQUESTED (معلّق) ⟵ يُعرض ACTIVE. حقول الفكّ لا تُرجَع إطلاقًا.
  */
 export async function linksVisibleToGuardian(
-  db: Db,
   guardianId: string,
+  db: PrismaClient = prisma,
 ): Promise<GuardianVisibleLink[]> {
   const links = await db.guardianLink.findMany({
     where: { guardianId },

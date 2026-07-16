@@ -494,6 +494,7 @@ model Application {
   schoolStageId     String?
   schoolStage       SchoolStage? @relation(fields: [schoolStageId], references: [id])
   guardianPhone     String
+  guardianGender    Gender
   studentPhone      String?             // فارغ لمن دون ١٣
   priorHifzJuz      Int?
   priorHifzNotes    String?

@@ -1,7 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
-// عميل Prisma للاختبارات — يقرأ DATABASE_URL (قاعدة اختبار محلية/خدمة CI).
-// صمّام أمان: يرفض العمل على قاعدة لا يبدو اسمها اختباريًّا.
+// الاختبارات تتشارك عميل Prisma المفرد نفسه الذي تستعمله الخدمات (@/lib/prisma).
+// صمّام أمان: يرفض التصفير على قاعدة لا يبدو اسمها اختباريًّا.
 const url = process.env.DATABASE_URL ?? "";
 if (!/test|localhost|127\.0\.0\.1/.test(url)) {
   throw new Error(
@@ -9,7 +9,7 @@ if (!/test|localhost|127\.0\.0\.1/.test(url)) {
   );
 }
 
-export const prisma = new PrismaClient();
+export { prisma };
 
 /** تصفير كل الجداول بين الاختبارات — عزلٌ تام. */
 export async function resetDb(): Promise<void> {
