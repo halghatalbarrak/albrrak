@@ -1,10 +1,14 @@
-import { AuthorizationError, ValidationError } from "./errors";
+import { AuthenticationError, AuthorizationError, ValidationError } from "./errors";
 
 // تحويل أخطاء المجال إلى استجابات HTTP متّسقة.
-//   AuthorizationError ⟵ 403 (تجاوز قاعدة تحكّم)
-//   ValidationError    ⟵ 400 (إدخال/قاعدة عمل)
-//   غير ذلك            ⟵ 500 (بلا تفاصيل)
+//   AuthenticationError ⟵ 401 (لا مصادقة صالحة)
+//   AuthorizationError  ⟵ 403 (تجاوز قاعدة تحكّم)
+//   ValidationError     ⟵ 400 (إدخال/قاعدة عمل)
+//   غير ذلك             ⟵ 500 (بلا تفاصيل)
 export function errorResponse(e: unknown): Response {
+  if (e instanceof AuthenticationError) {
+    return Response.json({ error: e.message }, { status: 401 });
+  }
   if (e instanceof AuthorizationError) {
     return Response.json({ error: e.message }, { status: 403 });
   }

@@ -2,6 +2,7 @@ import { type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { computeAge } from "./age-policy";
 import { provisionStudentLogin } from "./account";
+import { type AuthProvider, defaultAuthProvider } from "./auth-provider";
 import { emitEvent } from "./events";
 import { ValidationError } from "./errors";
 
@@ -40,6 +41,7 @@ export async function studentsReachingAccountEligibility(
 export async function createAccountForStudentReachingThirteen(
   args: { studentId: string; phone: string; actorId: string; asOf?: Date },
   db: PrismaClient = prisma,
+  provider: AuthProvider = defaultAuthProvider,
 ) {
   const asOf = args.asOf ?? new Date();
   return db.$transaction(async (tx) => {
@@ -59,11 +61,11 @@ export async function createAccountForStudentReachingThirteen(
       throw new ValidationError("لم يبلغ الثالثة عشرة بعد.");
     }
 
-    await provisionStudentLogin(tx, {
-      userId: student.userId,
-      age,
-      phone: args.phone,
-    });
+    await provisionStudentLogin(
+      tx,
+      { userId: student.userId, age, phone: args.phone },
+      provider,
+    );
 
     // ملاحظة: الطالب المقبول دون ١٣ سبق أن رُبط بوليّه بحكم الولاية عند القبول،
     // فلا يلزم ربطٌ جديد هنا — يبقى الربط القائم (١٣–١٧ مضمونة §٤).

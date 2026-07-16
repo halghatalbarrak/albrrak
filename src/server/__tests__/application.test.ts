@@ -9,6 +9,7 @@ import {
 import { ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
 import { createNationality, createUser } from "../testing/factories";
+import { fakeAuthProvider } from "../testing/auth";
 
 const AS_OF = new Date("2026-07-16");
 
@@ -58,7 +59,7 @@ describe("القبول ← إنشاء الحساب ← ربط الولي (§٤،
       applicationId: app.id,
       decidedBy: registrar.id,
       asOf: AS_OF,
-    });
+    }, prisma, fakeAuthProvider);
 
     expect(res.createdStudentLogin).toBe(false);
     expect(res.guardianLinked).toBe(true);
@@ -80,7 +81,7 @@ describe("القبول ← إنشاء الحساب ← ربط الولي (§٤،
       applicationId: app.id,
       decidedBy: registrar.id,
       asOf: AS_OF,
-    });
+    }, prisma, fakeAuthProvider);
 
     expect(res.createdStudentLogin).toBe(true);
     expect(res.guardianLinked).toBe(true);
@@ -136,7 +137,7 @@ describe("الرفض والانتظار (§٦٫٢)", () => {
       applicationId: app.id,
       decidedBy: registrar.id,
       asOf: AS_OF,
-    });
+    }, prisma, fakeAuthProvider);
     expect(res.studentId).toBeTruthy();
   });
 });

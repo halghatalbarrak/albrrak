@@ -1,4 +1,5 @@
 import { type Gender, type Prisma, type PrismaClient, Role } from "@prisma/client";
+import { type AuthProvider, defaultAuthProvider } from "./auth-provider";
 import { AuthorizationError, ValidationError } from "./errors";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -21,6 +22,7 @@ export function syntheticEmail(phone: string): string {
 export async function provisionStudentLogin(
   db: Db,
   args: { userId: string; age: number; phone: string | null | undefined },
+  provider: AuthProvider = defaultAuthProvider,
 ): Promise<void> {
   if (args.age < 13) {
     throw new AuthorizationError(
@@ -30,9 +32,11 @@ export async function provisionStudentLogin(
   if (!args.phone) {
     throw new ValidationError("إنشاء الحساب يحتاج رقم جوال.");
   }
+  const email = syntheticEmail(args.phone);
+  const { authId } = await provider.createAuthUser({ email, phone: args.phone });
   await db.user.update({
     where: { id: args.userId },
-    data: { email: syntheticEmail(args.phone), phone: args.phone },
+    data: { email, phone: args.phone, authId },
   });
 }
 

@@ -7,7 +7,8 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { accountPolicy, computeAge } from "./age-policy";
-import { findOrCreateGuardian, provisionStudentLogin } from "./account";
+import { findOrCreateGuardian, syntheticEmail } from "./account";
+import { type AuthProvider, defaultAuthProvider } from "./auth-provider";
 import { emitEvent } from "./events";
 import { encryptNationalId } from "./national-id";
 import { ValidationError } from "./errors";
@@ -77,26 +78,56 @@ export interface AcceptResult {
 export async function acceptApplication(
   args: { applicationId: string; decidedBy: string; asOf?: Date },
   db: PrismaClient = prisma,
+  provider: AuthProvider = defaultAuthProvider,
 ): Promise<AcceptResult> {
   const asOf = args.asOf ?? new Date();
+
+  // قراءةٌ وتحقّقٌ خارج المعاملة — لأن إنشاء المصادقة (شبكة) لا يجوز داخلها.
+  const app = await db.application.findUniqueOrThrow({
+    where: { id: args.applicationId },
+  });
+  if (
+    app.status !== ApplicationStatus.PENDING &&
+    app.status !== ApplicationStatus.WAITLISTED
+  ) {
+    throw new ValidationError("لا يُقبل إلا طلبٌ معلّق أو في قائمة الانتظار.");
+  }
+
+  const age = computeAge(app.birthDate, asOf);
+  const policy = accountPolicy(age);
+
+  // ≥١٣: إنشاء مستخدم المصادقة (خارج المعاملة). دون ١٣ ⟵ لا authId (م٤ بنيةً).
+  let login: { email: string; phone: string; authId: string } | null = null;
+  if (policy.createsStudentAccount) {
+    if (!app.studentPhone) {
+      throw new ValidationError("طالب ١٣+ يحتاج رقم جواله لإنشاء الحساب.");
+    }
+    const email = syntheticEmail(app.studentPhone);
+    const { authId } = await provider.createAuthUser({
+      email,
+      phone: app.studentPhone,
+    });
+    login = { email, phone: app.studentPhone, authId };
+  }
+
   return db.$transaction(async (tx) => {
-    const app = await tx.application.findUniqueOrThrow({
-      where: { id: args.applicationId },
+    // إعادة تحقّق الحالة داخل المعاملة — تفاديًا لقبولٍ مزدوج.
+    const fresh = await tx.application.findUniqueOrThrow({
+      where: { id: app.id },
+      select: { status: true },
     });
     if (
-      app.status !== ApplicationStatus.PENDING &&
-      app.status !== ApplicationStatus.WAITLISTED
+      fresh.status !== ApplicationStatus.PENDING &&
+      fresh.status !== ApplicationStatus.WAITLISTED
     ) {
-      throw new ValidationError("لا يُقبل إلا طلبٌ معلّق أو في قائمة الانتظار.");
+      throw new ValidationError("الطلب حُسم من قبل.");
     }
 
-    const age = computeAge(app.birthDate, asOf);
-    const policy = accountPolicy(age);
     const nat = await tx.nationality.findUniqueOrThrow({
       where: { id: app.nationalityId },
     });
 
-    // سجلّ الشخص — دائمًا. البريد يُضاف فقط عند إنشاء الدخول (≥١٣).
+    // سجلّ الشخص — دائمًا. البريد/authId فقط عند إنشاء الدخول (≥١٣).
     const user = await tx.user.create({
       data: {
         nameAsInId: app.nameAsInId,
@@ -104,7 +135,9 @@ export async function acceptApplication(
         nationality: nat.nameAr,
         birthDate: app.birthDate,
         gender: app.gender,
-        phone: null,
+        email: login?.email ?? null,
+        phone: login?.phone ?? null,
+        authId: login?.authId ?? null,
         roles: [Role.STUDENT],
       },
     });
@@ -116,16 +149,7 @@ export async function acceptApplication(
       },
     });
 
-    let createdStudentLogin = false;
-    if (policy.createsStudentAccount) {
-      // ≥١٣: حساب دخول للطالب (يحتاج جواله).
-      await provisionStudentLogin(tx, {
-        userId: user.id,
-        age,
-        phone: app.studentPhone,
-      });
-      createdStudentLogin = true;
-    }
+    const createdStudentLogin = login !== null;
 
     let guardianLinked = false;
     if (

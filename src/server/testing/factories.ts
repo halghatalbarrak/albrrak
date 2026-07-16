@@ -11,7 +11,13 @@ const uniq = () => `${Date.now()}-${seq++}`;
 
 export async function createUser(
   db: PrismaClient,
-  opts: { roles?: Role[]; nationalId?: string; email?: string | null } = {},
+  opts: {
+    roles?: Role[];
+    nationalId?: string;
+    email?: string | null;
+    authId?: string | null;
+    isActive?: boolean;
+  } = {},
 ) {
   return db.user.create({
     data: {
@@ -20,6 +26,8 @@ export async function createUser(
       roles: opts.roles ?? [],
       nationalId: opts.nationalId ?? null,
       email: opts.email ?? null,
+      authId: opts.authId ?? null,
+      isActive: opts.isActive ?? true,
     },
   });
 }

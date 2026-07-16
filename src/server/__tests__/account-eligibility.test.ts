@@ -8,6 +8,7 @@ import { acceptApplication, submitApplication } from "../application";
 import { ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
 import { createNationality, createUser } from "../testing/factories";
+import { fakeAuthProvider } from "../testing/auth";
 
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
@@ -58,7 +59,7 @@ describe("بلوغ الثالثة عشرة — أهلية لا إنشاء تلق
       phone: "0555222333",
       actorId: registrar.id,
       asOf: new Date("2026-06-01"),
-    });
+    }, prisma, fakeAuthProvider);
     user = await prisma.user.findUniqueOrThrow({ where: { id: res.userId } });
     expect(user.email).toBe("u0555222333@albrrak.app");
   });
@@ -71,7 +72,7 @@ describe("بلوغ الثالثة عشرة — أهلية لا إنشاء تلق
         phone: "0555222333",
         actorId: registrar.id,
         asOf: new Date("2025-06-01"), // ما زال ١٢
-      }),
+      }, prisma, fakeAuthProvider),
     ).rejects.toBeInstanceOf(ValidationError);
   });
 });

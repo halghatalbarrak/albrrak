@@ -34,6 +34,7 @@ enum Gender {
 
 model User {
   id            String   @id @default(cuid())
+  authId        String?  @unique    // auth.users.id — فارغٌ لمن دون ١٣ (يُنفِذ م٤ بنيةً)
   nameAsInId    String              // كما في الهوية — تحقّق عند الإدخال
   nationalId    String?  @unique    // ⚠️ م٥ — مشفَّر على مستوى التطبيق
   nationality   String?

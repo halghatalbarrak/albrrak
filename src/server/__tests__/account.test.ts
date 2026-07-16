@@ -3,6 +3,7 @@ import { provisionStudentLogin, syntheticEmail } from "../account";
 import { AuthorizationError, ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
 import { createUser } from "../testing/factories";
+import { fakeAuthProvider } from "../testing/auth";
 
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
@@ -29,9 +30,14 @@ describe("إنشاء حساب الدخول (م٤)", () => {
 
   it("١٣+ بجوال ← يُنشأ الدخول (بريد اصطناعي)", async () => {
     const user = await createUser(prisma);
-    await provisionStudentLogin(prisma, { userId: user.id, age: 13, phone: "0555000009" });
+    await provisionStudentLogin(
+      prisma,
+      { userId: user.id, age: 13, phone: "0555000009" },
+      fakeAuthProvider,
+    );
     const after = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
     expect(after.email).toBe("u0555000009@albrrak.app");
+    expect(after.authId).not.toBeNull(); // authId مضبوط عند إنشاء الدخول
   });
 
   it("١٣+ بلا جوال ← يُرفض", async () => {
