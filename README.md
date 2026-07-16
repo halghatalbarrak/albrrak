@@ -58,6 +58,38 @@ cp .env.example .env        # ثم املأ القيم من جهازك (لا ت�
 npm run dev                 # http://localhost:3000
 ```
 
+## أول تشغيل حيّ (Live bootstrap)
+
+> **من يُثبت هذا أنت، لا الوكيل.** الشاشات (`/login`, `/me`, `/admin/applications`)
+> متحقَّقة بالبناء والأنواع، لكن **لم تُشغَّل على Supabase حيّ من هنا** (الشبكة محجوبة).
+> الخادم (المصادقة والصلاحية والمسارات) مُختبَرٌ على Postgres حقيقي (44 اختبارًا).
+
+**الأسرار** (Vercel → Settings → Environment Variables، **و**GitHub → Secrets):
+
+| السرّ | المصدر |
+|---|---|
+| `DATABASE_URL` · `DIRECT_URL` | Supabase → Database |
+| `NATIONAL_ID_ENC_KEY` | `openssl rand -base64 32` — **احفظه خارج القاعدة** |
+| `SUPABASE_JWT_SECRET` | Supabase → API → JWT Secret |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → API Keys → `service_role` 🔴 **يتجاوز RLS** |
+| `NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → API (عامّان) |
+
+**الخطوات — ونتيجة كلٍّ المتوقعة:**
+
+1. **طبّق الترحيلات:** شغّل workflow «Migrate (deploy)» ← اكتب `APPLY`.
+   المتوقع: **٦ ترحيلات، ٢٦ جدولًا**، بذرة ٥ مراحل + ٢ جنسية، RLS على الكل.
+   تحقّق: `curl -H "apikey: <anon>" ".../rest/v1/Student?select=id&limit=1"` ← `[]` أو 401/403.
+2. **أنشئ أوّل مدير:**
+   أ) Supabase → Authentication → Users → Add user: البريد `u<جوالك>@albrrak.app` + كلمة سر. انسخ الـ**User UID**.
+   ب) محليًّا (`.env` فيه `DATABASE_URL`/`DIRECT_URL`): `node scripts/bootstrap-admin.mjs <UID> <جوالك> "اسمك"`
+   المتوقع: «المدير جاهز» (أدواره: SUPER_ADMIN, CIRCLE_MANAGER, REGISTRAR).
+3. **القيد:** افتح `https://<vercel>/apply` ← املأ النموذج (تظهر الجنسيات/المراحل المبذورة) ← أرسل.
+   المتوقع: «تمّ استلام طلب القيد». ⟵ **يُثبت Vercel + Prisma/pooler + التشفير + RLS دفعةً.**
+4. **الدخول والقبول:** `/login` بجوالك وكلمة سرك ← تُوجَّه إلى `/me`. ثم `/admin/applications`
+   ← ترى الطلب بكل خبره ← «قبول». المتوقع: ينجح (يُنشئ الطالب؛ و≥١٣ يُنشئ مستخدم مصادقته).
+5. **الطالب يرى صفحته:** أنشئ للطالب (≥١٣) كلمة سر في Supabase Users ← `/login` بجواله ←
+   `/me` يعرض: «حالتك: بانتظار اختبار القراءة». ⟵ **قيدٌ ← قبول ← دخول ← رؤية: مشى المكدَّس.**
+
 ## المعمارية — الحدّ يُغني عن الانضباط
 
 **كل كتابة تمرّ بدالّة خدمة في `src/server/**`.** المسارات والمكوّنات **لا تستورد عميل
@@ -70,6 +102,10 @@ src/app/api/**        ← Route Handlers: تستدعي الخدمة، تتحقّ
 ```
 
 > جرّب استيراد `@/lib/prisma` في مسارٍ ⟵ `npm run lint` يفشل. فالتجاوز خطأ بناء لا اجتهاد منسيّ.
+
+**حرّاس الأسرار (ESLint، بنيةً لا تعليقًا):**
+- `SUPABASE_SERVICE_ROLE_KEY` (يتجاوز RLS) ⟵ يُقرأ في `src/server/**` فقط، وإلا فشل lint.
+- أي `process.env.NEXT_PUBLIC_*` يحوي `SERVICE`/`SECRET` ⟵ فشل lint **في كل مكان** (سرٌّ لا يكون عامًّا).
 
 **المصادقة (حقيقية — لا شِمّة):** `src/server/auth.ts` يتحقّق من **JWT من Supabase**
 (`Authorization: Bearer`) بسرّ التوقيع، ثم يحلّ `sub ← User.authId ← الأدوار`. **لا رأس هوية

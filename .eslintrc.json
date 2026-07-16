@@ -11,13 +11,31 @@
           }
         ]
       }
+    ],
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "MemberExpression[object.property.name='env'][property.name='SUPABASE_SERVICE_ROLE_KEY']",
+        "message": "service_role يتجاوز RLS كلها (postgres في صورة مفتاح) — لا يُقرأ إلا في src/server/**."
+      },
+      {
+        "selector": "MemberExpression[object.property.name='env'][property.name=/^NEXT_PUBLIC_.*(SERVICE|SECRET)/]",
+        "message": "سرٌّ لا يكون عامًّا أبدًا: متغيّر NEXT_PUBLIC_ يحوي SERVICE/SECRET يُحقَن في كل صفحة."
+      }
     ]
   },
   "overrides": [
     {
       "files": ["src/server/**"],
       "rules": {
-        "no-restricted-imports": "off"
+        "no-restricted-imports": "off",
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "MemberExpression[object.property.name='env'][property.name=/^NEXT_PUBLIC_.*(SERVICE|SECRET)/]",
+            "message": "سرٌّ لا يكون عامًّا أبدًا: متغيّر NEXT_PUBLIC_ يحوي SERVICE/SECRET يُحقَن في كل صفحة."
+          }
+        ]
       }
     }
   ]

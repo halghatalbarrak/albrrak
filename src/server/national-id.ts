@@ -117,3 +117,39 @@ export async function readNationalId(
 
   return plain;
 }
+
+export interface RevealApplicationArgs {
+  applicationId: string;
+  viewerId: string;
+  viewerRoles: Role[];
+  reason?: string;
+}
+
+/**
+ * كشف رقم هوية متقدّمٍ (قبل القبول) — للكادر المخوّل فقط، بطلبٍ صريح،
+ * وكل كشفٍ يُكتب سطرًا في سجل الاطّلاع (م٥). لا يظهر في أي كشفٍ افتراضيّ.
+ */
+export async function revealApplicationNationalId(
+  args: RevealApplicationArgs,
+  db: PrismaClient = prisma,
+): Promise<string> {
+  if (!args.viewerRoles.some((r) => NATIONAL_ID_VIEWER_ROLES.includes(r))) {
+    throw new AuthorizationError("غير مخوّل بالاطّلاع على رقم الهوية (م٥).");
+  }
+  const app = await db.application.findUnique({
+    where: { id: args.applicationId },
+    select: { nationalIdEnc: true },
+  });
+  if (!app) {
+    throw new AuthorizationError("طلب غير موجود.");
+  }
+  const plain = decryptNationalId(app.nationalIdEnc);
+  await db.nationalIdAccessLog.create({
+    data: {
+      subjectId: args.applicationId,
+      viewerId: args.viewerId,
+      reason: args.reason ?? "كشف رقم هوية متقدّم",
+    },
+  });
+  return plain;
+}

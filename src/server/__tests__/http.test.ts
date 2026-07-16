@@ -3,6 +3,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { GET as appsGET, POST as submitPOST } from "@/app/api/applications/route";
 import { GET as studentsGET } from "@/app/api/students/route";
 import { POST as decisionPOST } from "@/app/api/applications/[id]/decision/route";
+import { GET as meGET } from "@/app/api/me/route";
+import { POST as revealPOST } from "@/app/api/applications/[id]/reveal-id/route";
 import { acceptApplication, submitApplication } from "../application";
 import { prisma, resetDb } from "../testing/helpers";
 import { createNationality, createUser } from "../testing/factories";
@@ -146,5 +148,64 @@ describe("المصادقة والصلاحية على حدّ HTTP", () => {
     const forged = await mintJwt(child.id);
     const r = await studentsGET(get("http://t/api/students", forged));
     expect(r.status).toBe(403);
+  });
+});
+
+describe("GET /api/me — المستخدم عن نفسه", () => {
+  it("طالبٌ يرى صفحته (اسمه وحالته)، بلا رقم هوية", async () => {
+    seq += 1;
+    const authId = `me-${seq}`;
+    const u = await createUser(prisma, { roles: [Role.STUDENT], authId });
+    await prisma.student.create({ data: { userId: u.id } });
+    const jwt = await mintJwt(authId);
+
+    const res = await meGET(get("http://t/api/me", jwt));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      name: string;
+      student: { state: string } | null;
+    };
+    expect(body.student?.state).toBe("APPLIED");
+    expect(JSON.stringify(body)).not.toContain("nationalId");
+  });
+});
+
+describe("كشف رقم الهوية — للمُسجِّل فقط، بسطر سجل (م٥)", () => {
+  async function makeApp() {
+    const nat = await createNationality(prisma);
+    return submitApplication({
+      nameAsInId: "متقدّم",
+      nationalId: "1012345678",
+      nationalityId: nat.id,
+      birthDate: new Date("2010-01-01"),
+      gender: Gender.MALE,
+      guardianPhone: "0555000123",
+      guardianGender: Gender.MALE,
+    });
+  }
+
+  it("معلم ← 403", async () => {
+    const app = await makeApp();
+    const teacher = await actor([Role.TEACHER]);
+    const res = await revealPOST(
+      post(`http://t/api/applications/x/reveal-id`, {}, teacher.jwt),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("مُسجِّل ← يرى الرقم، ويُكتب سطرٌ في سجل الاطّلاع", async () => {
+    const app = await makeApp();
+    const registrar = await actor([Role.REGISTRAR]);
+    const res = await revealPOST(
+      post(`http://t/api/applications/x/reveal-id`, {}, registrar.jwt),
+      { params: Promise.resolve({ id: app.id }) },
+    );
+    expect(res.status).toBe(200);
+    const { nationalId } = (await res.json()) as { nationalId: string };
+    expect(nationalId).toBe("1012345678");
+    expect(
+      await prisma.nationalIdAccessLog.count({ where: { subjectId: app.id } }),
+    ).toBe(1);
   });
 });
