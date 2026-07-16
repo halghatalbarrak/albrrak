@@ -6,6 +6,7 @@
    ============================================================ */
 const $ = s=>document.querySelector(s);
 const arNum = n => Number(n).toLocaleString('ar-EG');
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
 /* ---------- مراجع القواعد ---------- */
 const ERR = {
@@ -90,8 +91,9 @@ let HARVEST=[
 /* ---------- الأدوار وقوائمها ---------- */
 const ROLES={
   general:{name:'المشرف العام',who:'د. المشرف العام',nav:[
-    ['الإشراف',[['dash','📊','لوحة القيادة'],['reports','📈','التقارير والمؤشرات'],['audit','🛡️','سجل التدقيق']]],
-    ['التشغيل',[['exchange','📿','بورصة الإنجاز'],['admissions','📝','القبول والانتظار','wl'],['excuses','📄','الأعذار'],['linking','🔗','الربط والمراجعة']]],
+    ['الإشراف',[['dash','📊','لوحة القيادة'],['reports','📈','التقارير والمؤشرات'],['circlemgmt','🏫','إدارة الحلقات'],['audit','🛡️','سجل التدقيق'],['users','👥','إدارة المستخدمين']]],
+    ['السجلّات',[['studentmgmt','🎓','إدارة الطلاب'],['guardianmgmt','👪','أولياء الأمور']]],
+    ['التشغيل',[['exchange','📿','بورصة الإنجاز'],['admissions','📝','القبول والانتظار','wl'],['teacherapps','🧑‍🏫','طلبات المعلمين'],['excuses','📄','الأعذار'],['linking','🔗','الربط والمراجعة']]],
     ['التربية',[['market','🛒','سوق الحلقة'],['kiosk','🖥️','شاشة المسجد'],['notif','🔔','الإشعارات','nf']]],
     ['المالية',[['finance','💳','البوابة المالية']]],
   ]},
@@ -100,14 +102,14 @@ const ROLES={
     ['أدوات',[['linking','🔗','الربط والمراجعة'],['excuses','📄','الأعذار'],['notif','🔔','الإشعارات','nf']]],
   ]},
   admin:{name:'الإداري (شؤون الطالب)',who:'أ. ماجد — شؤون الطالب',nav:[
-    ['القبول',[['admissions','📝','القبول والانتظار','wl'],['excuses','📄','إدارة الأعذار']]],
+    ['القبول',[['admissions','📝','القبول والانتظار','wl'],['teacherapps','🧑‍🏫','طلبات المعلمين'],['excuses','📄','إدارة الأعذار']]],
     ['المتابعة',[['dash','📊','لوحة القيادة'],['reports','📈','التقارير'],['notif','🔔','الإشعارات','nf']]],
   ]},
   examiner:{name:'المُسمِّع (الحصاد)',who:'الشيخ المُسمِّع',nav:[
     ['الحصاد',[['harvest','🌾','جلسات الحصاد'],['exchange','📿','بورصة الإنجاز']]],
   ]},
   parent:{name:'ولي الأمر',who:'أبو محمد الغامدي',nav:[
-    ['أبنائي',[['children','👨‍👦','أبنائي ومتابعتهم'],['approvals','✅','الموافقات والدفع']]],
+    ['أبنائي',[['children','👨‍👦','أبنائي ومتابعتهم'],['sheet','📋','ورقة المتابعة'],['approvals','✅','الموافقات والدفع']]],
     ['حساب',[['notif','🔔','الإشعارات','nf']]],
   ]},
   student:{name:'الطالب البالغ',who:'أنس بن ماجد الحربي',nav:[
@@ -118,12 +120,19 @@ const ROLES={
   ]},
 };
 let ROLE='teacher', VIEW='tasmee', activeCircle='sabah', sheetStudent=1, marketStudent=7, childSel=1;
+let TEACHER_APPS=[];
+let TEACHERS_ROSTER=[];
 
 /* ---------- عناوين الشاشات ---------- */
 const TITLES={
   dash:['لوحة القيادة','نظرةٌ حيّة على حال الحلقات اليوم'],
   reports:['التقارير ومؤشرات النجاح','قياسٌ حيّ مقابل أهداف الوثيقة'],
   audit:['سجل التدقيق','توثيقُ العمليات الحسّاسة — SRS 10.7'],
+  users:['إدارة المستخدمين','منح الأدوار وتعطيل/تفعيل الحسابات — للمشرف العام'],
+  teacherapps:['طلبات المعلمين','مراجعة المتقدّمين لشغل وظيفة معلم'],
+  circlemgmt:['إدارة الحلقات والمعلمين','إضافة وتعديل الحلقات وتعيين المعلّمين'],
+  studentmgmt:['إدارة الطلاب','إضافة وتعديل سجلّات الطلاب وربطهم بالحلقات والعائلات'],
+  guardianmgmt:['إدارة أولياء الأمور','سجلّات العائلات التي يُربط بها الطلاب والحسابات'],
   exchange:['بورصة الإنجاز اليومية','تصوّرٌ حيّ لوضع كل الطلاب اليوم — FR-ADM-01'],
   admissions:['القبول وقائمة الانتظار','مراجعة الطلبات وإدارة الانتظار — FR-ADM-04'],
   excuses:['إدارة الأعذار','تسجيل الأعذار وأثرها على الحضور — SRS 7.9'],
@@ -148,15 +157,32 @@ function achievePct(l,t){return t>0?Math.min(999,Math.round(l/t*100)):0;}
 function statusClass(st){return st==='green'?'st-green':st==='red'?'st-red':st==='grad'?'st-grad':'st-empty';}
 function barColor(st){return st==='green'?'var(--green)':st==='red'?'var(--red)':st==='grad'?'var(--amber)':'#ddd';}
 function unreadNotif(){return NOTIFS.filter(n=>!n.read).length;}
+function currentStudent(){
+  const sid = CURRENT_USER && CURRENT_USER.student_id;
+  return STUDENTS.find(x=>x.id===sid) || STUDENTS[0];
+}
+function calcAge(birthDate){
+  if(!birthDate) return '';
+  const b=new Date(birthDate), t=new Date();
+  let a=t.getFullYear()-b.getFullYear();
+  const m=t.getMonth()-b.getMonth();
+  if(m<0||(m===0&&t.getDate()<b.getDate())) a--;
+  return a;
+}
+function fmtDate(ts){ if(!ts) return '—'; try{ return new Date(ts).toLocaleDateString('ar-EG'); }catch(e){ return '—'; } }
+function openChildSheet(id){ sheetStudent=id; switchTo('sheet'); }
+function openStudentMarket(){ const st=currentStudent(); marketStudent=st.id; switchTo('market'); }
 function logAudit(who,act){AUDIT.unshift({who,act,time:'الآن'});DB.log(who,act);}
 
 /* ---------- بناء القائمة الجانبية حسب الدور ---------- */
 function buildRoleSelect(){
-  $('#roleSel').innerHTML=Object.entries(ROLES).map(([k,r])=>`<option value="${k}" ${k===ROLE?'selected':''}>${r.name}</option>`).join('');
+  const sel=$('#roleSel');
+  if(sel) sel.innerHTML=Object.entries(ROLES).map(([k,r])=>`<option value="${k}" ${k===ROLE?'selected':''}>${r.name}</option>`).join('');
 }
 function buildNav(){
   const r=ROLES[ROLE];
-  $('#nav').innerHTML=r.nav.map(([grp,items])=>`<div class="grp">${grp}</div>`+items.map(it=>{
+  const nav=$('#nav');
+  if(nav) nav.innerHTML=r.nav.map(([grp,items])=>`<div class="grp">${grp}</div>`+items.map(it=>{
     const [v,ic,label,badge]=it;
     let cnt='';
     if(badge==='wl') cnt=`<span class="cnt">${arNum(WAITLIST.filter(w=>w.status==='pending').length)}</span>`;
@@ -171,20 +197,22 @@ function buildNav(){
 function switchRole(r){
   ROLE=r; VIEW=ROLES[r].nav[0][1][0][0];
   buildNav(); render();
-  document.getElementById('sidebar').classList.remove('open');
+  const sb=document.getElementById('sidebar'); if(sb) sb.classList.remove('open');
 }
-function switchTo(v){ VIEW=v; buildNav(); render(); document.getElementById('sidebar').classList.remove('open'); }
+function switchTo(v){ VIEW=v; buildNav(); render(); const sb=document.getElementById('sidebar'); if(sb) sb.classList.remove('open'); }
 
 /* ---------- الراوتر ---------- */
 function render(){
-  $('#viewTitle').textContent=TITLES[VIEW]?TITLES[VIEW][0]:'';
-  $('#viewSub').textContent=TITLES[VIEW]?TITLES[VIEW][1]:'';
+  const vt=$('#viewTitle'); if(vt) vt.textContent=TITLES[VIEW]?TITLES[VIEW][0]:'';
+  const vs=$('#viewSub');   if(vs) vs.textContent=TITLES[VIEW]?TITLES[VIEW][1]:'';
   const c=$('#content');
+  if(!c) return;
   const map={dash:renderDash,reports:renderReports,audit:renderAudit,exchange:renderExchange,
     admissions:renderAdmissions,excuses:renderExcuses,linking:renderLinking,market:renderMarket,
     kiosk:renderKiosk,notif:renderNotif,finance:renderFinance,tasmee:renderTasmee,sheet:renderSheet,
     harvest:renderHarvest,children:renderChildren,approvals:renderApprovals,myprog:renderMyprog,
-    qr:renderQR,impact:renderImpact};
+    qr:renderQR,impact:renderImpact,users:renderUsers,teacherapps:renderTeacherApps,circlemgmt:renderCircleMgmt,
+    studentmgmt:renderStudentMgmt,guardianmgmt:renderGuardianMgmt};
   (map[VIEW]||renderDash)(c);
 }
 
@@ -724,6 +752,367 @@ function renderAudit(c){
 }
 
 /* ============================================================
+   إدارة المستخدمين (للمشرف العام) — منح الأدوار وتعطيل الحسابات
+   ============================================================ */
+let USERS_CACHE=[], USERS_FILTER='all';
+function renderUsers(c){
+  const filterOpts=[['all','كل الأدوار']].concat(Object.entries(ROLE_LABELS)).map(([k,l])=>`<option value="${k}" ${USERS_FILTER===k?'selected':''}>${l}</option>`).join('');
+  c.innerHTML=`
+  <div class="note"><b>للمشرف العام فقط:</b> منح الأدوار (إداري/داعم/معلم/مُسمِّع/ولي أمر…) وتعطيل/تفعيل الحسابات والربط بالبيانات. كل عملية تُنفَّذ عبر دالة محميّة في القاعدة وتُوثَّق في سجل التدقيق. صفِّ بالدور لإدارة فئةٍ بعينها.</div>
+  <div class="panel"><div class="panel-h"><h3>مستخدمو المنصّة</h3>
+    <div style="display:flex;align-items:center;gap:8px"><select onchange="setUsersFilter(this.value)" aria-label="تصفية بالدور">${filterOpts}</select><span class="hint" id="usersHint">جارٍ التحميل…</span></div></div>
+    <div class="panel-b" id="usersBody"><div style="text-align:center;color:#9a9482;padding:20px">جارٍ التحميل…</div></div></div>`;
+  loadUsers();
+}
+async function loadUsers(){
+  const data=await DB.listProfiles();
+  if(!data){ const body=$('#usersBody'), hint=$('#usersHint'); if(body) body.innerHTML='<div style="text-align:center;color:#9a9482;padding:20px">تعذّر تحميل المستخدمين — تتطلب صلاحية مشرف عام واتصالاً بالقاعدة.</div>'; if(hint) hint.textContent=''; return; }
+  USERS_CACHE=data;
+  paintUsers();
+}
+function paintUsers(){
+  const body=$('#usersBody'), hint=$('#usersHint');
+  const list=USERS_FILTER==='all'?USERS_CACHE:USERS_CACHE.filter(u=>u.role===USERS_FILTER);
+  if(hint) hint.textContent=arNum(list.length)+' مستخدم';
+  if(body) body.innerHTML=list.length?list.map(userRow).join(''):'<div style="text-align:center;color:#9a9482;padding:20px">لا مستخدمين بهذا الدور</div>';
+}
+function setUsersFilter(v){ USERS_FILTER=v; paintUsers(); }
+function userRow(u){
+  const roles=Object.entries(ROLE_LABELS).map(([k,l])=>`<option value="${k}" ${u.role===k?'selected':''}>${l}</option>`).join('');
+  const off=u.status==='disabled';
+  const link=linkControl(u);
+  return `<div class="lrow"><div class="av">${off?'🚫':'👤'}</div>
+    <div class="info"><div class="t">${esc(u.full_name)||'—'} ${off?'<span class="tag r">معطَّل</span>':''}</div>
+      <div class="d">${esc(u.phone)||'—'} ، الدور الحالي: ${ROLE_LABELS[u.role]||esc(u.role)||'—'}</div>
+      ${link?`<div class="field" style="margin-top:8px;margin-bottom:0"><label>الربط بالبيانات</label>${link}</div>`:''}</div>
+    <div class="acts">
+      <select onchange="changeUserRole('${u.id}',this.value)" ${off?'disabled':''} aria-label="تغيير الدور">${roles}</select>
+      <button class="btn ${off?'btn-green':'btn-g'} btn-sm" onclick="toggleUserStatus('${u.id}','${off?'active':'disabled'}')">${off?'تفعيل':'تعطيل'}</button>
+    </div></div>`;
+}
+function linkControl(u){
+  if(u.role==='student'){
+    const opts=`<option value="">— اختر الطالب —</option>`+STUDENTS.map(s=>`<option value="${s.id}" ${String(u.student_id)===String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('');
+    return `<select onchange="linkStudentUser('${u.id}',this.value)" aria-label="ربط الحساب بالطالب">${opts}</select>`;
+  }
+  if(u.role==='parent'){
+    const opts=`<option value="">— اختر العائلة —</option>`+Object.entries(GUARDIANS).map(([k,g])=>`<option value="${k}" ${u.guardian_id===k?'selected':''}>${esc(g.name)}</option>`).join('');
+    return `<select onchange="linkParentUser('${u.id}',this.value)" aria-label="ربط الحساب بالعائلة">${opts}</select>`;
+  }
+  return '';
+}
+async function linkStudentUser(id, studentId){
+  const {error}=await DB.linkUser(id, Number(studentId), null);
+  if(error){ toast('⚠','تعذّر الربط',error.message); return; }
+  await loadUsers();
+  toast('🔗','تم الربط','رُبط الحساب بالطالب — سيرى بياناته عند الدخول');
+}
+async function linkParentUser(id, guardianId){
+  const {error}=await DB.linkUser(id, null, guardianId);
+  if(error){ toast('⚠','تعذّر الربط',error.message); return; }
+  await loadUsers();
+  toast('🔗','تم الربط','رُبط الحساب بالعائلة — سيرى أبناءه عند الدخول');
+}
+
+/* ============================================================
+   نظام إدارة المعلمين (مرحلة ١) — طلبات التوظيف
+   نموذج تقديم عام + شاشة عرض/إدخال للمشرف والإداري
+   ============================================================ */
+function appStatusTag(s){
+  const map={new:['جديد','b'],review:['قيد المراجعة','a'],interview:['مقابلة','a'],accepted:['مقبول','g'],assigned:['أُسنِد لحلقة','g'],rejected:['مرفوض','r']};
+  const m=map[s]||[s||'—','n'];
+  return `<span class="tag ${m[1]}">${esc(m[0])}</span>`;
+}
+/* حقول النموذج المشتركة (نموذج عام ونافذة الإدخال اليدوي) */
+function applyFields(){
+  return `
+  <div class="field"><label>الاسم كما في الهوية</label><input id="ap_name" autocomplete="name"></div>
+  <div class="field"><label>رقم الهوية</label><input id="ap_id" inputmode="numeric"></div>
+  <div class="field"><label>نوع الهوية</label><select id="ap_idtype"><option value="">— اختر —</option><option value="مواطن">مواطن</option><option value="مقيم">مقيم</option><option value="زائر">زائر</option></select></div>
+  <div class="field"><label>الجنسية</label><input id="ap_nat"></div>
+  <div class="field"><label>تاريخ الميلاد (ميلادي)</label>
+    <div style="display:flex;gap:10px;align-items:center"><input id="ap_birth" type="date" oninput="updateApplyAge()" style="flex:1"><span id="ap_age" class="hint" style="white-space:nowrap"></span></div></div>
+  <div class="field"><label>الجنس</label><select id="ap_gender"><option value="">— اختر —</option><option value="ذكر">ذكر</option><option value="أنثى">أنثى</option></select></div>
+  <div class="field"><label>الحالة الاجتماعية</label><select id="ap_marital"><option value="">— اختر —</option><option value="أعزب">أعزب</option><option value="متزوج">متزوج</option><option value="مطلّق">مطلّق</option><option value="أرمل">أرمل</option></select></div>
+  <div class="field"><label>تاريخ انتهاء الهوية (ميلادي)</label><input id="ap_expiry" type="date"></div>
+  <div class="field"><label>رقم الجوال</label><input id="ap_phone" inputmode="tel" autocomplete="tel"></div>
+  <div class="field"><label>المؤهّل الدراسي</label><input id="ap_qual"></div>
+  <div class="field"><label>هل تم تعيينه في الجمعية سابقاً؟</label><select id="ap_hired"><option value="">— اختر —</option><option value="yes">نعم</option><option value="no">لا</option></select></div>`;
+}
+function updateApplyAge(){
+  const b=document.getElementById('ap_birth'), a=document.getElementById('ap_age');
+  if(b&&a){ const age=calcAge(b.value); a.textContent=age===''?'':('العمر: '+arNum(age)+' سنة'); }
+}
+async function submitApply(source){
+  const v=id=>{const el=document.getElementById(id);return el?String(el.value).trim():'';};
+  const app={
+    full_name:v('ap_name'), id_number:v('ap_id'), id_type:v('ap_idtype'),
+    nationality:v('ap_nat'), birth_date:v('ap_birth'), gender:v('ap_gender'),
+    marital_status:v('ap_marital'), id_expiry:v('ap_expiry'), phone:v('ap_phone'),
+    qualification:v('ap_qual'), hired_before:v('ap_hired')==='yes',
+    status:'new', source:source||'form'
+  };
+  const err=document.getElementById('ap_err');
+  const required=['full_name','id_number','id_type','nationality','birth_date','gender','marital_status','id_expiry','phone','qualification'];
+  if(required.some(k=>!app[k]) || v('ap_hired')===''){ if(err) err.textContent='رجاءً املأ جميع الحقول'; return; }
+  if(err) err.textContent='جارٍ الإرسال…';
+  const {error}=await DB.submitTeacherApp(app);
+  if(error){ if(err) err.textContent='تعذّر الإرسال: '+error.message; return; }
+  if(source==='manual'){
+    closeModal();
+    TEACHER_APPS = await DB.loadTeacherApps() || TEACHER_APPS;
+    render();
+    toast('🧑‍🏫','أُضيف المتقدّم','سُجّل الطلب في قائمة طلبات المعلمين');
+  } else {
+    applyThankYou();
+  }
+}
+/* النموذج العام (بلا تسجيل دخول) */
+function showApply(){
+  hideLogin();
+  let el=document.getElementById('applyGate');
+  if(!el){ el=document.createElement('div'); el.id='applyGate'; document.body.appendChild(el); }
+  el.className='authgate'; el.removeAttribute('style');
+  el.innerHTML=`
+   <div class="authcard" style="max-width:520px">
+     <div class="head"><div class="logo">☾</div><h2>التقديم لوظيفة معلم</h2><p>حلقات الشيخ محمد البراك</p></div>
+     <div class="body">
+       ${applyFields()}
+       <div id="ap_err" class="autherr"></div>
+       <button class="btn btn-p" style="width:100%" onclick="submitApply('form')">إرسال الطلب</button>
+       <div class="authswitch">لديك حساب؟ <a onclick="closeApply()">تسجيل الدخول</a></div>
+     </div>
+   </div>`;
+}
+function closeApply(){ const el=document.getElementById('applyGate'); if(el) el.remove(); showLogin('in'); }
+function openApplyFromLogin(){ hideLogin(); showApply(); }
+function applyThankYou(){
+  const el=document.getElementById('applyGate'); if(!el) return;
+  el.innerHTML=`
+   <div class="authcard">
+     <div class="head"><div class="logo">☾</div><h2>تم استلام طلبك</h2><p>سيتواصل معك المشرف قريباً بإذن الله</p></div>
+     <div class="body">
+       <div style="text-align:center;color:var(--muted-2);font-size:13px;line-height:2">شكراً لتقديمك للانضمام إلى فريق المعلمين.<br>سنراجع طلبك ونعاود التواصل عبر الجوال الذي أدخلته.</div>
+       <button class="btn btn-p" style="width:100%;margin-top:16px" onclick="location.href='./'">العودة للصفحة الرئيسية</button>
+     </div>
+   </div>`;
+}
+/* الإدخال اليدوي من الإدارة (نافذة داخل التطبيق) */
+function openApplyModal(){
+  $('#modal').innerHTML=`
+  <div class="modal-h"><div><h3>إضافة متقدّم يدوياً</h3><small>تسجيل طلب معلم من قبل الإدارة</small></div><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b">${applyFields()}<div id="ap_err" class="autherr"></div></div>
+  <div class="modal-f"><button class="btn btn-g" onclick="closeModal()">إلغاء</button><button class="btn btn-p" onclick="submitApply('manual')">حفظ الطلب</button></div>`;
+  $('#overlay').classList.add('show');
+}
+/* شاشة عرض الطلبات — للمشرف والإداري فقط */
+function renderTeacherApps(c){
+  const apps=TEACHER_APPS;
+  const fresh=apps.filter(a=>a.status==='new').length;
+  c.innerHTML=`
+  <div class="note"><b>طلبات التوظيف:</b> يُقدّم المعلم عبر الرابط العام أو تُدخله الإدارة يدوياً، ثم تُراجَع الطلبات هنا. بيانات الهوية حسّاسة (PDPL) ولا يراها إلا الكادر المخوّل.</div>
+  <div class="kpis">
+    <div class="kpi ${fresh?'warn':'ok'}"><div class="v">${arNum(fresh)}</div><div class="l">طلبات جديدة</div><div class="t" style="color:${fresh?'var(--amber)':'var(--green)'}">${fresh?'بحاجة مراجعة':'لا جديد'}</div></div>
+    <div class="kpi"><div class="v">${arNum(apps.length)}</div><div class="l">إجمالي المتقدّمين</div><div class="t" style="color:#9a9482">كل الحالات</div></div>
+  </div>
+  <div class="panel"><div class="panel-h"><h3>المتقدّمون لوظيفة معلم</h3><button class="btn btn-p btn-sm" onclick="openApplyModal()">＋ إضافة متقدّم يدوياً</button></div>
+    <div class="panel-b" style="padding:0;overflow:auto">${apps.length?`<table><thead><tr><th>الاسم</th><th>الجوال</th><th>الجنسية</th><th>العمر</th><th>المؤهّل</th><th>الحالة</th><th>تاريخ التقديم</th></tr></thead><tbody>
+      ${apps.map(a=>`<tr><td class="s">${esc(a.full_name)}</td><td>${esc(a.phone)}</td><td>${esc(a.nationality)}</td><td>${a.birth_date?arNum(calcAge(a.birth_date)):'—'}</td><td>${esc(a.qualification)}</td><td>${appStatusTag(a.status)}</td><td>${fmtDate(a.created_at)}</td></tr>`).join('')}
+    </tbody></table>`:'<div style="text-align:center;color:#9a9482;padding:24px">لا طلبات بعد — شاركوا رابط التقديم أو أضيفوا متقدّماً يدوياً.</div>'}</div></div>`;
+}
+
+/* ============================================================
+   إدارة الحلقات والمعلمين (للمشرف العام)
+   ============================================================ */
+function circleRow(cc){
+  const count=STUDENTS.filter(s=>s.circle===cc.id).length;
+  const cap=cc.capacity||50;
+  return `<tr><td class="s">${esc(cc.name)}</td><td>${esc(cc.mosque)||'—'}</td><td>${esc(cc.teacher)||'—'}</td><td>${arNum(count)} / ${arNum(cap)}</td>
+    <td><button class="btn btn-o btn-sm" onclick="openCircleModal('${esc(cc.id)}')">✎ تعديل</button></td></tr>`;
+}
+function renderCircleMgmt(c){
+  c.innerHTML=`
+  <div class="note"><b>إدارة الحلقات:</b> أضِف حلقةً جديدة أو عدّل القائمة، وعيّن المعلّم والسعة. المعلّمون قائمةٌ بالحسابات التي دورها «معلم» (تُمنح الصفة من «إدارة المستخدمين»).</div>
+  <div class="kpis">
+    <div class="kpi"><div class="v">${arNum(CIRCLES.length)}</div><div class="l">الحلقات</div><div class="t" style="color:#9a9482">مُفعّلة</div></div>
+    <div class="kpi"><div class="v" id="cmTeachersCount">…</div><div class="l">المعلمون</div><div class="t" style="color:#9a9482">حسابات معلمين</div></div>
+    <div class="kpi"><div class="v">${arNum(STUDENTS.length)}</div><div class="l">إجمالي الطلاب</div><div class="t" style="color:#9a9482">في كل الحلقات</div></div>
+  </div>
+  <div class="panel"><div class="panel-h"><h3>الحلقات</h3><button class="btn btn-p btn-sm" onclick="openCircleModal(null)">＋ إضافة حلقة</button></div>
+    <div class="panel-b" style="padding:0;overflow:auto">${CIRCLES.length?`<table><thead><tr><th>الحلقة</th><th>المسجد</th><th>المعلّم</th><th>الطلاب / السعة</th><th>إجراء</th></tr></thead><tbody>
+      ${CIRCLES.map(circleRow).join('')}
+    </tbody></table>`:'<div style="text-align:center;color:#9a9482;padding:24px">لا حلقات — أضِف أول حلقة.</div>'}</div></div>
+  <div class="panel"><div class="panel-h"><h3>المعلمون</h3><span class="hint">حسابات دورها «معلم»</span></div>
+    <div class="panel-b" id="cmTeachers"><div style="text-align:center;color:#9a9482;padding:16px">جارٍ التحميل…</div></div></div>`;
+  loadTeachersRoster();
+}
+async function loadTeachersRoster(){
+  TEACHERS_ROSTER = await DB.loadStaffTeachers();
+  const box=$('#cmTeachers'), cnt=$('#cmTeachersCount');
+  if(cnt) cnt.textContent=arNum(TEACHERS_ROSTER.length);
+  if(box) box.innerHTML = TEACHERS_ROSTER.length
+    ? TEACHERS_ROSTER.map(t=>`<div class="lrow"><div class="av">🧑‍🏫</div><div class="info"><div class="t">${esc(t.full_name)||'—'}</div><div class="d">${esc(t.phone)||'—'}</div></div></div>`).join('')
+    : '<div style="text-align:center;color:#9a9482;padding:16px">لا حسابات معلمين بعد — تُمنح صفة «معلم» من «إدارة المستخدمين».</div>';
+}
+function openCircleModal(id){
+  const cc = id ? CIRCLES.find(x=>x.id===id) : null;
+  const manualTeacher = cc && cc.teacher && !TEACHERS_ROSTER.some(t=>t.full_name===cc.teacher) ? cc.teacher : '';
+  const teacherOpts = `<option value="">— بلا معلّم —</option>`+TEACHERS_ROSTER.map(t=>`<option value="${esc(t.full_name)}" ${cc&&cc.teacher===t.full_name?'selected':''}>${esc(t.full_name)}</option>`).join('');
+  $('#modal').innerHTML=`
+  <div class="modal-h"><div><h3>${cc?'تعديل حلقة':'إضافة حلقة'}</h3><small>${cc?esc(cc.name):'حلقة جديدة'}</small></div><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b">
+    <div class="field"><label>المعرّف (إنجليزي بلا مسافات)</label><input id="cm_id" value="${cc?esc(cc.id):''}" ${cc?'disabled':''} placeholder="مثال: maghrib"></div>
+    <div class="field"><label>اسم الحلقة</label><input id="cm_name" value="${cc?esc(cc.name):''}" placeholder="مثال: حلقة المغرب"></div>
+    <div class="field"><label>المسجد</label><input id="cm_mosque" value="${cc&&cc.mosque?esc(cc.mosque):''}"></div>
+    <div class="field"><label>المعلّم (من الحسابات)</label><select id="cm_teacher">${teacherOpts}</select></div>
+    <div class="field"><label>أو اسم معلّم يدوياً (اختياري — يُقدَّم على الأعلى)</label><input id="cm_teacher_manual" value="${esc(manualTeacher)}" placeholder="اسم المعلّم"></div>
+    <div class="field"><label>السعة</label><input id="cm_cap" type="number" min="1" value="${cc&&cc.capacity?cc.capacity:50}"></div>
+    <div id="cm_err" class="autherr"></div>
+  </div>
+  <div class="modal-f"><button class="btn btn-g" onclick="closeModal()">إلغاء</button><button class="btn btn-p" onclick="saveCircleForm(${cc?'true':'false'})">حفظ</button></div>`;
+  $('#overlay').classList.add('show');
+}
+async function saveCircleForm(isEdit){
+  const v=id=>{const el=document.getElementById(id);return el?String(el.value).trim():'';};
+  const id=v('cm_id'), name=v('cm_name');
+  const err=document.getElementById('cm_err');
+  if(!id||!name){ if(err) err.textContent='المعرّف واسم الحلقة إلزاميان'; return; }
+  if(!/^[a-z0-9_-]+$/i.test(id)){ if(err) err.textContent='المعرّف بالإنجليزية/الأرقام فقط بلا مسافات'; return; }
+  const teacher = v('cm_teacher_manual') || v('cm_teacher');
+  const circle={ id, name, mosque:v('cm_mosque'), teacher, capacity:Number(v('cm_cap'))||50 };
+  if(err) err.textContent='جارٍ الحفظ…';
+  const {error}=await DB.saveCircle(circle);
+  if(error){ if(err) err.textContent='تعذّر الحفظ: '+error.message; return; }
+  logAudit('المشرف العام',(isEdit?'تعديل حلقة: ':'إضافة حلقة: ')+name);
+  closeModal();
+  await loadData();
+  render();
+  toast('🏫', isEdit?'حُدّثت الحلقة':'أُضيفت الحلقة', name);
+}
+
+/* ============================================================
+   إدارة الطلاب (للمشرف العام)
+   ============================================================ */
+const PROGRAMS=['معارج','مراقي','مُذّكِر'];
+const STUDENT_STATES=[['active','نشط'],['tajribi','تجريبي'],['excused','معذور'],['interrupted','منقطع'],['graduated','متخرّج'],['deleted','محذوف']];
+function studentStateTag(s){
+  const map={active:['نشط','g'],tajribi:['تجريبي','b'],excused:['معذور','a'],interrupted:['منقطع','r'],graduated:['متخرّج','g'],deleted:['محذوف','n']};
+  const m=map[s]||['نشط','g']; return `<span class="tag ${m[1]}">${esc(m[0])}</span>`;
+}
+function studentMgmtRow(st){
+  const g=GUARDIANS[st.guardian], cc=CIRCLES.find(x=>x.id===st.circle);
+  return `<tr><td class="s">${esc(st.name)}</td><td>${cc?esc(cc.name):'—'}</td><td>${g?esc(g.name):'—'}</td><td>${st.age?arNum(st.age):'—'}</td><td>${esc(st.program)||'—'}</td><td>${arNum(st.dailyTarget||0)}</td><td>${studentStateTag(st.status)}</td>
+    <td><button class="btn btn-o btn-sm" onclick="openStudentModal(${st.id})">✎ تعديل</button></td></tr>`;
+}
+function renderStudentMgmt(c){
+  c.innerHTML=`
+  <div class="note"><b>إدارة الطلاب:</b> أضِف طالباً أو عدّل سجلّه (الحلقة، العائلة، البرنامج، الهدف، الحالة). الطلاب المقبولون من قائمة الانتظار يظهرون هنا أيضاً. لإخراج طالب اجعل حالته «منقطع» أو «محذوف» بدل الحذف النهائي.</div>
+  <div class="kpis">
+    <div class="kpi"><div class="v">${arNum(STUDENTS.length)}</div><div class="l">إجمالي الطلاب</div><div class="t" style="color:#9a9482">كل الحلقات</div></div>
+    <div class="kpi"><div class="v">${arNum(CIRCLES.length)}</div><div class="l">الحلقات</div><div class="t" style="color:#9a9482">مُتاحة للإسناد</div></div>
+    <div class="kpi"><div class="v">${arNum(Object.keys(GUARDIANS).length)}</div><div class="l">العائلات</div><div class="t" style="color:#9a9482">أولياء الأمور</div></div>
+  </div>
+  <div class="panel"><div class="panel-h"><h3>الطلاب</h3><button class="btn btn-p btn-sm" onclick="openStudentModal(null)">＋ إضافة طالب</button></div>
+    <div class="panel-b" style="padding:0;overflow:auto">${STUDENTS.length?`<table><thead><tr><th>الاسم</th><th>الحلقة</th><th>ولي الأمر</th><th>العمر</th><th>البرنامج</th><th>الهدف</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>
+      ${STUDENTS.map(studentMgmtRow).join('')}
+    </tbody></table>`:'<div style="text-align:center;color:#9a9482;padding:24px">لا طلاب — أضِف أول طالب.</div>'}</div></div>`;
+}
+function openStudentModal(id){
+  const st = id ? STUDENTS.find(x=>x.id===id) : null;
+  const circleOpts = CIRCLES.map(cc=>`<option value="${esc(cc.id)}" ${st&&st.circle===cc.id?'selected':''}>${esc(cc.name)}</option>`).join('')||'<option value="">— لا حلقات —</option>';
+  const guardOpts = `<option value="">— بلا —</option>`+Object.entries(GUARDIANS).map(([k,g])=>`<option value="${esc(k)}" ${st&&st.guardian===k?'selected':''}>${esc(g.name)}</option>`).join('');
+  const progOpts = PROGRAMS.map(p=>`<option value="${p}" ${st&&st.program===p?'selected':''}>${p}</option>`).join('');
+  const statusOpts = STUDENT_STATES.map(([v,l])=>`<option value="${v}" ${st&&st.status===v?'selected':''}>${l}</option>`).join('');
+  $('#modal').innerHTML=`
+  <div class="modal-h"><div><h3>${st?'تعديل طالب':'إضافة طالب'}</h3><small>${st?esc(st.name):'طالب جديد'}</small></div><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b">
+    <div class="field"><label>الاسم الكامل</label><input id="st_name" value="${st?esc(st.name):''}"></div>
+    <div class="field"><label>الحلقة</label><select id="st_circle">${circleOpts}</select></div>
+    <div class="field"><label>ولي الأمر (العائلة)</label><select id="st_guardian">${guardOpts}</select></div>
+    <div class="field"><label>العمر</label><input id="st_age" type="number" min="4" max="30" value="${st&&st.age?st.age:''}"></div>
+    <div class="field"><label>البرنامج</label><select id="st_program">${progOpts}</select></div>
+    <div class="field"><label>الهدف اليومي (أسطر)</label><input id="st_target" type="number" min="1" value="${st&&st.dailyTarget?st.dailyTarget:8}"></div>
+    <div class="field"><label>الحالة</label><select id="st_status">${statusOpts}</select></div>
+    <div id="st_err" class="autherr"></div>
+  </div>
+  <div class="modal-f"><button class="btn btn-g" onclick="closeModal()">إلغاء</button><button class="btn btn-p" onclick="saveStudentForm(${st?st.id:'null'})">حفظ</button></div>`;
+  $('#overlay').classList.add('show');
+}
+async function saveStudentForm(id){
+  const v=x=>{const el=document.getElementById(x);return el?String(el.value).trim():'';};
+  const name=v('st_name'), err=document.getElementById('st_err');
+  if(!name){ if(err) err.textContent='الاسم إلزامي'; return; }
+  const existing = id ? STUDENTS.find(x=>x.id===id) : null;
+  const student={
+    full_name:name, circle_id:v('st_circle')||null, guardian_id:v('st_guardian')||null,
+    age:Number(v('st_age'))||null, program:v('st_program'), daily_target:Number(v('st_target'))||8,
+    status:v('st_status')||'active',
+    last_stop_surah: existing?existing.lastStop.surah:2,
+    last_stop_ayah:  existing?existing.lastStop.ayah:1
+  };
+  if(id) student.id=id;
+  if(err) err.textContent='جارٍ الحفظ…';
+  const {error}=await DB.saveStudent(student);
+  if(error){ if(err) err.textContent='تعذّر الحفظ: '+error.message; return; }
+  logAudit('المشرف العام',(id?'تعديل طالب: ':'إضافة طالب: ')+name.split(' ').slice(0,2).join(' '));
+  closeModal(); await loadData(); render();
+  toast('🎓', id?'حُدّث الطالب':'أُضيف الطالب', name.split(' ').slice(0,2).join(' '));
+}
+
+/* ============================================================
+   إدارة أولياء الأمور (العائلات) — للمشرف العام
+   ============================================================ */
+function renderGuardianMgmt(c){
+  const entries=Object.entries(GUARDIANS);
+  c.innerHTML=`
+  <div class="note"><b>سجلّات العائلات (أولياء الأمور):</b> أضِف عائلةً أو عدّل بياناتها؛ يُربط بها الطلاب وحسابات أولياء الأمور (من «إدارة المستخدمين»). الجوال بيانات حسّاسة (PDPL).</div>
+  <div class="panel"><div class="panel-h"><h3>العائلات</h3><button class="btn btn-p btn-sm" onclick="openGuardianModal(null)">＋ إضافة عائلة</button></div>
+    <div class="panel-b" style="padding:0;overflow:auto">${entries.length?`<table><thead><tr><th>المعرّف</th><th>الاسم</th><th>الجوال</th><th>الأبناء</th><th>إجراء</th></tr></thead><tbody>
+      ${entries.map(([k,g])=>{const kids=STUDENTS.filter(s=>s.guardian===k).length;return `<tr><td class="s">${esc(k)}</td><td>${esc(g.name)}</td><td>${esc(g.phone)||'—'}</td><td>${arNum(kids)}</td><td><button class="btn btn-o btn-sm" onclick="openGuardianModal('${esc(k)}')">✎ تعديل</button></td></tr>`;}).join('')}
+    </tbody></table>`:'<div style="text-align:center;color:#9a9482;padding:24px">لا عائلات — أضِف أول عائلة.</div>'}</div></div>`;
+}
+function openGuardianModal(id){
+  const g = id ? GUARDIANS[id] : null;
+  $('#modal').innerHTML=`
+  <div class="modal-h"><div><h3>${g?'تعديل عائلة':'إضافة عائلة'}</h3><small>${g?esc(g.name):'عائلة جديدة'}</small></div><button class="x" onclick="closeModal()">×</button></div>
+  <div class="modal-b">
+    <div class="field"><label>المعرّف (إنجليزي/أرقام بلا مسافات)</label><input id="g_id" value="${id?esc(id):''}" ${id?'disabled':''} placeholder="مثال: g4"></div>
+    <div class="field"><label>اسم العائلة/ولي الأمر</label><input id="g_name" value="${g?esc(g.name):''}"></div>
+    <div class="field"><label>الجوال</label><input id="g_phone" inputmode="tel" value="${g&&g.phone?esc(g.phone):''}"></div>
+    <div id="g_err" class="autherr"></div>
+  </div>
+  <div class="modal-f"><button class="btn btn-g" onclick="closeModal()">إلغاء</button><button class="btn btn-p" onclick="saveGuardianForm(${g?'true':'false'})">حفظ</button></div>`;
+  $('#overlay').classList.add('show');
+}
+async function saveGuardianForm(isEdit){
+  const v=x=>{const el=document.getElementById(x);return el?String(el.value).trim():'';};
+  const id=v('g_id'), name=v('g_name'), err=document.getElementById('g_err');
+  if(!id||!name){ if(err) err.textContent='المعرّف والاسم إلزاميان'; return; }
+  if(!/^[a-z0-9_-]+$/i.test(id)){ if(err) err.textContent='المعرّف بالإنجليزية/الأرقام فقط بلا مسافات'; return; }
+  const g={id,name,phone:v('g_phone')};
+  if(err) err.textContent='جارٍ الحفظ…';
+  const {error}=await DB.saveGuardian(g);
+  if(error){ if(err) err.textContent='تعذّر الحفظ: '+error.message; return; }
+  logAudit('المشرف العام',(isEdit?'تعديل عائلة: ':'إضافة عائلة: ')+name);
+  closeModal(); await loadData(); render();
+  toast('👪', isEdit?'حُدّثت العائلة':'أُضيفت العائلة', name);
+}
+async function changeUserRole(id,role){
+  const {error}=await DB.adminSetRole(id,role);
+  if(error){ toast('⚠','تعذّر تغيير الدور',error.message||'العملية للمشرف العام فقط'); loadUsers(); return; }
+  const u=USERS_CACHE.find(x=>x.id===id); if(u) u.role=role;
+  AUDIT.unshift({who:'المشرف العام',act:'تغيير دور مستخدم إلى '+(ROLE_LABELS[role]||role),time:'الآن'});
+  toast('✅','تم تغيير الدور','أصبح المستخدم: '+(ROLE_LABELS[role]||role));
+}
+async function toggleUserStatus(id,newStatus){
+  const {error}=await DB.adminSetStatus(id,newStatus);
+  if(error){ toast('⚠','تعذّرت العملية',error.message||'العملية للمشرف العام فقط'); return; }
+  AUDIT.unshift({who:'المشرف العام',act:(newStatus==='disabled'?'تعطيل':'تفعيل')+' مستخدم',time:'الآن'});
+  toast(newStatus==='disabled'?'🚫':'✅',newStatus==='disabled'?'عُطّل الحساب':'فُعّل الحساب','حُدِّثت حالة المستخدم');
+  loadUsers();
+}
+
+/* ============================================================
    14) جلسات الحصاد (FR-EXM-01)
    ============================================================ */
 function renderHarvest(c){
@@ -753,7 +1142,11 @@ function harvestFail(id){
 /* ============================================================
    15) بوابة ولي الأمر — أبنائي (FR-PAR-01)
    ============================================================ */
-function guardianChildren(){return STUDENTS.filter(s=>s.guardian==='g1');}
+function guardianChildren(){
+  const gid = CURRENT_USER && CURRENT_USER.guardian_id;
+  if(!gid) return [];
+  return STUDENTS.filter(s=>s.guardian===gid);
+}
 function renderChildren(c){
   const kids=guardianChildren();
   c.innerHTML=`
@@ -764,7 +1157,7 @@ function renderChildren(c){
         <div class="lrow" style="margin:0 0 10px"><div class="av">📖</div><div class="info"><div class="t" style="font-size:13px">${CIRCLES.find(x=>x.id===st.circle).name} ، ${st.program}</div><div class="d">${SURAHS[st.lastStop.surah]} ، هدف اليوم ${arNum(st.dailyTarget)} أسطر</div></div></div>
         <div class="bar"><i style="width:${Math.min(100,pct)}%;background:${barColor(t.status)}"></i></div>
         <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin-top:7px"><span>إنجاز اليوم ${arNum(pct)}٪</span><span style="color:var(--gold-d)">◆ ${arNum(st.points)} نقطة</span></div>
-        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-o btn-sm" onclick="sheetStudent=${st.id};ROLE='general';switchTo('sheet')">📋 ورقة المتابعة</button>${t.status==='red'?'<span class="tag r" style="align-self:center">⚠ يحتاج متابعتك</span>':''}</div>
+        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-o btn-sm" onclick="openChildSheet(${st.id})">📋 ورقة المتابعة</button>${t.status==='red'?'<span class="tag r" style="align-self:center">⚠ يحتاج متابعتك</span>':''}</div>
       </div></div>`;}).join('')}</div>`;
 }
 
@@ -798,7 +1191,7 @@ function donate(){PAYMENTS.unshift({id:'p'+Date.now(),payer:'أبو محمد ا�
    17) بوابة الطالب — برنامجي ونقاطي (FR-STU-01)
    ============================================================ */
 function renderMyprog(c){
-  const st=STUDENTS.find(x=>x.id===7);
+  const st=currentStudent();
   const lvl=Math.floor(st.points/100)+1,next=lvl*100,prog=(st.points%100);
   c.innerHTML=`
   <div class="levbar"><div class="top"><span>المستوى ${arNum(lvl)} — ${st.program}</span><span style="color:var(--gold-d)">◆ ${arNum(st.points)} نقطة</span></div>
@@ -815,7 +1208,7 @@ function renderMyprog(c){
       </tbody></table>
     </div></div>
     <div class="panel"><div class="panel-h"><h3>رصيدي وسوق الحلقة</h3></div><div class="panel-b">
-      <div class="lrow"><div class="av">◆</div><div class="info"><div class="t">${arNum(st.points)} نقطة متاحة</div><div class="d">اكسب أكثر بالحضور في وقته والإتقان والحصاد</div></div><button class="btn btn-p btn-sm" onclick="marketStudent=7;ROLE='general';switchTo('market')">🛒 السوق</button></div>
+      <div class="lrow"><div class="av">◆</div><div class="info"><div class="t">${arNum(st.points)} نقطة متاحة</div><div class="d">اكسب أكثر بالحضور في وقته والإتقان والحصاد</div></div><button class="btn btn-p btn-sm" onclick="openStudentMarket()">🛒 السوق</button></div>
       <div class="lrow"><div class="av">💳</div><div class="info"><div class="t">رسوم الاشتراك</div><div class="d">دفع إلكتروني آمن</div></div><button class="btn btn-o btn-sm" onclick="payFee()">ادفع</button></div>
     </div></div>
   </div>`;
@@ -825,7 +1218,7 @@ function renderMyprog(c){
    18) سجل الطالب QR (FR-REC-01)
    ============================================================ */
 function renderQR(c){
-  const st=STUDENTS.find(x=>x.id===7);
+  const st=currentStudent();
   const seed=[1,0,1,1,0,1,0,0,1,1,0, 0,1,1,0,1,0,1,1,0,0,1, 1,0,0,1,1,0,1,0,1,1,0, 0,1,1,0,0,1,0,1,1,0,1, 1,0,1,0,1,1,0,0,1,0,1, 0,1,0,1,1,0,1,1,0,1,0, 1,1,0,0,1,0,1,0,1,1,0, 0,1,1,0,1,1,0,1,0,0,1, 1,0,0,1,0,1,1,0,1,1,0, 0,1,1,0,1,0,0,1,0,1,1, 1,0,1,1,0,1,0,1,1,0,0];
   c.innerHTML=`
   <div class="note"><b>رابطٌ موقّت ومحدود الصلاحية:</b> افتح سجلك مباشرةً برابط أو QR دون تسجيل معقّد، ويمنع تخمين سجلات الآخرين (FR-REC-01).</div>
@@ -864,17 +1257,17 @@ function renderImpact(c){
 
 /* ---------- Toast ---------- */
 let toastT=null;
-function toast(em,tt,ts){const el=$('#toast');el.innerHTML=`<span class="em">${em}</span><div><div class="tt">${tt}</div><div class="ts">${ts||''}</div></div>`;
+function toast(em,tt,ts){const el=$('#toast');if(!el)return;el.innerHTML=`<span class="em">${em}</span><div><div class="tt">${tt}</div><div class="ts">${ts||''}</div></div>`;
   el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),3800);}
 
 /* ---------- ربط بيانات Supabase (مع سقوط تلقائي للبذور المحلية) ---------- */
 function applyRemote(d){
-  if(d.circles&&d.circles.length){CIRCLES.length=0;d.circles.forEach(c=>CIRCLES.push({id:c.id,name:c.name,teacher:c.teacher,mosque:c.mosque}));}
+  if(d.circles&&d.circles.length){CIRCLES.length=0;d.circles.forEach(c=>CIRCLES.push({id:c.id,name:c.name,teacher:c.teacher,mosque:c.mosque,capacity:c.capacity}));}
   if(d.guardians&&d.guardians.length){Object.keys(GUARDIANS).forEach(k=>delete GUARDIANS[k]);d.guardians.forEach(g=>GUARDIANS[g.id]={name:g.name,phone:g.phone});}
   if(d.students&&d.students.length){STUDENTS.length=0;d.students.forEach(s=>STUDENTS.push({
     id:s.id,name:s.full_name,circle:s.circle_id,age:s.age,guardian:s.guardian_id,program:s.program||'معارج',
     lastStop:{surah:s.last_stop_surah||2,ayah:s.last_stop_ayah||1},dailyTarget:s.daily_target||8,
-    points:s.points||0,streak:s.streak||0,
+    points:s.points||0,streak:s.streak||0,status:s.status||'active',
     today:{status:null,achievedLines:null,mistakes:{lafzi:0,adi:0,shak:0},itqan:false,done:false,late:false}}));}
   if(d.waitlist){WAITLIST.length=0;d.waitlist.filter(w=>w.status==='pending').forEach(w=>WAITLIST.push({id:String(w.id),name:w.full_name,age:w.age,phone:w.phone,date:'—',status:'pending'}));}
   if(d.payments&&d.payments.length){PAYMENTS.length=0;d.payments.forEach(p=>PAYMENTS.push({id:String(p.id),payer:p.payer,amount:Number(p.amount),kind:p.kind==='fees'?'رسوم':p.kind==='donation'?'تبرّع':'جائزة',target:p.target||'—',status:p.status==='success'?'ناجحة':p.status==='refunded'?'مستردّة':'فاشلة',date:'—'}));}
@@ -923,6 +1316,7 @@ function showLogin(mode){
          ${signup?'لديك حساب؟ ':'ليس لديك حساب؟ '}
          <a onclick="showLogin('${signup?'in':'up'}')">${signup?'سجّل الدخول':'أنشئ حساباً'}</a>
        </div>
+       <div class="authswitch" style="margin-top:6px">معلّم جديد؟ <a onclick="openApplyFromLogin()">قدّم طلب توظيف</a></div>
      </div>
    </div>`;
 }
@@ -962,17 +1356,20 @@ function applyProfileRole(p){
   if(p&&p.role&&ROLES[p.role]) ROLE=p.role;
   const rs=document.querySelector('.roleswitch'); if(rs) rs.style.display='none';
   const who=document.getElementById('whoBox');
+  if(!who) return;
   who.style.gap='8px';
   who.innerHTML=`<span class="dot"></span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p&&p.full_name)||'مستخدم'} — ${ROLE_LABELS[ROLE]||''}</span><button onclick="doLogout()" style="background:rgba(255,255,255,.14);color:#fff;border-radius:8px;padding:6px 11px;font-size:11px;font-weight:700;flex-shrink:0">خروج ⏻</button>`;
 }
 async function loadData(){
   const data=await DB.loadAll(); if(data) applyRemote(data);
+  TEACHER_APPS = await DB.loadTeacherApps() || [];
   const badge=document.querySelector('.offline');
-  if(DB.isOnline()) badge.innerHTML='<span class="dot"></span> متصل بقاعدة البيانات';
+  if(badge&&DB.isOnline()) badge.innerHTML='<span class="dot"></span> متصل بقاعدة البيانات';
 }
 async function afterAuth(){
   const session=await DB.getSession();
   const profile=session?await DB.getProfile(session.user.id):null;
+  if(await guardDisabled(profile)) return;
   CURRENT_USER=profile;
   hideLogin();
   await loadData();
@@ -980,14 +1377,28 @@ async function afterAuth(){
   buildRoleSelect(); buildNav(); render();
 }
 
+async function guardDisabled(profile){
+  if(profile && profile.status==='disabled'){
+    await DB.signOut();
+    showLogin('in');
+    authErr('هذا الحساب معطَّل — راجع إدارة المنصّة');
+    return true;
+  }
+  return false;
+}
+
+function isApplyMode(){ return (location.pathname+location.search+location.hash).indexOf('apply')>-1; }
+
 async function boot(){
   const ok=DB.init();
+  if(isApplyMode()){ showApply(); return; } // رابط التقديم العام — بلا تسجيل دخول
   if(!ok){ /* لا اتصال بقاعدة البيانات — وضع عرض تجريبي بلا تسجيل دخول */
     buildRoleSelect(); buildNav(); render(); return;
   }
   const session=await DB.getSession();
   if(!session){ showLogin('in'); return; }
   const profile=await DB.getProfile(session.user.id);
+  if(await guardDisabled(profile)) return;
   CURRENT_USER=profile;
   await loadData();
   applyProfileRole(profile);
