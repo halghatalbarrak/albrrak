@@ -1,13 +1,38 @@
-# ملاحظة: js/config.js يحتوي المفتاح العام (publishable) وهو آمن للنشر،
-# لذا نضمّه في هذا المستودع لتعمل النسخة المنشورة مباشرة.
-# لا تضع هنا أبداً المفتاح السرّي (sb_secret_...).
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# prisma — العميل المولَّد
+/node_modules/.prisma
+
+# misc
+.DS_Store
+*.pem
+*.tsbuildinfo
+*.log
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# البيئة — لا تُرفع أبدًا (القيم سرّية). النموذج .env.example يُرفع.
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# أدوات
-node_modules/
-.DS_Store
-*.log
+# vercel
+.vercel
 
 # ملفات مؤقتة
 shot*.png
