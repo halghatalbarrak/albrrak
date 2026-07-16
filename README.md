@@ -58,6 +58,22 @@ cp .env.example .env        # ثم املأ القيم من جهازك (لا ت�
 npm run dev                 # http://localhost:3000
 ```
 
+## الاختبارات (قاعدة العمل ٤)
+
+القواعد المطلقة (م١/م٣/م٥، التفويض، الاعتمادات) مُنفَّذة في الخادم، ولكلٍّ اختبارٌ
+يثبت أن تجاوزها **يُرفض** — على Postgres حقيقي لا وهمي:
+
+```bash
+# تحتاج قاعدة Postgres اختبارية + مفتاح تشفير عابر
+export DATABASE_URL="postgresql://postgres@127.0.0.1:5432/albrrak_test"
+export DIRECT_URL="$DATABASE_URL"
+export NATIONAL_ID_ENC_KEY="$(openssl rand -base64 32)"
+npx prisma migrate deploy   # يطبّق الترحيلات على قاعدة الاختبار
+npm test                    # vitest
+```
+
+في CI تعمل تلقائيًّا بخدمة Postgres (`.github/workflows/ci.yml` ← وظيفة `test`).
+
 ## تطبيق المخطط على القاعدة (من جهازك)
 
 ```bash

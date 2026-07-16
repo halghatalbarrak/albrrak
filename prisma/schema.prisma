@@ -452,3 +452,19 @@ model Setting {
   value     Json
   @@unique([programId, key])
 }
+
+// ═══════════════ الأحداث (م١) ═══════════════
+// قاعدة العمل ٥: كل تغيير حالة يُصدِر حدثًا. سجلٌّ ملحق (append-only) يستهلكه
+// الاقتصاد لاحقًا بلا هجرة (م٦: points.source_event). النوع نصّي عمدًا — تيّارُ
+// أحداثٍ مفتوح لا enum مغلق يُقيّده كل استعمال جديد.
+model Event {
+  id          String   @id @default(cuid())
+  type        String                 // مثال: STUDENT_ACCEPTED, APPROVAL_DECIDED
+  subjectType String                 // Student | Approval | GuardianLink | ...
+  subjectId   String
+  actorId     String?                // من أحدث التغيير (null لأحداث النظام)
+  payload     Json?
+  createdAt   DateTime @default(now())
+  @@index([subjectType, subjectId])
+  @@index([type, createdAt])
+}
