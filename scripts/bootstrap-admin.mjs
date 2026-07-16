@@ -16,6 +16,18 @@ const prisma = new PrismaClient();
 const email = `u${phone.replace(/\D/g, "")}@albrrak.app`;
 const roles = ["SUPER_ADMIN", "CIRCLE_MANAGER", "REGISTRAR"];
 
+// إن وُجد مديرٌ بالفعل (بمعرّفٍ مختلف) ← توقّف، لا تُنشئ ثانيًا.
+// (إعادة التشغيل بنفس authUid آمنة — تحديثٌ لا إنشاء.)
+const existingAdmin = await prisma.user.findFirst({
+  where: { roles: { has: "SUPER_ADMIN" } },
+  select: { id: true, authId: true },
+});
+if (existingAdmin && existingAdmin.authId !== authId) {
+  console.log("مدير موجود بالفعل — لن يُنشأ ثانٍ:", existingAdmin.id);
+  await prisma.$disconnect();
+  process.exit(0);
+}
+
 const user = await prisma.user.upsert({
   where: { authId },
   update: { roles },

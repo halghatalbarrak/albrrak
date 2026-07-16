@@ -79,10 +79,11 @@ npm run dev                 # http://localhost:3000
 1. **طبّق الترحيلات:** شغّل workflow «Migrate (deploy)» ← اكتب `APPLY`.
    المتوقع: **٦ ترحيلات، ٢٦ جدولًا**، بذرة ٥ مراحل + ٢ جنسية، RLS على الكل.
    تحقّق: `curl -H "apikey: <anon>" ".../rest/v1/Student?select=id&limit=1"` ← `[]` أو 401/403.
-2. **أنشئ أوّل مدير:**
+2. **أنشئ أوّل مدير (بزرّ، بلا طرفية):**
    أ) Supabase → Authentication → Users → Add user: البريد `u<جوالك>@albrrak.app` + كلمة سر. انسخ الـ**User UID**.
-   ب) محليًّا (`.env` فيه `DATABASE_URL`/`DIRECT_URL`): `node scripts/bootstrap-admin.mjs <UID> <جوالك> "اسمك"`
-   المتوقع: «المدير جاهز» (أدواره: SUPER_ADMIN, CIRCLE_MANAGER, REGISTRAR).
+   ب) GitHub → **Actions** → **Bootstrap admin** → Run workflow: الصق `authUid` (الـUID) و`phone` (جوالك) و`name` (اسمك) و`confirm` = `BOOTSTRAP`.
+   المتوقع في السجل: «المدير جاهز» (أدواره: SUPER_ADMIN, CIRCLE_MANAGER, REGISTRAR). وإن وُجد مديرٌ سلفًا: «مدير موجود بالفعل — لن يُنشأ ثانٍ».
+   > يظهر الزر بعد أن يصل الـworkflow إلى الفرع الافتراضي (main). يقرأ `DATABASE_URL`/`DIRECT_URL` من GitHub Secrets.
 3. **القيد:** افتح `https://<vercel>/apply` ← املأ النموذج (تظهر الجنسيات/المراحل المبذورة) ← أرسل.
    المتوقع: «تمّ استلام طلب القيد». ⟵ **يُثبت Vercel + Prisma/pooler + التشفير + RLS دفعةً.**
 4. **الدخول والقبول:** `/login` بجوالك وكلمة سرك ← تُوجَّه إلى `/me`. ثم `/admin/applications`

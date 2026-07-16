@@ -1,0 +1,63 @@
+name: Bootstrap admin
+
+# تهيئة أوّل مدير — يدويًّا فقط، بزرٍّ يُضغط بقصد. يربط سجلّ User بمستخدم
+# مصادقة أنشأتَه في لوحة Supabase (Authentication → Users).
+on:
+  workflow_dispatch:
+    inputs:
+      authUid:
+        description: 'User UID من Supabase → Authentication → Users'
+        required: true
+        type: string
+      phone:
+        description: 'جوال المدير (نفس ما بُني منه بريده الاصطناعي)'
+        required: true
+        type: string
+      name:
+        description: 'اسم المدير كما يُعرض'
+        required: true
+        type: string
+      confirm:
+        description: 'اكتب BOOTSTRAP حرفيًّا للتأكيد'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    name: bootstrap first admin
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - name: التحقق من التأكيد (يجب أن يساوي BOOTSTRAP)
+        run: |
+          if [ "${{ inputs.confirm }}" != "BOOTSTRAP" ]; then
+            echo "التأكيد غير صحيح — أرسلتَ قيمة لا تساوي BOOTSTRAP. تم الإيقاف."
+            exit 1
+          fi
+          echo "التأكيد صحيح — المتابعة."
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # المدخلات تُمرَّر عبر env (لا داخل الأمر مباشرةً) — تفاديًا لحقن الأوامر.
+      # السكربت يتوقّف إن وُجد مديرٌ بالفعل، ولا يطبع أي سرّ.
+      - name: Bootstrap admin
+        env:
+          AUTH_UID: ${{ inputs.authUid }}
+          ADMIN_PHONE: ${{ inputs.phone }}
+          ADMIN_NAME: ${{ inputs.name }}
+        run: node scripts/bootstrap-admin.mjs "$AUTH_UID" "$ADMIN_PHONE" "$ADMIN_NAME"
