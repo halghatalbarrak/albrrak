@@ -70,8 +70,10 @@ jobs:
       - name: Apply migrations to test DB
         run: npx prisma migrate deploy
 
-      # مفتاح تشفير عابر لقاعدة الاختبار فقط — ليس سرًّا إنتاجيًّا.
+      # أسرار عابرة لقاعدة الاختبار فقط — ليست إنتاجية.
+      # NATIONAL_ID_ENC_KEY: تشفير الهوية. SUPABASE_JWT_SECRET: تحقّق JWT في اختبارات HTTP.
       - name: Run tests
         run: |
           export NATIONAL_ID_ENC_KEY="$(openssl rand -base64 32)"
+          export SUPABASE_JWT_SECRET="$(openssl rand -base64 32)"
           npm test
