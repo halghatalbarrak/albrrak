@@ -24,6 +24,10 @@ export async function createUser(
   });
 }
 
+export async function createNationality(db: PrismaClient) {
+  return db.nationality.create({ data: { nameAr: `جنسية-${uniq()}` } });
+}
+
 export async function createProgram(db: PrismaClient, key: ProgramKey = ProgramKey.MARAQI) {
   return db.program.create({
     data: { key, nameAr: `برنامج-${uniq()}` },

@@ -453,6 +453,62 @@ model Setting {
   @@unique([programId, key])
 }
 
+// ═══════════════ التسجيل والقيد (م١) ═══════════════
+// جدولان يملؤهما المدير — لا ثوابت في الكود. القيم تُخزَّن قانونيًّا،
+// والمطابقة مع صيغة الجهة الإشرافية تقع في طبقة التصدير لاحقًا.
+
+model Nationality {
+  id           String        @id @default(cuid())
+  nameAr       String        @unique
+  isActive     Boolean       @default(true)
+  ordinal      Int           @default(0)
+  applications Application[]
+}
+
+model SchoolStage {
+  id           String        @id @default(cuid())
+  nameAr       String        @unique
+  ordinal      Int
+  isActive     Boolean       @default(true)
+  applications Application[]
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WAITLISTED
+}
+
+// نموذج القيد العام (§٦٫١): يُرسَل إلى Route Handler لا إلى Supabase REST.
+// لا سياسة anon insert إطلاقًا. nationalIdEnc يُشفَّر قبل أن يمسّ القاعدة.
+// سجلٌّ ثابت لا يُحذف عند القبول — أثرٌ لكل من طرق الباب.
+model Application {
+  id                String   @id @default(cuid())
+  nameAsInId        String
+  nationalIdEnc     String              // م٥ — مشفَّر على مستوى التطبيق
+  nationalityId     String
+  nationality       Nationality @relation(fields: [nationalityId], references: [id])
+  birthDate         DateTime
+  gender            Gender
+  schoolStageId     String?
+  schoolStage       SchoolStage? @relation(fields: [schoolStageId], references: [id])
+  guardianPhone     String
+  studentPhone      String?             // فارغ لمن دون ١٣
+  priorHifzJuz      Int?
+  priorHifzNotes    String?
+  preferredCircleId String?
+
+  status            ApplicationStatus @default(PENDING)
+  decidedBy         String?
+  decidedAt         DateTime?
+  decisionNote      String?             // إلزامي عند الرفض
+  studentId         String?  @unique    // يُملأ عند القبول
+  createdAt         DateTime @default(now())
+
+  @@index([status, createdAt])
+}
+
 // ═══════════════ الأحداث (م١) ═══════════════
 // قاعدة العمل ٥: كل تغيير حالة يُصدِر حدثًا. سجلٌّ ملحق (append-only) يستهلكه
 // الاقتصاد لاحقًا بلا هجرة (م٦: points.source_event). النوع نصّي عمدًا — تيّارُ

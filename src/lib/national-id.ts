@@ -12,35 +12,54 @@ type Db = PrismaClient | Prisma.TransactionClient;
 const ALGO = "aes-256-gcm";
 const IV_LEN = 12;
 
-// مفتاح التشفير من البيئة (٣٢ بايت بترميز base64). سرّي — لا يُرفع.
-function getKey(): Buffer {
-  const raw = process.env.NATIONAL_ID_ENC_KEY;
+// النصّ المخزَّن مُرقَّمٌ بنسخة المفتاح: "<versionId>:<base64(iv+tag+enc)>".
+// يتيح تدوير المفتاح: تُشفَّر الجديدة بالنسخة الحالية، وتُفكّ القديمة بمفتاحها
+// حتى تُعاد صياغتها. راجع README: «تدوير مفتاح رقم الهوية».
+const CURRENT_KEY_VERSION = "v1";
+const KEY_ENV: Record<string, string> = {
+  v1: "NATIONAL_ID_ENC_KEY",
+  // عند التدوير: v2: "NATIONAL_ID_ENC_KEY_V2",
+};
+
+// مفتاح ٣٢ بايت (base64) من البيئة حسب النسخة. سرّي — لا يُرفع.
+function getKey(version: string): Buffer {
+  const envName = KEY_ENV[version];
+  if (!envName) {
+    throw new Error(`نسخة مفتاح غير معروفة: ${version}`);
+  }
+  const raw = process.env[envName];
   if (!raw) {
-    throw new Error("NATIONAL_ID_ENC_KEY غير مضبوط — لا يمكن التعامل مع رقم الهوية.");
+    throw new Error(`${envName} غير مضبوط — لا يمكن التعامل مع رقم الهوية.`);
   }
   const key = Buffer.from(raw, "base64");
   if (key.length !== 32) {
-    throw new Error("NATIONAL_ID_ENC_KEY يجب أن يكون ٣٢ بايت (base64) لخوارزمية AES-256.");
+    throw new Error(`${envName} يجب أن يكون ٣٢ بايت (base64) لخوارزمية AES-256.`);
   }
   return key;
 }
 
-/** تشفير رقم الهوية ⟵ نصّ base64 يجمع: IV + وسم المصادقة + النص المشفّر. */
+/** تشفير رقم الهوية ⟵ "v1:base64(IV+وسم+نص مشفّر)". */
 export function encryptNationalId(plain: string): string {
   const iv = crypto.randomBytes(IV_LEN);
-  const cipher = crypto.createCipheriv(ALGO, getKey(), iv);
+  const cipher = crypto.createCipheriv(ALGO, getKey(CURRENT_KEY_VERSION), iv);
   const enc = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, enc]).toString("base64");
+  const blob = Buffer.concat([iv, tag, enc]).toString("base64");
+  return `${CURRENT_KEY_VERSION}:${blob}`;
 }
 
-/** فكّ التشفير — يفشل (يرمي) إن عُبث بالنص (مصادقة GCM). */
+/** فكّ التشفير — يختار المفتاح بنسخته، ويفشل (يرمي) إن عُبث بالنص (GCM). */
 export function decryptNationalId(stored: string): string {
-  const buf = Buffer.from(stored, "base64");
+  const sep = stored.indexOf(":");
+  if (sep === -1) {
+    throw new Error("صيغة رقم الهوية المخزَّن غير صالحة (لا نسخة مفتاح).");
+  }
+  const version = stored.slice(0, sep);
+  const buf = Buffer.from(stored.slice(sep + 1), "base64");
   const iv = buf.subarray(0, IV_LEN);
   const tag = buf.subarray(IV_LEN, IV_LEN + 16);
   const enc = buf.subarray(IV_LEN + 16);
-  const decipher = crypto.createDecipheriv(ALGO, getKey(), iv);
+  const decipher = crypto.createDecipheriv(ALGO, getKey(version), iv);
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(enc), decipher.final()]).toString("utf8");
 }
