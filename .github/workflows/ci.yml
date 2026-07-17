@@ -77,3 +77,42 @@ jobs:
           export NATIONAL_ID_ENC_KEY="$(openssl rand -base64 32)"
           export SUPABASE_JWT_SECRET="$(openssl rand -base64 32)"
           npm test
+
+  prod-schema-sync:
+    name: prod schema in sync (migrate status)
+    # الكود يُنشَر تلقائيًّا، والمخطط ينتظر زرًّا بشريًّا (Migrate). بينهما فجوةٌ يعمل
+    # فيها كودٌ جديد على قاعدةٍ قديمة (عطب P2022). هذه الوظيفة تُغلق الفجوة: تقرأ حالة
+    # ترحيلات الإنتاج (بلا تطبيق)، وتفشل صراحةً إن كان الإنتاج متأخّرًا — فيستحيل الدمج
+    # ونحن ناسون. مبدأ الحلقات: لا انتقال بلا اعتماد. (CI الأخرى تُرحّل قاعدةً عابرة،
+    # فتخضرّ وهي عمياء عن الإنتاج — كعلّة SUPABASE_JWT_SECRET: خضرةٌ في الموضع الخطأ.)
+    runs-on: ubuntu-latest
+    env:
+      # قاعدة الإنتاج — قراءةٌ فقط. DIRECT_URL اتصالٌ مباشر (منفذ الجلسة) للترحيلات.
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: تحقّق أن الإنتاج طبّق كل الترحيلات (قراءة فقط — لا تطبيق)
+        run: |
+          set +e
+          out="$(npx prisma migrate status 2>&1)"
+          code=$?
+          echo "$out"
+          echo "──────────────────────────────────────────"
+          if [ $code -eq 0 ] && printf '%s' "$out" | grep -q "up to date"; then
+            echo "✅ الإنتاج متزامنٌ مع كل الترحيلات — الدمج آمن."
+            exit 0
+          fi
+          echo "::error::ترحيلات معلّقة على الإنتاج — شغّل Migrate (confirm=APPLY) على فرعك قبل الدمج."
+          echo "❌ ترحيلات معلّقة على الإنتاج (انظر أعلاه لأسمائها)."
+          echo "   الترتيب الحاكم: شغّل workflow «Migrate (deploy)» أولًا، ثم ادمج."
+          echo "   (الترحيلات إضافية؛ فالكود القديم يتجاهل الأعمدة الجديدة بأمان.)"
+          exit 1
