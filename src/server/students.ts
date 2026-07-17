@@ -41,30 +41,44 @@ export interface AdminStudentRow {
   state: string;
   circle: string | null;
   guardian: string | null;
+  /** قرار تحديدٍ معلّقٌ لهذا الطالب (بانتظار اعتماد المدير)، أو null. */
+  pendingPlacementId: string | null;
 }
 
 export async function listStudentsForAdmin(
   db: PrismaClient = prisma,
   asOf: Date = new Date(),
 ): Promise<AdminStudentRow[]> {
-  const rows = await db.student.findMany({
-    select: {
-      id: true,
-      state: true,
-      user: { select: { nameAsInId: true, birthDate: true } },
-      enrollments: {
-        where: { endedAt: null },
-        select: { circle: { select: { nameAr: true } } },
-        take: 1,
+  const [rows, pendings] = await Promise.all([
+    db.student.findMany({
+      select: {
+        id: true,
+        state: true,
+        user: { select: { nameAsInId: true, birthDate: true } },
+        enrollments: {
+          where: { endedAt: null },
+          select: { circle: { select: { nameAr: true } } },
+          take: 1,
+        },
+        guardians: {
+          where: { status: "ACTIVE" },
+          select: { guardian: { select: { nameAsInId: true, phone: true } } },
+          take: 1,
+        },
       },
-      guardians: {
-        where: { status: "ACTIVE" },
-        select: { guardian: { select: { nameAsInId: true, phone: true } } },
-        take: 1,
+      orderBy: { id: "asc" },
+    }),
+    // قرارات التحديد المعلّقة — subjectId نصّيّ لا علاقة، فنستعلمها منفصلةً ونربطها.
+    db.approval.findMany({
+      where: {
+        kind: "PLACEMENT_DECISION",
+        subjectType: "Student",
+        status: "PENDING",
       },
-    },
-    orderBy: { id: "asc" },
-  });
+      select: { id: true, subjectId: true },
+    }),
+  ]);
+  const pendingByStudent = new Map(pendings.map((a) => [a.subjectId, a.id]));
   return rows.map((r) => {
     const g = r.guardians[0]?.guardian;
     return {
@@ -74,6 +88,7 @@ export async function listStudentsForAdmin(
       state: r.state,
       circle: r.enrollments[0]?.circle.nameAr ?? null,
       guardian: g ? (g.phone ? `${g.nameAsInId} (${g.phone})` : g.nameAsInId) : null,
+      pendingPlacementId: pendingByStudent.get(r.id) ?? null,
     };
   });
 }

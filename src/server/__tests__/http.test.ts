@@ -1,9 +1,13 @@
-import { Gender, Role } from "@prisma/client";
+import { Gender, ProgramKey, Role, StudentState, TimeSlot } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { GET as appsGET, POST as submitPOST } from "@/app/api/applications/route";
 import { GET as studentsGET } from "@/app/api/students/route";
 import { GET as adminStudentsGET } from "@/app/api/admin/students/route";
 import { POST as studentRevealPOST } from "@/app/api/students/[id]/reveal-id/route";
+import { POST as readingTestPOST } from "@/app/api/students/[id]/reading-test/route";
+import { POST as placementDecisionPOST } from "@/app/api/placements/[id]/decision/route";
+import { GET as circlesGET, POST as circlesPOST } from "@/app/api/admin/circles/route";
+import { proposeReadingTest } from "../placement";
 import { POST as decisionPOST } from "@/app/api/applications/[id]/decision/route";
 import { GET as meGET } from "@/app/api/me/route";
 import { POST as revealPOST } from "@/app/api/applications/[id]/reveal-id/route";
@@ -243,6 +247,74 @@ describe("قائمة الطلاب وكشف الهوية على حدّ HTTP", () 
     const body = (await ok.json()) as { nationalId: string };
     expect(body.nationalId).toBe("1033445566");
     expect(await prisma.nationalIdAccessLog.count({ where: { subjectId: u.id } })).toBe(1);
+  });
+});
+
+describe("التحديد والحلقات على حدّ HTTP", () => {
+  async function awaitingStudent() {
+    const { student } = await createStudent(prisma);
+    await prisma.student.update({
+      where: { id: student.id },
+      data: { state: StudentState.AWAITING_READING_TEST },
+    });
+    return student;
+  }
+
+  it("تسجيل اختبار القراءة: مُسجِّل ← 201، معلّم ← 403", async () => {
+    const student = await awaitingStudent();
+    const registrar = await actor([Role.REGISTRAR]);
+    const teacher = await actor([Role.TEACHER]);
+
+    const rej = await readingTestPOST(
+      post("http://t/x", { readsFluently: true, notes: "x" }, teacher.jwt),
+      { params: Promise.resolve({ id: student.id }) },
+    );
+    expect(rej.status).toBe(403);
+
+    const ok = await readingTestPOST(
+      post("http://t/x", { readsFluently: true, notes: "يقرأ بطلاقة" }, registrar.jwt),
+      { params: Promise.resolve({ id: student.id }) },
+    );
+    expect(ok.status).toBe(201);
+  });
+
+  it("اعتماد التحديد: مدير ← 200 وينفّذ، معلّم ← 403", async () => {
+    const student = await awaitingStudent();
+    const registrar = await createUser(prisma, { roles: [Role.REGISTRAR] });
+    const approval = await proposeReadingTest({
+      studentId: student.id,
+      examinerId: registrar.id,
+      notes: "يقرأ",
+      readsFluently: true,
+    });
+    const manager = await actor([Role.CIRCLE_MANAGER]);
+    const teacher = await actor([Role.TEACHER]);
+
+    const rej = await placementDecisionPOST(
+      post("http://t/x", { decision: "APPROVED" }, teacher.jwt),
+      { params: Promise.resolve({ id: approval.id }) },
+    );
+    expect(rej.status).toBe(403);
+
+    const ok = await placementDecisionPOST(
+      post("http://t/x", { decision: "APPROVED" }, manager.jwt),
+      { params: Promise.resolve({ id: approval.id }) },
+    );
+    expect(ok.status).toBe(200);
+    const fresh = await prisma.student.findUniqueOrThrow({ where: { id: student.id } });
+    expect(fresh.state).toBe(StudentState.AWAITING_PACE_TEST);
+  });
+
+  it("الحلقات: إنشاء للمدير 201 وللمعلّم 403، والقراءة للمُسجِّل 200", async () => {
+    const program = await createProgram(prisma, ProgramKey.QAIDAH_MADANIYYAH);
+    const manager = await actor([Role.CIRCLE_MANAGER]);
+    const teacher = await actor([Role.TEACHER]);
+    const registrar = await actor([Role.REGISTRAR]);
+
+    const body = { nameAr: "حلقة", timeSlot: TimeSlot.MAGHRIB, gender: Gender.MALE, programId: program.id };
+    expect((await circlesPOST(post("http://t/x", body, teacher.jwt))).status).toBe(403);
+    expect((await circlesPOST(post("http://t/x", body, manager.jwt))).status).toBe(201);
+    expect((await circlesGET(get("http://t/api/admin/circles", registrar.jwt))).status).toBe(200);
   });
 });
 
