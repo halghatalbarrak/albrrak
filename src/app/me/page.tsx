@@ -36,18 +36,25 @@ export default function MePage() {
 
   useEffect(() => {
     (async () => {
-      const {
-        data: { session },
-      } = await supabaseBrowser().auth.getSession();
-      if (!session) {
-        window.location.href = "/login";
-        return;
+      try {
+        const {
+          data: { session },
+        } = await supabaseBrowser().auth.getSession();
+        if (!session) {
+          window.location.href = "/login";
+          return;
+        }
+        const res = await fetch("/api/me", {
+          headers: { authorization: `Bearer ${session.access_token}` },
+        });
+        if (!res.ok) {
+          setErr("تعذّر جلب صفحتك.");
+          return;
+        }
+        setMe((await res.json()) as MyPage);
+      } catch {
+        setErr("تعذّر الاتصال بالخادم.");
       }
-      const res = await fetch("/api/me", {
-        headers: { authorization: `Bearer ${session.access_token}` },
-      });
-      if (res.ok) setMe((await res.json()) as MyPage);
-      else setErr("تعذّر جلب صفحتك.");
     })();
   }, []);
 

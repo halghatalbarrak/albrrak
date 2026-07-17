@@ -27,15 +27,20 @@ export default function LoginPage() {
     e.preventDefault();
     setErr(null);
     setBusy(true);
-    const { error } = await supabaseBrowser().auth.signInWithPassword({
-      email: syntheticEmail(phone),
-      password,
-    });
-    setBusy(false);
-    if (error) {
-      setErr("تعذّر الدخول — تحقّق من الجوال وكلمة السر.");
-    } else {
-      window.location.href = "/me";
+    try {
+      const { error } = await supabaseBrowser().auth.signInWithPassword({
+        email: syntheticEmail(phone),
+        password,
+      });
+      if (error) {
+        setErr("تعذّر الدخول — تحقّق من الجوال وكلمة السر.");
+      } else {
+        window.location.href = "/me";
+      }
+    } catch {
+      setErr("تعذّر الاتصال بخادم الدخول.");
+    } finally {
+      setBusy(false);
     }
   }
 

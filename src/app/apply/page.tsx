@@ -1,13 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-interface Options {
-  nationalities: { id: string; nameAr: string }[];
-  schoolStages: { id: string; nameAr: string }[];
-}
+import { useCallback, useEffect, useState } from "react";
+import { parseOptions, type Options } from "./options";
 
 type Status = { kind: "idle" | "sending" } | { kind: "ok" } | { kind: "error"; message: string };
+type Load = "loading" | "ready" | "error";
 
 const box: React.CSSProperties = {
   maxWidth: 560,
@@ -19,21 +16,34 @@ const field: React.CSSProperties = { display: "flex", flexDirection: "column", g
 const input: React.CSSProperties = { padding: "0.5rem", fontSize: "1rem", fontFamily: "inherit" };
 
 export default function ApplyPage() {
-  const [opts, setOpts] = useState<Options | null>(null);
+  const [opts, setOpts] = useState<Options>({ nationalities: [], schoolStages: [] });
+  const [load, setLoad] = useState<Load>("loading");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
-  useEffect(() => {
-    fetch("/api/registration-options")
-      .then((r) => r.json())
-      .then(setOpts)
-      .catch(() => setOpts({ nationalities: [], schoolStages: [] }));
+  const loadOptions = useCallback(async () => {
+    setLoad("loading");
+    try {
+      const res = await fetch("/api/registration-options");
+      if (!res.ok) {
+        setLoad("error");
+        return;
+      }
+      setOpts(parseOptions(await res.json()));
+      setLoad("ready");
+    } catch {
+      setLoad("error");
+    }
   }, []);
+
+  useEffect(() => {
+    void loadOptions();
+  }, [loadOptions]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
     setStatus({ kind: "sending" });
-    const fd = new FormData(e.currentTarget);
-    const body = Object.fromEntries(fd.entries());
+    const body = Object.fromEntries(new FormData(form).entries());
     try {
       const res = await fetch("/api/applications", {
         method: "POST",
@@ -42,14 +52,30 @@ export default function ApplyPage() {
       });
       if (res.status === 201) {
         setStatus({ kind: "ok" });
-        e.currentTarget.reset();
+        form.reset();
       } else {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         setStatus({ kind: "error", message: j.error ?? "تعذّر إرسال الطلب." });
       }
     } catch {
-      setStatus({ kind: "error", message: "تعذّر الاتصال." });
+      setStatus({ kind: "error", message: "تعذّر الاتصال بالخادم." });
     }
+  }
+
+  if (load === "loading") {
+    return <main style={box}>جارٍ التحميل…</main>;
+  }
+
+  if (load === "error") {
+    return (
+      <main style={box}>
+        <h1>تعذّر تحميل النموذج</h1>
+        <p style={{ opacity: 0.75 }}>حدث خطأ أثناء جلب البيانات. حاول مرة أخرى.</p>
+        <button style={{ ...input, cursor: "pointer" }} onClick={() => void loadOptions()}>
+          إعادة المحاولة
+        </button>
+      </main>
+    );
   }
 
   if (status.kind === "ok") {
@@ -61,10 +87,18 @@ export default function ApplyPage() {
     );
   }
 
+  const noNationalities = opts.nationalities.length === 0;
+
   return (
     <main style={box}>
       <h1 style={{ marginBottom: 4 }}>نموذج القيد</h1>
       <p style={{ opacity: 0.7, marginTop: 0 }}>حلقات البراك — تُملأ من الأسرة بلا حساب.</p>
+
+      {noNationalities && (
+        <p style={{ color: "#8a6d00" }}>
+          قوائم الجنسيات غير متاحة حاليًا — تعذّر إتمام النموذج. أبلغ الإدارة.
+        </p>
+      )}
 
       <form onSubmit={onSubmit}>
         <label style={field}>
@@ -83,7 +117,7 @@ export default function ApplyPage() {
             <option value="" disabled>
               اختر…
             </option>
-            {opts?.nationalities.map((n) => (
+            {opts.nationalities.map((n) => (
               <option key={n.id} value={n.id}>
                 {n.nameAr}
               </option>
@@ -108,7 +142,7 @@ export default function ApplyPage() {
           <span>المرحلة الدراسية</span>
           <select style={input} name="schoolStageId" defaultValue="">
             <option value="">—</option>
-            {opts?.schoolStages.map((s) => (
+            {opts.schoolStages.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.nameAr}
               </option>
@@ -139,14 +173,12 @@ export default function ApplyPage() {
           <input style={input} name="priorHifzJuz" type="number" min={0} max={30} />
         </label>
 
-        {status.kind === "error" && (
-          <p style={{ color: "#b00020" }}>{status.message}</p>
-        )}
+        {status.kind === "error" && <p style={{ color: "#b00020" }}>{status.message}</p>}
 
         <button
           style={{ ...input, cursor: "pointer", fontWeight: 700 }}
           type="submit"
-          disabled={status.kind === "sending"}
+          disabled={status.kind === "sending" || noNationalities}
         >
           {status.kind === "sending" ? "جارٍ الإرسال…" : "إرسال طلب القيد"}
         </button>
