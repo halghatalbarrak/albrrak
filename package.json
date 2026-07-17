@@ -20,12 +20,14 @@
     "react-dom": "^19"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10",
     "eslint": "^8",
     "eslint-config-next": "^15",
+    "jsdom": "^25.0.1",
     "postcss": "^8",
     "prisma": "^6",
     "tailwindcss": "^3",

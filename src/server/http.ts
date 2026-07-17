@@ -15,5 +15,11 @@ export function errorResponse(e: unknown): Response {
   if (e instanceof ValidationError) {
     return Response.json({ error: e.message }, { status: 400 });
   }
+  // خطأ غير متوقّع (500): يُسجَّل في السجل ليظهر في Vercel Logs — لتشخيص السبب.
+  // رسائل أخطاء Prisma تُخفي بيانات الاعتماد، فلا يتسرّب سرّ. الرد للعميل عامّ.
+  console.error(
+    "[500] unhandled route error:",
+    e instanceof Error ? `${e.name}: ${e.message}` : String(e),
+  );
   return Response.json({ error: "خطأ داخلي" }, { status: 500 });
 }

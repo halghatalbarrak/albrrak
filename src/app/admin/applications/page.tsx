@@ -64,9 +64,10 @@ export default function AdminApplicationsPage() {
       setErr("تعذّر جلب الطلبات.");
       return;
     }
-    const data = (await appsRes.json()) as { applications: Row[] };
+    const data = (await appsRes.json().catch(() => ({}))) as { applications?: Row[] };
+    const list = Array.isArray(data.applications) ? data.applications : [];
     // الاستثناء أولاً: قائمة الانتظار قبل المعلّق، ثم الأقدم.
-    const sorted = [...data.applications].sort((a, b) => {
+    const sorted = [...list].sort((a, b) => {
       if (a.status !== b.status) return a.status === "WAITLISTED" ? -1 : 1;
       return a.createdAt.localeCompare(b.createdAt);
     });
