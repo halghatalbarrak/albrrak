@@ -1,9 +1,16 @@
-import { jwtVerify } from "jose";
+import {
+  createRemoteJWKSet,
+  decodeProtectedHeader,
+  jwtVerify,
+  type JWTVerifyGetKey,
+} from "jose";
 import { type PrismaClient, type Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AuthenticationError, AuthorizationError } from "./errors";
 
-// المصادقة الحقيقية: JWT من Supabase Auth ⟵ لا شِمّة، ولا رأس هوية يُصدَّق.
+// المصادقة الحقيقية: JWT من Supabase Auth. الدخول يقع في المتصفّح عبر supabase-js
+// ولا يمرّ بخادمنا — فأول تحقّقٍ فعليّ هو هنا. Supabase قد يوقّع بمفتاحٍ غير متماثل
+// (ES256/RS256 عبر JWKS) أو بسرٍّ مشترك (HS256). ندعم الحالتين ونوزّع حسب alg.
 // المسار: Authorization: Bearer <jwt> ← تحقّق التوقيع ← sub ← User.authId ← الأدوار.
 
 export interface Actor {
@@ -11,29 +18,78 @@ export interface Actor {
   roles: Role[];
 }
 
-function jwtSecret(): Uint8Array {
+/** السرّ المشترك (HS256) — مسارٌ بديل تحتاجه الاختبارات (بلا شبكة). */
+function hsSecret(): Uint8Array | null {
   const s = process.env.SUPABASE_JWT_SECRET;
-  if (!s) {
-    throw new Error("SUPABASE_JWT_SECRET غير مضبوط — تعذّر التحقّق من المصادقة.");
-  }
-  return new TextEncoder().encode(s);
+  return s ? new TextEncoder().encode(s) : null;
 }
 
-/** يتحقّق من JWT ويعيد sub، أو يرمي AuthenticationError (⟵ 401). */
-async function verifiedSub(req: Request): Promise<string> {
-  const header = req.headers.get("authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!token) throw new AuthenticationError("لا رمز مصادقة.");
+/** مجموعة مفاتيح JWKS البعيدة (غير المتماثلة) — تُنشأ مرّةً وتُخزَّن (لا جلبٌ في كل طلب). */
+let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+function remoteJwks() {
+  if (!jwks) {
+    const base = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").replace(
+      /\/$/,
+      "",
+    );
+    if (!base) {
+      throw new AuthenticationError("لا عنوان Supabase للتحقّق غير المتماثل (JWKS).");
+    }
+    jwks = createRemoteJWKSet(new URL(`${base}/auth/v1/.well-known/jwks.json`));
+  }
+  return jwks;
+}
+
+/**
+ * يختار مفتاح التحقّق حسب خوارزمية الرمز:
+ *   HS*      ⟵ السرّ المشترك (متماثل)
+ *   غير ذلك  ⟵ JWKS البعيدة (ES256/RS256 غير متماثلة)
+ */
+export const defaultGetKey: JWTVerifyGetKey = (header, input) => {
+  if ((header.alg ?? "").startsWith("HS")) {
+    const s = hsSecret();
+    if (!s) throw new AuthenticationError("HS256 يحتاج SUPABASE_JWT_SECRET.");
+    return Promise.resolve(s);
+  }
+  return remoteJwks()(header, input);
+};
+
+/**
+ * يتحقّق من رمزٍ ويعيد sub، أو يرمي AuthenticationError.
+ * getKey قابل للحقن (الاختبار يميّز HS256 من ES256 بلا شبكة).
+ * عند الرفض: سطر تشخيصٍ يبيّن alg وسبب الرفض — بلا كشف الرمز.
+ */
+export async function verifyJwtSub(
+  token: string,
+  getKey: JWTVerifyGetKey = defaultGetKey,
+): Promise<string> {
   try {
-    const { payload } = await jwtVerify(token, jwtSecret());
+    const { payload } = await jwtVerify(token, getKey);
     if (typeof payload.sub !== "string" || payload.sub === "") {
       throw new AuthenticationError("رمز بلا هوية.");
     }
     return payload.sub;
   } catch (e) {
     if (e instanceof AuthenticationError) throw e;
+    let alg = "?";
+    try {
+      alg = decodeProtectedHeader(token).alg ?? "?";
+    } catch {
+      /* رمزٌ غير قابل للتحليل أصلًا */
+    }
+    const reason = e instanceof Error ? `${e.name}` : String(e);
+    // تشخيص: لماذا رُفض التحقّق بالضبط — بلا كشف الرمز أو محتواه.
+    console.error(`[auth] رفض التحقّق: alg=${alg} reason=${reason}`);
     throw new AuthenticationError("رمز مصادقة غير صالح.");
   }
+}
+
+/** يتحقّق من JWT في الترويسة ويعيد sub، أو يرمي AuthenticationError (⟵ 401). */
+async function verifiedSub(req: Request): Promise<string> {
+  const header = req.headers.get("authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  if (!token) throw new AuthenticationError("لا رمز مصادقة.");
+  return verifyJwtSub(token);
 }
 
 /**

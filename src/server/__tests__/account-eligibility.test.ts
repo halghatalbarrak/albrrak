@@ -1,4 +1,3 @@
-import { Gender } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   createAccountForStudentReachingThirteen,
@@ -7,7 +6,7 @@ import {
 import { acceptApplication, submitApplication } from "../application";
 import { ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
-import { createNationality, createUser } from "../testing/factories";
+import { buildApplicationInput, createUser } from "../testing/factories";
 import { fakeAuthProvider } from "../testing/auth";
 
 beforeEach(resetDb);
@@ -16,17 +15,15 @@ afterAll(() => prisma.$disconnect());
 // طفل يُقبل وعمره ١٢، ثم يبلغ ١٣ بعد مرور الزمن.
 async function acceptTwelveYearOld() {
   const registrar = await createUser(prisma);
-  const nat = await createNationality(prisma);
-  const app = await submitApplication({
-    nameAsInId: "طفل",
-    nationalId: "1099999999",
-    nationalityId: nat.id,
-    birthDate: new Date("2013-01-01"),
-    gender: Gender.MALE,
-    guardianPhone: "0555777888",
-    guardianGender: Gender.MALE,
-    studentPhone: null,
-  });
+  const app = await submitApplication(
+    await buildApplicationInput(prisma, {
+      nameAsInId: "طفل",
+      nationalId: "1099999999",
+      birthDate: new Date("2013-01-01"),
+      guardianPhone: "0555777888",
+      studentPhone: null,
+    }),
+  );
   const res = await acceptApplication({
     applicationId: app.id,
     decidedBy: registrar.id,

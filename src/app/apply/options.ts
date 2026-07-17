@@ -8,6 +8,7 @@ export interface OptionItem {
 export interface Options {
   nationalities: OptionItem[];
   schoolStages: OptionItem[];
+  guardianRelations: OptionItem[];
 }
 
 function toItems(v: unknown): OptionItem[] {
@@ -26,5 +27,6 @@ export function parseOptions(json: unknown): Options {
   return {
     nationalities: toItems(o.nationalities),
     schoolStages: toItems(o.schoolStages),
+    guardianRelations: toItems(o.guardianRelations),
   };
 }

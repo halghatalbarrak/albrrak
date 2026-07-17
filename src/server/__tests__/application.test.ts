@@ -1,4 +1,4 @@
-import { ApplicationStatus, Gender } from "@prisma/client";
+import { ApplicationStatus } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   acceptApplication,
@@ -8,7 +8,7 @@ import {
 } from "../application";
 import { ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
-import { createNationality, createUser } from "../testing/factories";
+import { buildApplicationInput, createUser } from "../testing/factories";
 import { fakeAuthProvider } from "../testing/auth";
 
 const AS_OF = new Date("2026-07-16");
@@ -24,18 +24,8 @@ beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
 
 async function submit(overrides: Partial<Parameters<typeof submitApplication>[0]> = {}) {
-  const nat = await createNationality(prisma);
-  return submitApplication({
-    nameAsInId: "خالد بن عبدالله",
-    nationalId: "1012345678",
-    nationalityId: nat.id,
-    birthDate: birth(15),
-    gender: Gender.MALE,
-    guardianPhone: "0555000001",
-    guardianGender: Gender.MALE,
-    studentPhone: "0555000002",
-    ...overrides,
-  });
+  const input = await buildApplicationInput(prisma, { birthDate: birth(15), ...overrides });
+  return submitApplication(input);
 }
 
 describe("القيد (§٦٫١)", () => {
@@ -139,5 +129,70 @@ describe("الرفض والانتظار (§٦٫٢)", () => {
       asOf: AS_OF,
     }, prisma, fakeAuthProvider);
     expect(res.studentId).toBeTruthy();
+  });
+});
+
+describe("القبول ينقل الطوارئ والصفة ويُخطر الولي (§٤ + قاعدة ٥)", () => {
+  it("١٥ ← الطوارئ على الطالب، الصفة على الرابط، وحدثا GUARDIAN_NOTIFIED + APPLICATION_ACCEPTED", async () => {
+    const registrar = await createUser(prisma);
+    const input = await buildApplicationInput(prisma, {
+      birthDate: birth(15),
+      studentPhone: "0555111222",
+    });
+    const app = await submitApplication(input);
+    const res = await acceptApplication(
+      { applicationId: app.id, decidedBy: registrar.id, asOf: AS_OF },
+      prisma,
+      fakeAuthProvider,
+    );
+
+    const student = await prisma.student.findUniqueOrThrow({ where: { id: res.studentId } });
+    expect(student.emergencyName).toBe(input.emergencyName);
+    expect(student.emergencyPhone).toBe(input.emergencyPhone);
+    expect(student.emergencyRelationId).toBe(input.emergencyRelationId);
+
+    const link = await prisma.guardianLink.findFirstOrThrow({ where: { studentId: res.studentId } });
+    expect(link.relationId).toBe(input.guardianRelationId);
+
+    expect(
+      await prisma.event.count({ where: { type: "GUARDIAN_NOTIFIED", subjectId: res.studentId } }),
+    ).toBe(1);
+    expect(
+      await prisma.event.count({ where: { type: "APPLICATION_ACCEPTED", subjectId: app.id } }),
+    ).toBe(1);
+  });
+
+  it("طفل ١٢ ← جواله يُسجَّل (حتى دون ١٣) بلا حساب، ولا إخطار وليّ", async () => {
+    const registrar = await createUser(prisma);
+    const input = await buildApplicationInput(prisma, {
+      birthDate: birth(12),
+      studentPhone: "0556000000",
+    });
+    const app = await submitApplication(input);
+    const res = await acceptApplication(
+      { applicationId: app.id, decidedBy: registrar.id, asOf: AS_OF },
+      prisma,
+      fakeAuthProvider,
+    );
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: res.userId } });
+    expect(user.phone).toBe("0556000000"); // يُسجَّل — فحين يبلغ ١٣ فالتهيئة نقرة
+    expect(user.authId).toBeNull(); // لكن لا حساب (م٤)
+    expect(await prisma.event.count({ where: { type: "GUARDIAN_NOTIFIED" } })).toBe(0);
+  });
+
+  it("بالغ ١٨+ ← لا ربط وليّ ولا إخطار", async () => {
+    const registrar = await createUser(prisma);
+    const input = await buildApplicationInput(prisma, {
+      birthDate: birth(20),
+      studentPhone: "0557000000",
+    });
+    const app = await submitApplication(input);
+    const res = await acceptApplication(
+      { applicationId: app.id, decidedBy: registrar.id, asOf: AS_OF },
+      prisma,
+      fakeAuthProvider,
+    );
+    expect(res.guardianLinked).toBe(false);
+    expect(await prisma.event.count({ where: { type: "GUARDIAN_NOTIFIED" } })).toBe(0);
   });
 });
