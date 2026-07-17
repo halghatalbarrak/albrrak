@@ -57,6 +57,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <Link href="/admin/applications" style={{ fontWeight: 700 }}>
           الطلبات المعلّقة{pending !== null ? `: ${pending}` : ""}
         </Link>
+        <Link href="/admin/students">الطلاب</Link>
         <Link href="/admin/lists">إدارة القوائم</Link>
         {oldestDays !== null && oldestDays >= 3 && (
           <span style={{ color: "#b00020" }}>⚠ طلبٌ معلّق منذ {oldestDays} أيام</span>
