@@ -2,6 +2,8 @@ import { Gender, Role } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { GET as appsGET, POST as submitPOST } from "@/app/api/applications/route";
 import { GET as studentsGET } from "@/app/api/students/route";
+import { GET as adminStudentsGET } from "@/app/api/admin/students/route";
+import { POST as studentRevealPOST } from "@/app/api/students/[id]/reveal-id/route";
 import { POST as decisionPOST } from "@/app/api/applications/[id]/decision/route";
 import { GET as meGET } from "@/app/api/me/route";
 import { POST as revealPOST } from "@/app/api/applications/[id]/reveal-id/route";
@@ -9,6 +11,7 @@ import { POST as emergencyPOST } from "@/app/api/students/[id]/emergency/route";
 import { GET as listsGET } from "@/app/api/admin/lists/route";
 import { GET as pendingGET } from "@/app/api/admin/pending-count/route";
 import { acceptApplication, submitApplication } from "../application";
+import { encryptNationalId } from "../national-id";
 import { prisma, resetDb } from "../testing/helpers";
 import {
   buildApplicationInput,
@@ -208,6 +211,38 @@ describe("جهة الطوارئ على حدّ HTTP — لمعلّم الطالب
     expect(res.status).toBe(200);
     const contact = (await res.json()) as { phone: string };
     expect(contact.phone).toBe("0555111000");
+  });
+});
+
+describe("قائمة الطلاب وكشف الهوية على حدّ HTTP", () => {
+  it("قائمة الطلاب: مدير 200، معلّم 403", async () => {
+    const manager = await actor([Role.CIRCLE_MANAGER]);
+    const teacher = await actor([Role.TEACHER]);
+    expect((await adminStudentsGET(get("http://t/api/admin/students", manager.jwt))).status).toBe(200);
+    expect((await adminStudentsGET(get("http://t/api/admin/students", teacher.jwt))).status).toBe(403);
+  });
+
+  it("كشف هوية طالب: مُسجِّل ← 200 وسطرُ اطّلاع، معلّم ← 403", async () => {
+    const u = await createUser(prisma, {
+      roles: [Role.STUDENT],
+      nationalId: encryptNationalId("1033445566"),
+    });
+    const student = await prisma.student.create({ data: { userId: u.id } });
+    const registrar = await actor([Role.REGISTRAR]);
+    const teacher = await actor([Role.TEACHER]);
+
+    const rej = await studentRevealPOST(post("http://t/x", {}, teacher.jwt), {
+      params: Promise.resolve({ id: student.id }),
+    });
+    expect(rej.status).toBe(403);
+
+    const ok = await studentRevealPOST(post("http://t/x", {}, registrar.jwt), {
+      params: Promise.resolve({ id: student.id }),
+    });
+    expect(ok.status).toBe(200);
+    const body = (await ok.json()) as { nationalId: string };
+    expect(body.nationalId).toBe("1033445566");
+    expect(await prisma.nationalIdAccessLog.count({ where: { subjectId: u.id } })).toBe(1);
   });
 });
 
