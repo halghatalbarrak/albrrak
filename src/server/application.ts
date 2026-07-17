@@ -25,7 +25,13 @@ export interface ApplicationInput {
   schoolStageId?: string | null;
   guardianPhone: string;
   guardianGender: Gender;
+  /** صفة الولي (أب/أخ/…) — قيمة من GuardianRelation. إلزامية. */
+  guardianRelationId: string;
   studentPhone?: string | null;
+  /** جهة اتصال الطوارئ — إلزامية (اسم + جوال + صفة). */
+  emergencyName: string;
+  emergencyPhone: string;
+  emergencyRelationId: string;
   priorHifzJuz?: number | null;
   priorHifzNotes?: string | null;
   preferredCircleId?: string | null;
@@ -48,7 +54,11 @@ export async function submitApplication(
         schoolStageId: input.schoolStageId ?? null,
         guardianPhone: input.guardianPhone,
         guardianGender: input.guardianGender,
+        guardianRelationId: input.guardianRelationId,
         studentPhone: input.studentPhone ?? null,
+        emergencyName: input.emergencyName,
+        emergencyPhone: input.emergencyPhone,
+        emergencyRelationId: input.emergencyRelationId,
         priorHifzJuz: input.priorHifzJuz ?? null,
         priorHifzNotes: input.priorHifzNotes ?? null,
         preferredCircleId: input.preferredCircleId ?? null,
@@ -136,7 +146,8 @@ export async function acceptApplication(
         birthDate: app.birthDate,
         gender: app.gender,
         email: login?.email ?? null,
-        phone: login?.phone ?? null,
+        // الجوال يُسجَّل حتى لمن دون ١٣ (فحين يبلغها فالتهيئة نقرة). authId يبقى فارغًا لهم (م٤).
+        phone: app.studentPhone ?? null,
         authId: login?.authId ?? null,
         roles: [Role.STUDENT],
       },
@@ -146,6 +157,10 @@ export async function acceptApplication(
         userId: user.id,
         // §٥: بعد القبول ← بانتظار اختبار القراءة.
         state: StudentState.AWAITING_READING_TEST,
+        // جهة اتصال الطوارئ تُحمل إلى سجلّ الطالب — يراها معلّمه فقط لاحقًا.
+        emergencyName: app.emergencyName,
+        emergencyPhone: app.emergencyPhone,
+        emergencyRelationId: app.emergencyRelationId,
       },
     });
 
@@ -161,9 +176,25 @@ export async function acceptApplication(
         guardianGender: app.guardianGender,
       });
       await tx.guardianLink.create({
-        data: { guardianId: guardian.id, studentId: student.id },
+        data: {
+          guardianId: guardian.id,
+          studentId: student.id,
+          relationId: app.guardianRelationId,
+        },
       });
       guardianLinked = true;
+
+      // ١٣–١٧: قاصرٌ نظامًا، جواله عندنا ⟵ يُخطَر وليّه بالقبول (لا يُفاجأ).
+      // الإخطار حدثٌ الآن (قاعدة ٥)؛ التسليم الفعلي مع آلية الإشعارات لاحقًا.
+      if (policy.guardianRule === "GUARANTEED_BY_WILAYAH") {
+        await emitEvent(tx, {
+          type: "GUARDIAN_NOTIFIED",
+          subjectType: "Student",
+          subjectId: student.id,
+          actorId: args.decidedBy,
+          payload: { guardianId: guardian.id, reason: "MINOR_ACCEPTED", age },
+        });
+      }
     }
     // ١٨+ (BY_STUDENT_CONSENT): لا ربط تلقائي — يُربط بإذنه لاحقًا.
 
@@ -182,6 +213,13 @@ export async function acceptApplication(
       subjectId: student.id,
       actorId: args.decidedBy,
       payload: { age, guardianRule: policy.guardianRule },
+    });
+    // حدث القيد (قاعدة ٥ + §٦): الإشعارات تشتري منه متى بُنيت.
+    await emitEvent(tx, {
+      type: "APPLICATION_ACCEPTED",
+      subjectType: "Application",
+      subjectId: app.id,
+      actorId: args.decidedBy,
     });
 
     return {
@@ -247,6 +285,28 @@ export async function listApplicationsForReview(
     status: a.status,
     createdAt: a.createdAt,
   }));
+}
+
+export interface PendingSummary {
+  /** عدد الطلبات غير المحسومة (PENDING) — عدّاد يظهر في كل شاشة مدير. */
+  pending: number;
+  /** أقدم طلبٍ معلّق (لتنبيه «معلّق منذ ٣ أيام»)، أو null إن لا معلّق. */
+  oldestPendingAt: Date | null;
+}
+
+/** ملخّص الطلبات المعلّقة — للعدّاد والتنبيه في لوحة المدير (ثغرة أول طلب). */
+export async function countPendingApplications(
+  db: PrismaClient = prisma,
+): Promise<PendingSummary> {
+  const [pending, oldest] = await Promise.all([
+    db.application.count({ where: { status: ApplicationStatus.PENDING } }),
+    db.application.findFirst({
+      where: { status: ApplicationStatus.PENDING },
+      orderBy: { createdAt: "asc" },
+      select: { createdAt: true },
+    }),
+  ]);
+  return { pending, oldestPendingAt: oldest?.createdAt ?? null };
 }
 
 /** الرفض — بسبب مكتوب إلزامي (§٦٫٢). القيد يبقى سجلًّا ثابتًا. */

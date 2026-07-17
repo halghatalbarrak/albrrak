@@ -5,9 +5,20 @@ import { GET as studentsGET } from "@/app/api/students/route";
 import { POST as decisionPOST } from "@/app/api/applications/[id]/decision/route";
 import { GET as meGET } from "@/app/api/me/route";
 import { POST as revealPOST } from "@/app/api/applications/[id]/reveal-id/route";
+import { POST as emergencyPOST } from "@/app/api/students/[id]/emergency/route";
+import { GET as listsGET } from "@/app/api/admin/lists/route";
+import { GET as pendingGET } from "@/app/api/admin/pending-count/route";
 import { acceptApplication, submitApplication } from "../application";
 import { prisma, resetDb } from "../testing/helpers";
-import { createNationality, createUser } from "../testing/factories";
+import {
+  buildApplicationInput,
+  createCircle,
+  createGuardianRelation,
+  createNationality,
+  createProgram,
+  createStudent,
+  createUser,
+} from "../testing/factories";
 import { fakeAuthProvider, mintJwt } from "../testing/auth";
 
 beforeEach(resetDb);
@@ -46,6 +57,7 @@ function bornYearsAgo(years: number): string {
 describe("POST /api/applications — عام بلا مصادقة", () => {
   it("طفل ١٢: 201 بلا مصادقة، ثم القبول (مدير) لا يُنشئ auth", async () => {
     const nat = await createNationality(prisma);
+    const rel = await createGuardianRelation(prisma);
     const manager = await actor([Role.CIRCLE_MANAGER]);
 
     const res = await submitPOST(
@@ -57,6 +69,10 @@ describe("POST /api/applications — عام بلا مصادقة", () => {
         gender: Gender.MALE,
         guardianPhone: "0555000001",
         guardianGender: Gender.MALE,
+        guardianRelationId: rel.id,
+        emergencyName: "جهة الطوارئ",
+        emergencyPhone: "0555000055",
+        emergencyRelationId: rel.id,
       }),
     );
     expect(res.status).toBe(201);
@@ -124,18 +140,16 @@ describe("المصادقة والصلاحية على حدّ HTTP", () => {
 
   it("دون ١٣ مستحيل انتحاله: لا authId ⟵ JWT بمعرّفه لا يحلّ إلى أحد ← 403/401", async () => {
     // نقبل طفلًا عمره ١٢ ⟵ سجلّ User بلا authId.
-    const nat = await createNationality(prisma);
     const registrar = await createUser(prisma);
-    const app = await submitApplication({
-      nameAsInId: "طفل",
-      nationalId: "1077777777",
-      nationalityId: nat.id,
-      birthDate: new Date("2014-01-01"),
-      gender: Gender.MALE,
-      guardianPhone: "0555999000",
-      guardianGender: Gender.MALE,
-      studentPhone: null,
-    });
+    const app = await submitApplication(
+      await buildApplicationInput(prisma, {
+        nameAsInId: "طفل",
+        nationalId: "1077777777",
+        birthDate: new Date("2014-01-01"),
+        guardianPhone: "0555999000",
+        studentPhone: null,
+      }),
+    );
     const res = await acceptApplication(
       { applicationId: app.id, decidedBy: registrar.id, asOf: new Date("2026-01-01") },
       prisma,
@@ -148,6 +162,68 @@ describe("المصادقة والصلاحية على حدّ HTTP", () => {
     const forged = await mintJwt(child.id);
     const r = await studentsGET(get("http://t/api/students", forged));
     expect(r.status).toBe(403);
+  });
+});
+
+describe("جهة الطوارئ على حدّ HTTP — لمعلّم الطالب فقط، وإلا 401/403", () => {
+  async function enrolledStudent() {
+    const program = await createProgram(prisma);
+    const circle = await createCircle(prisma, program.id);
+    const rel = await createGuardianRelation(prisma);
+    const { student } = await createStudent(prisma);
+    await prisma.student.update({
+      where: { id: student.id },
+      data: { emergencyName: "قريب", emergencyPhone: "0555111000", emergencyRelationId: rel.id },
+    });
+    await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+    return { circle, student };
+  }
+
+  it("بلا JWT ← 401", async () => {
+    const { student } = await enrolledStudent();
+    const res = await emergencyPOST(post("http://t/x", {}), {
+      params: Promise.resolve({ id: student.id }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("معلّمٌ ليس معلّمه ← 403", async () => {
+    const { student } = await enrolledStudent();
+    const teacher = await actor([Role.TEACHER]);
+    const res = await emergencyPOST(post("http://t/x", {}, teacher.jwt), {
+      params: Promise.resolve({ id: student.id }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("معلّم الطالب ← 200 وجوال الطوارئ", async () => {
+    const { circle, student } = await enrolledStudent();
+    const teacher = await actor([Role.TEACHER]);
+    await prisma.circleTeacher.create({
+      data: { circleId: circle.id, teacherId: teacher.user.id },
+    });
+    const res = await emergencyPOST(post("http://t/x", {}, teacher.jwt), {
+      params: Promise.resolve({ id: student.id }),
+    });
+    expect(res.status).toBe(200);
+    const contact = (await res.json()) as { phone: string };
+    expect(contact.phone).toBe("0555111000");
+  });
+});
+
+describe("شاشات المدير على حدّ HTTP — مدير 200، معلّم 403", () => {
+  it("إدارة القوائم", async () => {
+    const manager = await actor([Role.CIRCLE_MANAGER]);
+    const teacher = await actor([Role.TEACHER]);
+    expect((await listsGET(get("http://t/api/admin/lists", manager.jwt))).status).toBe(200);
+    expect((await listsGET(get("http://t/api/admin/lists", teacher.jwt))).status).toBe(403);
+  });
+
+  it("عدّاد المعلّق", async () => {
+    const manager = await actor([Role.CIRCLE_MANAGER]);
+    const teacher = await actor([Role.TEACHER]);
+    expect((await pendingGET(get("http://t/api/admin/pending-count", manager.jwt))).status).toBe(200);
+    expect((await pendingGET(get("http://t/api/admin/pending-count", teacher.jwt))).status).toBe(403);
   });
 });
 
@@ -172,16 +248,14 @@ describe("GET /api/me — المستخدم عن نفسه", () => {
 
 describe("كشف رقم الهوية — للمُسجِّل فقط، بسطر سجل (م٥)", () => {
   async function makeApp() {
-    const nat = await createNationality(prisma);
-    return submitApplication({
-      nameAsInId: "متقدّم",
-      nationalId: "1012345678",
-      nationalityId: nat.id,
-      birthDate: new Date("2010-01-01"),
-      gender: Gender.MALE,
-      guardianPhone: "0555000123",
-      guardianGender: Gender.MALE,
-    });
+    return submitApplication(
+      await buildApplicationInput(prisma, {
+        nameAsInId: "متقدّم",
+        nationalId: "1012345678",
+        birthDate: new Date("2010-01-01"),
+        guardianPhone: "0555000123",
+      }),
+    );
   }
 
   it("معلم ← 403", async () => {

@@ -5,6 +5,7 @@ import {
   Role,
   TimeSlot,
 } from "@prisma/client";
+import { type ApplicationInput } from "../application";
 
 let seq = 0;
 const uniq = () => `${Date.now()}-${seq++}`;
@@ -34,6 +35,37 @@ export async function createUser(
 
 export async function createNationality(db: PrismaClient) {
   return db.nationality.create({ data: { nameAr: `جنسية-${uniq()}` } });
+}
+
+export async function createGuardianRelation(db: PrismaClient) {
+  return db.guardianRelation.create({ data: { nameAr: `صفة-${uniq()}`, ordinal: 0 } });
+}
+
+/**
+ * يبني جسم طلب قيد كامل الحقول الإلزامية (جنسية + صفة قرابة + جهة طوارئ حقيقية)،
+ * فلا تكرّر الاختبارات هذه الحقول. الجوالات مختلفة عمدًا (شرط التحقّق).
+ */
+export async function buildApplicationInput(
+  db: PrismaClient,
+  overrides: Partial<ApplicationInput> = {},
+): Promise<ApplicationInput> {
+  const nat = await createNationality(db);
+  const rel = await createGuardianRelation(db);
+  return {
+    nameAsInId: "خالد بن عبدالله",
+    nationalId: "1012345678",
+    nationalityId: nat.id,
+    birthDate: new Date("2010-01-01"),
+    gender: Gender.MALE,
+    guardianPhone: "0555000001",
+    guardianGender: Gender.MALE,
+    guardianRelationId: rel.id,
+    studentPhone: "0555000002",
+    emergencyName: "جهة الطوارئ",
+    emergencyPhone: "0555000009",
+    emergencyRelationId: rel.id,
+    ...overrides,
+  };
 }
 
 export async function createProgram(db: PrismaClient, key: ProgramKey = ProgramKey.MARAQI) {

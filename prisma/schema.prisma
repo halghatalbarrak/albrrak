@@ -63,6 +63,17 @@ model NationalIdAccessLog {
   @@index([subjectId])
 }
 
+// سجل الاطّلاع على جهة اتصال الطوارئ — أخفّ من سجل الهوية (بلا سبب/علاقة User).
+// يُكتب سطرٌ كلّما كشف معلّمٌ جوالَ طوارئ طالبٍ من طلابه.
+model EmergencyAccessLog {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
+  viewerId  String                 // معرّف المعلّم المُطّلِع
+  viewedAt  DateTime @default(now())
+  @@index([studentId])
+}
+
 // ═══════════════ الحلقات ═══════════════
 
 enum TimeSlot {
@@ -132,6 +143,14 @@ model Student {
   schoolStage   String?                  // المرحلة الدراسية — للجهة
   priorHifzAmount String?                // مقدار الحفظ — للجهة (الصيغة؟)
   priorHifzLocations Json?               // مواضع الحفظ — لاختيار المقطع
+
+  // جهة اتصال الطوارئ — تُستعمل حين لا يردّ الولي. ليست بياناً إدارياً:
+  // يراها معلّم الطالب فقط، بضغطة صريحة، وبسطرٍ في EmergencyAccessLog.
+  emergencyName       String?
+  emergencyPhone      String?
+  emergencyRelationId String?
+  emergencyRelation   GuardianRelation? @relation("EmergencyRel", fields: [emergencyRelationId], references: [id])
+
   enrollments   Enrollment[]
   guardians     GuardianLink[] @relation("Student")
   progress      StageProgress[]
@@ -140,6 +159,7 @@ model Student {
   hasads        Hasad[]
   trackAssignments TrackAssignment[]
   certificates  Certificate[]
+  emergencyAccessLogs EmergencyAccessLog[]
 }
 
 model Enrollment {
@@ -167,6 +187,9 @@ model GuardianLink {
   guardian     User    @relation("Guardian", fields: [guardianId], references: [id])
   student      Student @relation("Student", fields: [studentId], references: [id])
   status       GuardianLinkStatus @default(ACTIVE)
+  // صفة الولي تجاه الطالب (أب/أخ/عم…) — قيمة من جدول GuardianRelation لا ثابت.
+  relationId   String?
+  relation     GuardianRelation? @relation("GuardianRel", fields: [relationId], references: [id])
   // طلب فكّ الربط — لا يظهر للولي إطلاقاً
   unlinkReason String?
   unlinkDecidedBy String?
@@ -474,6 +497,19 @@ model SchoolStage {
   applications Application[]
 }
 
+// صفة القرابة (أب/أخ/عم/خال/جد/وصي/غير ذلك) — جدولٌ يديره المدير لا ثابت.
+// يُستعمل لصفة الولي وصفة جهة الطوارئ كلتيهما.
+model GuardianRelation {
+  id                    String         @id @default(cuid())
+  nameAr                String         @unique
+  ordinal               Int            @default(0)
+  isActive              Boolean        @default(true)
+  guardianLinks         GuardianLink[] @relation("GuardianRel")
+  emergencyStudents     Student[]      @relation("EmergencyRel")
+  applicationsGuardian  Application[]  @relation("AppGuardianRel")
+  applicationsEmergency Application[]  @relation("AppEmergencyRel")
+}
+
 enum ApplicationStatus {
   PENDING
   ACCEPTED
@@ -496,7 +532,16 @@ model Application {
   schoolStage       SchoolStage? @relation(fields: [schoolStageId], references: [id])
   guardianPhone     String
   guardianGender    Gender
-  studentPhone      String?             // فارغ لمن دون ١٣
+  // صفة الولي (أب/أخ/…) — قيمة من GuardianRelation. إلزامية نظيفةً (NOT NULL):
+  // نموذج القيد هو نقطة الدخول، فالإلزام يُثبَّت في القاعدة لا في التحقّق وحده.
+  guardianRelationId String
+  guardianRelation   GuardianRelation @relation("AppGuardianRel", fields: [guardianRelationId], references: [id])
+  studentPhone      String?             // اختياري لمن دون ١٣، إلزامي لمن بلغها (يُنفَّذ في التحقّق)
+  // جهة اتصال الطوارئ (اسم + جوال + صفة) — إلزامية (NOT NULL).
+  emergencyName       String
+  emergencyPhone      String
+  emergencyRelationId String
+  emergencyRelation   GuardianRelation @relation("AppEmergencyRel", fields: [emergencyRelationId], references: [id])
   priorHifzJuz      Int?
   priorHifzNotes    String?
   preferredCircleId String?

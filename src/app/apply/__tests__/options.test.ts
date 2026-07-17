@@ -8,12 +8,18 @@ describe("parseOptions — مصفوفات دائمًا (لا `.map على undefi
     expect(o.schoolStages).toEqual([]);
   });
 
-  it("null / نصّ / رقم ← مصفوفتان فارغتان", () => {
+  it("null / نصّ / رقم ← ثلاث مصفوفات فارغة", () => {
     for (const bad of [null, "x", 5, undefined]) {
       const o = parseOptions(bad);
       expect(Array.isArray(o.nationalities)).toBe(true);
       expect(Array.isArray(o.schoolStages)).toBe(true);
+      expect(Array.isArray(o.guardianRelations)).toBe(true);
     }
+  });
+
+  it("صفات القرابة تُحلَّل كالبقيّة", () => {
+    const o = parseOptions({ guardianRelations: [{ id: "r1", nameAr: "أب" }, { bad: true }] });
+    expect(o.guardianRelations).toEqual([{ id: "r1", nameAr: "أب" }]);
   });
 
   it("يُسقط العناصر المشوّهة ويُبقي الصحيحة", () => {
