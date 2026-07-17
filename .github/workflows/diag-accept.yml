@@ -1,0 +1,31 @@
+name: Diag Accept
+
+# تشخيص سقوط القبول (decision → 500) — يدويًّا. يعيد إنتاج كتابات القبول بتراجُع
+# (لا مساس بالإنتاج)، ويفحص service_role بنداءٍ فارغٍ لا يُنشئ شيئًا.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    name: reproduce accept writes (rollback)
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Reproduce accept path
+        run: node scripts/diag-accept.mjs
