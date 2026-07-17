@@ -24,8 +24,12 @@ jobs:
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
     steps:
       - name: التحقق من التأكيد (يجب أن يساوي APPLY)
+        env:
+          CONFIRM: ${{ inputs.confirm }}
         run: |
-          if [ "${{ inputs.confirm }}" != "APPLY" ]; then
+          # قصّ كل فراغ (النقر المزدوج قد يلتقط مسافة زائدة). الحالة كما هي.
+          trimmed="$(printf '%s' "$CONFIRM" | tr -d '[:space:]')"
+          if [ "$trimmed" != "APPLY" ]; then
             echo "التأكيد غير صحيح — أرسلتَ قيمة لا تساوي APPLY. تم الإيقاف."
             exit 1
           fi
