@@ -59,6 +59,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </Link>
         <Link href="/admin/students">الطلاب</Link>
         <Link href="/admin/circles">الحلقات</Link>
+        <Link href="/admin/enrollment">الإسناد</Link>
         <Link href="/admin/lists">إدارة القوائم</Link>
         {oldestDays !== null && oldestDays >= 3 && (
           <span style={{ color: "#b00020" }}>⚠ طلبٌ معلّق منذ {oldestDays} أيام</span>

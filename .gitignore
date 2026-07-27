@@ -38,3 +38,5 @@ yarn-error.log*
 shot*.png
 v-*.png
 *.tmp
+
+.vercel
