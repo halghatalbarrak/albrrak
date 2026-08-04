@@ -83,6 +83,7 @@ export default function Home() {
           <div style={grid}>
             <Link href="/me" style={tile}>صفحتي</Link>
             <Link href="/programs/civil-base" style={tile}>السلّم البياني</Link>
+            <Link href="/programs/maraqi" style={tile}>مراقي</Link>
             {isManager && (
               <>
                 <Link href="/admin/applications" style={tile}>الطلبات</Link>
