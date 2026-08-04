@@ -21,6 +21,12 @@ ALTER TABLE "Stage" ADD COLUMN "hizbNumber" INTEGER;
 
 ALTER TABLE "PaceTest" ALTER COLUMN "passageId" DROP NOT NULL;
 
+-- برنامج مراقي — يُبذر هنا أيضًا (idempotent) لأن Prisma يطبّق الترحيلات ترتيبًا
+-- معجميًّا (0,1,10,11,2,…,9)، فيسبق هذا الترحيلُ 8_seed_programs. تكراره في 8 لا يضرّ.
+INSERT INTO "Program" ("id", "key", "nameAr") VALUES
+  ('prog_maraqi', 'MARAQI', 'مراقي')
+ON CONFLICT ("key") DO NOTHING;
+
 -- م٤أ: بذر مراقي — مولَّدٌ من hizb_boundaries.json (توقيع محمد، مصحف المدينة).
 -- الأحزاب من الملف حرفيًّا. المراحل والمسارات بنيةٌ من DESIGN §٨. آمنة التكرار.
 
