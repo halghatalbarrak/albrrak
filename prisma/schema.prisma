@@ -396,6 +396,7 @@ model Attendance {
   date       DateTime @db.Date
   status     AttendanceStatus @default(PRESENT)   // الافتراض: حاضر
   recordedBy String
+  note       String?              // م٢ — سبب العذر/الاستئذان أو تعليق المعلم
   excuseAcceptedBy String?             // من قَبِل العذر — بأي تفويض
   excuseAcceptedAt DateTime?
   @@unique([studentId, date])
