@@ -1,0 +1,602 @@
+[
+ {
+  "hizb": 1,
+  "juz": 1,
+  "startSurahNum": 1,
+  "startSurah": "الفاتحة",
+  "startAyah": 1,
+  "endSurahNum": 2,
+  "endSurah": "البقرة",
+  "endAyah": 74
+ },
+ {
+  "hizb": 2,
+  "juz": 1,
+  "startSurahNum": 2,
+  "startSurah": "البقرة",
+  "startAyah": 75,
+  "endSurahNum": 2,
+  "endSurah": "البقرة",
+  "endAyah": 141
+ },
+ {
+  "hizb": 3,
+  "juz": 2,
+  "startSurahNum": 2,
+  "startSurah": "البقرة",
+  "startAyah": 142,
+  "endSurahNum": 2,
+  "endSurah": "البقرة",
+  "endAyah": 202
+ },
+ {
+  "hizb": 4,
+  "juz": 2,
+  "startSurahNum": 2,
+  "startSurah": "البقرة",
+  "startAyah": 203,
+  "endSurahNum": 2,
+  "endSurah": "البقرة",
+  "endAyah": 252
+ },
+ {
+  "hizb": 5,
+  "juz": 3,
+  "startSurahNum": 2,
+  "startSurah": "البقرة",
+  "startAyah": 253,
+  "endSurahNum": 3,
+  "endSurah": "آل عمران",
+  "endAyah": 14
+ },
+ {
+  "hizb": 6,
+  "juz": 3,
+  "startSurahNum": 3,
+  "startSurah": "آل عمران",
+  "startAyah": 15,
+  "endSurahNum": 3,
+  "endSurah": "آل عمران",
+  "endAyah": 92
+ },
+ {
+  "hizb": 7,
+  "juz": 4,
+  "startSurahNum": 3,
+  "startSurah": "آل عمران",
+  "startAyah": 93,
+  "endSurahNum": 3,
+  "endSurah": "آل عمران",
+  "endAyah": 170
+ },
+ {
+  "hizb": 8,
+  "juz": 4,
+  "startSurahNum": 3,
+  "startSurah": "آل عمران",
+  "startAyah": 171,
+  "endSurahNum": 4,
+  "endSurah": "النساء",
+  "endAyah": 23
+ },
+ {
+  "hizb": 9,
+  "juz": 5,
+  "startSurahNum": 4,
+  "startSurah": "النساء",
+  "startAyah": 24,
+  "endSurahNum": 4,
+  "endSurah": "النساء",
+  "endAyah": 87
+ },
+ {
+  "hizb": 10,
+  "juz": 5,
+  "startSurahNum": 4,
+  "startSurah": "النساء",
+  "startAyah": 88,
+  "endSurahNum": 4,
+  "endSurah": "النساء",
+  "endAyah": 147
+ },
+ {
+  "hizb": 11,
+  "juz": 6,
+  "startSurahNum": 4,
+  "startSurah": "النساء",
+  "startAyah": 148,
+  "endSurahNum": 5,
+  "endSurah": "المائدة",
+  "endAyah": 26
+ },
+ {
+  "hizb": 12,
+  "juz": 6,
+  "startSurahNum": 5,
+  "startSurah": "المائدة",
+  "startAyah": 27,
+  "endSurahNum": 5,
+  "endSurah": "المائدة",
+  "endAyah": 81
+ },
+ {
+  "hizb": 13,
+  "juz": 7,
+  "startSurahNum": 5,
+  "startSurah": "المائدة",
+  "startAyah": 82,
+  "endSurahNum": 6,
+  "endSurah": "الأنعام",
+  "endAyah": 35
+ },
+ {
+  "hizb": 14,
+  "juz": 7,
+  "startSurahNum": 6,
+  "startSurah": "الأنعام",
+  "startAyah": 36,
+  "endSurahNum": 6,
+  "endSurah": "الأنعام",
+  "endAyah": 110
+ },
+ {
+  "hizb": 15,
+  "juz": 8,
+  "startSurahNum": 6,
+  "startSurah": "الأنعام",
+  "startAyah": 111,
+  "endSurahNum": 6,
+  "endSurah": "الأنعام",
+  "endAyah": 165
+ },
+ {
+  "hizb": 16,
+  "juz": 8,
+  "startSurahNum": 7,
+  "startSurah": "الأعراف",
+  "startAyah": 1,
+  "endSurahNum": 7,
+  "endSurah": "الأعراف",
+  "endAyah": 87
+ },
+ {
+  "hizb": 17,
+  "juz": 9,
+  "startSurahNum": 7,
+  "startSurah": "الأعراف",
+  "startAyah": 88,
+  "endSurahNum": 7,
+  "endSurah": "الأعراف",
+  "endAyah": 170
+ },
+ {
+  "hizb": 18,
+  "juz": 9,
+  "startSurahNum": 7,
+  "startSurah": "الأعراف",
+  "startAyah": 171,
+  "endSurahNum": 8,
+  "endSurah": "الأنفال",
+  "endAyah": 40
+ },
+ {
+  "hizb": 19,
+  "juz": 10,
+  "startSurahNum": 8,
+  "startSurah": "الأنفال",
+  "startAyah": 41,
+  "endSurahNum": 9,
+  "endSurah": "التوبة",
+  "endAyah": 33
+ },
+ {
+  "hizb": 20,
+  "juz": 10,
+  "startSurahNum": 9,
+  "startSurah": "التوبة",
+  "startAyah": 34,
+  "endSurahNum": 9,
+  "endSurah": "التوبة",
+  "endAyah": 92
+ },
+ {
+  "hizb": 21,
+  "juz": 11,
+  "startSurahNum": 9,
+  "startSurah": "التوبة",
+  "startAyah": 93,
+  "endSurahNum": 10,
+  "endSurah": "يونس",
+  "endAyah": 25
+ },
+ {
+  "hizb": 22,
+  "juz": 11,
+  "startSurahNum": 10,
+  "startSurah": "يونس",
+  "startAyah": 26,
+  "endSurahNum": 11,
+  "endSurah": "هود",
+  "endAyah": 5
+ },
+ {
+  "hizb": 23,
+  "juz": 12,
+  "startSurahNum": 11,
+  "startSurah": "هود",
+  "startAyah": 6,
+  "endSurahNum": 11,
+  "endSurah": "هود",
+  "endAyah": 83
+ },
+ {
+  "hizb": 24,
+  "juz": 12,
+  "startSurahNum": 11,
+  "startSurah": "هود",
+  "startAyah": 84,
+  "endSurahNum": 12,
+  "endSurah": "يوسف",
+  "endAyah": 52
+ },
+ {
+  "hizb": 25,
+  "juz": 13,
+  "startSurahNum": 12,
+  "startSurah": "يوسف",
+  "startAyah": 53,
+  "endSurahNum": 13,
+  "endSurah": "الرعد",
+  "endAyah": 18
+ },
+ {
+  "hizb": 26,
+  "juz": 13,
+  "startSurahNum": 13,
+  "startSurah": "الرعد",
+  "startAyah": 19,
+  "endSurahNum": 14,
+  "endSurah": "إبراهيم",
+  "endAyah": 52
+ },
+ {
+  "hizb": 27,
+  "juz": 14,
+  "startSurahNum": 15,
+  "startSurah": "الحجر",
+  "startAyah": 1,
+  "endSurahNum": 16,
+  "endSurah": "النحل",
+  "endAyah": 50
+ },
+ {
+  "hizb": 28,
+  "juz": 14,
+  "startSurahNum": 16,
+  "startSurah": "النحل",
+  "startAyah": 51,
+  "endSurahNum": 16,
+  "endSurah": "النحل",
+  "endAyah": 128
+ },
+ {
+  "hizb": 29,
+  "juz": 15,
+  "startSurahNum": 17,
+  "startSurah": "الإسراء",
+  "startAyah": 1,
+  "endSurahNum": 17,
+  "endSurah": "الإسراء",
+  "endAyah": 98
+ },
+ {
+  "hizb": 30,
+  "juz": 15,
+  "startSurahNum": 17,
+  "startSurah": "الإسراء",
+  "startAyah": 99,
+  "endSurahNum": 18,
+  "endSurah": "الكهف",
+  "endAyah": 74
+ },
+ {
+  "hizb": 31,
+  "juz": 16,
+  "startSurahNum": 18,
+  "startSurah": "الكهف",
+  "startAyah": 75,
+  "endSurahNum": 19,
+  "endSurah": "مريم",
+  "endAyah": 98
+ },
+ {
+  "hizb": 32,
+  "juz": 16,
+  "startSurahNum": 20,
+  "startSurah": "طه",
+  "startAyah": 1,
+  "endSurahNum": 20,
+  "endSurah": "طه",
+  "endAyah": 135
+ },
+ {
+  "hizb": 33,
+  "juz": 17,
+  "startSurahNum": 21,
+  "startSurah": "الأنبياء",
+  "startAyah": 1,
+  "endSurahNum": 21,
+  "endSurah": "الأنبياء",
+  "endAyah": 112
+ },
+ {
+  "hizb": 34,
+  "juz": 17,
+  "startSurahNum": 22,
+  "startSurah": "الحج",
+  "startAyah": 1,
+  "endSurahNum": 22,
+  "endSurah": "الحج",
+  "endAyah": 78
+ },
+ {
+  "hizb": 35,
+  "juz": 18,
+  "startSurahNum": 23,
+  "startSurah": "المؤمنون",
+  "startAyah": 1,
+  "endSurahNum": 24,
+  "endSurah": "النور",
+  "endAyah": 20
+ },
+ {
+  "hizb": 36,
+  "juz": 18,
+  "startSurahNum": 24,
+  "startSurah": "النور",
+  "startAyah": 21,
+  "endSurahNum": 25,
+  "endSurah": "الفرقان",
+  "endAyah": 20
+ },
+ {
+  "hizb": 37,
+  "juz": 19,
+  "startSurahNum": 25,
+  "startSurah": "الفرقان",
+  "startAyah": 21,
+  "endSurahNum": 26,
+  "endSurah": "الشعراء",
+  "endAyah": 110
+ },
+ {
+  "hizb": 38,
+  "juz": 19,
+  "startSurahNum": 26,
+  "startSurah": "الشعراء",
+  "startAyah": 111,
+  "endSurahNum": 27,
+  "endSurah": "النمل",
+  "endAyah": 55
+ },
+ {
+  "hizb": 39,
+  "juz": 20,
+  "startSurahNum": 27,
+  "startSurah": "النمل",
+  "startAyah": 56,
+  "endSurahNum": 28,
+  "endSurah": "القصص",
+  "endAyah": 50
+ },
+ {
+  "hizb": 40,
+  "juz": 20,
+  "startSurahNum": 28,
+  "startSurah": "القصص",
+  "startAyah": 51,
+  "endSurahNum": 29,
+  "endSurah": "العنكبوت",
+  "endAyah": 45
+ },
+ {
+  "hizb": 41,
+  "juz": 21,
+  "startSurahNum": 29,
+  "startSurah": "العنكبوت",
+  "startAyah": 46,
+  "endSurahNum": 31,
+  "endSurah": "لقمان",
+  "endAyah": 21
+ },
+ {
+  "hizb": 42,
+  "juz": 21,
+  "startSurahNum": 31,
+  "startSurah": "لقمان",
+  "startAyah": 22,
+  "endSurahNum": 33,
+  "endSurah": "الأحزاب",
+  "endAyah": 30
+ },
+ {
+  "hizb": 43,
+  "juz": 22,
+  "startSurahNum": 33,
+  "startSurah": "الأحزاب",
+  "startAyah": 31,
+  "endSurahNum": 34,
+  "endSurah": "سبأ",
+  "endAyah": 23
+ },
+ {
+  "hizb": 44,
+  "juz": 22,
+  "startSurahNum": 34,
+  "startSurah": "سبأ",
+  "startAyah": 24,
+  "endSurahNum": 36,
+  "endSurah": "يس",
+  "endAyah": 27
+ },
+ {
+  "hizb": 45,
+  "juz": 23,
+  "startSurahNum": 36,
+  "startSurah": "يس",
+  "startAyah": 28,
+  "endSurahNum": 37,
+  "endSurah": "الصافات",
+  "endAyah": 144
+ },
+ {
+  "hizb": 46,
+  "juz": 23,
+  "startSurahNum": 37,
+  "startSurah": "الصافات",
+  "startAyah": 145,
+  "endSurahNum": 39,
+  "endSurah": "الزمر",
+  "endAyah": 31
+ },
+ {
+  "hizb": 47,
+  "juz": 24,
+  "startSurahNum": 39,
+  "startSurah": "الزمر",
+  "startAyah": 32,
+  "endSurahNum": 40,
+  "endSurah": "غافر",
+  "endAyah": 40
+ },
+ {
+  "hizb": 48,
+  "juz": 24,
+  "startSurahNum": 40,
+  "startSurah": "غافر",
+  "startAyah": 41,
+  "endSurahNum": 41,
+  "endSurah": "فصلت",
+  "endAyah": 46
+ },
+ {
+  "hizb": 49,
+  "juz": 25,
+  "startSurahNum": 41,
+  "startSurah": "فصلت",
+  "startAyah": 47,
+  "endSurahNum": 43,
+  "endSurah": "الزخرف",
+  "endAyah": 23
+ },
+ {
+  "hizb": 50,
+  "juz": 25,
+  "startSurahNum": 43,
+  "startSurah": "الزخرف",
+  "startAyah": 24,
+  "endSurahNum": 45,
+  "endSurah": "الجاثية",
+  "endAyah": 37
+ },
+ {
+  "hizb": 51,
+  "juz": 26,
+  "startSurahNum": 46,
+  "startSurah": "الأحقاف",
+  "startAyah": 1,
+  "endSurahNum": 48,
+  "endSurah": "الفتح",
+  "endAyah": 17
+ },
+ {
+  "hizb": 52,
+  "juz": 26,
+  "startSurahNum": 48,
+  "startSurah": "الفتح",
+  "startAyah": 18,
+  "endSurahNum": 51,
+  "endSurah": "الذاريات",
+  "endAyah": 30
+ },
+ {
+  "hizb": 53,
+  "juz": 27,
+  "startSurahNum": 51,
+  "startSurah": "الذاريات",
+  "startAyah": 31,
+  "endSurahNum": 54,
+  "endSurah": "القمر",
+  "endAyah": 55
+ },
+ {
+  "hizb": 54,
+  "juz": 27,
+  "startSurahNum": 55,
+  "startSurah": "الرحمن",
+  "startAyah": 1,
+  "endSurahNum": 57,
+  "endSurah": "الحديد",
+  "endAyah": 29
+ },
+ {
+  "hizb": 55,
+  "juz": 28,
+  "startSurahNum": 58,
+  "startSurah": "المجادلة",
+  "startAyah": 1,
+  "endSurahNum": 61,
+  "endSurah": "الصف",
+  "endAyah": 14
+ },
+ {
+  "hizb": 56,
+  "juz": 28,
+  "startSurahNum": 62,
+  "startSurah": "الجمعة",
+  "startAyah": 1,
+  "endSurahNum": 66,
+  "endSurah": "التحريم",
+  "endAyah": 12
+ },
+ {
+  "hizb": 57,
+  "juz": 29,
+  "startSurahNum": 67,
+  "startSurah": "الملك",
+  "startAyah": 1,
+  "endSurahNum": 71,
+  "endSurah": "نوح",
+  "endAyah": 28
+ },
+ {
+  "hizb": 58,
+  "juz": 29,
+  "startSurahNum": 72,
+  "startSurah": "الجن",
+  "startAyah": 1,
+  "endSurahNum": 77,
+  "endSurah": "المرسلات",
+  "endAyah": 50
+ },
+ {
+  "hizb": 59,
+  "juz": 30,
+  "startSurahNum": 78,
+  "startSurah": "النبأ",
+  "startAyah": 1,
+  "endSurahNum": 86,
+  "endSurah": "الطارق",
+  "endAyah": 17
+ },
+ {
+  "hizb": 60,
+  "juz": 30,
+  "startSurahNum": 87,
+  "startSurah": "الأعلى",
+  "startAyah": 1,
+  "endSurahNum": 114,
+  "endSurah": "الناس",
+  "endAyah": 6
+ }
+]

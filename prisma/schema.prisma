@@ -265,6 +265,8 @@ model Stage {
   weight     Int?                    // الوزن — الأبواب ليست متساوية
   objectives Json?                   // أهداف الباب من صفحة «للمعلم»
   teacherNotes String?               // إرشادات المؤلف — تُعرض في المنصة
+  // لمراقي: المرحلة الفرعية = حزب. الرقم للإدارة (الحصاد م٤ج) — لا يُعرض للطالب (§٨٫٢).
+  hizbNumber Int?
   // لمراقي: حدود الحزب
   fromSurah  Int?
   fromAyah   Int?
@@ -326,8 +328,8 @@ model TrackAssignment {
 model PaceTest {
   id            String   @id @default(cuid())
   studentId     String
-  passageId     String                 // من البنك
-  administeredBy String                // المعلم
+  passageId     String?                // من البنك — اختياريّ حتى يُبنى بنك المقاطع (§٨٫٥)
+  administeredBy String                // المُختبِر — ليس معلمه (م١)
   startedAt     DateTime
   endedAt       DateTime?
   linesMemorized Float?
@@ -343,6 +345,19 @@ model PacePassage {
   toAyah    Int
   isActive  Boolean @default(true)
   // المعايرة بالبيانات: متوسط النتائج
+}
+
+// حدود الأحزاب الستين (§٨٫٢) — مرجعٌ قرآنيّ خام يُبذر من hizb_boundaries.json الموقَّع
+// (مصحف المدينة، توقيع محمد). لا يُكتب حدٌّ من الذاكرة. المرحلة الفرعية تُشتقّ منه.
+model HizbBoundary {
+  hizb          Int    @id            // ١..٦٠
+  juz           Int
+  startSurahNum Int
+  startSurah    String
+  startAyah     Int
+  endSurahNum   Int
+  endSurah      String
+  endAyah       Int
 }
 
 // ═══════════════ الجلسة اليومية — مراقي فقط ═══════════════
