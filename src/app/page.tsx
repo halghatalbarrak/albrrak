@@ -38,13 +38,6 @@ const tile: React.CSSProperties = {
   textDecoration: "none",
   background: "#FBFAF5",
 };
-const tileDisabled: React.CSSProperties = {
-  ...tile,
-  opacity: 0.45,
-  cursor: "not-allowed",
-  borderStyle: "dashed",
-};
-
 export default function Home() {
   const [me, setMe] = useState<Me | null>(null);
   const [ready, setReady] = useState(false);
@@ -71,6 +64,7 @@ export default function Home() {
 
   const roles = me?.roles ?? [];
   const isManager = roles.includes("SUPER_ADMIN") || roles.includes("CIRCLE_MANAGER");
+  const canRecordAttendance = isManager || roles.includes("TEACHER");
 
   return (
     <main dir="rtl" style={box}>
@@ -96,10 +90,10 @@ export default function Home() {
                 <Link href="/admin/circles" style={tile}>الحلقات</Link>
                 <Link href="/admin/enrollment" style={tile}>الإسناد</Link>
                 <Link href="/admin/lists" style={tile}>القوائم</Link>
-                <span style={tileDisabled} title="م٢ — لم تُبنَ بعد">
-                  الحضور (قيد الإنشاء)
-                </span>
               </>
+            )}
+            {canRecordAttendance && (
+              <Link href="/admin/attendance" style={tile}>الحضور</Link>
             )}
           </div>
         </>
