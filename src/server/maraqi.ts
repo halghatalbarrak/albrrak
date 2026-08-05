@@ -138,6 +138,7 @@ export interface MaraqiSubStage {
   fromAyah: number | null;
   toSurah: number | null;
   toAyah: number | null;
+  juz: number | null; // جزء الحزب (من HizbBoundary)
   hizb: number | null; // للكادر فقط؛ null للطالب (§٨٫٢)
 }
 
@@ -193,6 +194,10 @@ export async function getMaraqiLadder(
   const mains = stages.filter((s) => s.kind === StageKind.MAIN_STAGE);
   const subs = stages.filter((s) => s.kind === StageKind.SUB_STAGE);
 
+  // جزء كلّ حزب من HizbBoundary (مرجعٌ خام) — يُعرض للجميع؛ رقم الحزب وحده يُحجب.
+  const boundaries = await db.hizbBoundary.findMany({ select: { hizb: true, juz: true } });
+  const juzByHizb = new Map(boundaries.map((b) => [b.hizb, b.juz]));
+
   const mainStages: MaraqiMainStage[] = mains.map((m) => ({
     stageId: m.id,
     ordinal: m.ordinal,
@@ -208,6 +213,7 @@ export async function getMaraqiLadder(
         fromAyah: s.fromAyah,
         toSurah: s.toSurah,
         toAyah: s.toAyah,
+        juz: s.hizbNumber != null ? (juzByHizb.get(s.hizbNumber) ?? null) : null,
         hizb: canSeeHizb ? s.hizbNumber : null,
       })),
   }));

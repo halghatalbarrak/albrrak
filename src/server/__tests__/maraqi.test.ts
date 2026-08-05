@@ -131,21 +131,30 @@ describe("عرض المراحل (§٨٫٢) — الطالب لا يرى «حزب
         fromSurah: 87, fromAyah: 1, toSurah: 114, toAyah: 6,
       },
     });
+    await prisma.hizbBoundary.create({
+      data: {
+        hizb: 60, juz: 30, startSurahNum: 87, startSurah: "الأعلى", startAyah: 1,
+        endSurahNum: 114, endSurah: "الناس", endAyah: 6,
+      },
+    });
   }
 
-  it("الطالب: رقم الحزب محجوب (null)", async () => {
+  it("الطالب: رقم الحزب محجوب (null)، والجزء ظاهر", async () => {
     await seedOneSub();
     const ladder = await getMaraqiLadder({ roles: [Role.STUDENT] }, prisma);
     expect(ladder.canSeeHizb).toBe(false);
     const sub = ladder.mainStages[0].subStages[0];
     expect(sub.hizb).toBeNull();
+    expect(sub.juz).toBe(30); // الجزء ليس «حزبًا» — يُعرض للجميع
     expect(sub.label).not.toContain("حزب");
   });
 
-  it("الكادر: رقم الحزب ظاهر", async () => {
+  it("الكادر: رقم الحزب وجزؤه ظاهران", async () => {
     await seedOneSub();
     const ladder = await getMaraqiLadder({ roles: [Role.CIRCLE_MANAGER] }, prisma);
     expect(ladder.canSeeHizb).toBe(true);
-    expect(ladder.mainStages[0].subStages[0].hizb).toBe(60);
+    const sub = ladder.mainStages[0].subStages[0];
+    expect(sub.hizb).toBe(60);
+    expect(sub.juz).toBe(30);
   });
 });
