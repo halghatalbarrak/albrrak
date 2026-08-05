@@ -40,3 +40,4 @@ v-*.png
 *.tmp
 
 .vercel
+*.pdf

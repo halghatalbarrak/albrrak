@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 
 import { assertCanExamine, canExamine } from "./examiner-eligibility";
 import { assertTeachesStudent } from "./daily-session";
+import { autoTransitionSubStage } from "./promotion";
 import { emitEvent } from "./events";
 import { ValidationError } from "./errors";
 
@@ -230,6 +231,15 @@ export async function recordHasad(
       actorId: args.reciterId,
       payload: { stageId: args.stageId, result: grade.result, attemptNo },
     });
+    // انتقال الحزب التلقائيّ بعد نجاح حصاده (م٤د، الحكم ٧) — بلا اعتماد. الرسوب لا ينقل
+    // (أثره — الترميم/العودة للصفر — مؤجَّل).
+    if (grade.result === "PASS") {
+      await autoTransitionSubStage(tx, {
+        studentId: args.studentId,
+        stageId: args.stageId,
+        actorId: args.reciterId,
+      });
+    }
     return hasad.id;
   });
 
