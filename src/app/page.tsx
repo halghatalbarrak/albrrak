@@ -65,6 +65,7 @@ export default function Home() {
   const roles = me?.roles ?? [];
   const isManager = roles.includes("SUPER_ADMIN") || roles.includes("CIRCLE_MANAGER");
   const canRecordAttendance = isManager || roles.includes("TEACHER");
+  const canRecite = isManager || roles.includes("RECITER");
 
   return (
     <main dir="rtl" style={box}>
@@ -98,6 +99,9 @@ export default function Home() {
                 <Link href="/admin/attendance" style={tile}>الحضور</Link>
                 <Link href="/admin/session" style={tile}>الجلسة اليومية</Link>
               </>
+            )}
+            {canRecite && (
+              <Link href="/admin/hasad" style={tile}>الحصاد</Link>
             )}
           </div>
         </>

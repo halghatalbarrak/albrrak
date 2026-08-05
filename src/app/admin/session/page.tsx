@@ -132,6 +132,20 @@ export default function DailySessionPage() {
     });
   }
 
+  // إعلان الجاهزية للحصاد (المعلم فقط — الحصاد نفسه يُجريه المُسمِّع في شاشة الحصاد).
+  async function declareReadiness(stageId: string) {
+    setMsg(null);
+    const t = await token();
+    if (!t) { setStatus("unauth"); return; }
+    const res = await fetch(`/api/students/${studentId}/hasad-readiness`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      body: JSON.stringify({ stageId }),
+    });
+    if (res.ok) { setMsg("أُعلنت الجاهزية للحصاد — يُسنَد مُسمِّعٌ لحصاده."); await loadSession(); }
+    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر إعلان الجاهزية."); }
+  }
+
   if (status === "unauth")
     return <main dir="rtl" style={box}><p>تحتاج دخولًا.</p><a href="/login" style={{ color: "#1F5C3D" }}>دخول</a></main>;
 
@@ -174,6 +188,16 @@ export default function DailySessionPage() {
                 موضعه: <strong>{cur.label}</strong>
                 {cur.hizb != null ? ` · الحزب ${cur.hizb}` : ""}
               </span>
+            )}
+            {view.program === "MARAQI" && cur && (
+              <button
+                type="button"
+                style={{ marginInlineStart: 12 }}
+                onClick={() => void declareReadiness(cur.stageId)}
+                title="الحصاد يُجريه مُسمِّعٌ ليس معلمه — أنت تُعلن الجاهزية فقط"
+              >
+                أعلن الجاهزية للحصاد
+              </button>
             )}
           </div>
 
