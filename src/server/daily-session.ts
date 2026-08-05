@@ -10,6 +10,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 
+import { getConsolidation, type ConsolidationView } from "./tarseekh";
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
 
@@ -312,9 +313,11 @@ export interface SessionView {
   program: ProgramKey;
   position: StudentPosition;
   session: SessionToday | null; // جلسة اليوم إن رُصدت
+  /** الترسيخ (آخر ١٠) والمراجعة (خُمس الراسخ) — لمراقي فقط (الأحكام ٢، ٤، ٩). */
+  consolidation: ConsolidationView | null;
 }
 
-/** يجمع موضع الطالب وجلسة يومه — للمعلم الذي يفتح الجلسة. */
+/** يجمع موضع الطالب وجلسة يومه وترسيخه/مراجعته — للمعلم الذي يفتح الجلسة. */
 export async function getSessionView(
   actorId: string,
   studentId: string,
@@ -337,11 +340,14 @@ export async function getSessionView(
       hifzAttempts: true, hifzMastered: true, tarseekhDone: true, murajaahDone: true,
     },
   });
+  const consolidation =
+    position.program === ProgramKey.MARAQI ? await getConsolidation(studentId, db) : null;
   return {
     student: { id: studentId, name: student.user.nameAsInId },
     program: position.program,
     position,
     session: row,
+    consolidation,
   };
 }
 

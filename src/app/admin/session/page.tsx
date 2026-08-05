@@ -25,11 +25,20 @@ interface SessionToday {
   hifzAttempts: number | null; hifzMastered: boolean | null;
   tarseekhDone: boolean | null; murajaahDone: boolean | null;
 }
+interface Segment {
+  date: string;
+  fromSurah: number; fromAyah: number; toSurah: number; toAyah: number;
+}
+interface Consolidation {
+  tarseekh: { windowSize: number; segments: Segment[] };
+  review: { stockCount: number; khums: number; segments: Segment[] };
+}
 interface SessionView {
   student: { id: string; name: string };
   program: string;
   position: Position;
   session: SessionToday | null;
+  consolidation: Consolidation | null;
 }
 interface SubStage { stageId: string; label: string; hizb: number | null; juz: number | null }
 interface MainStage { stageId: string; nameAr: string; subStages: SubStage[] }
@@ -254,6 +263,26 @@ export default function DailySessionPage() {
                   </p>
                 )}
               </div>
+
+              {/* ما يُسمَّع اليوم (الأحكام ٢، ٤، ٩): الترسيخ آخر ١٠ مقاطع، والمراجعة خُمس الراسخ */}
+              {view.consolidation && (
+                <div style={card}>
+                  <h2 style={{ fontSize: "1rem", margin: "0 0 8px" }}>ما يُسمَّع اليوم</h2>
+                  <p style={{ margin: "0 0 4px", fontSize: "0.9rem" }}>
+                    <strong>الترسيخ</strong> (آخر {view.consolidation.tarseekh.windowSize} مقاطع — يوميًّا):
+                    {view.consolidation.tarseekh.segments.length === 0 ? " — لا مقاطع بعد" : ""}
+                  </p>
+                  <ul style={{ margin: "0 0 8px", paddingInlineStart: 18, fontSize: "0.85rem" }}>
+                    {view.consolidation.tarseekh.segments.map((sg, i) => (
+                      <li key={i}>{sg.fromSurah}:{sg.fromAyah} ← {sg.toSurah}:{sg.toAyah}</li>
+                    ))}
+                  </ul>
+                  <p style={{ margin: 0, fontSize: "0.9rem" }}>
+                    <strong>المراجعة الأسبوعية</strong>: الراسخ {view.consolidation.review.stockCount} مقطعًا · خُمس اليوم ≈ {view.consolidation.review.khums}
+                    <span style={{ opacity: 0.6 }}> (الطالب حرٌّ في التعجيل — المهم إتمام الدورة أسبوعيًّا)</span>
+                  </p>
+                </div>
+              )}
 
               <div style={card}>
                 <h2 style={{ fontSize: "1rem", margin: "0 0 8px" }}>الترسيخ والمراجعة (تمّ/لم يتم)</h2>
