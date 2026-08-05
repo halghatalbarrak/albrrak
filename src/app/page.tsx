@@ -94,7 +94,10 @@ export default function Home() {
               </>
             )}
             {canRecordAttendance && (
-              <Link href="/admin/attendance" style={tile}>الحضور</Link>
+              <>
+                <Link href="/admin/attendance" style={tile}>الحضور</Link>
+                <Link href="/admin/session" style={tile}>الجلسة اليومية</Link>
+              </>
             )}
           </div>
         </>
