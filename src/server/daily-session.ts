@@ -238,37 +238,58 @@ export interface ConsolidationInput {
   studentId: string;
   date: string | Date;
   done: boolean;
-  listenerId: string;
+  /** المعلّم الذي يسجّل ويتحمّل المسؤولية (يُتحقَّق: معلّم الطالب — الحكم ٦). */
+  actorId: string;
+  /** من سمّع فعلاً: المعلّم نفسه أو مُسنَدٌ إليه (بما فيهم العريف). افتراضه actorId. */
+  listenerId?: string;
 }
 
-/** الترسيخ — «تمّ/لم يتم فقط» (§٨٫٣). التوكيل للعريف مؤجَّل؛ الآن كادرٌ مخوّل. */
+/**
+ * منطق التسميع (الحكم ٦): **مرن** — لا يشترط الحياد. المعلّم يسجّله ويتحمّل مسؤوليته،
+ * وله أن يُسنِد من سمّع فعلاً لأيّ شخص (بما فيهم العريف). يختلف عن **الاختبار**
+ * (assertCanExamine) الذي يشترط الحياد (المُختبِر ليس معلمه — للترقية/المحطة/الحصاد).
+ * فالمعلّم يُسمِّع طالبه (مسموح) ولا يختبره (ممنوع).
+ */
+export async function assertCanRecordListening(
+  actorId: string,
+  studentId: string,
+  db: PrismaClient | Prisma.TransactionClient = prisma,
+): Promise<StudentCircle> {
+  return assertTeachesStudent(actorId, studentId, db);
+}
+
+/** الترسيخ — «تمّ/لم يتم فقط» (§٨٫٣). تسميعٌ مرن: المعلّم يُسمِّع أو يُسنِد (الحكم ٦). */
 export async function recordTarseekh(input: ConsolidationInput, db: PrismaClient = prisma): Promise<void> {
-  const sc = await assertTeachesStudent(input.listenerId, input.studentId, db);
+  const sc = await assertCanRecordListening(input.actorId, input.studentId, db);
+  const listener = input.listenerId ?? input.actorId;
   const date = toDateOnly(input.date);
   await db.$transaction(async (tx) => {
     await upsertSession(tx, input.studentId, sc.circleId, date, {
       studentId: input.studentId, circleId: sc.circleId, date,
-      tarseekhDone: input.done, tarseekhListenerId: input.listenerId,
+      tarseekhDone: input.done, tarseekhListenerId: listener,
     });
     await emitEvent(tx, {
       type: "TARSEEKH_RECORDED", subjectType: "Student", subjectId: input.studentId,
-      actorId: input.listenerId, payload: { done: input.done },
+      actorId: input.actorId,
+      payload: { done: input.done, listenerId: listener, delegated: listener !== input.actorId },
     });
   });
 }
 
-/** المراجعة — «تمّ/لم يتم فقط» (§٨٫٣). */
+/** المراجعة — «تمّ/لم يتم فقط» (§٨٫٣). تسميعٌ مرن: المعلّم يُسمِّع أو يُسنِد (الحكم ٦). */
 export async function recordMurajaah(input: ConsolidationInput, db: PrismaClient = prisma): Promise<void> {
-  const sc = await assertTeachesStudent(input.listenerId, input.studentId, db);
+  const sc = await assertCanRecordListening(input.actorId, input.studentId, db);
+  const listener = input.listenerId ?? input.actorId;
   const date = toDateOnly(input.date);
   await db.$transaction(async (tx) => {
     await upsertSession(tx, input.studentId, sc.circleId, date, {
       studentId: input.studentId, circleId: sc.circleId, date,
-      murajaahDone: input.done, murajaahListenerId: input.listenerId,
+      murajaahDone: input.done, murajaahListenerId: listener,
     });
     await emitEvent(tx, {
       type: "MURAJAAH_RECORDED", subjectType: "Student", subjectId: input.studentId,
-      actorId: input.listenerId, payload: { done: input.done },
+      actorId: input.actorId,
+      payload: { done: input.done, listenerId: listener, delegated: listener !== input.actorId },
     });
   });
 }

@@ -85,15 +85,29 @@ describe("الحفظ (§٨٫٣) — على المعلم وحده (قاعدة م�
   });
 });
 
-describe("الترسيخ/المراجعة (§٨٫٣) — تمّ/لم يتم", () => {
-  it("يُرصدان بوليًّا مع صاحب الرصد", async () => {
+describe("الترسيخ/المراجعة (§٨٫٣ + الحكم ٦) — تسميعٌ مرن", () => {
+  it("المعلّم يُسمِّع بنفسه — يُرصد باسمه", async () => {
     const { student, teacher } = await maraqiScaffold();
-    await recordTarseekh({ studentId: student.id, date: "2026-05-10", done: true, listenerId: teacher.id }, prisma);
-    await recordMurajaah({ studentId: student.id, date: "2026-05-10", done: false, listenerId: teacher.id }, prisma);
+    await recordTarseekh({ studentId: student.id, date: "2026-05-10", done: true, actorId: teacher.id }, prisma);
+    await recordMurajaah({ studentId: student.id, date: "2026-05-10", done: false, actorId: teacher.id }, prisma);
     const row = await prisma.dailySession.findFirstOrThrow({ where: { studentId: student.id } });
     expect(row.tarseekhDone).toBe(true);
     expect(row.tarseekhListenerId).toBe(teacher.id);
     expect(row.murajaahDone).toBe(false);
+  });
+
+  it("المعلّم يُسنِد التسميع للعريف — يُسجَّل مَن سمّع، والمسؤولية للمعلّم", async () => {
+    const { student, teacher } = await maraqiScaffold();
+    const arif = await createUser(prisma, { roles: [Role.ARIF] });
+    await recordTarseekh(
+      { studentId: student.id, date: "2026-05-10", done: true, actorId: teacher.id, listenerId: arif.id },
+      prisma,
+    );
+    const row = await prisma.dailySession.findFirstOrThrow({ where: { studentId: student.id } });
+    expect(row.tarseekhListenerId).toBe(arif.id); // من سمّع = العريف
+    // الحدث بصاحب المسؤولية (المعلّم) ويشير إلى الإسناد.
+    const ev = await prisma.event.findFirstOrThrow({ where: { type: "TARSEEKH_RECORDED" } });
+    expect(ev.actorId).toBe(teacher.id);
   });
 });
 

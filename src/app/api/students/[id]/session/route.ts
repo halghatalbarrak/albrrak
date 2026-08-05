@@ -58,7 +58,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     if (b.kind === "tarseekh" || b.kind === "murajaah") {
       if (typeof b.done !== "boolean") throw new ValidationError("حقل «تمّ» مطلوب.");
-      const args = { studentId: id, date: b.date, done: b.done, listenerId: actor.id };
+      // تسميعٌ مرن (الحكم ٦): المعلّم هو الفاعل المسؤول، وله أن يُسنِد من سمّع فعلاً.
+      const args = {
+        studentId: id,
+        date: b.date,
+        done: b.done,
+        actorId: actor.id,
+        ...(typeof b.listenerId === "string" ? { listenerId: b.listenerId } : {}),
+      };
       if (b.kind === "tarseekh") await recordTarseekh(args);
       else await recordMurajaah(args);
       return Response.json({ ok: true }, { status: 201 });
