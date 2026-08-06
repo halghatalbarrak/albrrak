@@ -120,6 +120,8 @@ describe("موضع الطالب (§٨٫٢) — مراقي تنازليّ", () =>
     let pos = await getStudentPosition(student.id, prisma);
     expect(pos.current?.stageId).toBe(h60.id);
     expect(pos.current?.hizb).toBe(60);
+    // موضع الطالب يُعرض بترتيب الحفظ التنازليّ (الناس ← الأعلى) — عرضٌ فقط.
+    expect(pos.current?.label).toBe("الناس 6 - الأعلى 1");
 
     // ينزل إلى نطاق الحزب ٥٩ (سورة ٨٠) في يومٍ آخر ← الجبهة تصير هناك.
     await recordHifz(

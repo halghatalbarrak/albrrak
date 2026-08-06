@@ -158,6 +158,17 @@ export interface MaraqiLadder {
 const STAFF_ROLES: Role[] = [Role.TEACHER, Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
 
 /**
+ * ترتيب حدّ الحزب **في العرض فقط**: مراقي يحفظ داخل الحزب تنازليًّا — من الأصغر (الناس)
+ * صعودًا للأكبر (الأعلى). نصّ nameAr مخزَّنٌ بترتيب المصحف «البداية - النهاية»؛ هنا نعكس
+ * الطرفين لتطابق اتجاه الحفظ. البيانات المرجعية (nameAr، الحدود، الملف) لا تُمَسّ.
+ * آمنٌ لِما لا حدّ فيه (بلا « - » ⟵ يُترك كما هو، كاسم المرحلة الأصلية).
+ */
+export function displayBoundary(nameAr: string): string {
+  const parts = nameAr.split(" - ");
+  return parts.length === 2 ? `${parts[1]} - ${parts[0]}` : nameAr;
+}
+
+/**
  * سلّم مراقي للعارض: المراحل الأصلية وتحتها الفرعية بالسورة والآية. رقم الحزب يُحجب
  * عمّن ليس كادرًا (§٨٫٢: الطالب لا يرى «حزب»). فارغٌ بأمان قبل البذر.
  */
@@ -208,7 +219,7 @@ export async function getMaraqiLadder(
       .map((s) => ({
         stageId: s.id,
         ordinal: s.ordinal,
-        label: s.nameAr,
+        label: displayBoundary(s.nameAr), // عرضٌ بترتيب الحفظ (الناس ← الأعلى)
         fromSurah: s.fromSurah,
         fromAyah: s.fromAyah,
         toSurah: s.toSurah,
