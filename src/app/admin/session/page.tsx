@@ -161,7 +161,7 @@ export default function DailySessionPage() {
     const res = await fetch(`/api/students/${studentId}/review-error`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
-      body: JSON.stringify({ sessionId, errorCount }),
+      body: JSON.stringify({ sessionId, errorCount, date }),
     });
     if (res.ok) {
       const j = (await res.json()) as { reverted: boolean };

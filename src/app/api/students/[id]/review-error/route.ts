@@ -15,12 +15,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       Role.ARIF,
     ]);
     const { id } = await ctx.params;
-    const b = (await req.json()) as { sessionId?: unknown; errorCount?: unknown };
+    const b = (await req.json()) as { sessionId?: unknown; errorCount?: unknown; date?: unknown };
     if (typeof b.sessionId !== "string") throw new ValidationError("المقطع مطلوب.");
     if (typeof b.errorCount !== "number") throw new ValidationError("عدد الأخطاء مطلوب.");
+    if (typeof b.date !== "string") throw new ValidationError("تاريخ المراجعة مطلوب.");
     const result = await recordReviewError({
       studentId: id,
       sessionId: b.sessionId,
+      date: b.date,
       errorCount: b.errorCount,
       actorId: actor.id,
     });

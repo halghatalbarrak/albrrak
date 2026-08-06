@@ -147,39 +147,53 @@ describe("الحكم ٥ — الترميم الموضعيّ (خطآن في ال�
     });
   }
 
-  it("خطأ واحد لا يُسقط الرسوخ، وخطآن يُعيدان المقطع حفظًا جديدًا", async () => {
+  // رصد خطأ مراجعةٍ للمقطع يومَ (يناير) day بمقدار count.
+  const rerr = (studentId: string, sessionId: string, day: number, count: number, actorId: string) =>
+    recordReviewError(
+      { studentId, sessionId, date: new Date(Date.UTC(2026, 0, day)), errorCount: count, actorId }, prisma);
+
+  it("خطأ اليوم + خطأ بعد ٣ جلسات (داخل النافذة) ⟵ يُرمّم", async () => {
     const { student, teacher, circle } = await maraqiScaffold();
-    // ١٢ مقطعًا ⟵ راسخ = ٢ (الأقدم: يومَا ١ و٢).
-    for (let i = 1; i <= 12; i++) await addMastered(student.id, circle.id, i, i);
-    let c = await getConsolidation(student.id, prisma);
-    expect(c.review.stockCount).toBe(2);
-    const oldest = c.review.segments[0]; // أقدم راسخ (يوم ١)
-
-    // خطأ واحد ⟵ تنبيهٌ فقط، يبقى راسخًا.
-    const r1 = await recordReviewError(
-      { studentId: student.id, sessionId: oldest.id, errorCount: 1, actorId: teacher.id }, prisma);
-    expect(r1.reverted).toBe(false);
-    c = await getConsolidation(student.id, prisma);
-    expect(c.review.stockCount).toBe(2); // لم يُسقط الرسوخ
-
-    // خطآن ⟵ يعود حفظًا جديدًا (يخرج من الراسخ).
-    const r2 = await recordReviewError(
-      { studentId: student.id, sessionId: oldest.id, errorCount: 2, actorId: teacher.id }, prisma);
-    expect(r2.reverted).toBe(true);
-    const row = await prisma.dailySession.findUniqueOrThrow({ where: { id: oldest.id } });
+    const seg1 = await addMastered(student.id, circle.id, 1, 1); // المقطع المُراجَع
+    for (let i = 2; i <= 12; i++) await addMastered(student.id, circle.id, i, i);
+    // خطأ (يوم ١٢).
+    expect((await rerr(student.id, seg1.id, 12, 1, teacher.id)).reverted).toBe(false);
+    // ٣ جلسات حفظٍ إضافية.
+    for (let i = 13; i <= 15; i++) await addMastered(student.id, circle.id, i, i);
+    // خطأ ثانٍ (يوم ١٥) — الأول ما زال داخل آخر ١٠ جلسات ⟵ ترميم.
+    expect((await rerr(student.id, seg1.id, 15, 1, teacher.id)).reverted).toBe(true);
+    const row = await prisma.dailySession.findUniqueOrThrow({ where: { id: seg1.id } });
     expect(row.repairedAt).not.toBeNull();
-    c = await getConsolidation(student.id, prisma);
-    expect(c.review.stockCount).toBe(1); // خرج المقطع المُرمَّم من الراسخ
-    expect(c.review.segments.some((s) => s.id === oldest.id)).toBe(false);
+    const c = await getConsolidation(student.id, prisma);
+    expect(c.review.segments.some((s) => s.id === seg1.id)).toBe(false); // خرج من الراسخ
+  });
+
+  it("خطأ + خطأ بعد ١١ جلسة (خرج من النافذة) ⟵ لا يُرمّم", async () => {
+    const { student, teacher, circle } = await maraqiScaffold();
+    const seg1 = await addMastered(student.id, circle.id, 1, 1);
+    for (let i = 2; i <= 12; i++) await addMastered(student.id, circle.id, i, i);
+    expect((await rerr(student.id, seg1.id, 12, 1, teacher.id)).reverted).toBe(false);
+    // ١١ جلسة إضافية ⟵ خطأ اليوم ١٢ يخرج من نافذة آخر ١٠.
+    for (let i = 13; i <= 23; i++) await addMastered(student.id, circle.id, i, i);
+    expect((await rerr(student.id, seg1.id, 23, 1, teacher.id)).reverted).toBe(false);
+    const row = await prisma.dailySession.findUniqueOrThrow({ where: { id: seg1.id } });
+    expect(row.repairedAt).toBeNull(); // لم يُرمّم
+  });
+
+  it("خطآن في جلسة واحدة ⟵ يُرمّم (كما كان)", async () => {
+    const { student, teacher, circle } = await maraqiScaffold();
+    const seg1 = await addMastered(student.id, circle.id, 1, 1);
+    for (let i = 2; i <= 12; i++) await addMastered(student.id, circle.id, i, i);
+    expect((await rerr(student.id, seg1.id, 12, 2, teacher.id)).reverted).toBe(true);
+    const row = await prisma.dailySession.findUniqueOrThrow({ where: { id: seg1.id } });
+    expect(row.repairedAt).not.toBeNull();
   });
 
   it("لا يُرمَّم إلا معلمُ الطالب أو مُسنَدُه (الحكم ٦)", async () => {
     const { student, circle } = await maraqiScaffold();
     const seg = await addMastered(student.id, circle.id, 1, 5);
     const stranger = await createUser(prisma, { roles: [Role.TEACHER] });
-    await expect(
-      recordReviewError({ studentId: student.id, sessionId: seg.id, errorCount: 2, actorId: stranger.id }, prisma),
-    ).rejects.toBeInstanceOf(AuthorizationError);
+    await expect(rerr(student.id, seg.id, 1, 2, stranger.id)).rejects.toBeInstanceOf(AuthorizationError);
   });
 });
 

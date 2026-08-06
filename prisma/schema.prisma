@@ -421,6 +421,17 @@ model Attendance {
   @@index([circleId, date])
 }
 
+// سجلّ أخطاء المراجعة (الحكم ٥): سطرٌ لكل خطأٍ على مقطعٍ (جلسة حفظ) — بتاريخه ومَن رصده.
+// العدّ تراكميٌّ داخل نافذة آخر ١٠ جلسات حفظ؛ بلوغ خطأين ⟵ ترميم (يُصفَّر السجلّ للمقطع).
+model ReviewError {
+  id         String   @id @default(cuid())
+  sessionId  String                 // جلسة الحفظ (المقطع) التي رُوجِعت
+  recordedBy String                 // من رصد (الحكم ٦: المعلّم أو المُسنَد)
+  date       DateTime @db.Date      // يوم المراجعة
+  createdAt  DateTime @default(now())
+  @@index([sessionId])
+}
+
 // ═══════════════ الحصاد ═══════════════
 
 enum HasadResult {

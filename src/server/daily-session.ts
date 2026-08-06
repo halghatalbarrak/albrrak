@@ -356,17 +356,22 @@ export async function recordMurajaah(input: MurajaahInput, db: PrismaClient = pr
 
 // ═══════════════ الترميم الموضعيّ (الحكم ٥) ═══════════════
 
+/** الحكم ٥: نافذة عدّ الأخطاء = آخر ١٠ جلسات حفظ (تطابق نافذة الترسيخ). */
+export const REVIEW_ERROR_WINDOW = 10;
+
 export interface ReviewErrorInput {
   studentId: string;
   sessionId: string; // جلسة الحفظ (المقطع) التي رُوجِعت
-  errorCount: number; // أخطاء المراجعة في هذا المقطع
+  date: string | Date; // يوم رصد المراجعة
+  errorCount: number; // أخطاء هذه المراجعة (تُسجَّل سطورًا)
   actorId: string; // المعلّم أو المُسنَد (الحكم ٦)
 }
 
 /**
- * رصد أخطاء مراجعة مقطعٍ (الحكم ٥): خطأ واحد ⟵ تنبيهٌ فقط، يبقى راسخًا. خطآن فأكثر ⟵
- * يعود المقطع **حفظًا جديدًا** (repairedAt) فيخرج من الراسخ ويُعاد كجديد. تسميعٌ مرن
- * (الحكم ٦: المعلّم أو المُسنَد). idempotent: المقطع المُرمَّم سلفًا لا يُرمَّم مرّتين.
+ * رصد أخطاء مراجعة مقطعٍ (الحكم ٥، قرار محمد): العدّ **تراكميّ** على المقطع داخل نافذة
+ * **آخر ١٠ جلسات حفظ**. كل خطأٍ سطرٌ في ReviewError (تاريخٌ ومَن رصد). بلوغ خطأين داخل
+ * النافذة ⟵ يعود المقطع **حفظًا جديدًا** (repairedAt) فيخرج من الراسخ، ويُصفَّر سجلّه.
+ * خطأٌ قديمٌ خرج من النافذة (سبقه ١٠ جلسات) لا يُحتسب. تسميعٌ مرن (الحكم ٦).
  */
 export async function recordReviewError(
   input: ReviewErrorInput,
@@ -383,30 +388,52 @@ export async function recordReviewError(
   if (!seg || seg.studentId !== input.studentId || seg.hifzMastered !== true) {
     throw new ValidationError("مقطعٌ محفوظٌ غير موجود.");
   }
+  if (seg.repairedAt !== null) return { reverted: false }; // مُرمَّمٌ سلفًا — خارج الراسخ.
 
-  const reverted = input.errorCount >= 2 && seg.repairedAt === null;
-  await db.$transaction(async (tx) => {
-    if (reverted) {
-      // الحكم ٥: خطآن ⟵ يعود حفظًا جديدًا (يخرج من الراسخ).
-      await tx.dailySession.update({
-        where: { id: input.sessionId },
-        data: { repairedAt: new Date() },
+  const reviewDate = toDateOnly(input.date);
+
+  return db.$transaction(async (tx) => {
+    // ١) سجّل أخطاء هذه المراجعة (سطرٌ لكل خطأ).
+    for (let i = 0; i < input.errorCount; i++) {
+      await tx.reviewError.create({
+        data: { sessionId: input.sessionId, recordedBy: input.actorId, date: reviewDate },
       });
+    }
+
+    // ٢) نافذة آخر ١٠ جلسات حفظ (المُتقَنة غير المُرمَّمة) — بدايتها تاريخ العاشرة من الآخر.
+    const mastered = await tx.dailySession.findMany({
+      where: { studentId: input.studentId, hifzMastered: true, repairedAt: null, hifzFromSurah: { not: null } },
+      orderBy: { date: "asc" },
+      select: { date: true },
+    });
+    const n = mastered.length;
+    const windowStart = mastered[Math.max(0, n - REVIEW_ERROR_WINDOW)].date;
+
+    // ٣) عدّ أخطاء المقطع داخل النافذة (تاريخها ≥ بداية النافذة).
+    const countInWindow = await tx.reviewError.count({
+      where: { sessionId: input.sessionId, date: { gte: windowStart } },
+    });
+
+    if (countInWindow >= 2) {
+      // الحكم ٥: خطآن داخل النافذة ⟵ يعود حفظًا جديدًا، ويُصفَّر سجلّ المقطع.
+      await tx.dailySession.update({ where: { id: input.sessionId }, data: { repairedAt: new Date() } });
+      await tx.reviewError.deleteMany({ where: { sessionId: input.sessionId } });
       await emitEvent(tx, {
         type: "SEGMENT_REVERTED_TO_NEW",
         subjectType: "Student", subjectId: input.studentId, actorId: input.actorId,
-        payload: { sessionId: input.sessionId, errorCount: input.errorCount },
+        payload: { sessionId: input.sessionId },
       });
-    } else {
-      // خطأ واحد (أو مُرمَّمٌ سلفًا) ⟵ تنبيهٌ فقط، يبقى راسخًا.
-      await emitEvent(tx, {
-        type: "REVIEW_ERROR_LOGGED",
-        subjectType: "Student", subjectId: input.studentId, actorId: input.actorId,
-        payload: { sessionId: input.sessionId, errorCount: input.errorCount },
-      });
+      return { reverted: true };
     }
+
+    // خطأٌ واحد داخل النافذة ⟵ تنبيهٌ فقط، يبقى راسخًا.
+    await emitEvent(tx, {
+      type: "REVIEW_ERROR_LOGGED",
+      subjectType: "Student", subjectId: input.studentId, actorId: input.actorId,
+      payload: { sessionId: input.sessionId, countInWindow },
+    });
+    return { reverted: false };
   });
-  return { reverted };
 }
 
 // ═══════════════ عرض الجلسة (للشاشة) ═══════════════
