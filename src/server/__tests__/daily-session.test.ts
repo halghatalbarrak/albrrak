@@ -7,8 +7,10 @@ import {
   getStudentPosition,
   recordHifz,
   recordMurajaah,
+  recordReviewError,
   recordTarseekh,
 } from "../daily-session";
+import { getConsolidation } from "../tarseekh";
 import { AuthorizationError, ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
 import { createProgram, createStudent, createUser } from "../testing/factories";
@@ -130,6 +132,54 @@ describe("الحكم ١ — الفرص الثلاث ووقف الجديد قبل
     await recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 95 }), date: D2, mastered: true }, prisma);
     const gate2 = await getHifzGate(student.id, "2026-05-12", prisma);
     expect(gate2.mustRepeat).toBe(false);
+  });
+});
+
+describe("الحكم ٥ — الترميم الموضعيّ (خطآن في المراجعة ⟵ يعود حفظًا جديدًا)", () => {
+  // يُنشئ مقطعًا محفوظًا (جلسة حفظٍ مُتقَنة) ليومٍ برقم سورةٍ مميّز.
+  async function addMastered(studentId: string, circleId: string, day: number, fromSurah: number) {
+    return prisma.dailySession.create({
+      data: {
+        studentId, circleId, date: new Date(Date.UTC(2026, 0, day)),
+        hifzFromSurah: fromSurah, hifzFromAyah: 1, hifzToSurah: fromSurah, hifzToAyah: 5,
+        hifzAttempts: 1, hifzMastered: true, hifzTeacherId: "t",
+      },
+    });
+  }
+
+  it("خطأ واحد لا يُسقط الرسوخ، وخطآن يُعيدان المقطع حفظًا جديدًا", async () => {
+    const { student, teacher, circle } = await maraqiScaffold();
+    // ١٢ مقطعًا ⟵ راسخ = ٢ (الأقدم: يومَا ١ و٢).
+    for (let i = 1; i <= 12; i++) await addMastered(student.id, circle.id, i, i);
+    let c = await getConsolidation(student.id, prisma);
+    expect(c.review.stockCount).toBe(2);
+    const oldest = c.review.segments[0]; // أقدم راسخ (يوم ١)
+
+    // خطأ واحد ⟵ تنبيهٌ فقط، يبقى راسخًا.
+    const r1 = await recordReviewError(
+      { studentId: student.id, sessionId: oldest.id, errorCount: 1, actorId: teacher.id }, prisma);
+    expect(r1.reverted).toBe(false);
+    c = await getConsolidation(student.id, prisma);
+    expect(c.review.stockCount).toBe(2); // لم يُسقط الرسوخ
+
+    // خطآن ⟵ يعود حفظًا جديدًا (يخرج من الراسخ).
+    const r2 = await recordReviewError(
+      { studentId: student.id, sessionId: oldest.id, errorCount: 2, actorId: teacher.id }, prisma);
+    expect(r2.reverted).toBe(true);
+    const row = await prisma.dailySession.findUniqueOrThrow({ where: { id: oldest.id } });
+    expect(row.repairedAt).not.toBeNull();
+    c = await getConsolidation(student.id, prisma);
+    expect(c.review.stockCount).toBe(1); // خرج المقطع المُرمَّم من الراسخ
+    expect(c.review.segments.some((s) => s.id === oldest.id)).toBe(false);
+  });
+
+  it("لا يُرمَّم إلا معلمُ الطالب أو مُسنَدُه (الحكم ٦)", async () => {
+    const { student, circle } = await maraqiScaffold();
+    const seg = await addMastered(student.id, circle.id, 1, 5);
+    const stranger = await createUser(prisma, { roles: [Role.TEACHER] });
+    await expect(
+      recordReviewError({ studentId: student.id, sessionId: seg.id, errorCount: 2, actorId: stranger.id }, prisma),
+    ).rejects.toBeInstanceOf(AuthorizationError);
   });
 });
 

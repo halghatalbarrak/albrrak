@@ -377,6 +377,8 @@ model DailySession {
   hifzAttempts  Int?                  // ⭐ مقياس الاعتياد
   hifzMastered  Boolean?
   hifzTeacherId String?               // لا بد أن يكون معلم الطالب
+  // الحكم ٥ (الترميم): خطآن في مراجعة هذا المقطع ⟵ يعود حفظًا جديدًا (يخرج من الراسخ).
+  repairedAt    DateTime?
 
   // الترسيخ — تمّ/لم يتم فقط
   tarseekhDone     Boolean?

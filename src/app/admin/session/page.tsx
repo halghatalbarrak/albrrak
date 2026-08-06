@@ -26,6 +26,7 @@ interface SessionToday {
   tarseekhDone: boolean | null; murajaahDone: boolean | null; murajaahCount: number | null;
 }
 interface Segment {
+  id: string;
   date: string;
   fromSurah: number; fromAyah: number; toSurah: number; toAyah: number;
 }
@@ -150,6 +151,26 @@ export default function DailySessionPage() {
       toSurah: Number(hifz.toSurah), toAyah: Number(hifz.toAyah),
       attempts: Number(hifz.attempts), mastered: hifz.mastered,
     });
+  }
+
+  // الترميم (الحكم ٥): رصد أخطاء مراجعة مقطعٍ راسخ. خطآن ⟵ يعود حفظًا جديدًا.
+  async function reviewError(sessionId: string, errorCount: number) {
+    setMsg(null);
+    const t = await token();
+    if (!t) { setStatus("unauth"); return; }
+    const res = await fetch(`/api/students/${studentId}/review-error`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      body: JSON.stringify({ sessionId, errorCount }),
+    });
+    if (res.ok) {
+      const j = (await res.json()) as { reverted: boolean };
+      setMsg(j.reverted ? "خطآن — عاد المقطع حفظًا جديدًا (خرج من الراسخ)." : "خطأٌ واحد — تنبيهٌ، يبقى راسخًا.");
+      await loadSession();
+    } else {
+      const j = (await res.json()) as { error?: string };
+      setMsg(j.error ?? "تعذّر الرصد.");
+    }
   }
 
   // إعلان الجاهزية للحصاد (المعلم فقط — الحصاد نفسه يُجريه المُسمِّع في شاشة الحصاد).
@@ -318,6 +339,18 @@ export default function DailySessionPage() {
                         <div style={{ width: `${view.weeklyReview.percent}%`, height: "100%", background: "#1F5C3D", borderRadius: 4 }} />
                       </div>
                     </div>
+                  )}
+                  {/* الترميم (الحكم ٥): رصد خطأ المراجعة لكل مقطعٍ راسخ */}
+                  {view.consolidation.review.segments.length > 0 && (
+                    <ul style={{ margin: "8px 0 0", paddingInlineStart: 0, listStyle: "none", fontSize: "0.85rem" }}>
+                      {view.consolidation.review.segments.map((sg) => (
+                        <li key={sg.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 3 }}>
+                          <span>{sg.fromSurah}:{sg.fromAyah} ← {sg.toSurah}:{sg.toAyah}</span>
+                          <button type="button" onClick={() => void reviewError(sg.id, 1)}>خطأ واحد</button>
+                          <button type="button" onClick={() => void reviewError(sg.id, 2)}>خطآن ← ترميم</button>
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
               )}

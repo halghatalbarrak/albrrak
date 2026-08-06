@@ -354,6 +354,61 @@ export async function recordMurajaah(input: MurajaahInput, db: PrismaClient = pr
   });
 }
 
+// ═══════════════ الترميم الموضعيّ (الحكم ٥) ═══════════════
+
+export interface ReviewErrorInput {
+  studentId: string;
+  sessionId: string; // جلسة الحفظ (المقطع) التي رُوجِعت
+  errorCount: number; // أخطاء المراجعة في هذا المقطع
+  actorId: string; // المعلّم أو المُسنَد (الحكم ٦)
+}
+
+/**
+ * رصد أخطاء مراجعة مقطعٍ (الحكم ٥): خطأ واحد ⟵ تنبيهٌ فقط، يبقى راسخًا. خطآن فأكثر ⟵
+ * يعود المقطع **حفظًا جديدًا** (repairedAt) فيخرج من الراسخ ويُعاد كجديد. تسميعٌ مرن
+ * (الحكم ٦: المعلّم أو المُسنَد). idempotent: المقطع المُرمَّم سلفًا لا يُرمَّم مرّتين.
+ */
+export async function recordReviewError(
+  input: ReviewErrorInput,
+  db: PrismaClient = prisma,
+): Promise<{ reverted: boolean }> {
+  await assertCanRecordListening(input.actorId, input.studentId, db);
+  if (!Number.isInteger(input.errorCount) || input.errorCount < 0) {
+    throw new ValidationError("عدد أخطاء المراجعة غير صالح.");
+  }
+  const seg = await db.dailySession.findUnique({
+    where: { id: input.sessionId },
+    select: { studentId: true, hifzMastered: true, repairedAt: true },
+  });
+  if (!seg || seg.studentId !== input.studentId || seg.hifzMastered !== true) {
+    throw new ValidationError("مقطعٌ محفوظٌ غير موجود.");
+  }
+
+  const reverted = input.errorCount >= 2 && seg.repairedAt === null;
+  await db.$transaction(async (tx) => {
+    if (reverted) {
+      // الحكم ٥: خطآن ⟵ يعود حفظًا جديدًا (يخرج من الراسخ).
+      await tx.dailySession.update({
+        where: { id: input.sessionId },
+        data: { repairedAt: new Date() },
+      });
+      await emitEvent(tx, {
+        type: "SEGMENT_REVERTED_TO_NEW",
+        subjectType: "Student", subjectId: input.studentId, actorId: input.actorId,
+        payload: { sessionId: input.sessionId, errorCount: input.errorCount },
+      });
+    } else {
+      // خطأ واحد (أو مُرمَّمٌ سلفًا) ⟵ تنبيهٌ فقط، يبقى راسخًا.
+      await emitEvent(tx, {
+        type: "REVIEW_ERROR_LOGGED",
+        subjectType: "Student", subjectId: input.studentId, actorId: input.actorId,
+        payload: { sessionId: input.sessionId, errorCount: input.errorCount },
+      });
+    }
+  });
+  return { reverted };
+}
+
 // ═══════════════ عرض الجلسة (للشاشة) ═══════════════
 
 export interface SessionToday {
