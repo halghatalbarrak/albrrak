@@ -202,7 +202,40 @@ export interface HifzInput {
   teacherId: string;
 }
 
-/** الحفظ — المعلم وحده (§٨٫٣): النطاق + عدد المحاولات + أتقن. لمراقي فقط. */
+/** الحكم ١: الفرص الثلاث — أي خطأ = رسوب المحاولة، وثلاثُ محاولاتٍ حدٌّ أقصى. */
+export const MAX_HIFZ_ATTEMPTS = 3;
+
+interface PriorHifz {
+  fromSurah: number; fromAyah: number; toSurah: number; toAyah: number;
+}
+
+/**
+ * أحدثُ جلسة حفظٍ سابقة لم تُتقَن (رسبت فرصها الثلاث). إن وُجدت فالحكم ١ يوجب إعادة
+ * **نفس المقطع** في يوم الحلقة التالي — لا حفظ جديد. تعيد نطاقها، أو null إن أُتقن السابق.
+ */
+async function priorUnmasteredRange(
+  studentId: string, date: Date, db: PrismaClient | Prisma.TransactionClient,
+): Promise<PriorHifz | null> {
+  const prior = await db.dailySession.findFirst({
+    where: { studentId, hifzFromSurah: { not: null }, date: { lt: date } },
+    orderBy: { date: "desc" },
+    select: {
+      hifzMastered: true,
+      hifzFromSurah: true, hifzFromAyah: true, hifzToSurah: true, hifzToAyah: true,
+    },
+  });
+  if (!prior || prior.hifzMastered === true) return null;
+  return {
+    fromSurah: prior.hifzFromSurah as number, fromAyah: prior.hifzFromAyah as number,
+    toSurah: prior.hifzToSurah as number, toAyah: prior.hifzToAyah as number,
+  };
+}
+
+/**
+ * الحفظ — المعلم وحده (§٨٫٣): النطاق + عدد المحاولات + أتقن. لمراقي فقط.
+ * الحكم ١ (قواعد مطلقة): المحاولات ١..٣؛ ولا حفظ جديد قبل إتقان مقطع اليوم السابق —
+ * إن رسب أمس فاليوم يعيد **نفس المقطع** لا غيره.
+ */
 export async function recordHifz(input: HifzInput, db: PrismaClient = prisma): Promise<void> {
   const sc = await assertTeachesStudent(input.teacherId, input.studentId, db);
   if (sc.programKey !== ProgramKey.MARAQI) {
@@ -215,10 +248,20 @@ export async function recordHifz(input: HifzInput, db: PrismaClient = prisma): P
   if (!pointLE(input.fromSurah, input.fromAyah, input.toSurah, input.toAyah)) {
     throw new ValidationError("نطاق الحفظ معكوس (البداية بعد النهاية).");
   }
-  if (!Number.isInteger(input.attempts) || input.attempts < 1) {
-    throw new ValidationError("عدد المحاولات لا يقلّ عن ١.");
+  if (!Number.isInteger(input.attempts) || input.attempts < 1 || input.attempts > MAX_HIFZ_ATTEMPTS) {
+    throw new ValidationError("عدد المحاولات بين ١ و٣ (الفرص الثلاث — الحكم ١).");
   }
   const date = toDateOnly(input.date);
+
+  // الحكم ١: لا حفظ جديد قبل إتقان السابق — يُعاد نفس المقطع.
+  const repeat = await priorUnmasteredRange(input.studentId, date, db);
+  if (repeat) {
+    const same = repeat.fromSurah === input.fromSurah && repeat.fromAyah === input.fromAyah &&
+      repeat.toSurah === input.toSurah && repeat.toAyah === input.toAyah;
+    if (!same) {
+      throw new ValidationError("لا حفظ جديد قبل إتقان مقطع اليوم السابق — أعِد المقطع نفسه (الحكم ١).");
+    }
+  }
   await db.$transaction(async (tx) => {
     await upsertSession(tx, input.studentId, sc.circleId, date, {
       studentId: input.studentId, circleId: sc.circleId, date,
@@ -311,6 +354,88 @@ export async function recordMurajaah(input: MurajaahInput, db: PrismaClient = pr
   });
 }
 
+// ═══════════════ الترميم الموضعيّ (الحكم ٥) ═══════════════
+
+/** الحكم ٥: نافذة عدّ الأخطاء = آخر ١٠ جلسات حفظ (تطابق نافذة الترسيخ). */
+export const REVIEW_ERROR_WINDOW = 10;
+
+export interface ReviewErrorInput {
+  studentId: string;
+  sessionId: string; // جلسة الحفظ (المقطع) التي رُوجِعت
+  date: string | Date; // يوم رصد المراجعة
+  errorCount: number; // أخطاء هذه المراجعة (تُسجَّل سطورًا)
+  actorId: string; // المعلّم أو المُسنَد (الحكم ٦)
+}
+
+/**
+ * رصد أخطاء مراجعة مقطعٍ (الحكم ٥، قرار محمد): العدّ **تراكميّ** على المقطع داخل نافذة
+ * **آخر ١٠ جلسات حفظ**. كل خطأٍ سطرٌ في ReviewError (تاريخٌ ومَن رصد). بلوغ خطأين داخل
+ * النافذة ⟵ يعود المقطع **حفظًا جديدًا** (repairedAt) فيخرج من الراسخ، ويُصفَّر سجلّه.
+ * خطأٌ قديمٌ خرج من النافذة (سبقه ١٠ جلسات) لا يُحتسب. تسميعٌ مرن (الحكم ٦).
+ */
+export async function recordReviewError(
+  input: ReviewErrorInput,
+  db: PrismaClient = prisma,
+): Promise<{ reverted: boolean }> {
+  await assertCanRecordListening(input.actorId, input.studentId, db);
+  if (!Number.isInteger(input.errorCount) || input.errorCount < 0) {
+    throw new ValidationError("عدد أخطاء المراجعة غير صالح.");
+  }
+  const seg = await db.dailySession.findUnique({
+    where: { id: input.sessionId },
+    select: { studentId: true, hifzMastered: true, repairedAt: true },
+  });
+  if (!seg || seg.studentId !== input.studentId || seg.hifzMastered !== true) {
+    throw new ValidationError("مقطعٌ محفوظٌ غير موجود.");
+  }
+  if (seg.repairedAt !== null) return { reverted: false }; // مُرمَّمٌ سلفًا — خارج الراسخ.
+
+  const reviewDate = toDateOnly(input.date);
+
+  return db.$transaction(async (tx) => {
+    // ١) سجّل أخطاء هذه المراجعة (سطرٌ لكل خطأ).
+    for (let i = 0; i < input.errorCount; i++) {
+      await tx.reviewError.create({
+        data: { sessionId: input.sessionId, recordedBy: input.actorId, date: reviewDate },
+      });
+    }
+
+    // ٢) نافذة آخر ١٠ جلسات حفظ (المُتقَنة غير المُرمَّمة) — بدايتها تاريخ العاشرة من الآخر.
+    const mastered = await tx.dailySession.findMany({
+      where: { studentId: input.studentId, hifzMastered: true, repairedAt: null, hifzFromSurah: { not: null } },
+      orderBy: { date: "asc" },
+      select: { date: true },
+    });
+    const n = mastered.length;
+    const windowStart = mastered[Math.max(0, n - REVIEW_ERROR_WINDOW)].date;
+
+    // ٣) عدّ أخطاء المقطع داخل النافذة (تاريخها ≥ بداية النافذة).
+    const countInWindow = await tx.reviewError.count({
+      where: { sessionId: input.sessionId, date: { gte: windowStart } },
+    });
+
+    if (countInWindow >= 2) {
+      // الحكم ٥: خطآن داخل النافذة ⟵ يعود حفظًا جديدًا، ويُصفَّر سجلّ المقطع.
+      await tx.dailySession.update({ where: { id: input.sessionId }, data: { repairedAt: new Date() } });
+      await tx.reviewError.deleteMany({ where: { sessionId: input.sessionId } });
+      await emitEvent(tx, {
+        type: "SEGMENT_REVERTED_TO_NEW",
+        subjectType: "Student", subjectId: input.studentId, actorId: input.actorId,
+        payload: { sessionId: input.sessionId },
+      });
+      return { reverted: true };
+    }
+
+    // خطأٌ واحد داخل النافذة ⟵ تنبيهٌ فقط، يبقى راسخًا.
+    await emitEvent(tx, {
+      type: "REVIEW_ERROR_LOGGED",
+      subjectType: "Student", subjectId: input.studentId, actorId: input.actorId,
+      payload: { sessionId: input.sessionId, countInWindow },
+    });
+    return { reverted: false };
+  });
+}
+
 // ═══════════════ عرض الجلسة (للشاشة) ═══════════════
 
 export interface SessionToday {
@@ -325,6 +450,12 @@ export interface SessionToday {
   murajaahCount: number | null;
 }
 
+export interface HifzGate {
+  /** الحكم ١: يجب إعادة مقطع اليوم السابق (لم يُتقن) قبل أيّ جديد. */
+  mustRepeat: boolean;
+  range: PriorHifz | null;
+}
+
 export interface SessionView {
   student: { id: string; name: string };
   program: ProgramKey;
@@ -334,6 +465,16 @@ export interface SessionView {
   consolidation: ConsolidationView | null;
   /** دورة المراجعة الأسبوعية بالمقدار — لمراقي فقط (الحكم ٤ الموسّع). */
   weeklyReview: WeeklyReview | null;
+  /** بوابة الحفظ (الحكم ١): إعادةٌ إلزامية قبل الجديد — لمراقي فقط. */
+  hifzGate: HifzGate | null;
+}
+
+/** الحكم ١ للعرض: هل على الطالب إعادة مقطع أمس (لم يُتقن) قبل جديد؟ */
+export async function getHifzGate(
+  studentId: string, date: string | Date, db: PrismaClient = prisma,
+): Promise<HifzGate> {
+  const range = await priorUnmasteredRange(studentId, toDateOnly(date), db);
+  return { mustRepeat: range !== null, range };
 }
 
 /** يجمع موضع الطالب وجلسة يومه وترسيخه/مراجعته — للمعلم الذي يفتح الجلسة. */
@@ -363,6 +504,7 @@ export async function getSessionView(
   const isMaraqi = position.program === ProgramKey.MARAQI;
   const consolidation = isMaraqi ? await getConsolidation(studentId, db) : null;
   const weeklyReview = isMaraqi ? await getWeeklyReview(studentId, date, db) : null;
+  const hifzGate = isMaraqi ? await getHifzGate(studentId, date, db) : null;
   return {
     student: { id: studentId, name: student.user.nameAsInId },
     program: position.program,
@@ -370,6 +512,7 @@ export async function getSessionView(
     session: row,
     consolidation,
     weeklyReview,
+    hifzGate,
   };
 }
 

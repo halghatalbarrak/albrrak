@@ -377,6 +377,8 @@ model DailySession {
   hifzAttempts  Int?                  // ⭐ مقياس الاعتياد
   hifzMastered  Boolean?
   hifzTeacherId String?               // لا بد أن يكون معلم الطالب
+  // الحكم ٥ (الترميم): خطآن في مراجعة هذا المقطع ⟵ يعود حفظًا جديدًا (يخرج من الراسخ).
+  repairedAt    DateTime?
 
   // الترسيخ — تمّ/لم يتم فقط
   tarseekhDone     Boolean?
@@ -417,6 +419,17 @@ model Attendance {
   excuseAcceptedAt DateTime?
   @@unique([studentId, date])
   @@index([circleId, date])
+}
+
+// سجلّ أخطاء المراجعة (الحكم ٥): سطرٌ لكل خطأٍ على مقطعٍ (جلسة حفظ) — بتاريخه ومَن رصده.
+// العدّ تراكميٌّ داخل نافذة آخر ١٠ جلسات حفظ؛ بلوغ خطأين ⟵ ترميم (يُصفَّر السجلّ للمقطع).
+model ReviewError {
+  id         String   @id @default(cuid())
+  sessionId  String                 // جلسة الحفظ (المقطع) التي رُوجِعت
+  recordedBy String                 // من رصد (الحكم ٦: المعلّم أو المُسنَد)
+  date       DateTime @db.Date      // يوم المراجعة
+  createdAt  DateTime @default(now())
+  @@index([sessionId])
 }
 
 // ═══════════════ الحصاد ═══════════════

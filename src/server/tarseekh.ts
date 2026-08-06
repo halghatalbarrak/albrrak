@@ -21,6 +21,7 @@ export const TARSEEKH_WINDOW = 10;
 export const CIRCLE_DAYS_PER_WEEK = 5;
 
 export interface Segment {
+  id: string; // معرّف جلسة الحفظ (لرصد خطأ المراجعة عليه — الحكم ٥)
   date: string; // YYYY-MM-DD ليوم حفظه
   fromSurah: number;
   fromAyah: number;
@@ -29,21 +30,23 @@ export interface Segment {
 }
 
 /**
- * مقاطع الطالب المحفوظة (جلسات حفظٍ مُتقَنة) مرتّبةً بالأقدم فالأحدث. كل جلسةٍ = مقطع
- * (الحكم ٩) — بمقدار مستواه لا بوجهٍ ثابت.
+ * مقاطع الطالب المحفوظة (جلسات حفظٍ مُتقَنة **ولم تُرمَّم**) مرتّبةً بالأقدم فالأحدث.
+ * كل جلسةٍ = مقطع (الحكم ٩). المقطع الذي عاد حفظًا جديدًا (repairedAt، الحكم ٥) يخرج
+ * من هذه المجموعة — فيغادر الترسيخ والراسخ معًا حتى يُعاد حفظه.
  */
 async function memorizedSegments(studentId: string, db: PrismaClient): Promise<Segment[]> {
   const rows = await db.dailySession.findMany({
-    where: { studentId, hifzMastered: true, hifzFromSurah: { not: null } },
+    where: { studentId, hifzMastered: true, repairedAt: null, hifzFromSurah: { not: null } },
     orderBy: { date: "asc" },
     select: {
-      date: true,
+      id: true, date: true,
       hifzFromSurah: true, hifzFromAyah: true, hifzToSurah: true, hifzToAyah: true,
     },
   });
   return rows
     .filter((r) => r.hifzFromSurah != null && r.hifzFromAyah != null && r.hifzToSurah != null && r.hifzToAyah != null)
     .map((r) => ({
+      id: r.id,
       date: r.date.toISOString().slice(0, 10),
       fromSurah: r.hifzFromSurah as number,
       fromAyah: r.hifzFromAyah as number,

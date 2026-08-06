@@ -26,6 +26,7 @@ interface SessionToday {
   tarseekhDone: boolean | null; murajaahDone: boolean | null; murajaahCount: number | null;
 }
 interface Segment {
+  id: string;
   date: string;
   fromSurah: number; fromAyah: number; toSurah: number; toAyah: number;
 }
@@ -36,6 +37,10 @@ interface Consolidation {
 interface WeeklyReview {
   required: number; done: number; remaining: number; percent: number; complete: boolean;
 }
+interface HifzGate {
+  mustRepeat: boolean;
+  range: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number } | null;
+}
 interface SessionView {
   student: { id: string; name: string };
   program: string;
@@ -43,6 +48,7 @@ interface SessionView {
   session: SessionToday | null;
   consolidation: Consolidation | null;
   weeklyReview: WeeklyReview | null;
+  hifzGate: HifzGate | null;
 }
 interface SubStage { stageId: string; label: string; hizb: number | null; juz: number | null }
 interface MainStage { stageId: string; nameAr: string; subStages: SubStage[] }
@@ -147,6 +153,26 @@ export default function DailySessionPage() {
     });
   }
 
+  // الترميم (الحكم ٥): رصد أخطاء مراجعة مقطعٍ راسخ. خطآن ⟵ يعود حفظًا جديدًا.
+  async function reviewError(sessionId: string, errorCount: number) {
+    setMsg(null);
+    const t = await token();
+    if (!t) { setStatus("unauth"); return; }
+    const res = await fetch(`/api/students/${studentId}/review-error`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      body: JSON.stringify({ sessionId, errorCount, date }),
+    });
+    if (res.ok) {
+      const j = (await res.json()) as { reverted: boolean };
+      setMsg(j.reverted ? "خطآن — عاد المقطع حفظًا جديدًا (خرج من الراسخ)." : "خطأٌ واحد — تنبيهٌ، يبقى راسخًا.");
+      await loadSession();
+    } else {
+      const j = (await res.json()) as { error?: string };
+      setMsg(j.error ?? "تعذّر الرصد.");
+    }
+  }
+
   // إعلان الجاهزية للحصاد (المعلم فقط — الحصاد نفسه يُجريه المُسمِّع في شاشة الحصاد).
   async function declareReadiness(stageId: string) {
     setMsg(null);
@@ -249,6 +275,23 @@ export default function DailySessionPage() {
             <>
               <div style={card}>
                 <h2 style={{ fontSize: "1rem", margin: "0 0 8px" }}>الحفظ (المعلم وحده)</h2>
+                {view.hifzGate?.mustRepeat && view.hifzGate.range && (
+                  <p style={{ margin: "0 0 8px", padding: "0.4rem 0.6rem", background: "#fdf0d5", borderRadius: 6, fontSize: "0.9rem" }}>
+                    ⚠️ الحكم ١: لم يُتقن مقطع اليوم السابق — يعيد <strong>نفس المقطع</strong> (
+                    {view.hifzGate.range.fromSurah}:{view.hifzGate.range.fromAyah} ← {view.hifzGate.range.toSurah}:{view.hifzGate.range.toAyah}
+                    )، لا حفظ جديد.
+                    <button
+                      type="button" style={{ marginInlineStart: 8 }}
+                      onClick={() => setHifz((h) => ({
+                        ...h,
+                        fromSurah: String(view.hifzGate!.range!.fromSurah), fromAyah: String(view.hifzGate!.range!.fromAyah),
+                        toSurah: String(view.hifzGate!.range!.toSurah), toAyah: String(view.hifzGate!.range!.toAyah),
+                      }))}
+                    >
+                      املأ المقطع
+                    </button>
+                  </p>
+                )}
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: "0.9rem" }}>
                   <span>من سورة</span>
                   <input style={num} type="number" value={hifz.fromSurah} onChange={(e) => setHifz({ ...hifz, fromSurah: e.target.value })} />
@@ -296,6 +339,18 @@ export default function DailySessionPage() {
                         <div style={{ width: `${view.weeklyReview.percent}%`, height: "100%", background: "#1F5C3D", borderRadius: 4 }} />
                       </div>
                     </div>
+                  )}
+                  {/* الترميم (الحكم ٥): رصد خطأ المراجعة لكل مقطعٍ راسخ */}
+                  {view.consolidation.review.segments.length > 0 && (
+                    <ul style={{ margin: "8px 0 0", paddingInlineStart: 0, listStyle: "none", fontSize: "0.85rem" }}>
+                      {view.consolidation.review.segments.map((sg) => (
+                        <li key={sg.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 3 }}>
+                          <span>{sg.fromSurah}:{sg.fromAyah} ← {sg.toSurah}:{sg.toAyah}</span>
+                          <button type="button" onClick={() => void reviewError(sg.id, 1)}>خطأ واحد</button>
+                          <button type="button" onClick={() => void reviewError(sg.id, 2)}>خطآن ← ترميم</button>
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
               )}

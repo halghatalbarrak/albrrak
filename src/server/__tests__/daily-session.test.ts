@@ -2,12 +2,15 @@ import { ProgramKey, ProgressState, Role, StageKind, StudentState } from "@prism
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  getHifzGate,
   getSessionView,
   getStudentPosition,
   recordHifz,
   recordMurajaah,
+  recordReviewError,
   recordTarseekh,
 } from "../daily-session";
+import { getConsolidation } from "../tarseekh";
 import { AuthorizationError, ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
 import { createProgram, createStudent, createUser } from "../testing/factories";
@@ -82,6 +85,115 @@ describe("الحفظ (§٨٫٣) — على المعلم وحده (قاعدة م�
     const { student, teacher } = await maraqiScaffold();
     await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.AWAITING_PACE_TEST } });
     await expect(recordHifz(hifzArgs(student.id, teacher.id), prisma)).rejects.toBeInstanceOf(ValidationError);
+  });
+});
+
+describe("الحكم ١ — الفرص الثلاث ووقف الجديد قبل الإتقان", () => {
+  const D1 = "2026-05-10";
+  const D2 = "2026-05-11";
+
+  it("محاولاتٌ فوق ٣ ← تُرفض", async () => {
+    const { student, teacher } = await maraqiScaffold();
+    await expect(
+      recordHifz({ ...hifzArgs(student.id, teacher.id), attempts: 4 }, prisma),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("لم يُتقن أمس ← لا حفظ جديد اليوم، ويُعاد المقطع نفسه", async () => {
+    const { student, teacher } = await maraqiScaffold();
+    // أمس: رسبت الفرص الثلاث (نطاق ٩٠..٩٥، لم يُتقن).
+    await recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 95 }), date: D1, attempts: 3, mastered: false }, prisma);
+    // اليوم: مقطعٌ جديد (٨٠) ← يُرفض.
+    await expect(
+      recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 80, toSurah: 84 }), date: D2 }, prisma),
+    ).rejects.toBeInstanceOf(ValidationError);
+    // اليوم: إعادة المقطع نفسه (٩٠..٩٥) ← مقبول.
+    await expect(
+      recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 95 }), date: D2, attempts: 2, mastered: true }, prisma),
+    ).resolves.toBeUndefined();
+  });
+
+  it("أُتقن أمس ← جديدٌ اليوم مقبول", async () => {
+    const { student, teacher } = await maraqiScaffold();
+    await recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 95 }), date: D1, mastered: true }, prisma);
+    await expect(
+      recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 80, toSurah: 84 }), date: D2 }, prisma),
+    ).resolves.toBeUndefined();
+  });
+
+  it("getHifzGate: يوجب الإعادة إن لم يُتقن السابق، وإلا فلا", async () => {
+    const { student, teacher } = await maraqiScaffold();
+    await recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 95 }), date: D1, attempts: 3, mastered: false }, prisma);
+    const gate = await getHifzGate(student.id, D2, prisma);
+    expect(gate.mustRepeat).toBe(true);
+    expect(gate.range).toEqual({ fromSurah: 90, fromAyah: 1, toSurah: 95, toAyah: 5 });
+
+    // بعد الإتقان ← لا إعادة.
+    await recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 95 }), date: D2, mastered: true }, prisma);
+    const gate2 = await getHifzGate(student.id, "2026-05-12", prisma);
+    expect(gate2.mustRepeat).toBe(false);
+  });
+});
+
+describe("الحكم ٥ — الترميم الموضعيّ (خطآن في المراجعة ⟵ يعود حفظًا جديدًا)", () => {
+  // يُنشئ مقطعًا محفوظًا (جلسة حفظٍ مُتقَنة) ليومٍ برقم سورةٍ مميّز.
+  async function addMastered(studentId: string, circleId: string, day: number, fromSurah: number) {
+    return prisma.dailySession.create({
+      data: {
+        studentId, circleId, date: new Date(Date.UTC(2026, 0, day)),
+        hifzFromSurah: fromSurah, hifzFromAyah: 1, hifzToSurah: fromSurah, hifzToAyah: 5,
+        hifzAttempts: 1, hifzMastered: true, hifzTeacherId: "t",
+      },
+    });
+  }
+
+  // رصد خطأ مراجعةٍ للمقطع يومَ (يناير) day بمقدار count.
+  const rerr = (studentId: string, sessionId: string, day: number, count: number, actorId: string) =>
+    recordReviewError(
+      { studentId, sessionId, date: new Date(Date.UTC(2026, 0, day)), errorCount: count, actorId }, prisma);
+
+  it("خطأ اليوم + خطأ بعد ٣ جلسات (داخل النافذة) ⟵ يُرمّم", async () => {
+    const { student, teacher, circle } = await maraqiScaffold();
+    const seg1 = await addMastered(student.id, circle.id, 1, 1); // المقطع المُراجَع
+    for (let i = 2; i <= 12; i++) await addMastered(student.id, circle.id, i, i);
+    // خطأ (يوم ١٢).
+    expect((await rerr(student.id, seg1.id, 12, 1, teacher.id)).reverted).toBe(false);
+    // ٣ جلسات حفظٍ إضافية.
+    for (let i = 13; i <= 15; i++) await addMastered(student.id, circle.id, i, i);
+    // خطأ ثانٍ (يوم ١٥) — الأول ما زال داخل آخر ١٠ جلسات ⟵ ترميم.
+    expect((await rerr(student.id, seg1.id, 15, 1, teacher.id)).reverted).toBe(true);
+    const row = await prisma.dailySession.findUniqueOrThrow({ where: { id: seg1.id } });
+    expect(row.repairedAt).not.toBeNull();
+    const c = await getConsolidation(student.id, prisma);
+    expect(c.review.segments.some((s) => s.id === seg1.id)).toBe(false); // خرج من الراسخ
+  });
+
+  it("خطأ + خطأ بعد ١١ جلسة (خرج من النافذة) ⟵ لا يُرمّم", async () => {
+    const { student, teacher, circle } = await maraqiScaffold();
+    const seg1 = await addMastered(student.id, circle.id, 1, 1);
+    for (let i = 2; i <= 12; i++) await addMastered(student.id, circle.id, i, i);
+    expect((await rerr(student.id, seg1.id, 12, 1, teacher.id)).reverted).toBe(false);
+    // ١١ جلسة إضافية ⟵ خطأ اليوم ١٢ يخرج من نافذة آخر ١٠.
+    for (let i = 13; i <= 23; i++) await addMastered(student.id, circle.id, i, i);
+    expect((await rerr(student.id, seg1.id, 23, 1, teacher.id)).reverted).toBe(false);
+    const row = await prisma.dailySession.findUniqueOrThrow({ where: { id: seg1.id } });
+    expect(row.repairedAt).toBeNull(); // لم يُرمّم
+  });
+
+  it("خطآن في جلسة واحدة ⟵ يُرمّم (كما كان)", async () => {
+    const { student, teacher, circle } = await maraqiScaffold();
+    const seg1 = await addMastered(student.id, circle.id, 1, 1);
+    for (let i = 2; i <= 12; i++) await addMastered(student.id, circle.id, i, i);
+    expect((await rerr(student.id, seg1.id, 12, 2, teacher.id)).reverted).toBe(true);
+    const row = await prisma.dailySession.findUniqueOrThrow({ where: { id: seg1.id } });
+    expect(row.repairedAt).not.toBeNull();
+  });
+
+  it("لا يُرمَّم إلا معلمُ الطالب أو مُسنَدُه (الحكم ٦)", async () => {
+    const { student, circle } = await maraqiScaffold();
+    const seg = await addMastered(student.id, circle.id, 1, 5);
+    const stranger = await createUser(prisma, { roles: [Role.TEACHER] });
+    await expect(rerr(student.id, seg.id, 1, 2, stranger.id)).rejects.toBeInstanceOf(AuthorizationError);
   });
 });
 
