@@ -10,6 +10,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 
+import { displayBoundary } from "./maraqi";
 import { getConsolidation, getWeeklyReview, type ConsolidationView, type WeeklyReview } from "./tarseekh";
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
@@ -144,7 +145,7 @@ export async function getStudentPosition(
       started: true,
       current: cur
         ? {
-            stageId: cur.id, label: cur.nameAr, hizb: cur.hizbNumber,
+            stageId: cur.id, label: displayBoundary(cur.nameAr), hizb: cur.hizbNumber,
             fromSurah: cur.fromSurah, fromAyah: cur.fromAyah, toSurah: cur.toSurah, toAyah: cur.toAyah,
           }
         : null,

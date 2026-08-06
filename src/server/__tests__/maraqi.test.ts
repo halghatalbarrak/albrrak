@@ -3,6 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
   assignTrackFromLines,
+  displayBoundary,
   getMaraqiLadder,
   recordPaceTest,
   type TrackLite,
@@ -26,6 +27,14 @@ const TRACKS: TrackLite[] = [
   { id: "t5page", nameAr: "٥ صفحات", linesPerDay: 75, ordinal: 8 },
 ];
 const nameFor = (lines: number) => assignTrackFromLines(lines, TRACKS)?.nameAr ?? null;
+
+describe("عرض حدّ الحزب — بترتيب الحفظ التنازليّ (عرضٌ فقط)", () => {
+  it("يعكس الطرفين، ويترك ما لا حدّ فيه كما هو", () => {
+    expect(displayBoundary("الأعلى 1 - الناس 6")).toBe("الناس 6 - الأعلى 1");
+    expect(displayBoundary("البقرة 1 - البقرة 74")).toBe("البقرة 74 - البقرة 1");
+    expect(displayBoundary("المرحلة الأصلية الأولى")).toBe("المرحلة الأصلية الأولى");
+  });
+});
 
 describe("إسناد المسار (§٨٫٥) — أعلى مسارٍ أقلُّ ممّا حفظ", () => {
   it("أمثلة الوثيقة", () => {
@@ -147,6 +156,20 @@ describe("عرض المراحل (§٨٫٢) — الطالب لا يرى «حزب
     expect(sub.hizb).toBeNull();
     expect(sub.juz).toBe(30); // الجزء ليس «حزبًا» — يُعرض للجميع
     expect(sub.label).not.toContain("حزب");
+  });
+
+  it("بطاقة الحزب: الحدّ معكوسٌ عرضًا (الناس ← الأعلى)، والقاعدة لم تتغيّر", async () => {
+    await seedOneSub();
+    const ladder = await getMaraqiLadder({ roles: [Role.CIRCLE_MANAGER] }, prisma);
+    // العرض بترتيب الحفظ التنازليّ.
+    expect(ladder.mainStages[0].subStages[0].label).toBe("الناس 6 - الأعلى 1");
+    // البيانات المرجعية لم تُمَسّ: nameAr المخزَّن بترتيب المصحف كما هو.
+    const dbStage = await prisma.stage.findFirstOrThrow({ where: { hizbNumber: 60 } });
+    expect(dbStage.nameAr).toBe("الأعلى 1 - الناس 6");
+    const hb = await prisma.hizbBoundary.findUniqueOrThrow({ where: { hizb: 60 } });
+    expect([hb.startSurah, hb.endSurah]).toEqual(["الأعلى", "الناس"]);
+    // ترتيب الأحزاب نفسها لم يتغيّر: ٦٠ أولًا (ordinal ١).
+    expect(ladder.mainStages[0].subStages[0].ordinal).toBe(1);
   });
 
   it("الكادر: رقم الحزب وجزؤه ظاهران", async () => {
