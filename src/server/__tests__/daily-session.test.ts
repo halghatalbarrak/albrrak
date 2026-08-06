@@ -2,6 +2,7 @@ import { ProgramKey, ProgressState, Role, StageKind, StudentState } from "@prism
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  getHifzGate,
   getSessionView,
   getStudentPosition,
   recordHifz,
@@ -82,6 +83,53 @@ describe("الحفظ (§٨٫٣) — على المعلم وحده (قاعدة م�
     const { student, teacher } = await maraqiScaffold();
     await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.AWAITING_PACE_TEST } });
     await expect(recordHifz(hifzArgs(student.id, teacher.id), prisma)).rejects.toBeInstanceOf(ValidationError);
+  });
+});
+
+describe("الحكم ١ — الفرص الثلاث ووقف الجديد قبل الإتقان", () => {
+  const D1 = "2026-05-10";
+  const D2 = "2026-05-11";
+
+  it("محاولاتٌ فوق ٣ ← تُرفض", async () => {
+    const { student, teacher } = await maraqiScaffold();
+    await expect(
+      recordHifz({ ...hifzArgs(student.id, teacher.id), attempts: 4 }, prisma),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("لم يُتقن أمس ← لا حفظ جديد اليوم، ويُعاد المقطع نفسه", async () => {
+    const { student, teacher } = await maraqiScaffold();
+    // أمس: رسبت الفرص الثلاث (نطاق ٩٠..٩٥، لم يُتقن).
+    await recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 95 }), date: D1, attempts: 3, mastered: false }, prisma);
+    // اليوم: مقطعٌ جديد (٨٠) ← يُرفض.
+    await expect(
+      recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 80, toSurah: 84 }), date: D2 }, prisma),
+    ).rejects.toBeInstanceOf(ValidationError);
+    // اليوم: إعادة المقطع نفسه (٩٠..٩٥) ← مقبول.
+    await expect(
+      recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 95 }), date: D2, attempts: 2, mastered: true }, prisma),
+    ).resolves.toBeUndefined();
+  });
+
+  it("أُتقن أمس ← جديدٌ اليوم مقبول", async () => {
+    const { student, teacher } = await maraqiScaffold();
+    await recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 95 }), date: D1, mastered: true }, prisma);
+    await expect(
+      recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 80, toSurah: 84 }), date: D2 }, prisma),
+    ).resolves.toBeUndefined();
+  });
+
+  it("getHifzGate: يوجب الإعادة إن لم يُتقن السابق، وإلا فلا", async () => {
+    const { student, teacher } = await maraqiScaffold();
+    await recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 95 }), date: D1, attempts: 3, mastered: false }, prisma);
+    const gate = await getHifzGate(student.id, D2, prisma);
+    expect(gate.mustRepeat).toBe(true);
+    expect(gate.range).toEqual({ fromSurah: 90, fromAyah: 1, toSurah: 95, toAyah: 5 });
+
+    // بعد الإتقان ← لا إعادة.
+    await recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 95 }), date: D2, mastered: true }, prisma);
+    const gate2 = await getHifzGate(student.id, "2026-05-12", prisma);
+    expect(gate2.mustRepeat).toBe(false);
   });
 });
 
