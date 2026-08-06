@@ -382,8 +382,9 @@ model DailySession {
   tarseekhDone     Boolean?
   tarseekhListenerId String?
 
-  // المراجعة — تمّ/لم يتم فقط
+  // المراجعة — الحكم ٤ الموسّع: المقدار المُسمَّع اليوم (مقاطع)، يتراكم أسبوعيًّا.
   murajaahDone     Boolean?
+  murajaahCount    Int?
   murajaahListenerId String?
 
   tajweedFlagged Boolean @default(false)  // زرّ العريف: «أشِر للمعلم»

@@ -10,6 +10,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 
+import { getConsolidation, getWeeklyReview, type ConsolidationView, type WeeklyReview } from "./tarseekh";
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
 
@@ -276,20 +277,35 @@ export async function recordTarseekh(input: ConsolidationInput, db: PrismaClient
   });
 }
 
-/** المراجعة — «تمّ/لم يتم فقط» (§٨٫٣). تسميعٌ مرن: المعلّم يُسمِّع أو يُسنِد (الحكم ٦). */
-export async function recordMurajaah(input: ConsolidationInput, db: PrismaClient = prisma): Promise<void> {
+export interface MurajaahInput {
+  studentId: string;
+  date: string | Date;
+  /** مقدار ما رُوجِع اليوم (عدد المقاطع) — يتراكم أسبوعيًّا (الحكم ٤ الموسّع). */
+  count: number;
+  actorId: string;
+  listenerId?: string;
+}
+
+/**
+ * المراجعة — الحكم ٤ الموسّع: يُرصد **مقدار** ما سُمِّع اليوم (لا بوليّ فقط)، فيتراكم
+ * أسبوعيًّا. تسميعٌ مرن: المعلّم يُسمِّع أو يُسنِد (الحكم ٦). done مشتقّ (مقدارٌ موجب = تمّ).
+ */
+export async function recordMurajaah(input: MurajaahInput, db: PrismaClient = prisma): Promise<void> {
   const sc = await assertCanRecordListening(input.actorId, input.studentId, db);
+  if (!Number.isInteger(input.count) || input.count < 0) {
+    throw new ValidationError("مقدار المراجعة غير صالح (عددٌ صحيحٌ ≥ ٠).");
+  }
   const listener = input.listenerId ?? input.actorId;
   const date = toDateOnly(input.date);
   await db.$transaction(async (tx) => {
     await upsertSession(tx, input.studentId, sc.circleId, date, {
       studentId: input.studentId, circleId: sc.circleId, date,
-      murajaahDone: input.done, murajaahListenerId: listener,
+      murajaahCount: input.count, murajaahDone: input.count > 0, murajaahListenerId: listener,
     });
     await emitEvent(tx, {
       type: "MURAJAAH_RECORDED", subjectType: "Student", subjectId: input.studentId,
       actorId: input.actorId,
-      payload: { done: input.done, listenerId: listener, delegated: listener !== input.actorId },
+      payload: { count: input.count, listenerId: listener, delegated: listener !== input.actorId },
     });
   });
 }
@@ -305,6 +321,7 @@ export interface SessionToday {
   hifzMastered: boolean | null;
   tarseekhDone: boolean | null;
   murajaahDone: boolean | null;
+  murajaahCount: number | null;
 }
 
 export interface SessionView {
@@ -312,9 +329,13 @@ export interface SessionView {
   program: ProgramKey;
   position: StudentPosition;
   session: SessionToday | null; // جلسة اليوم إن رُصدت
+  /** الترسيخ (آخر ١٠) والمراجعة (خُمس الراسخ) — لمراقي فقط (الأحكام ٢، ٤، ٩). */
+  consolidation: ConsolidationView | null;
+  /** دورة المراجعة الأسبوعية بالمقدار — لمراقي فقط (الحكم ٤ الموسّع). */
+  weeklyReview: WeeklyReview | null;
 }
 
-/** يجمع موضع الطالب وجلسة يومه — للمعلم الذي يفتح الجلسة. */
+/** يجمع موضع الطالب وجلسة يومه وترسيخه/مراجعته — للمعلم الذي يفتح الجلسة. */
 export async function getSessionView(
   actorId: string,
   studentId: string,
@@ -335,13 +356,19 @@ export async function getSessionView(
     select: {
       hifzFromSurah: true, hifzFromAyah: true, hifzToSurah: true, hifzToAyah: true,
       hifzAttempts: true, hifzMastered: true, tarseekhDone: true, murajaahDone: true,
+      murajaahCount: true,
     },
   });
+  const isMaraqi = position.program === ProgramKey.MARAQI;
+  const consolidation = isMaraqi ? await getConsolidation(studentId, db) : null;
+  const weeklyReview = isMaraqi ? await getWeeklyReview(studentId, date, db) : null;
   return {
     student: { id: studentId, name: student.user.nameAsInId },
     program: position.program,
     position,
     session: row,
+    consolidation,
+    weeklyReview,
   };
 }
 
