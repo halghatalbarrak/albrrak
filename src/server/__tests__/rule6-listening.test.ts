@@ -42,7 +42,7 @@ describe("الحكم ٦ — التسميع مرن، الاختبار محايد"
       recordTarseekh({ studentId: student.id, date: "2026-05-10", done: true, actorId: teacher.id }, prisma),
     ).resolves.toBeUndefined();
     await expect(
-      recordMurajaah({ studentId: student.id, date: "2026-05-10", done: true, actorId: teacher.id }, prisma),
+      recordMurajaah({ studentId: student.id, date: "2026-05-10", count: 2, actorId: teacher.id }, prisma),
     ).resolves.toBeUndefined();
   });
 

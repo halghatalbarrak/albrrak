@@ -1,7 +1,7 @@
 import { ProgramKey } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import { TARSEEKH_WINDOW, getConsolidation } from "../tarseekh";
+import { TARSEEKH_WINDOW, getConsolidation, getWeeklyReview } from "../tarseekh";
 import { prisma, resetDb } from "../testing/helpers";
 import { createCircle, createProgram, createStudent } from "../testing/factories";
 
@@ -89,5 +89,49 @@ describe("المراجعة الأسبوعية (الحكم ٤) — خُمس ال�
     expect(c.tarseekh.segments).toHaveLength(0);
     expect(c.review.stockCount).toBe(0);
     expect(c.review.khums).toBe(0);
+  });
+});
+
+// يضيف رصدَ مقدارِ مراجعةٍ ليومٍ (بلا حفظ) — لتتبّع الدورة الأسبوعية.
+async function addReview(studentId: string, circleId: string, dateUTC: Date, count: number) {
+  await prisma.dailySession.create({
+    data: { studentId, circleId, date: dateUTC, murajaahCount: count, murajaahDone: count > 0 },
+  });
+}
+const DAY = 86400000;
+
+describe("دورة المراجعة الأسبوعية بالمقدار (الحكم ٤ الموسّع)", () => {
+  it("المُنجَز يتراكم عبر أيام الأسبوع، وتكتمل الدورة عند بلوغ المطلوب", async () => {
+    const { circle, student } = await setup();
+    // ١٥ جلسة حفظٍ مُتقَنة ⟵ الراسخ (المطلوب) = ١٥ − ١٠ = ٥.
+    for (let i = 1; i <= 15; i++) await addSession(student.id, circle.id, i, ((i - 1) % 114) + 1);
+
+    // أسبوعُ مراجعةٍ: نحسب أحدَ أسبوعٍ مرجعيّ ثم نرصد على أيامه.
+    const ref = new Date(Date.UTC(2026, 2, 4)); // مارس ٢٠٢٦
+    const sunday = new Date(ref.getTime() - ref.getUTCDay() * DAY);
+
+    await addReview(student.id, circle.id, sunday, 2);
+    let wr = await getWeeklyReview(student.id, sunday, prisma);
+    expect(wr.required).toBe(5);
+    expect(wr.done).toBe(2);
+    expect(wr.remaining).toBe(3);
+    expect(wr.percent).toBe(40);
+    expect(wr.complete).toBe(false);
+
+    await addReview(student.id, circle.id, new Date(sunday.getTime() + DAY), 2);
+    await addReview(student.id, circle.id, new Date(sunday.getTime() + 2 * DAY), 1);
+    wr = await getWeeklyReview(student.id, new Date(sunday.getTime() + 2 * DAY), prisma);
+    expect(wr.done).toBe(5); // ٢ + ٢ + ١ تراكميًّا
+    expect(wr.remaining).toBe(0);
+    expect(wr.percent).toBe(100);
+    expect(wr.complete).toBe(true);
+  });
+
+  it("لا راسخ ⟵ الدورة مكتملةٌ حكمًا", async () => {
+    const { student } = await setup();
+    const wr = await getWeeklyReview(student.id, new Date(Date.UTC(2026, 2, 4)), prisma);
+    expect(wr.required).toBe(0);
+    expect(wr.complete).toBe(true);
+    expect(wr.percent).toBe(100);
   });
 });

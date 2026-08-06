@@ -81,3 +81,57 @@ export async function getConsolidation(
     },
   };
 }
+
+// ═══════════════ تتبّع الدورة الأسبوعية بالمقدار (الحكم ٤ الموسّع) ═══════════════
+
+/** يوم بلا وقت (UTC) — يطابق @db.Date. */
+function toDateOnly(input: string | Date): Date {
+  const d = typeof input === "string" ? new Date(input) : input;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+/** بداية أسبوع الحلقة = الأحد السابق (الحكم ٣: الأحد → الخميس، والجمعة/السبت عطلة). */
+function weekStartSunday(date: string | Date): Date {
+  const d = toDateOnly(date);
+  return new Date(d.getTime() - d.getUTCDay() * 86400000); // getUTCDay: 0 = الأحد
+}
+
+export interface WeeklyReview {
+  required: number; // المطلوب = كامل المحفوظ الراسخ (مقاطع)
+  done: number; // المُنجَز = مجموع المُسمَّع هذا الأسبوع
+  remaining: number; // المتبقّي = المطلوب − المُنجَز (لا يقلّ عن صفر)
+  percent: number; // نسبة الإنجاز 0..100
+  complete: boolean; // اكتملت الدورة (المُنجَز بلغ المطلوب)؟
+  weekStart: string; // الأحد (YYYY-MM-DD)
+}
+
+/**
+ * دورة المراجعة الأسبوعية بالمقدار (الحكم ٤ الموسّع): المطلوب = كامل الراسخ؛ المُنجَز =
+ * مجموع murajaahCount خلال أسبوع الحلقة (الأحد→الخميس)؛ المتبقّي والنسبة والاكتمال.
+ * الطالب حرٌّ في التعجيل — المهم بلوغ المطلوب أسبوعيًّا. لا راسخ ⟵ الدورة مكتملةٌ حكمًا.
+ */
+export async function getWeeklyReview(
+  studentId: string,
+  date: string | Date,
+  db: PrismaClient = prisma,
+): Promise<WeeklyReview> {
+  const required = (await getConsolidation(studentId, db)).review.stockCount;
+  const start = weekStartSunday(date);
+  const end = new Date(start.getTime() + 4 * 86400000); // الخميس
+
+  const agg = await db.dailySession.aggregate({
+    where: { studentId, date: { gte: start, lte: end } },
+    _sum: { murajaahCount: true },
+  });
+  const done = agg._sum.murajaahCount ?? 0;
+  const remaining = Math.max(0, required - done);
+  const percent = required === 0 ? 100 : Math.min(100, Math.round((done / required) * 100));
+  return {
+    required,
+    done,
+    remaining,
+    percent,
+    complete: done >= required,
+    weekStart: start.toISOString().slice(0, 10),
+  };
+}

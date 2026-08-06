@@ -23,7 +23,7 @@ interface SessionToday {
   hifzFromSurah: number | null; hifzFromAyah: number | null;
   hifzToSurah: number | null; hifzToAyah: number | null;
   hifzAttempts: number | null; hifzMastered: boolean | null;
-  tarseekhDone: boolean | null; murajaahDone: boolean | null;
+  tarseekhDone: boolean | null; murajaahDone: boolean | null; murajaahCount: number | null;
 }
 interface Segment {
   date: string;
@@ -33,12 +33,16 @@ interface Consolidation {
   tarseekh: { windowSize: number; segments: Segment[] };
   review: { stockCount: number; khums: number; segments: Segment[] };
 }
+interface WeeklyReview {
+  required: number; done: number; remaining: number; percent: number; complete: boolean;
+}
 interface SessionView {
   student: { id: string; name: string };
   program: string;
   position: Position;
   session: SessionToday | null;
   consolidation: Consolidation | null;
+  weeklyReview: WeeklyReview | null;
 }
 interface SubStage { stageId: string; label: string; hizb: number | null; juz: number | null }
 interface MainStage { stageId: string; nameAr: string; subStages: SubStage[] }
@@ -73,6 +77,8 @@ export default function DailySessionPage() {
 
   // الحفظ — مدخلات المعلم
   const [hifz, setHifz] = useState({ fromSurah: "", fromAyah: "", toSurah: "", toAyah: "", attempts: "1", mastered: false });
+  // المراجعة — مقدار ما رُوجِع اليوم (الحكم ٤ الموسّع)
+  const [reviewCount, setReviewCount] = useState("");
 
   useEffect(() => {
     void (async () => {
@@ -279,8 +285,18 @@ export default function DailySessionPage() {
                   </ul>
                   <p style={{ margin: 0, fontSize: "0.9rem" }}>
                     <strong>المراجعة الأسبوعية</strong>: الراسخ {view.consolidation.review.stockCount} مقطعًا · خُمس اليوم ≈ {view.consolidation.review.khums}
-                    <span style={{ opacity: 0.6 }}> (الطالب حرٌّ في التعجيل — المهم إتمام الدورة أسبوعيًّا)</span>
+                    <span style={{ opacity: 0.6 }}> (حرٌّ في التعجيل — المهم إتمام الدورة أسبوعيًّا)</span>
                   </p>
+                  {view.weeklyReview && (
+                    <div style={{ marginTop: 6, fontSize: "0.9rem" }}>
+                      دورة الأسبوع: أُنجِز <strong>{view.weeklyReview.done}</strong> من <strong>{view.weeklyReview.required}</strong>
+                      {" — "}المتبقّي <strong>{view.weeklyReview.remaining}</strong> ({view.weeklyReview.percent}٪)
+                      {view.weeklyReview.complete && <span style={{ color: "#1F5C3D" }}> · اكتملت ✓</span>}
+                      <div style={{ height: 6, background: "#eee", borderRadius: 4, marginTop: 4 }}>
+                        <div style={{ width: `${view.weeklyReview.percent}%`, height: "100%", background: "#1F5C3D", borderRadius: 4 }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -293,9 +309,17 @@ export default function DailySessionPage() {
                     <button type="button" onClick={() => void post({ kind: "tarseekh", done: false })}>لم يتم</button>
                   </div>
                   <div>
-                    المراجعة: {s?.murajaahDone == null ? "—" : s.murajaahDone ? "تمّ" : "لم يتم"}
-                    <button type="button" style={{ marginInlineStart: 8 }} onClick={() => void post({ kind: "murajaah", done: true })}>تمّ</button>
-                    <button type="button" onClick={() => void post({ kind: "murajaah", done: false })}>لم يتم</button>
+                    المراجعة اليوم (مقاطع): {s?.murajaahCount ?? "—"}
+                    <input
+                      type="number" min={0} value={reviewCount} style={{ ...num, marginInlineStart: 8 }}
+                      onChange={(e) => setReviewCount(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void post({ kind: "murajaah", count: Number(reviewCount || 0) })}
+                    >
+                      رصد المقدار
+                    </button>
                   </div>
                 </div>
               </div>

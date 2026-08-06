@@ -56,18 +56,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return Response.json({ ok: true }, { status: 201 });
     }
 
-    if (b.kind === "tarseekh" || b.kind === "murajaah") {
+    // تسميعٌ مرن (الحكم ٦): المعلّم الفاعل المسؤول، وله أن يُسنِد من سمّع فعلاً (listenerId).
+    const listener = typeof b.listenerId === "string" ? { listenerId: b.listenerId } : {};
+
+    if (b.kind === "tarseekh") {
       if (typeof b.done !== "boolean") throw new ValidationError("حقل «تمّ» مطلوب.");
-      // تسميعٌ مرن (الحكم ٦): المعلّم هو الفاعل المسؤول، وله أن يُسنِد من سمّع فعلاً.
-      const args = {
-        studentId: id,
-        date: b.date,
-        done: b.done,
-        actorId: actor.id,
-        ...(typeof b.listenerId === "string" ? { listenerId: b.listenerId } : {}),
-      };
-      if (b.kind === "tarseekh") await recordTarseekh(args);
-      else await recordMurajaah(args);
+      await recordTarseekh({ studentId: id, date: b.date, done: b.done, actorId: actor.id, ...listener });
+      return Response.json({ ok: true }, { status: 201 });
+    }
+
+    if (b.kind === "murajaah") {
+      // الحكم ٤ الموسّع: يُرصد مقدار ما رُوجِع اليوم (عدد المقاطع).
+      if (typeof b.count !== "number") throw new ValidationError("مقدار المراجعة مطلوب.");
+      await recordMurajaah({ studentId: id, date: b.date, count: b.count, actorId: actor.id, ...listener });
       return Response.json({ ok: true }, { status: 201 });
     }
 
