@@ -1,19 +1,14 @@
-import { Role } from "@prisma/client";
 import { recordReviewError } from "@/server/daily-session";
-import { requireRoles } from "@/server/auth";
+import { requireAuth } from "@/server/auth";
 import { errorResponse } from "@/server/http";
 import { ValidationError } from "@/server/errors";
 
 // POST /api/students/[id]/review-error — رصد أخطاء مراجعة مقطعٍ (الحكم ٥).
-// خطآن ⟵ يعود المقطع حفظًا جديدًا. تسميعٌ مرن (الحكم ٦: المعلّم أو المُسنَد).
+// خطآن ⟵ يعود المقطع حفظًا جديدًا. تسميعٌ مرن (الأحكام ٦، ٨: المعلّم أو عريفٌ مُسنَد).
+// requireAuth فقط: assertCanRecordListening في الخادم يفصل الصلاحية (فالعريف طالب).
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const actor = await requireRoles(req, [
-      Role.TEACHER,
-      Role.CIRCLE_MANAGER,
-      Role.SUPER_ADMIN,
-      Role.ARIF,
-    ]);
+    const actor = await requireAuth(req);
     const { id } = await ctx.params;
     const b = (await req.json()) as { sessionId?: unknown; errorCount?: unknown; date?: unknown };
     if (typeof b.sessionId !== "string") throw new ValidationError("المقطع مطلوب.");

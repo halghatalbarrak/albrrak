@@ -432,6 +432,19 @@ model ReviewError {
   @@index([sessionId])
 }
 
+// تعيين العريف (الحكم ٨): المعلّم يعيّن طالباً من حلقته عريفاً — يُسمِّع الترسيخ/المراجعة
+// بإسناده ومسؤوليته. لا يُسمِّع الحفظ الجديد ولا يختبر. النشط = endedAt IS NULL.
+model ArifAppointment {
+  id          String   @id @default(cuid())
+  circleId    String                 // الحلقة التي عُيّن فيها
+  arifUserId  String                 // العريف = مستخدم (طالبٌ منتسبٌ للحلقة)
+  appointedBy String                 // المعلّم الذي عيّنه (مسؤوليته)
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  @@index([circleId, endedAt])
+  @@index([arifUserId, endedAt])
+}
+
 // ═══════════════ الحصاد ═══════════════
 
 enum HasadResult {
