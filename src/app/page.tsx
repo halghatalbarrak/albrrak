@@ -98,6 +98,7 @@ export default function Home() {
               <>
                 <Link href="/admin/attendance" style={tile}>الحضور</Link>
                 <Link href="/admin/session" style={tile}>الجلسة اليومية</Link>
+                <Link href="/admin/arifs" style={tile}>العرفاء</Link>
               </>
             )}
             {canRecite && (

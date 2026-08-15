@@ -41,3 +41,7 @@ v-*.png
 
 .vercel
 *.pdf
+
+# قواعد Postgres المدمجة المؤقّتة للاختبار (احتياطًا — الأصل في مجلّد temp للنظام)
+.pgdata/
+.pg-embedded/

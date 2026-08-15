@@ -5,7 +5,7 @@ import {
   recordMurajaah,
   recordTarseekh,
 } from "@/server/daily-session";
-import { requireRoles } from "@/server/auth";
+import { requireAuth, requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
 import { ValidationError } from "@/server/errors";
 
@@ -26,12 +26,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 }
 
 // POST /api/students/[id]/session — تسجيل جزءٍ من الجلسة { kind, date, ... }.
-//   hifz     ⟵ المعلم وحده (النطاق/المحاولات/أتقن)
-//   tarseekh ⟵ تمّ/لم يتم
-//   murajaah ⟵ تمّ/لم يتم
+//   hifz     ⟵ المعلم وحده (recordHifz يتحقّق) — العريف يُرفض
+//   tarseekh/murajaah ⟵ المعلّم أو عريفٌ مُسنَد (الأحكام ٦، ٨ — يُتحقَّق في الخادم)
+// requireAuth فقط: الحرّاس في الخادم تفصل الصلاحية لكل جزء (فالعريف طالبٌ لا معلّم).
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const actor = await requireRoles(req, ROLES);
+    const actor = await requireAuth(req);
     const { id } = await ctx.params;
     const b = (await req.json()) as Record<string, unknown>;
     if (typeof b.date !== "string") throw new ValidationError("التاريخ مطلوب.");

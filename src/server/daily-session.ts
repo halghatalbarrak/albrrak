@@ -10,6 +10,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 
+import { isActiveArifForCircle } from "./arif";
 import { displayBoundary } from "./maraqi";
 import { getConsolidation, getWeeklyReview, type ConsolidationView, type WeeklyReview } from "./tarseekh";
 import { emitEvent } from "./events";
@@ -290,17 +291,26 @@ export interface ConsolidationInput {
 }
 
 /**
- * منطق التسميع (الحكم ٦): **مرن** — لا يشترط الحياد. المعلّم يسجّله ويتحمّل مسؤوليته،
- * وله أن يُسنِد من سمّع فعلاً لأيّ شخص (بما فيهم العريف). يختلف عن **الاختبار**
- * (assertCanExamine) الذي يشترط الحياد (المُختبِر ليس معلمه — للترقية/المحطة/الحصاد).
- * فالمعلّم يُسمِّع طالبه (مسموح) ولا يختبره (ممنوع).
+ * منطق التسميع (الحكمان ٦ و٨): **مرن** — لا يشترط الحياد. يُسجّله ويتحمّل مسؤوليته
+ * **معلّم الحلقة** (أو المدير)، **أو عريفٌ مُسنَدٌ نشطٌ في حلقة الطالب** (الحكم ٨). يختلف
+ * عن **الاختبار** (assertCanExamine) الذي يشترط الحياد. فالمعلّم/العريف يُسمِّع الترسيخ
+ * والمراجعة (مسموح)، ولا يُسمِّع العريفُ الحفظَ الجديد (recordHifz للمعلّم وحده)، ولا يختبر.
  */
 export async function assertCanRecordListening(
   actorId: string,
   studentId: string,
-  db: PrismaClient | Prisma.TransactionClient = prisma,
+  db: PrismaClient = prisma,
 ): Promise<StudentCircle> {
-  return assertTeachesStudent(actorId, studentId, db);
+  const sc = await activeCircle(studentId, db);
+  const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
+  if (actor?.roles.some((r) => r === Role.SUPER_ADMIN || r === Role.CIRCLE_MANAGER)) return sc;
+  const teaches = await db.circleTeacher.findFirst({
+    where: { circleId: sc.circleId, teacherId: actorId, endedAt: null },
+    select: { circleId: true },
+  });
+  if (teaches) return sc;
+  if (await isActiveArifForCircle(actorId, sc.circleId, db)) return sc; // الحكم ٨
+  throw new AuthorizationError("التسميع لمعلّم الحلقة أو عريفٍ مُسنَدٍ فيها (الأحكام ٦، ٨).");
 }
 
 /** الترسيخ — «تمّ/لم يتم فقط» (§٨٫٣). تسميعٌ مرن: المعلّم يُسمِّع أو يُسنِد (الحكم ٦). */

@@ -4,16 +4,15 @@ import { prisma } from "@/lib/prisma";
 
 import { AuthorizationError, ValidationError } from "./errors";
 
-// قيد إسناد المُختبِر لمحطات القاعدة المدنية (DESIGN §٧٫٤):
-//   «والمُختبِر: ليس معلمه (م١).»
-// يُتحقَّق في الخادم؛ حجب الزر في الواجهة لا يُحتسب.
+// قيد إسناد المُختبِر (DESIGN §٧٫٤ + الحكم ٨): «المُختبِر ليس معلمه (م١)»، **ولا عريفاً**
+// في حلقته (§٨٫٤/الحكم ٨: العريف لا يختبر). يُتحقَّق في الخادم؛ حجب الزر في الواجهة لا يُحتسب.
 
 export interface ExaminerCheckArgs {
   examinerUserId: string;
   studentId: string;
 }
 
-/** true إن جاز لهذا المُختبِر أن يختبر هذا الطالب (ليس معلمه في أيّ حلقة). */
+/** true إن جاز لهذا المُختبِر أن يختبر الطالب: ليس معلمه ولا عريفاً في أيّ حلقةٍ له. */
 export async function canExamine(
   args: ExaminerCheckArgs,
   db: PrismaClient = prisma,
@@ -29,7 +28,14 @@ export async function canExamine(
     where: { teacherId: args.examinerUserId, circleId: { in: circleIds } },
     select: { circleId: true },
   });
-  return teachesAny === null;
+  if (teachesAny !== null) return false; // معلمه ⟵ لا يختبر (م١)
+
+  // عريفٌ نشطٌ في إحدى حلقاته ⟵ لا يختبر (الحكم ٨).
+  const arifAny = await db.arifAppointment.findFirst({
+    where: { arifUserId: args.examinerUserId, circleId: { in: circleIds }, endedAt: null },
+    select: { id: true },
+  });
+  return arifAny === null;
 }
 
 /** يرمي AuthorizationError إن كان المُختبِر معلمَ الطالب. */
