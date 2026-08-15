@@ -29,6 +29,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10",
+    "embedded-postgres": "^18.4.0-beta.17",
     "eslint": "^8",
     "eslint-config-next": "^15",
     "jsdom": "^25.0.1",
