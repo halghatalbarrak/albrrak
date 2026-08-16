@@ -10,7 +10,7 @@ import {
 } from "../hasad";
 import { AuthorizationError, ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
-import { createProgram, createStudent, createUser } from "../testing/factories";
+import { createProgram, createStudent, createUser, seedMushafFaces } from "../testing/factories";
 
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
@@ -129,10 +129,11 @@ describe("تسجيل الحصاد (§٨٫٧) — المُسمِّع ليس مع�
 
   it("التردّد يُخزَّن ويُحسب (٣ في وجهٍ = خطأ)، ولا يُسجَّل مع الأخطاء", async () => {
     const { student, teacher, reciter, h60 } = await scaffold();
+    await seedMushafFaces(prisma); // حزب ٦٠ = صفحات ٥٩١..٦٠٤
     await declareHasadReadiness({ studentId: student.id, stageId: h60.id, teacherId: teacher.id }, prisma);
     const out = await recordHasad(
       { studentId: student.id, stageId: h60.id, reciterId: reciter.id, errors: [],
-        hesitations: [{ faceNo: 590 }, { faceNo: 590 }, { faceNo: 590 }] },
+        hesitations: [{ faceNo: 595 }, { faceNo: 595 }, { faceNo: 595 }] }, // وجهٌ في حزب ٦٠
       prisma,
     );
     expect(out.hesitationErrors).toBe(1);
@@ -142,6 +143,19 @@ describe("تسجيل الحصاد (§٨٫٧) — المُسمِّع ليس مع�
     expect(await prisma.hasadHesitation.count({ where: { hasadId: out.hasadId } })).toBe(3);
     const hasad = await prisma.hasad.findUniqueOrThrow({ where: { id: out.hasadId }, include: { pageErrors: true } });
     expect(hasad.pageErrors).toHaveLength(0);
+  });
+
+  it("تردّدٌ على وجهٍ خارج نطاق الحصاد ← يُرفض (يحمي عدّاد التردّد)", async () => {
+    const { student, teacher, reciter, h60 } = await scaffold();
+    await seedMushafFaces(prisma);
+    await declareHasadReadiness({ studentId: student.id, stageId: h60.id, teacherId: teacher.id }, prisma);
+    // الوجه ١ (الفاتحة/البقرة) لا ينتمي لحزب ٦٠ (٥٩١..٦٠٤).
+    await expect(
+      recordHasad(
+        { studentId: student.id, stageId: h60.id, reciterId: reciter.id, errors: [], hesitations: [{ faceNo: 1 }] },
+        prisma,
+      ),
+    ).rejects.toBeInstanceOf(ValidationError);
   });
 
   it("الضربتان: رسوبٌ أوّل (لا انتقال) ← حصادٌ ثانٍ attemptNo ٢", async () => {

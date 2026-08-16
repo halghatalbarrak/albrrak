@@ -11,6 +11,7 @@ import { assertCanExamine, canExamine } from "./examiner-eligibility";
 import { assertTeachesStudent } from "./daily-session";
 import { autoTransitionSubStage } from "./promotion";
 import { gradeHizbHarvest } from "./hasad-grading";
+import { facePagesInRange } from "./mushaf";
 import { emitEvent } from "./events";
 import { ValidationError } from "./errors";
 
@@ -183,6 +184,16 @@ export async function recordHasad(
   }
 
   const range = await subStageHarvestRange(args.stageId, db);
+  // تحقّقٌ إلزاميّ (الحكم ٧): كل تردّدٍ يجب أن يقع في وجهٍ ينتمي فعلًا لنطاق الحصاد
+  // (عبر MushafFace) — يحمي صحّة عدّاد التردّد من أرقام أوجهٍ عشوائيّة.
+  if (hesitations.length > 0) {
+    const validFaces = await facePagesInRange(range, db);
+    for (const h of hesitations) {
+      if (!validFaces.has(h.faceNo)) {
+        throw new ValidationError(`الوجه ${h.faceNo} خارج نطاق الحصاد (لا ينتمي للحزب المُختبَر).`);
+      }
+    }
+  }
   const grade = gradeHizbHarvest({
     errors: args.errors.map((e) => ({ faceNo: e.pageNo, surah: e.surah, ayah: e.ayah, errorType: e.errorType })),
     hesitations: hesitations.map((h) => ({ faceNo: h.faceNo })),
