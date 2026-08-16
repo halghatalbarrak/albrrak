@@ -360,6 +360,16 @@ model HizbBoundary {
   endAyah       Int
 }
 
+// خريطة أوجه مصحف المدينة (V1، ١٤٠٥هـ، ٦٠٤ صفحة) — الوجه = صفحة (الحكم ٧). مرجعٌ ثابت
+// من QUL: صفحة ← أول آية/آخر آية. أوجه كل حزب تُشتقّ بالتقاطع مع HizbBoundary.
+model MushafFace {
+  page      Int @id            // ١..٦٠٤
+  fromSurah Int
+  fromAyah  Int
+  toSurah   Int
+  toAyah    Int
+}
+
 // ═══════════════ الجلسة اليومية — مراقي فقط ═══════════════
 
 model DailySession {

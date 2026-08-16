@@ -1,0 +1,4230 @@
+[
+ {
+  "page": 1,
+  "fromSurah": 1,
+  "fromAyah": 1,
+  "toSurah": 1,
+  "toAyah": 7
+ },
+ {
+  "page": 2,
+  "fromSurah": 2,
+  "fromAyah": 1,
+  "toSurah": 2,
+  "toAyah": 5
+ },
+ {
+  "page": 3,
+  "fromSurah": 2,
+  "fromAyah": 6,
+  "toSurah": 2,
+  "toAyah": 16
+ },
+ {
+  "page": 4,
+  "fromSurah": 2,
+  "fromAyah": 17,
+  "toSurah": 2,
+  "toAyah": 24
+ },
+ {
+  "page": 5,
+  "fromSurah": 2,
+  "fromAyah": 25,
+  "toSurah": 2,
+  "toAyah": 29
+ },
+ {
+  "page": 6,
+  "fromSurah": 2,
+  "fromAyah": 30,
+  "toSurah": 2,
+  "toAyah": 37
+ },
+ {
+  "page": 7,
+  "fromSurah": 2,
+  "fromAyah": 38,
+  "toSurah": 2,
+  "toAyah": 48
+ },
+ {
+  "page": 8,
+  "fromSurah": 2,
+  "fromAyah": 49,
+  "toSurah": 2,
+  "toAyah": 57
+ },
+ {
+  "page": 9,
+  "fromSurah": 2,
+  "fromAyah": 58,
+  "toSurah": 2,
+  "toAyah": 61
+ },
+ {
+  "page": 10,
+  "fromSurah": 2,
+  "fromAyah": 62,
+  "toSurah": 2,
+  "toAyah": 69
+ },
+ {
+  "page": 11,
+  "fromSurah": 2,
+  "fromAyah": 70,
+  "toSurah": 2,
+  "toAyah": 76
+ },
+ {
+  "page": 12,
+  "fromSurah": 2,
+  "fromAyah": 77,
+  "toSurah": 2,
+  "toAyah": 83
+ },
+ {
+  "page": 13,
+  "fromSurah": 2,
+  "fromAyah": 84,
+  "toSurah": 2,
+  "toAyah": 88
+ },
+ {
+  "page": 14,
+  "fromSurah": 2,
+  "fromAyah": 89,
+  "toSurah": 2,
+  "toAyah": 93
+ },
+ {
+  "page": 15,
+  "fromSurah": 2,
+  "fromAyah": 94,
+  "toSurah": 2,
+  "toAyah": 101
+ },
+ {
+  "page": 16,
+  "fromSurah": 2,
+  "fromAyah": 102,
+  "toSurah": 2,
+  "toAyah": 105
+ },
+ {
+  "page": 17,
+  "fromSurah": 2,
+  "fromAyah": 106,
+  "toSurah": 2,
+  "toAyah": 112
+ },
+ {
+  "page": 18,
+  "fromSurah": 2,
+  "fromAyah": 113,
+  "toSurah": 2,
+  "toAyah": 119
+ },
+ {
+  "page": 19,
+  "fromSurah": 2,
+  "fromAyah": 120,
+  "toSurah": 2,
+  "toAyah": 126
+ },
+ {
+  "page": 20,
+  "fromSurah": 2,
+  "fromAyah": 127,
+  "toSurah": 2,
+  "toAyah": 134
+ },
+ {
+  "page": 21,
+  "fromSurah": 2,
+  "fromAyah": 135,
+  "toSurah": 2,
+  "toAyah": 141
+ },
+ {
+  "page": 22,
+  "fromSurah": 2,
+  "fromAyah": 142,
+  "toSurah": 2,
+  "toAyah": 145
+ },
+ {
+  "page": 23,
+  "fromSurah": 2,
+  "fromAyah": 146,
+  "toSurah": 2,
+  "toAyah": 153
+ },
+ {
+  "page": 24,
+  "fromSurah": 2,
+  "fromAyah": 154,
+  "toSurah": 2,
+  "toAyah": 163
+ },
+ {
+  "page": 25,
+  "fromSurah": 2,
+  "fromAyah": 164,
+  "toSurah": 2,
+  "toAyah": 169
+ },
+ {
+  "page": 26,
+  "fromSurah": 2,
+  "fromAyah": 170,
+  "toSurah": 2,
+  "toAyah": 176
+ },
+ {
+  "page": 27,
+  "fromSurah": 2,
+  "fromAyah": 177,
+  "toSurah": 2,
+  "toAyah": 181
+ },
+ {
+  "page": 28,
+  "fromSurah": 2,
+  "fromAyah": 182,
+  "toSurah": 2,
+  "toAyah": 186
+ },
+ {
+  "page": 29,
+  "fromSurah": 2,
+  "fromAyah": 187,
+  "toSurah": 2,
+  "toAyah": 190
+ },
+ {
+  "page": 30,
+  "fromSurah": 2,
+  "fromAyah": 191,
+  "toSurah": 2,
+  "toAyah": 196
+ },
+ {
+  "page": 31,
+  "fromSurah": 2,
+  "fromAyah": 197,
+  "toSurah": 2,
+  "toAyah": 202
+ },
+ {
+  "page": 32,
+  "fromSurah": 2,
+  "fromAyah": 203,
+  "toSurah": 2,
+  "toAyah": 210
+ },
+ {
+  "page": 33,
+  "fromSurah": 2,
+  "fromAyah": 211,
+  "toSurah": 2,
+  "toAyah": 215
+ },
+ {
+  "page": 34,
+  "fromSurah": 2,
+  "fromAyah": 216,
+  "toSurah": 2,
+  "toAyah": 219
+ },
+ {
+  "page": 35,
+  "fromSurah": 2,
+  "fromAyah": 220,
+  "toSurah": 2,
+  "toAyah": 224
+ },
+ {
+  "page": 36,
+  "fromSurah": 2,
+  "fromAyah": 225,
+  "toSurah": 2,
+  "toAyah": 230
+ },
+ {
+  "page": 37,
+  "fromSurah": 2,
+  "fromAyah": 231,
+  "toSurah": 2,
+  "toAyah": 233
+ },
+ {
+  "page": 38,
+  "fromSurah": 2,
+  "fromAyah": 234,
+  "toSurah": 2,
+  "toAyah": 237
+ },
+ {
+  "page": 39,
+  "fromSurah": 2,
+  "fromAyah": 238,
+  "toSurah": 2,
+  "toAyah": 245
+ },
+ {
+  "page": 40,
+  "fromSurah": 2,
+  "fromAyah": 246,
+  "toSurah": 2,
+  "toAyah": 248
+ },
+ {
+  "page": 41,
+  "fromSurah": 2,
+  "fromAyah": 249,
+  "toSurah": 2,
+  "toAyah": 252
+ },
+ {
+  "page": 42,
+  "fromSurah": 2,
+  "fromAyah": 253,
+  "toSurah": 2,
+  "toAyah": 256
+ },
+ {
+  "page": 43,
+  "fromSurah": 2,
+  "fromAyah": 257,
+  "toSurah": 2,
+  "toAyah": 259
+ },
+ {
+  "page": 44,
+  "fromSurah": 2,
+  "fromAyah": 260,
+  "toSurah": 2,
+  "toAyah": 264
+ },
+ {
+  "page": 45,
+  "fromSurah": 2,
+  "fromAyah": 265,
+  "toSurah": 2,
+  "toAyah": 269
+ },
+ {
+  "page": 46,
+  "fromSurah": 2,
+  "fromAyah": 270,
+  "toSurah": 2,
+  "toAyah": 274
+ },
+ {
+  "page": 47,
+  "fromSurah": 2,
+  "fromAyah": 275,
+  "toSurah": 2,
+  "toAyah": 281
+ },
+ {
+  "page": 48,
+  "fromSurah": 2,
+  "fromAyah": 282,
+  "toSurah": 2,
+  "toAyah": 282
+ },
+ {
+  "page": 49,
+  "fromSurah": 2,
+  "fromAyah": 283,
+  "toSurah": 2,
+  "toAyah": 286
+ },
+ {
+  "page": 50,
+  "fromSurah": 3,
+  "fromAyah": 1,
+  "toSurah": 3,
+  "toAyah": 9
+ },
+ {
+  "page": 51,
+  "fromSurah": 3,
+  "fromAyah": 10,
+  "toSurah": 3,
+  "toAyah": 15
+ },
+ {
+  "page": 52,
+  "fromSurah": 3,
+  "fromAyah": 16,
+  "toSurah": 3,
+  "toAyah": 22
+ },
+ {
+  "page": 53,
+  "fromSurah": 3,
+  "fromAyah": 23,
+  "toSurah": 3,
+  "toAyah": 29
+ },
+ {
+  "page": 54,
+  "fromSurah": 3,
+  "fromAyah": 30,
+  "toSurah": 3,
+  "toAyah": 37
+ },
+ {
+  "page": 55,
+  "fromSurah": 3,
+  "fromAyah": 38,
+  "toSurah": 3,
+  "toAyah": 45
+ },
+ {
+  "page": 56,
+  "fromSurah": 3,
+  "fromAyah": 46,
+  "toSurah": 3,
+  "toAyah": 52
+ },
+ {
+  "page": 57,
+  "fromSurah": 3,
+  "fromAyah": 53,
+  "toSurah": 3,
+  "toAyah": 61
+ },
+ {
+  "page": 58,
+  "fromSurah": 3,
+  "fromAyah": 62,
+  "toSurah": 3,
+  "toAyah": 70
+ },
+ {
+  "page": 59,
+  "fromSurah": 3,
+  "fromAyah": 71,
+  "toSurah": 3,
+  "toAyah": 77
+ },
+ {
+  "page": 60,
+  "fromSurah": 3,
+  "fromAyah": 78,
+  "toSurah": 3,
+  "toAyah": 83
+ },
+ {
+  "page": 61,
+  "fromSurah": 3,
+  "fromAyah": 84,
+  "toSurah": 3,
+  "toAyah": 91
+ },
+ {
+  "page": 62,
+  "fromSurah": 3,
+  "fromAyah": 92,
+  "toSurah": 3,
+  "toAyah": 100
+ },
+ {
+  "page": 63,
+  "fromSurah": 3,
+  "fromAyah": 101,
+  "toSurah": 3,
+  "toAyah": 108
+ },
+ {
+  "page": 64,
+  "fromSurah": 3,
+  "fromAyah": 109,
+  "toSurah": 3,
+  "toAyah": 115
+ },
+ {
+  "page": 65,
+  "fromSurah": 3,
+  "fromAyah": 116,
+  "toSurah": 3,
+  "toAyah": 121
+ },
+ {
+  "page": 66,
+  "fromSurah": 3,
+  "fromAyah": 122,
+  "toSurah": 3,
+  "toAyah": 132
+ },
+ {
+  "page": 67,
+  "fromSurah": 3,
+  "fromAyah": 133,
+  "toSurah": 3,
+  "toAyah": 140
+ },
+ {
+  "page": 68,
+  "fromSurah": 3,
+  "fromAyah": 141,
+  "toSurah": 3,
+  "toAyah": 148
+ },
+ {
+  "page": 69,
+  "fromSurah": 3,
+  "fromAyah": 149,
+  "toSurah": 3,
+  "toAyah": 153
+ },
+ {
+  "page": 70,
+  "fromSurah": 3,
+  "fromAyah": 154,
+  "toSurah": 3,
+  "toAyah": 157
+ },
+ {
+  "page": 71,
+  "fromSurah": 3,
+  "fromAyah": 158,
+  "toSurah": 3,
+  "toAyah": 165
+ },
+ {
+  "page": 72,
+  "fromSurah": 3,
+  "fromAyah": 166,
+  "toSurah": 3,
+  "toAyah": 173
+ },
+ {
+  "page": 73,
+  "fromSurah": 3,
+  "fromAyah": 174,
+  "toSurah": 3,
+  "toAyah": 180
+ },
+ {
+  "page": 74,
+  "fromSurah": 3,
+  "fromAyah": 181,
+  "toSurah": 3,
+  "toAyah": 186
+ },
+ {
+  "page": 75,
+  "fromSurah": 3,
+  "fromAyah": 187,
+  "toSurah": 3,
+  "toAyah": 194
+ },
+ {
+  "page": 76,
+  "fromSurah": 3,
+  "fromAyah": 195,
+  "toSurah": 3,
+  "toAyah": 200
+ },
+ {
+  "page": 77,
+  "fromSurah": 4,
+  "fromAyah": 1,
+  "toSurah": 4,
+  "toAyah": 6
+ },
+ {
+  "page": 78,
+  "fromSurah": 4,
+  "fromAyah": 7,
+  "toSurah": 4,
+  "toAyah": 11
+ },
+ {
+  "page": 79,
+  "fromSurah": 4,
+  "fromAyah": 12,
+  "toSurah": 4,
+  "toAyah": 14
+ },
+ {
+  "page": 80,
+  "fromSurah": 4,
+  "fromAyah": 15,
+  "toSurah": 4,
+  "toAyah": 19
+ },
+ {
+  "page": 81,
+  "fromSurah": 4,
+  "fromAyah": 20,
+  "toSurah": 4,
+  "toAyah": 23
+ },
+ {
+  "page": 82,
+  "fromSurah": 4,
+  "fromAyah": 24,
+  "toSurah": 4,
+  "toAyah": 26
+ },
+ {
+  "page": 83,
+  "fromSurah": 4,
+  "fromAyah": 27,
+  "toSurah": 4,
+  "toAyah": 33
+ },
+ {
+  "page": 84,
+  "fromSurah": 4,
+  "fromAyah": 34,
+  "toSurah": 4,
+  "toAyah": 37
+ },
+ {
+  "page": 85,
+  "fromSurah": 4,
+  "fromAyah": 38,
+  "toSurah": 4,
+  "toAyah": 44
+ },
+ {
+  "page": 86,
+  "fromSurah": 4,
+  "fromAyah": 45,
+  "toSurah": 4,
+  "toAyah": 51
+ },
+ {
+  "page": 87,
+  "fromSurah": 4,
+  "fromAyah": 52,
+  "toSurah": 4,
+  "toAyah": 59
+ },
+ {
+  "page": 88,
+  "fromSurah": 4,
+  "fromAyah": 60,
+  "toSurah": 4,
+  "toAyah": 65
+ },
+ {
+  "page": 89,
+  "fromSurah": 4,
+  "fromAyah": 66,
+  "toSurah": 4,
+  "toAyah": 74
+ },
+ {
+  "page": 90,
+  "fromSurah": 4,
+  "fromAyah": 75,
+  "toSurah": 4,
+  "toAyah": 79
+ },
+ {
+  "page": 91,
+  "fromSurah": 4,
+  "fromAyah": 80,
+  "toSurah": 4,
+  "toAyah": 86
+ },
+ {
+  "page": 92,
+  "fromSurah": 4,
+  "fromAyah": 87,
+  "toSurah": 4,
+  "toAyah": 91
+ },
+ {
+  "page": 93,
+  "fromSurah": 4,
+  "fromAyah": 92,
+  "toSurah": 4,
+  "toAyah": 94
+ },
+ {
+  "page": 94,
+  "fromSurah": 4,
+  "fromAyah": 95,
+  "toSurah": 4,
+  "toAyah": 101
+ },
+ {
+  "page": 95,
+  "fromSurah": 4,
+  "fromAyah": 102,
+  "toSurah": 4,
+  "toAyah": 105
+ },
+ {
+  "page": 96,
+  "fromSurah": 4,
+  "fromAyah": 106,
+  "toSurah": 4,
+  "toAyah": 113
+ },
+ {
+  "page": 97,
+  "fromSurah": 4,
+  "fromAyah": 114,
+  "toSurah": 4,
+  "toAyah": 121
+ },
+ {
+  "page": 98,
+  "fromSurah": 4,
+  "fromAyah": 122,
+  "toSurah": 4,
+  "toAyah": 127
+ },
+ {
+  "page": 99,
+  "fromSurah": 4,
+  "fromAyah": 128,
+  "toSurah": 4,
+  "toAyah": 134
+ },
+ {
+  "page": 100,
+  "fromSurah": 4,
+  "fromAyah": 135,
+  "toSurah": 4,
+  "toAyah": 140
+ },
+ {
+  "page": 101,
+  "fromSurah": 4,
+  "fromAyah": 141,
+  "toSurah": 4,
+  "toAyah": 147
+ },
+ {
+  "page": 102,
+  "fromSurah": 4,
+  "fromAyah": 148,
+  "toSurah": 4,
+  "toAyah": 154
+ },
+ {
+  "page": 103,
+  "fromSurah": 4,
+  "fromAyah": 155,
+  "toSurah": 4,
+  "toAyah": 162
+ },
+ {
+  "page": 104,
+  "fromSurah": 4,
+  "fromAyah": 163,
+  "toSurah": 4,
+  "toAyah": 170
+ },
+ {
+  "page": 105,
+  "fromSurah": 4,
+  "fromAyah": 171,
+  "toSurah": 4,
+  "toAyah": 175
+ },
+ {
+  "page": 106,
+  "fromSurah": 4,
+  "fromAyah": 176,
+  "toSurah": 5,
+  "toAyah": 2
+ },
+ {
+  "page": 107,
+  "fromSurah": 5,
+  "fromAyah": 3,
+  "toSurah": 5,
+  "toAyah": 5
+ },
+ {
+  "page": 108,
+  "fromSurah": 5,
+  "fromAyah": 6,
+  "toSurah": 5,
+  "toAyah": 9
+ },
+ {
+  "page": 109,
+  "fromSurah": 5,
+  "fromAyah": 10,
+  "toSurah": 5,
+  "toAyah": 13
+ },
+ {
+  "page": 110,
+  "fromSurah": 5,
+  "fromAyah": 14,
+  "toSurah": 5,
+  "toAyah": 17
+ },
+ {
+  "page": 111,
+  "fromSurah": 5,
+  "fromAyah": 18,
+  "toSurah": 5,
+  "toAyah": 23
+ },
+ {
+  "page": 112,
+  "fromSurah": 5,
+  "fromAyah": 24,
+  "toSurah": 5,
+  "toAyah": 31
+ },
+ {
+  "page": 113,
+  "fromSurah": 5,
+  "fromAyah": 32,
+  "toSurah": 5,
+  "toAyah": 36
+ },
+ {
+  "page": 114,
+  "fromSurah": 5,
+  "fromAyah": 37,
+  "toSurah": 5,
+  "toAyah": 41
+ },
+ {
+  "page": 115,
+  "fromSurah": 5,
+  "fromAyah": 42,
+  "toSurah": 5,
+  "toAyah": 45
+ },
+ {
+  "page": 116,
+  "fromSurah": 5,
+  "fromAyah": 46,
+  "toSurah": 5,
+  "toAyah": 50
+ },
+ {
+  "page": 117,
+  "fromSurah": 5,
+  "fromAyah": 51,
+  "toSurah": 5,
+  "toAyah": 57
+ },
+ {
+  "page": 118,
+  "fromSurah": 5,
+  "fromAyah": 58,
+  "toSurah": 5,
+  "toAyah": 64
+ },
+ {
+  "page": 119,
+  "fromSurah": 5,
+  "fromAyah": 65,
+  "toSurah": 5,
+  "toAyah": 70
+ },
+ {
+  "page": 120,
+  "fromSurah": 5,
+  "fromAyah": 71,
+  "toSurah": 5,
+  "toAyah": 76
+ },
+ {
+  "page": 121,
+  "fromSurah": 5,
+  "fromAyah": 77,
+  "toSurah": 5,
+  "toAyah": 82
+ },
+ {
+  "page": 122,
+  "fromSurah": 5,
+  "fromAyah": 83,
+  "toSurah": 5,
+  "toAyah": 89
+ },
+ {
+  "page": 123,
+  "fromSurah": 5,
+  "fromAyah": 90,
+  "toSurah": 5,
+  "toAyah": 95
+ },
+ {
+  "page": 124,
+  "fromSurah": 5,
+  "fromAyah": 96,
+  "toSurah": 5,
+  "toAyah": 103
+ },
+ {
+  "page": 125,
+  "fromSurah": 5,
+  "fromAyah": 104,
+  "toSurah": 5,
+  "toAyah": 108
+ },
+ {
+  "page": 126,
+  "fromSurah": 5,
+  "fromAyah": 109,
+  "toSurah": 5,
+  "toAyah": 113
+ },
+ {
+  "page": 127,
+  "fromSurah": 5,
+  "fromAyah": 114,
+  "toSurah": 5,
+  "toAyah": 120
+ },
+ {
+  "page": 128,
+  "fromSurah": 6,
+  "fromAyah": 1,
+  "toSurah": 6,
+  "toAyah": 8
+ },
+ {
+  "page": 129,
+  "fromSurah": 6,
+  "fromAyah": 9,
+  "toSurah": 6,
+  "toAyah": 18
+ },
+ {
+  "page": 130,
+  "fromSurah": 6,
+  "fromAyah": 19,
+  "toSurah": 6,
+  "toAyah": 27
+ },
+ {
+  "page": 131,
+  "fromSurah": 6,
+  "fromAyah": 28,
+  "toSurah": 6,
+  "toAyah": 35
+ },
+ {
+  "page": 132,
+  "fromSurah": 6,
+  "fromAyah": 36,
+  "toSurah": 6,
+  "toAyah": 44
+ },
+ {
+  "page": 133,
+  "fromSurah": 6,
+  "fromAyah": 45,
+  "toSurah": 6,
+  "toAyah": 52
+ },
+ {
+  "page": 134,
+  "fromSurah": 6,
+  "fromAyah": 53,
+  "toSurah": 6,
+  "toAyah": 59
+ },
+ {
+  "page": 135,
+  "fromSurah": 6,
+  "fromAyah": 60,
+  "toSurah": 6,
+  "toAyah": 68
+ },
+ {
+  "page": 136,
+  "fromSurah": 6,
+  "fromAyah": 69,
+  "toSurah": 6,
+  "toAyah": 73
+ },
+ {
+  "page": 137,
+  "fromSurah": 6,
+  "fromAyah": 74,
+  "toSurah": 6,
+  "toAyah": 81
+ },
+ {
+  "page": 138,
+  "fromSurah": 6,
+  "fromAyah": 82,
+  "toSurah": 6,
+  "toAyah": 90
+ },
+ {
+  "page": 139,
+  "fromSurah": 6,
+  "fromAyah": 91,
+  "toSurah": 6,
+  "toAyah": 94
+ },
+ {
+  "page": 140,
+  "fromSurah": 6,
+  "fromAyah": 95,
+  "toSurah": 6,
+  "toAyah": 101
+ },
+ {
+  "page": 141,
+  "fromSurah": 6,
+  "fromAyah": 102,
+  "toSurah": 6,
+  "toAyah": 110
+ },
+ {
+  "page": 142,
+  "fromSurah": 6,
+  "fromAyah": 111,
+  "toSurah": 6,
+  "toAyah": 118
+ },
+ {
+  "page": 143,
+  "fromSurah": 6,
+  "fromAyah": 119,
+  "toSurah": 6,
+  "toAyah": 124
+ },
+ {
+  "page": 144,
+  "fromSurah": 6,
+  "fromAyah": 125,
+  "toSurah": 6,
+  "toAyah": 131
+ },
+ {
+  "page": 145,
+  "fromSurah": 6,
+  "fromAyah": 132,
+  "toSurah": 6,
+  "toAyah": 137
+ },
+ {
+  "page": 146,
+  "fromSurah": 6,
+  "fromAyah": 138,
+  "toSurah": 6,
+  "toAyah": 142
+ },
+ {
+  "page": 147,
+  "fromSurah": 6,
+  "fromAyah": 143,
+  "toSurah": 6,
+  "toAyah": 146
+ },
+ {
+  "page": 148,
+  "fromSurah": 6,
+  "fromAyah": 147,
+  "toSurah": 6,
+  "toAyah": 151
+ },
+ {
+  "page": 149,
+  "fromSurah": 6,
+  "fromAyah": 152,
+  "toSurah": 6,
+  "toAyah": 157
+ },
+ {
+  "page": 150,
+  "fromSurah": 6,
+  "fromAyah": 158,
+  "toSurah": 6,
+  "toAyah": 165
+ },
+ {
+  "page": 151,
+  "fromSurah": 7,
+  "fromAyah": 1,
+  "toSurah": 7,
+  "toAyah": 11
+ },
+ {
+  "page": 152,
+  "fromSurah": 7,
+  "fromAyah": 12,
+  "toSurah": 7,
+  "toAyah": 22
+ },
+ {
+  "page": 153,
+  "fromSurah": 7,
+  "fromAyah": 23,
+  "toSurah": 7,
+  "toAyah": 30
+ },
+ {
+  "page": 154,
+  "fromSurah": 7,
+  "fromAyah": 31,
+  "toSurah": 7,
+  "toAyah": 37
+ },
+ {
+  "page": 155,
+  "fromSurah": 7,
+  "fromAyah": 38,
+  "toSurah": 7,
+  "toAyah": 43
+ },
+ {
+  "page": 156,
+  "fromSurah": 7,
+  "fromAyah": 44,
+  "toSurah": 7,
+  "toAyah": 51
+ },
+ {
+  "page": 157,
+  "fromSurah": 7,
+  "fromAyah": 52,
+  "toSurah": 7,
+  "toAyah": 57
+ },
+ {
+  "page": 158,
+  "fromSurah": 7,
+  "fromAyah": 58,
+  "toSurah": 7,
+  "toAyah": 67
+ },
+ {
+  "page": 159,
+  "fromSurah": 7,
+  "fromAyah": 68,
+  "toSurah": 7,
+  "toAyah": 73
+ },
+ {
+  "page": 160,
+  "fromSurah": 7,
+  "fromAyah": 74,
+  "toSurah": 7,
+  "toAyah": 81
+ },
+ {
+  "page": 161,
+  "fromSurah": 7,
+  "fromAyah": 82,
+  "toSurah": 7,
+  "toAyah": 87
+ },
+ {
+  "page": 162,
+  "fromSurah": 7,
+  "fromAyah": 88,
+  "toSurah": 7,
+  "toAyah": 95
+ },
+ {
+  "page": 163,
+  "fromSurah": 7,
+  "fromAyah": 96,
+  "toSurah": 7,
+  "toAyah": 104
+ },
+ {
+  "page": 164,
+  "fromSurah": 7,
+  "fromAyah": 105,
+  "toSurah": 7,
+  "toAyah": 120
+ },
+ {
+  "page": 165,
+  "fromSurah": 7,
+  "fromAyah": 121,
+  "toSurah": 7,
+  "toAyah": 130
+ },
+ {
+  "page": 166,
+  "fromSurah": 7,
+  "fromAyah": 131,
+  "toSurah": 7,
+  "toAyah": 137
+ },
+ {
+  "page": 167,
+  "fromSurah": 7,
+  "fromAyah": 138,
+  "toSurah": 7,
+  "toAyah": 143
+ },
+ {
+  "page": 168,
+  "fromSurah": 7,
+  "fromAyah": 144,
+  "toSurah": 7,
+  "toAyah": 149
+ },
+ {
+  "page": 169,
+  "fromSurah": 7,
+  "fromAyah": 150,
+  "toSurah": 7,
+  "toAyah": 155
+ },
+ {
+  "page": 170,
+  "fromSurah": 7,
+  "fromAyah": 156,
+  "toSurah": 7,
+  "toAyah": 159
+ },
+ {
+  "page": 171,
+  "fromSurah": 7,
+  "fromAyah": 160,
+  "toSurah": 7,
+  "toAyah": 163
+ },
+ {
+  "page": 172,
+  "fromSurah": 7,
+  "fromAyah": 164,
+  "toSurah": 7,
+  "toAyah": 170
+ },
+ {
+  "page": 173,
+  "fromSurah": 7,
+  "fromAyah": 171,
+  "toSurah": 7,
+  "toAyah": 178
+ },
+ {
+  "page": 174,
+  "fromSurah": 7,
+  "fromAyah": 179,
+  "toSurah": 7,
+  "toAyah": 187
+ },
+ {
+  "page": 175,
+  "fromSurah": 7,
+  "fromAyah": 188,
+  "toSurah": 7,
+  "toAyah": 195
+ },
+ {
+  "page": 176,
+  "fromSurah": 7,
+  "fromAyah": 196,
+  "toSurah": 7,
+  "toAyah": 206
+ },
+ {
+  "page": 177,
+  "fromSurah": 8,
+  "fromAyah": 1,
+  "toSurah": 8,
+  "toAyah": 8
+ },
+ {
+  "page": 178,
+  "fromSurah": 8,
+  "fromAyah": 9,
+  "toSurah": 8,
+  "toAyah": 16
+ },
+ {
+  "page": 179,
+  "fromSurah": 8,
+  "fromAyah": 17,
+  "toSurah": 8,
+  "toAyah": 25
+ },
+ {
+  "page": 180,
+  "fromSurah": 8,
+  "fromAyah": 26,
+  "toSurah": 8,
+  "toAyah": 33
+ },
+ {
+  "page": 181,
+  "fromSurah": 8,
+  "fromAyah": 34,
+  "toSurah": 8,
+  "toAyah": 40
+ },
+ {
+  "page": 182,
+  "fromSurah": 8,
+  "fromAyah": 41,
+  "toSurah": 8,
+  "toAyah": 45
+ },
+ {
+  "page": 183,
+  "fromSurah": 8,
+  "fromAyah": 46,
+  "toSurah": 8,
+  "toAyah": 52
+ },
+ {
+  "page": 184,
+  "fromSurah": 8,
+  "fromAyah": 53,
+  "toSurah": 8,
+  "toAyah": 61
+ },
+ {
+  "page": 185,
+  "fromSurah": 8,
+  "fromAyah": 62,
+  "toSurah": 8,
+  "toAyah": 69
+ },
+ {
+  "page": 186,
+  "fromSurah": 8,
+  "fromAyah": 70,
+  "toSurah": 8,
+  "toAyah": 75
+ },
+ {
+  "page": 187,
+  "fromSurah": 9,
+  "fromAyah": 1,
+  "toSurah": 9,
+  "toAyah": 6
+ },
+ {
+  "page": 188,
+  "fromSurah": 9,
+  "fromAyah": 7,
+  "toSurah": 9,
+  "toAyah": 13
+ },
+ {
+  "page": 189,
+  "fromSurah": 9,
+  "fromAyah": 14,
+  "toSurah": 9,
+  "toAyah": 20
+ },
+ {
+  "page": 190,
+  "fromSurah": 9,
+  "fromAyah": 21,
+  "toSurah": 9,
+  "toAyah": 26
+ },
+ {
+  "page": 191,
+  "fromSurah": 9,
+  "fromAyah": 27,
+  "toSurah": 9,
+  "toAyah": 31
+ },
+ {
+  "page": 192,
+  "fromSurah": 9,
+  "fromAyah": 32,
+  "toSurah": 9,
+  "toAyah": 36
+ },
+ {
+  "page": 193,
+  "fromSurah": 9,
+  "fromAyah": 37,
+  "toSurah": 9,
+  "toAyah": 40
+ },
+ {
+  "page": 194,
+  "fromSurah": 9,
+  "fromAyah": 41,
+  "toSurah": 9,
+  "toAyah": 47
+ },
+ {
+  "page": 195,
+  "fromSurah": 9,
+  "fromAyah": 48,
+  "toSurah": 9,
+  "toAyah": 54
+ },
+ {
+  "page": 196,
+  "fromSurah": 9,
+  "fromAyah": 55,
+  "toSurah": 9,
+  "toAyah": 61
+ },
+ {
+  "page": 197,
+  "fromSurah": 9,
+  "fromAyah": 62,
+  "toSurah": 9,
+  "toAyah": 68
+ },
+ {
+  "page": 198,
+  "fromSurah": 9,
+  "fromAyah": 69,
+  "toSurah": 9,
+  "toAyah": 72
+ },
+ {
+  "page": 199,
+  "fromSurah": 9,
+  "fromAyah": 73,
+  "toSurah": 9,
+  "toAyah": 79
+ },
+ {
+  "page": 200,
+  "fromSurah": 9,
+  "fromAyah": 80,
+  "toSurah": 9,
+  "toAyah": 86
+ },
+ {
+  "page": 201,
+  "fromSurah": 9,
+  "fromAyah": 87,
+  "toSurah": 9,
+  "toAyah": 93
+ },
+ {
+  "page": 202,
+  "fromSurah": 9,
+  "fromAyah": 94,
+  "toSurah": 9,
+  "toAyah": 99
+ },
+ {
+  "page": 203,
+  "fromSurah": 9,
+  "fromAyah": 100,
+  "toSurah": 9,
+  "toAyah": 106
+ },
+ {
+  "page": 204,
+  "fromSurah": 9,
+  "fromAyah": 107,
+  "toSurah": 9,
+  "toAyah": 111
+ },
+ {
+  "page": 205,
+  "fromSurah": 9,
+  "fromAyah": 112,
+  "toSurah": 9,
+  "toAyah": 117
+ },
+ {
+  "page": 206,
+  "fromSurah": 9,
+  "fromAyah": 118,
+  "toSurah": 9,
+  "toAyah": 122
+ },
+ {
+  "page": 207,
+  "fromSurah": 9,
+  "fromAyah": 123,
+  "toSurah": 9,
+  "toAyah": 129
+ },
+ {
+  "page": 208,
+  "fromSurah": 10,
+  "fromAyah": 1,
+  "toSurah": 10,
+  "toAyah": 6
+ },
+ {
+  "page": 209,
+  "fromSurah": 10,
+  "fromAyah": 7,
+  "toSurah": 10,
+  "toAyah": 14
+ },
+ {
+  "page": 210,
+  "fromSurah": 10,
+  "fromAyah": 15,
+  "toSurah": 10,
+  "toAyah": 20
+ },
+ {
+  "page": 211,
+  "fromSurah": 10,
+  "fromAyah": 21,
+  "toSurah": 10,
+  "toAyah": 25
+ },
+ {
+  "page": 212,
+  "fromSurah": 10,
+  "fromAyah": 26,
+  "toSurah": 10,
+  "toAyah": 33
+ },
+ {
+  "page": 213,
+  "fromSurah": 10,
+  "fromAyah": 34,
+  "toSurah": 10,
+  "toAyah": 42
+ },
+ {
+  "page": 214,
+  "fromSurah": 10,
+  "fromAyah": 43,
+  "toSurah": 10,
+  "toAyah": 53
+ },
+ {
+  "page": 215,
+  "fromSurah": 10,
+  "fromAyah": 54,
+  "toSurah": 10,
+  "toAyah": 61
+ },
+ {
+  "page": 216,
+  "fromSurah": 10,
+  "fromAyah": 62,
+  "toSurah": 10,
+  "toAyah": 70
+ },
+ {
+  "page": 217,
+  "fromSurah": 10,
+  "fromAyah": 71,
+  "toSurah": 10,
+  "toAyah": 78
+ },
+ {
+  "page": 218,
+  "fromSurah": 10,
+  "fromAyah": 79,
+  "toSurah": 10,
+  "toAyah": 88
+ },
+ {
+  "page": 219,
+  "fromSurah": 10,
+  "fromAyah": 89,
+  "toSurah": 10,
+  "toAyah": 97
+ },
+ {
+  "page": 220,
+  "fromSurah": 10,
+  "fromAyah": 98,
+  "toSurah": 10,
+  "toAyah": 106
+ },
+ {
+  "page": 221,
+  "fromSurah": 10,
+  "fromAyah": 107,
+  "toSurah": 11,
+  "toAyah": 5
+ },
+ {
+  "page": 222,
+  "fromSurah": 11,
+  "fromAyah": 6,
+  "toSurah": 11,
+  "toAyah": 12
+ },
+ {
+  "page": 223,
+  "fromSurah": 11,
+  "fromAyah": 13,
+  "toSurah": 11,
+  "toAyah": 19
+ },
+ {
+  "page": 224,
+  "fromSurah": 11,
+  "fromAyah": 20,
+  "toSurah": 11,
+  "toAyah": 28
+ },
+ {
+  "page": 225,
+  "fromSurah": 11,
+  "fromAyah": 29,
+  "toSurah": 11,
+  "toAyah": 37
+ },
+ {
+  "page": 226,
+  "fromSurah": 11,
+  "fromAyah": 38,
+  "toSurah": 11,
+  "toAyah": 45
+ },
+ {
+  "page": 227,
+  "fromSurah": 11,
+  "fromAyah": 46,
+  "toSurah": 11,
+  "toAyah": 53
+ },
+ {
+  "page": 228,
+  "fromSurah": 11,
+  "fromAyah": 54,
+  "toSurah": 11,
+  "toAyah": 62
+ },
+ {
+  "page": 229,
+  "fromSurah": 11,
+  "fromAyah": 63,
+  "toSurah": 11,
+  "toAyah": 71
+ },
+ {
+  "page": 230,
+  "fromSurah": 11,
+  "fromAyah": 72,
+  "toSurah": 11,
+  "toAyah": 81
+ },
+ {
+  "page": 231,
+  "fromSurah": 11,
+  "fromAyah": 82,
+  "toSurah": 11,
+  "toAyah": 88
+ },
+ {
+  "page": 232,
+  "fromSurah": 11,
+  "fromAyah": 89,
+  "toSurah": 11,
+  "toAyah": 97
+ },
+ {
+  "page": 233,
+  "fromSurah": 11,
+  "fromAyah": 98,
+  "toSurah": 11,
+  "toAyah": 108
+ },
+ {
+  "page": 234,
+  "fromSurah": 11,
+  "fromAyah": 109,
+  "toSurah": 11,
+  "toAyah": 117
+ },
+ {
+  "page": 235,
+  "fromSurah": 11,
+  "fromAyah": 118,
+  "toSurah": 12,
+  "toAyah": 4
+ },
+ {
+  "page": 236,
+  "fromSurah": 12,
+  "fromAyah": 5,
+  "toSurah": 12,
+  "toAyah": 14
+ },
+ {
+  "page": 237,
+  "fromSurah": 12,
+  "fromAyah": 15,
+  "toSurah": 12,
+  "toAyah": 22
+ },
+ {
+  "page": 238,
+  "fromSurah": 12,
+  "fromAyah": 23,
+  "toSurah": 12,
+  "toAyah": 30
+ },
+ {
+  "page": 239,
+  "fromSurah": 12,
+  "fromAyah": 31,
+  "toSurah": 12,
+  "toAyah": 37
+ },
+ {
+  "page": 240,
+  "fromSurah": 12,
+  "fromAyah": 38,
+  "toSurah": 12,
+  "toAyah": 43
+ },
+ {
+  "page": 241,
+  "fromSurah": 12,
+  "fromAyah": 44,
+  "toSurah": 12,
+  "toAyah": 52
+ },
+ {
+  "page": 242,
+  "fromSurah": 12,
+  "fromAyah": 53,
+  "toSurah": 12,
+  "toAyah": 63
+ },
+ {
+  "page": 243,
+  "fromSurah": 12,
+  "fromAyah": 64,
+  "toSurah": 12,
+  "toAyah": 69
+ },
+ {
+  "page": 244,
+  "fromSurah": 12,
+  "fromAyah": 70,
+  "toSurah": 12,
+  "toAyah": 78
+ },
+ {
+  "page": 245,
+  "fromSurah": 12,
+  "fromAyah": 79,
+  "toSurah": 12,
+  "toAyah": 86
+ },
+ {
+  "page": 246,
+  "fromSurah": 12,
+  "fromAyah": 87,
+  "toSurah": 12,
+  "toAyah": 95
+ },
+ {
+  "page": 247,
+  "fromSurah": 12,
+  "fromAyah": 96,
+  "toSurah": 12,
+  "toAyah": 103
+ },
+ {
+  "page": 248,
+  "fromSurah": 12,
+  "fromAyah": 104,
+  "toSurah": 12,
+  "toAyah": 111
+ },
+ {
+  "page": 249,
+  "fromSurah": 13,
+  "fromAyah": 1,
+  "toSurah": 13,
+  "toAyah": 5
+ },
+ {
+  "page": 250,
+  "fromSurah": 13,
+  "fromAyah": 6,
+  "toSurah": 13,
+  "toAyah": 13
+ },
+ {
+  "page": 251,
+  "fromSurah": 13,
+  "fromAyah": 14,
+  "toSurah": 13,
+  "toAyah": 18
+ },
+ {
+  "page": 252,
+  "fromSurah": 13,
+  "fromAyah": 19,
+  "toSurah": 13,
+  "toAyah": 28
+ },
+ {
+  "page": 253,
+  "fromSurah": 13,
+  "fromAyah": 29,
+  "toSurah": 13,
+  "toAyah": 34
+ },
+ {
+  "page": 254,
+  "fromSurah": 13,
+  "fromAyah": 35,
+  "toSurah": 13,
+  "toAyah": 42
+ },
+ {
+  "page": 255,
+  "fromSurah": 13,
+  "fromAyah": 43,
+  "toSurah": 14,
+  "toAyah": 5
+ },
+ {
+  "page": 256,
+  "fromSurah": 14,
+  "fromAyah": 6,
+  "toSurah": 14,
+  "toAyah": 10
+ },
+ {
+  "page": 257,
+  "fromSurah": 14,
+  "fromAyah": 11,
+  "toSurah": 14,
+  "toAyah": 18
+ },
+ {
+  "page": 258,
+  "fromSurah": 14,
+  "fromAyah": 19,
+  "toSurah": 14,
+  "toAyah": 24
+ },
+ {
+  "page": 259,
+  "fromSurah": 14,
+  "fromAyah": 25,
+  "toSurah": 14,
+  "toAyah": 33
+ },
+ {
+  "page": 260,
+  "fromSurah": 14,
+  "fromAyah": 34,
+  "toSurah": 14,
+  "toAyah": 42
+ },
+ {
+  "page": 261,
+  "fromSurah": 14,
+  "fromAyah": 43,
+  "toSurah": 14,
+  "toAyah": 52
+ },
+ {
+  "page": 262,
+  "fromSurah": 15,
+  "fromAyah": 1,
+  "toSurah": 15,
+  "toAyah": 15
+ },
+ {
+  "page": 263,
+  "fromSurah": 15,
+  "fromAyah": 16,
+  "toSurah": 15,
+  "toAyah": 31
+ },
+ {
+  "page": 264,
+  "fromSurah": 15,
+  "fromAyah": 32,
+  "toSurah": 15,
+  "toAyah": 51
+ },
+ {
+  "page": 265,
+  "fromSurah": 15,
+  "fromAyah": 52,
+  "toSurah": 15,
+  "toAyah": 70
+ },
+ {
+  "page": 266,
+  "fromSurah": 15,
+  "fromAyah": 71,
+  "toSurah": 15,
+  "toAyah": 90
+ },
+ {
+  "page": 267,
+  "fromSurah": 15,
+  "fromAyah": 91,
+  "toSurah": 16,
+  "toAyah": 6
+ },
+ {
+  "page": 268,
+  "fromSurah": 16,
+  "fromAyah": 7,
+  "toSurah": 16,
+  "toAyah": 14
+ },
+ {
+  "page": 269,
+  "fromSurah": 16,
+  "fromAyah": 15,
+  "toSurah": 16,
+  "toAyah": 26
+ },
+ {
+  "page": 270,
+  "fromSurah": 16,
+  "fromAyah": 27,
+  "toSurah": 16,
+  "toAyah": 34
+ },
+ {
+  "page": 271,
+  "fromSurah": 16,
+  "fromAyah": 35,
+  "toSurah": 16,
+  "toAyah": 42
+ },
+ {
+  "page": 272,
+  "fromSurah": 16,
+  "fromAyah": 43,
+  "toSurah": 16,
+  "toAyah": 54
+ },
+ {
+  "page": 273,
+  "fromSurah": 16,
+  "fromAyah": 55,
+  "toSurah": 16,
+  "toAyah": 64
+ },
+ {
+  "page": 274,
+  "fromSurah": 16,
+  "fromAyah": 65,
+  "toSurah": 16,
+  "toAyah": 72
+ },
+ {
+  "page": 275,
+  "fromSurah": 16,
+  "fromAyah": 73,
+  "toSurah": 16,
+  "toAyah": 79
+ },
+ {
+  "page": 276,
+  "fromSurah": 16,
+  "fromAyah": 80,
+  "toSurah": 16,
+  "toAyah": 87
+ },
+ {
+  "page": 277,
+  "fromSurah": 16,
+  "fromAyah": 88,
+  "toSurah": 16,
+  "toAyah": 93
+ },
+ {
+  "page": 278,
+  "fromSurah": 16,
+  "fromAyah": 94,
+  "toSurah": 16,
+  "toAyah": 102
+ },
+ {
+  "page": 279,
+  "fromSurah": 16,
+  "fromAyah": 103,
+  "toSurah": 16,
+  "toAyah": 110
+ },
+ {
+  "page": 280,
+  "fromSurah": 16,
+  "fromAyah": 111,
+  "toSurah": 16,
+  "toAyah": 118
+ },
+ {
+  "page": 281,
+  "fromSurah": 16,
+  "fromAyah": 119,
+  "toSurah": 16,
+  "toAyah": 128
+ },
+ {
+  "page": 282,
+  "fromSurah": 17,
+  "fromAyah": 1,
+  "toSurah": 17,
+  "toAyah": 7
+ },
+ {
+  "page": 283,
+  "fromSurah": 17,
+  "fromAyah": 8,
+  "toSurah": 17,
+  "toAyah": 17
+ },
+ {
+  "page": 284,
+  "fromSurah": 17,
+  "fromAyah": 18,
+  "toSurah": 17,
+  "toAyah": 27
+ },
+ {
+  "page": 285,
+  "fromSurah": 17,
+  "fromAyah": 28,
+  "toSurah": 17,
+  "toAyah": 38
+ },
+ {
+  "page": 286,
+  "fromSurah": 17,
+  "fromAyah": 39,
+  "toSurah": 17,
+  "toAyah": 49
+ },
+ {
+  "page": 287,
+  "fromSurah": 17,
+  "fromAyah": 50,
+  "toSurah": 17,
+  "toAyah": 58
+ },
+ {
+  "page": 288,
+  "fromSurah": 17,
+  "fromAyah": 59,
+  "toSurah": 17,
+  "toAyah": 66
+ },
+ {
+  "page": 289,
+  "fromSurah": 17,
+  "fromAyah": 67,
+  "toSurah": 17,
+  "toAyah": 75
+ },
+ {
+  "page": 290,
+  "fromSurah": 17,
+  "fromAyah": 76,
+  "toSurah": 17,
+  "toAyah": 86
+ },
+ {
+  "page": 291,
+  "fromSurah": 17,
+  "fromAyah": 87,
+  "toSurah": 17,
+  "toAyah": 96
+ },
+ {
+  "page": 292,
+  "fromSurah": 17,
+  "fromAyah": 97,
+  "toSurah": 17,
+  "toAyah": 104
+ },
+ {
+  "page": 293,
+  "fromSurah": 17,
+  "fromAyah": 105,
+  "toSurah": 18,
+  "toAyah": 4
+ },
+ {
+  "page": 294,
+  "fromSurah": 18,
+  "fromAyah": 5,
+  "toSurah": 18,
+  "toAyah": 15
+ },
+ {
+  "page": 295,
+  "fromSurah": 18,
+  "fromAyah": 16,
+  "toSurah": 18,
+  "toAyah": 20
+ },
+ {
+  "page": 296,
+  "fromSurah": 18,
+  "fromAyah": 21,
+  "toSurah": 18,
+  "toAyah": 27
+ },
+ {
+  "page": 297,
+  "fromSurah": 18,
+  "fromAyah": 28,
+  "toSurah": 18,
+  "toAyah": 34
+ },
+ {
+  "page": 298,
+  "fromSurah": 18,
+  "fromAyah": 35,
+  "toSurah": 18,
+  "toAyah": 45
+ },
+ {
+  "page": 299,
+  "fromSurah": 18,
+  "fromAyah": 46,
+  "toSurah": 18,
+  "toAyah": 53
+ },
+ {
+  "page": 300,
+  "fromSurah": 18,
+  "fromAyah": 54,
+  "toSurah": 18,
+  "toAyah": 61
+ },
+ {
+  "page": 301,
+  "fromSurah": 18,
+  "fromAyah": 62,
+  "toSurah": 18,
+  "toAyah": 74
+ },
+ {
+  "page": 302,
+  "fromSurah": 18,
+  "fromAyah": 75,
+  "toSurah": 18,
+  "toAyah": 83
+ },
+ {
+  "page": 303,
+  "fromSurah": 18,
+  "fromAyah": 84,
+  "toSurah": 18,
+  "toAyah": 97
+ },
+ {
+  "page": 304,
+  "fromSurah": 18,
+  "fromAyah": 98,
+  "toSurah": 18,
+  "toAyah": 110
+ },
+ {
+  "page": 305,
+  "fromSurah": 19,
+  "fromAyah": 1,
+  "toSurah": 19,
+  "toAyah": 11
+ },
+ {
+  "page": 306,
+  "fromSurah": 19,
+  "fromAyah": 12,
+  "toSurah": 19,
+  "toAyah": 25
+ },
+ {
+  "page": 307,
+  "fromSurah": 19,
+  "fromAyah": 26,
+  "toSurah": 19,
+  "toAyah": 38
+ },
+ {
+  "page": 308,
+  "fromSurah": 19,
+  "fromAyah": 39,
+  "toSurah": 19,
+  "toAyah": 51
+ },
+ {
+  "page": 309,
+  "fromSurah": 19,
+  "fromAyah": 52,
+  "toSurah": 19,
+  "toAyah": 64
+ },
+ {
+  "page": 310,
+  "fromSurah": 19,
+  "fromAyah": 65,
+  "toSurah": 19,
+  "toAyah": 76
+ },
+ {
+  "page": 311,
+  "fromSurah": 19,
+  "fromAyah": 77,
+  "toSurah": 19,
+  "toAyah": 95
+ },
+ {
+  "page": 312,
+  "fromSurah": 19,
+  "fromAyah": 96,
+  "toSurah": 20,
+  "toAyah": 12
+ },
+ {
+  "page": 313,
+  "fromSurah": 20,
+  "fromAyah": 13,
+  "toSurah": 20,
+  "toAyah": 37
+ },
+ {
+  "page": 314,
+  "fromSurah": 20,
+  "fromAyah": 38,
+  "toSurah": 20,
+  "toAyah": 51
+ },
+ {
+  "page": 315,
+  "fromSurah": 20,
+  "fromAyah": 52,
+  "toSurah": 20,
+  "toAyah": 64
+ },
+ {
+  "page": 316,
+  "fromSurah": 20,
+  "fromAyah": 65,
+  "toSurah": 20,
+  "toAyah": 76
+ },
+ {
+  "page": 317,
+  "fromSurah": 20,
+  "fromAyah": 77,
+  "toSurah": 20,
+  "toAyah": 87
+ },
+ {
+  "page": 318,
+  "fromSurah": 20,
+  "fromAyah": 88,
+  "toSurah": 20,
+  "toAyah": 98
+ },
+ {
+  "page": 319,
+  "fromSurah": 20,
+  "fromAyah": 99,
+  "toSurah": 20,
+  "toAyah": 113
+ },
+ {
+  "page": 320,
+  "fromSurah": 20,
+  "fromAyah": 114,
+  "toSurah": 20,
+  "toAyah": 125
+ },
+ {
+  "page": 321,
+  "fromSurah": 20,
+  "fromAyah": 126,
+  "toSurah": 20,
+  "toAyah": 135
+ },
+ {
+  "page": 322,
+  "fromSurah": 21,
+  "fromAyah": 1,
+  "toSurah": 21,
+  "toAyah": 10
+ },
+ {
+  "page": 323,
+  "fromSurah": 21,
+  "fromAyah": 11,
+  "toSurah": 21,
+  "toAyah": 24
+ },
+ {
+  "page": 324,
+  "fromSurah": 21,
+  "fromAyah": 25,
+  "toSurah": 21,
+  "toAyah": 35
+ },
+ {
+  "page": 325,
+  "fromSurah": 21,
+  "fromAyah": 36,
+  "toSurah": 21,
+  "toAyah": 44
+ },
+ {
+  "page": 326,
+  "fromSurah": 21,
+  "fromAyah": 45,
+  "toSurah": 21,
+  "toAyah": 57
+ },
+ {
+  "page": 327,
+  "fromSurah": 21,
+  "fromAyah": 58,
+  "toSurah": 21,
+  "toAyah": 72
+ },
+ {
+  "page": 328,
+  "fromSurah": 21,
+  "fromAyah": 73,
+  "toSurah": 21,
+  "toAyah": 81
+ },
+ {
+  "page": 329,
+  "fromSurah": 21,
+  "fromAyah": 82,
+  "toSurah": 21,
+  "toAyah": 90
+ },
+ {
+  "page": 330,
+  "fromSurah": 21,
+  "fromAyah": 91,
+  "toSurah": 21,
+  "toAyah": 101
+ },
+ {
+  "page": 331,
+  "fromSurah": 21,
+  "fromAyah": 102,
+  "toSurah": 21,
+  "toAyah": 112
+ },
+ {
+  "page": 332,
+  "fromSurah": 22,
+  "fromAyah": 1,
+  "toSurah": 22,
+  "toAyah": 5
+ },
+ {
+  "page": 333,
+  "fromSurah": 22,
+  "fromAyah": 6,
+  "toSurah": 22,
+  "toAyah": 15
+ },
+ {
+  "page": 334,
+  "fromSurah": 22,
+  "fromAyah": 16,
+  "toSurah": 22,
+  "toAyah": 23
+ },
+ {
+  "page": 335,
+  "fromSurah": 22,
+  "fromAyah": 24,
+  "toSurah": 22,
+  "toAyah": 30
+ },
+ {
+  "page": 336,
+  "fromSurah": 22,
+  "fromAyah": 31,
+  "toSurah": 22,
+  "toAyah": 38
+ },
+ {
+  "page": 337,
+  "fromSurah": 22,
+  "fromAyah": 39,
+  "toSurah": 22,
+  "toAyah": 46
+ },
+ {
+  "page": 338,
+  "fromSurah": 22,
+  "fromAyah": 47,
+  "toSurah": 22,
+  "toAyah": 55
+ },
+ {
+  "page": 339,
+  "fromSurah": 22,
+  "fromAyah": 56,
+  "toSurah": 22,
+  "toAyah": 64
+ },
+ {
+  "page": 340,
+  "fromSurah": 22,
+  "fromAyah": 65,
+  "toSurah": 22,
+  "toAyah": 72
+ },
+ {
+  "page": 341,
+  "fromSurah": 22,
+  "fromAyah": 73,
+  "toSurah": 22,
+  "toAyah": 78
+ },
+ {
+  "page": 342,
+  "fromSurah": 23,
+  "fromAyah": 1,
+  "toSurah": 23,
+  "toAyah": 17
+ },
+ {
+  "page": 343,
+  "fromSurah": 23,
+  "fromAyah": 18,
+  "toSurah": 23,
+  "toAyah": 27
+ },
+ {
+  "page": 344,
+  "fromSurah": 23,
+  "fromAyah": 28,
+  "toSurah": 23,
+  "toAyah": 42
+ },
+ {
+  "page": 345,
+  "fromSurah": 23,
+  "fromAyah": 43,
+  "toSurah": 23,
+  "toAyah": 59
+ },
+ {
+  "page": 346,
+  "fromSurah": 23,
+  "fromAyah": 60,
+  "toSurah": 23,
+  "toAyah": 74
+ },
+ {
+  "page": 347,
+  "fromSurah": 23,
+  "fromAyah": 75,
+  "toSurah": 23,
+  "toAyah": 89
+ },
+ {
+  "page": 348,
+  "fromSurah": 23,
+  "fromAyah": 90,
+  "toSurah": 23,
+  "toAyah": 104
+ },
+ {
+  "page": 349,
+  "fromSurah": 23,
+  "fromAyah": 105,
+  "toSurah": 23,
+  "toAyah": 118
+ },
+ {
+  "page": 350,
+  "fromSurah": 24,
+  "fromAyah": 1,
+  "toSurah": 24,
+  "toAyah": 10
+ },
+ {
+  "page": 351,
+  "fromSurah": 24,
+  "fromAyah": 11,
+  "toSurah": 24,
+  "toAyah": 20
+ },
+ {
+  "page": 352,
+  "fromSurah": 24,
+  "fromAyah": 21,
+  "toSurah": 24,
+  "toAyah": 27
+ },
+ {
+  "page": 353,
+  "fromSurah": 24,
+  "fromAyah": 28,
+  "toSurah": 24,
+  "toAyah": 31
+ },
+ {
+  "page": 354,
+  "fromSurah": 24,
+  "fromAyah": 32,
+  "toSurah": 24,
+  "toAyah": 36
+ },
+ {
+  "page": 355,
+  "fromSurah": 24,
+  "fromAyah": 37,
+  "toSurah": 24,
+  "toAyah": 43
+ },
+ {
+  "page": 356,
+  "fromSurah": 24,
+  "fromAyah": 44,
+  "toSurah": 24,
+  "toAyah": 53
+ },
+ {
+  "page": 357,
+  "fromSurah": 24,
+  "fromAyah": 54,
+  "toSurah": 24,
+  "toAyah": 58
+ },
+ {
+  "page": 358,
+  "fromSurah": 24,
+  "fromAyah": 59,
+  "toSurah": 24,
+  "toAyah": 61
+ },
+ {
+  "page": 359,
+  "fromSurah": 24,
+  "fromAyah": 62,
+  "toSurah": 25,
+  "toAyah": 2
+ },
+ {
+  "page": 360,
+  "fromSurah": 25,
+  "fromAyah": 3,
+  "toSurah": 25,
+  "toAyah": 11
+ },
+ {
+  "page": 361,
+  "fromSurah": 25,
+  "fromAyah": 12,
+  "toSurah": 25,
+  "toAyah": 20
+ },
+ {
+  "page": 362,
+  "fromSurah": 25,
+  "fromAyah": 21,
+  "toSurah": 25,
+  "toAyah": 32
+ },
+ {
+  "page": 363,
+  "fromSurah": 25,
+  "fromAyah": 33,
+  "toSurah": 25,
+  "toAyah": 43
+ },
+ {
+  "page": 364,
+  "fromSurah": 25,
+  "fromAyah": 44,
+  "toSurah": 25,
+  "toAyah": 55
+ },
+ {
+  "page": 365,
+  "fromSurah": 25,
+  "fromAyah": 56,
+  "toSurah": 25,
+  "toAyah": 67
+ },
+ {
+  "page": 366,
+  "fromSurah": 25,
+  "fromAyah": 68,
+  "toSurah": 25,
+  "toAyah": 77
+ },
+ {
+  "page": 367,
+  "fromSurah": 26,
+  "fromAyah": 1,
+  "toSurah": 26,
+  "toAyah": 19
+ },
+ {
+  "page": 368,
+  "fromSurah": 26,
+  "fromAyah": 20,
+  "toSurah": 26,
+  "toAyah": 39
+ },
+ {
+  "page": 369,
+  "fromSurah": 26,
+  "fromAyah": 40,
+  "toSurah": 26,
+  "toAyah": 60
+ },
+ {
+  "page": 370,
+  "fromSurah": 26,
+  "fromAyah": 61,
+  "toSurah": 26,
+  "toAyah": 83
+ },
+ {
+  "page": 371,
+  "fromSurah": 26,
+  "fromAyah": 84,
+  "toSurah": 26,
+  "toAyah": 111
+ },
+ {
+  "page": 372,
+  "fromSurah": 26,
+  "fromAyah": 112,
+  "toSurah": 26,
+  "toAyah": 136
+ },
+ {
+  "page": 373,
+  "fromSurah": 26,
+  "fromAyah": 137,
+  "toSurah": 26,
+  "toAyah": 159
+ },
+ {
+  "page": 374,
+  "fromSurah": 26,
+  "fromAyah": 160,
+  "toSurah": 26,
+  "toAyah": 183
+ },
+ {
+  "page": 375,
+  "fromSurah": 26,
+  "fromAyah": 184,
+  "toSurah": 26,
+  "toAyah": 206
+ },
+ {
+  "page": 376,
+  "fromSurah": 26,
+  "fromAyah": 207,
+  "toSurah": 26,
+  "toAyah": 227
+ },
+ {
+  "page": 377,
+  "fromSurah": 27,
+  "fromAyah": 1,
+  "toSurah": 27,
+  "toAyah": 13
+ },
+ {
+  "page": 378,
+  "fromSurah": 27,
+  "fromAyah": 14,
+  "toSurah": 27,
+  "toAyah": 22
+ },
+ {
+  "page": 379,
+  "fromSurah": 27,
+  "fromAyah": 23,
+  "toSurah": 27,
+  "toAyah": 35
+ },
+ {
+  "page": 380,
+  "fromSurah": 27,
+  "fromAyah": 36,
+  "toSurah": 27,
+  "toAyah": 44
+ },
+ {
+  "page": 381,
+  "fromSurah": 27,
+  "fromAyah": 45,
+  "toSurah": 27,
+  "toAyah": 55
+ },
+ {
+  "page": 382,
+  "fromSurah": 27,
+  "fromAyah": 56,
+  "toSurah": 27,
+  "toAyah": 63
+ },
+ {
+  "page": 383,
+  "fromSurah": 27,
+  "fromAyah": 64,
+  "toSurah": 27,
+  "toAyah": 76
+ },
+ {
+  "page": 384,
+  "fromSurah": 27,
+  "fromAyah": 77,
+  "toSurah": 27,
+  "toAyah": 88
+ },
+ {
+  "page": 385,
+  "fromSurah": 27,
+  "fromAyah": 89,
+  "toSurah": 28,
+  "toAyah": 5
+ },
+ {
+  "page": 386,
+  "fromSurah": 28,
+  "fromAyah": 6,
+  "toSurah": 28,
+  "toAyah": 13
+ },
+ {
+  "page": 387,
+  "fromSurah": 28,
+  "fromAyah": 14,
+  "toSurah": 28,
+  "toAyah": 21
+ },
+ {
+  "page": 388,
+  "fromSurah": 28,
+  "fromAyah": 22,
+  "toSurah": 28,
+  "toAyah": 28
+ },
+ {
+  "page": 389,
+  "fromSurah": 28,
+  "fromAyah": 29,
+  "toSurah": 28,
+  "toAyah": 35
+ },
+ {
+  "page": 390,
+  "fromSurah": 28,
+  "fromAyah": 36,
+  "toSurah": 28,
+  "toAyah": 43
+ },
+ {
+  "page": 391,
+  "fromSurah": 28,
+  "fromAyah": 44,
+  "toSurah": 28,
+  "toAyah": 50
+ },
+ {
+  "page": 392,
+  "fromSurah": 28,
+  "fromAyah": 51,
+  "toSurah": 28,
+  "toAyah": 59
+ },
+ {
+  "page": 393,
+  "fromSurah": 28,
+  "fromAyah": 60,
+  "toSurah": 28,
+  "toAyah": 70
+ },
+ {
+  "page": 394,
+  "fromSurah": 28,
+  "fromAyah": 71,
+  "toSurah": 28,
+  "toAyah": 77
+ },
+ {
+  "page": 395,
+  "fromSurah": 28,
+  "fromAyah": 78,
+  "toSurah": 28,
+  "toAyah": 84
+ },
+ {
+  "page": 396,
+  "fromSurah": 28,
+  "fromAyah": 85,
+  "toSurah": 29,
+  "toAyah": 6
+ },
+ {
+  "page": 397,
+  "fromSurah": 29,
+  "fromAyah": 7,
+  "toSurah": 29,
+  "toAyah": 14
+ },
+ {
+  "page": 398,
+  "fromSurah": 29,
+  "fromAyah": 15,
+  "toSurah": 29,
+  "toAyah": 23
+ },
+ {
+  "page": 399,
+  "fromSurah": 29,
+  "fromAyah": 24,
+  "toSurah": 29,
+  "toAyah": 30
+ },
+ {
+  "page": 400,
+  "fromSurah": 29,
+  "fromAyah": 31,
+  "toSurah": 29,
+  "toAyah": 38
+ },
+ {
+  "page": 401,
+  "fromSurah": 29,
+  "fromAyah": 39,
+  "toSurah": 29,
+  "toAyah": 45
+ },
+ {
+  "page": 402,
+  "fromSurah": 29,
+  "fromAyah": 46,
+  "toSurah": 29,
+  "toAyah": 52
+ },
+ {
+  "page": 403,
+  "fromSurah": 29,
+  "fromAyah": 53,
+  "toSurah": 29,
+  "toAyah": 63
+ },
+ {
+  "page": 404,
+  "fromSurah": 29,
+  "fromAyah": 64,
+  "toSurah": 30,
+  "toAyah": 5
+ },
+ {
+  "page": 405,
+  "fromSurah": 30,
+  "fromAyah": 6,
+  "toSurah": 30,
+  "toAyah": 15
+ },
+ {
+  "page": 406,
+  "fromSurah": 30,
+  "fromAyah": 16,
+  "toSurah": 30,
+  "toAyah": 24
+ },
+ {
+  "page": 407,
+  "fromSurah": 30,
+  "fromAyah": 25,
+  "toSurah": 30,
+  "toAyah": 32
+ },
+ {
+  "page": 408,
+  "fromSurah": 30,
+  "fromAyah": 33,
+  "toSurah": 30,
+  "toAyah": 41
+ },
+ {
+  "page": 409,
+  "fromSurah": 30,
+  "fromAyah": 42,
+  "toSurah": 30,
+  "toAyah": 50
+ },
+ {
+  "page": 410,
+  "fromSurah": 30,
+  "fromAyah": 51,
+  "toSurah": 30,
+  "toAyah": 60
+ },
+ {
+  "page": 411,
+  "fromSurah": 31,
+  "fromAyah": 1,
+  "toSurah": 31,
+  "toAyah": 11
+ },
+ {
+  "page": 412,
+  "fromSurah": 31,
+  "fromAyah": 12,
+  "toSurah": 31,
+  "toAyah": 19
+ },
+ {
+  "page": 413,
+  "fromSurah": 31,
+  "fromAyah": 20,
+  "toSurah": 31,
+  "toAyah": 28
+ },
+ {
+  "page": 414,
+  "fromSurah": 31,
+  "fromAyah": 29,
+  "toSurah": 31,
+  "toAyah": 34
+ },
+ {
+  "page": 415,
+  "fromSurah": 32,
+  "fromAyah": 1,
+  "toSurah": 32,
+  "toAyah": 11
+ },
+ {
+  "page": 416,
+  "fromSurah": 32,
+  "fromAyah": 12,
+  "toSurah": 32,
+  "toAyah": 20
+ },
+ {
+  "page": 417,
+  "fromSurah": 32,
+  "fromAyah": 21,
+  "toSurah": 32,
+  "toAyah": 30
+ },
+ {
+  "page": 418,
+  "fromSurah": 33,
+  "fromAyah": 1,
+  "toSurah": 33,
+  "toAyah": 6
+ },
+ {
+  "page": 419,
+  "fromSurah": 33,
+  "fromAyah": 7,
+  "toSurah": 33,
+  "toAyah": 15
+ },
+ {
+  "page": 420,
+  "fromSurah": 33,
+  "fromAyah": 16,
+  "toSurah": 33,
+  "toAyah": 22
+ },
+ {
+  "page": 421,
+  "fromSurah": 33,
+  "fromAyah": 23,
+  "toSurah": 33,
+  "toAyah": 30
+ },
+ {
+  "page": 422,
+  "fromSurah": 33,
+  "fromAyah": 31,
+  "toSurah": 33,
+  "toAyah": 35
+ },
+ {
+  "page": 423,
+  "fromSurah": 33,
+  "fromAyah": 36,
+  "toSurah": 33,
+  "toAyah": 43
+ },
+ {
+  "page": 424,
+  "fromSurah": 33,
+  "fromAyah": 44,
+  "toSurah": 33,
+  "toAyah": 50
+ },
+ {
+  "page": 425,
+  "fromSurah": 33,
+  "fromAyah": 51,
+  "toSurah": 33,
+  "toAyah": 54
+ },
+ {
+  "page": 426,
+  "fromSurah": 33,
+  "fromAyah": 55,
+  "toSurah": 33,
+  "toAyah": 62
+ },
+ {
+  "page": 427,
+  "fromSurah": 33,
+  "fromAyah": 63,
+  "toSurah": 33,
+  "toAyah": 73
+ },
+ {
+  "page": 428,
+  "fromSurah": 34,
+  "fromAyah": 1,
+  "toSurah": 34,
+  "toAyah": 7
+ },
+ {
+  "page": 429,
+  "fromSurah": 34,
+  "fromAyah": 8,
+  "toSurah": 34,
+  "toAyah": 14
+ },
+ {
+  "page": 430,
+  "fromSurah": 34,
+  "fromAyah": 15,
+  "toSurah": 34,
+  "toAyah": 22
+ },
+ {
+  "page": 431,
+  "fromSurah": 34,
+  "fromAyah": 23,
+  "toSurah": 34,
+  "toAyah": 31
+ },
+ {
+  "page": 432,
+  "fromSurah": 34,
+  "fromAyah": 32,
+  "toSurah": 34,
+  "toAyah": 39
+ },
+ {
+  "page": 433,
+  "fromSurah": 34,
+  "fromAyah": 40,
+  "toSurah": 34,
+  "toAyah": 48
+ },
+ {
+  "page": 434,
+  "fromSurah": 34,
+  "fromAyah": 49,
+  "toSurah": 35,
+  "toAyah": 3
+ },
+ {
+  "page": 435,
+  "fromSurah": 35,
+  "fromAyah": 4,
+  "toSurah": 35,
+  "toAyah": 11
+ },
+ {
+  "page": 436,
+  "fromSurah": 35,
+  "fromAyah": 12,
+  "toSurah": 35,
+  "toAyah": 18
+ },
+ {
+  "page": 437,
+  "fromSurah": 35,
+  "fromAyah": 19,
+  "toSurah": 35,
+  "toAyah": 30
+ },
+ {
+  "page": 438,
+  "fromSurah": 35,
+  "fromAyah": 31,
+  "toSurah": 35,
+  "toAyah": 38
+ },
+ {
+  "page": 439,
+  "fromSurah": 35,
+  "fromAyah": 39,
+  "toSurah": 35,
+  "toAyah": 44
+ },
+ {
+  "page": 440,
+  "fromSurah": 35,
+  "fromAyah": 45,
+  "toSurah": 36,
+  "toAyah": 12
+ },
+ {
+  "page": 441,
+  "fromSurah": 36,
+  "fromAyah": 13,
+  "toSurah": 36,
+  "toAyah": 27
+ },
+ {
+  "page": 442,
+  "fromSurah": 36,
+  "fromAyah": 28,
+  "toSurah": 36,
+  "toAyah": 40
+ },
+ {
+  "page": 443,
+  "fromSurah": 36,
+  "fromAyah": 41,
+  "toSurah": 36,
+  "toAyah": 54
+ },
+ {
+  "page": 444,
+  "fromSurah": 36,
+  "fromAyah": 55,
+  "toSurah": 36,
+  "toAyah": 70
+ },
+ {
+  "page": 445,
+  "fromSurah": 36,
+  "fromAyah": 71,
+  "toSurah": 36,
+  "toAyah": 83
+ },
+ {
+  "page": 446,
+  "fromSurah": 37,
+  "fromAyah": 1,
+  "toSurah": 37,
+  "toAyah": 24
+ },
+ {
+  "page": 447,
+  "fromSurah": 37,
+  "fromAyah": 25,
+  "toSurah": 37,
+  "toAyah": 51
+ },
+ {
+  "page": 448,
+  "fromSurah": 37,
+  "fromAyah": 52,
+  "toSurah": 37,
+  "toAyah": 76
+ },
+ {
+  "page": 449,
+  "fromSurah": 37,
+  "fromAyah": 77,
+  "toSurah": 37,
+  "toAyah": 102
+ },
+ {
+  "page": 450,
+  "fromSurah": 37,
+  "fromAyah": 103,
+  "toSurah": 37,
+  "toAyah": 126
+ },
+ {
+  "page": 451,
+  "fromSurah": 37,
+  "fromAyah": 127,
+  "toSurah": 37,
+  "toAyah": 153
+ },
+ {
+  "page": 452,
+  "fromSurah": 37,
+  "fromAyah": 154,
+  "toSurah": 37,
+  "toAyah": 182
+ },
+ {
+  "page": 453,
+  "fromSurah": 38,
+  "fromAyah": 1,
+  "toSurah": 38,
+  "toAyah": 16
+ },
+ {
+  "page": 454,
+  "fromSurah": 38,
+  "fromAyah": 17,
+  "toSurah": 38,
+  "toAyah": 26
+ },
+ {
+  "page": 455,
+  "fromSurah": 38,
+  "fromAyah": 27,
+  "toSurah": 38,
+  "toAyah": 42
+ },
+ {
+  "page": 456,
+  "fromSurah": 38,
+  "fromAyah": 43,
+  "toSurah": 38,
+  "toAyah": 61
+ },
+ {
+  "page": 457,
+  "fromSurah": 38,
+  "fromAyah": 62,
+  "toSurah": 38,
+  "toAyah": 83
+ },
+ {
+  "page": 458,
+  "fromSurah": 38,
+  "fromAyah": 84,
+  "toSurah": 39,
+  "toAyah": 5
+ },
+ {
+  "page": 459,
+  "fromSurah": 39,
+  "fromAyah": 6,
+  "toSurah": 39,
+  "toAyah": 10
+ },
+ {
+  "page": 460,
+  "fromSurah": 39,
+  "fromAyah": 11,
+  "toSurah": 39,
+  "toAyah": 21
+ },
+ {
+  "page": 461,
+  "fromSurah": 39,
+  "fromAyah": 22,
+  "toSurah": 39,
+  "toAyah": 31
+ },
+ {
+  "page": 462,
+  "fromSurah": 39,
+  "fromAyah": 32,
+  "toSurah": 39,
+  "toAyah": 40
+ },
+ {
+  "page": 463,
+  "fromSurah": 39,
+  "fromAyah": 41,
+  "toSurah": 39,
+  "toAyah": 47
+ },
+ {
+  "page": 464,
+  "fromSurah": 39,
+  "fromAyah": 48,
+  "toSurah": 39,
+  "toAyah": 56
+ },
+ {
+  "page": 465,
+  "fromSurah": 39,
+  "fromAyah": 57,
+  "toSurah": 39,
+  "toAyah": 67
+ },
+ {
+  "page": 466,
+  "fromSurah": 39,
+  "fromAyah": 68,
+  "toSurah": 39,
+  "toAyah": 74
+ },
+ {
+  "page": 467,
+  "fromSurah": 39,
+  "fromAyah": 75,
+  "toSurah": 40,
+  "toAyah": 7
+ },
+ {
+  "page": 468,
+  "fromSurah": 40,
+  "fromAyah": 8,
+  "toSurah": 40,
+  "toAyah": 16
+ },
+ {
+  "page": 469,
+  "fromSurah": 40,
+  "fromAyah": 17,
+  "toSurah": 40,
+  "toAyah": 25
+ },
+ {
+  "page": 470,
+  "fromSurah": 40,
+  "fromAyah": 26,
+  "toSurah": 40,
+  "toAyah": 33
+ },
+ {
+  "page": 471,
+  "fromSurah": 40,
+  "fromAyah": 34,
+  "toSurah": 40,
+  "toAyah": 40
+ },
+ {
+  "page": 472,
+  "fromSurah": 40,
+  "fromAyah": 41,
+  "toSurah": 40,
+  "toAyah": 49
+ },
+ {
+  "page": 473,
+  "fromSurah": 40,
+  "fromAyah": 50,
+  "toSurah": 40,
+  "toAyah": 58
+ },
+ {
+  "page": 474,
+  "fromSurah": 40,
+  "fromAyah": 59,
+  "toSurah": 40,
+  "toAyah": 66
+ },
+ {
+  "page": 475,
+  "fromSurah": 40,
+  "fromAyah": 67,
+  "toSurah": 40,
+  "toAyah": 77
+ },
+ {
+  "page": 476,
+  "fromSurah": 40,
+  "fromAyah": 78,
+  "toSurah": 40,
+  "toAyah": 85
+ },
+ {
+  "page": 477,
+  "fromSurah": 41,
+  "fromAyah": 1,
+  "toSurah": 41,
+  "toAyah": 11
+ },
+ {
+  "page": 478,
+  "fromSurah": 41,
+  "fromAyah": 12,
+  "toSurah": 41,
+  "toAyah": 20
+ },
+ {
+  "page": 479,
+  "fromSurah": 41,
+  "fromAyah": 21,
+  "toSurah": 41,
+  "toAyah": 29
+ },
+ {
+  "page": 480,
+  "fromSurah": 41,
+  "fromAyah": 30,
+  "toSurah": 41,
+  "toAyah": 38
+ },
+ {
+  "page": 481,
+  "fromSurah": 41,
+  "fromAyah": 39,
+  "toSurah": 41,
+  "toAyah": 46
+ },
+ {
+  "page": 482,
+  "fromSurah": 41,
+  "fromAyah": 47,
+  "toSurah": 41,
+  "toAyah": 54
+ },
+ {
+  "page": 483,
+  "fromSurah": 42,
+  "fromAyah": 1,
+  "toSurah": 42,
+  "toAyah": 10
+ },
+ {
+  "page": 484,
+  "fromSurah": 42,
+  "fromAyah": 11,
+  "toSurah": 42,
+  "toAyah": 15
+ },
+ {
+  "page": 485,
+  "fromSurah": 42,
+  "fromAyah": 16,
+  "toSurah": 42,
+  "toAyah": 22
+ },
+ {
+  "page": 486,
+  "fromSurah": 42,
+  "fromAyah": 23,
+  "toSurah": 42,
+  "toAyah": 31
+ },
+ {
+  "page": 487,
+  "fromSurah": 42,
+  "fromAyah": 32,
+  "toSurah": 42,
+  "toAyah": 44
+ },
+ {
+  "page": 488,
+  "fromSurah": 42,
+  "fromAyah": 45,
+  "toSurah": 42,
+  "toAyah": 51
+ },
+ {
+  "page": 489,
+  "fromSurah": 42,
+  "fromAyah": 52,
+  "toSurah": 43,
+  "toAyah": 10
+ },
+ {
+  "page": 490,
+  "fromSurah": 43,
+  "fromAyah": 11,
+  "toSurah": 43,
+  "toAyah": 22
+ },
+ {
+  "page": 491,
+  "fromSurah": 43,
+  "fromAyah": 23,
+  "toSurah": 43,
+  "toAyah": 33
+ },
+ {
+  "page": 492,
+  "fromSurah": 43,
+  "fromAyah": 34,
+  "toSurah": 43,
+  "toAyah": 47
+ },
+ {
+  "page": 493,
+  "fromSurah": 43,
+  "fromAyah": 48,
+  "toSurah": 43,
+  "toAyah": 60
+ },
+ {
+  "page": 494,
+  "fromSurah": 43,
+  "fromAyah": 61,
+  "toSurah": 43,
+  "toAyah": 73
+ },
+ {
+  "page": 495,
+  "fromSurah": 43,
+  "fromAyah": 74,
+  "toSurah": 43,
+  "toAyah": 89
+ },
+ {
+  "page": 496,
+  "fromSurah": 44,
+  "fromAyah": 1,
+  "toSurah": 44,
+  "toAyah": 18
+ },
+ {
+  "page": 497,
+  "fromSurah": 44,
+  "fromAyah": 19,
+  "toSurah": 44,
+  "toAyah": 39
+ },
+ {
+  "page": 498,
+  "fromSurah": 44,
+  "fromAyah": 40,
+  "toSurah": 44,
+  "toAyah": 59
+ },
+ {
+  "page": 499,
+  "fromSurah": 45,
+  "fromAyah": 1,
+  "toSurah": 45,
+  "toAyah": 13
+ },
+ {
+  "page": 500,
+  "fromSurah": 45,
+  "fromAyah": 14,
+  "toSurah": 45,
+  "toAyah": 22
+ },
+ {
+  "page": 501,
+  "fromSurah": 45,
+  "fromAyah": 23,
+  "toSurah": 45,
+  "toAyah": 32
+ },
+ {
+  "page": 502,
+  "fromSurah": 45,
+  "fromAyah": 33,
+  "toSurah": 46,
+  "toAyah": 5
+ },
+ {
+  "page": 503,
+  "fromSurah": 46,
+  "fromAyah": 6,
+  "toSurah": 46,
+  "toAyah": 14
+ },
+ {
+  "page": 504,
+  "fromSurah": 46,
+  "fromAyah": 15,
+  "toSurah": 46,
+  "toAyah": 20
+ },
+ {
+  "page": 505,
+  "fromSurah": 46,
+  "fromAyah": 21,
+  "toSurah": 46,
+  "toAyah": 28
+ },
+ {
+  "page": 506,
+  "fromSurah": 46,
+  "fromAyah": 29,
+  "toSurah": 46,
+  "toAyah": 35
+ },
+ {
+  "page": 507,
+  "fromSurah": 47,
+  "fromAyah": 1,
+  "toSurah": 47,
+  "toAyah": 11
+ },
+ {
+  "page": 508,
+  "fromSurah": 47,
+  "fromAyah": 12,
+  "toSurah": 47,
+  "toAyah": 19
+ },
+ {
+  "page": 509,
+  "fromSurah": 47,
+  "fromAyah": 20,
+  "toSurah": 47,
+  "toAyah": 29
+ },
+ {
+  "page": 510,
+  "fromSurah": 47,
+  "fromAyah": 30,
+  "toSurah": 47,
+  "toAyah": 38
+ },
+ {
+  "page": 511,
+  "fromSurah": 48,
+  "fromAyah": 1,
+  "toSurah": 48,
+  "toAyah": 9
+ },
+ {
+  "page": 512,
+  "fromSurah": 48,
+  "fromAyah": 10,
+  "toSurah": 48,
+  "toAyah": 15
+ },
+ {
+  "page": 513,
+  "fromSurah": 48,
+  "fromAyah": 16,
+  "toSurah": 48,
+  "toAyah": 23
+ },
+ {
+  "page": 514,
+  "fromSurah": 48,
+  "fromAyah": 24,
+  "toSurah": 48,
+  "toAyah": 28
+ },
+ {
+  "page": 515,
+  "fromSurah": 48,
+  "fromAyah": 29,
+  "toSurah": 49,
+  "toAyah": 4
+ },
+ {
+  "page": 516,
+  "fromSurah": 49,
+  "fromAyah": 5,
+  "toSurah": 49,
+  "toAyah": 11
+ },
+ {
+  "page": 517,
+  "fromSurah": 49,
+  "fromAyah": 12,
+  "toSurah": 49,
+  "toAyah": 18
+ },
+ {
+  "page": 518,
+  "fromSurah": 50,
+  "fromAyah": 1,
+  "toSurah": 50,
+  "toAyah": 15
+ },
+ {
+  "page": 519,
+  "fromSurah": 50,
+  "fromAyah": 16,
+  "toSurah": 50,
+  "toAyah": 35
+ },
+ {
+  "page": 520,
+  "fromSurah": 50,
+  "fromAyah": 36,
+  "toSurah": 51,
+  "toAyah": 6
+ },
+ {
+  "page": 521,
+  "fromSurah": 51,
+  "fromAyah": 7,
+  "toSurah": 51,
+  "toAyah": 30
+ },
+ {
+  "page": 522,
+  "fromSurah": 51,
+  "fromAyah": 31,
+  "toSurah": 51,
+  "toAyah": 51
+ },
+ {
+  "page": 523,
+  "fromSurah": 51,
+  "fromAyah": 52,
+  "toSurah": 52,
+  "toAyah": 14
+ },
+ {
+  "page": 524,
+  "fromSurah": 52,
+  "fromAyah": 15,
+  "toSurah": 52,
+  "toAyah": 31
+ },
+ {
+  "page": 525,
+  "fromSurah": 52,
+  "fromAyah": 32,
+  "toSurah": 52,
+  "toAyah": 49
+ },
+ {
+  "page": 526,
+  "fromSurah": 53,
+  "fromAyah": 1,
+  "toSurah": 53,
+  "toAyah": 26
+ },
+ {
+  "page": 527,
+  "fromSurah": 53,
+  "fromAyah": 27,
+  "toSurah": 53,
+  "toAyah": 44
+ },
+ {
+  "page": 528,
+  "fromSurah": 53,
+  "fromAyah": 45,
+  "toSurah": 54,
+  "toAyah": 6
+ },
+ {
+  "page": 529,
+  "fromSurah": 54,
+  "fromAyah": 7,
+  "toSurah": 54,
+  "toAyah": 27
+ },
+ {
+  "page": 530,
+  "fromSurah": 54,
+  "fromAyah": 28,
+  "toSurah": 54,
+  "toAyah": 49
+ },
+ {
+  "page": 531,
+  "fromSurah": 54,
+  "fromAyah": 50,
+  "toSurah": 55,
+  "toAyah": 16
+ },
+ {
+  "page": 532,
+  "fromSurah": 55,
+  "fromAyah": 17,
+  "toSurah": 55,
+  "toAyah": 40
+ },
+ {
+  "page": 533,
+  "fromSurah": 55,
+  "fromAyah": 41,
+  "toSurah": 55,
+  "toAyah": 67
+ },
+ {
+  "page": 534,
+  "fromSurah": 55,
+  "fromAyah": 68,
+  "toSurah": 56,
+  "toAyah": 16
+ },
+ {
+  "page": 535,
+  "fromSurah": 56,
+  "fromAyah": 17,
+  "toSurah": 56,
+  "toAyah": 50
+ },
+ {
+  "page": 536,
+  "fromSurah": 56,
+  "fromAyah": 51,
+  "toSurah": 56,
+  "toAyah": 76
+ },
+ {
+  "page": 537,
+  "fromSurah": 56,
+  "fromAyah": 77,
+  "toSurah": 57,
+  "toAyah": 3
+ },
+ {
+  "page": 538,
+  "fromSurah": 57,
+  "fromAyah": 4,
+  "toSurah": 57,
+  "toAyah": 11
+ },
+ {
+  "page": 539,
+  "fromSurah": 57,
+  "fromAyah": 12,
+  "toSurah": 57,
+  "toAyah": 18
+ },
+ {
+  "page": 540,
+  "fromSurah": 57,
+  "fromAyah": 19,
+  "toSurah": 57,
+  "toAyah": 24
+ },
+ {
+  "page": 541,
+  "fromSurah": 57,
+  "fromAyah": 25,
+  "toSurah": 57,
+  "toAyah": 29
+ },
+ {
+  "page": 542,
+  "fromSurah": 58,
+  "fromAyah": 1,
+  "toSurah": 58,
+  "toAyah": 6
+ },
+ {
+  "page": 543,
+  "fromSurah": 58,
+  "fromAyah": 7,
+  "toSurah": 58,
+  "toAyah": 11
+ },
+ {
+  "page": 544,
+  "fromSurah": 58,
+  "fromAyah": 12,
+  "toSurah": 58,
+  "toAyah": 21
+ },
+ {
+  "page": 545,
+  "fromSurah": 58,
+  "fromAyah": 22,
+  "toSurah": 59,
+  "toAyah": 3
+ },
+ {
+  "page": 546,
+  "fromSurah": 59,
+  "fromAyah": 4,
+  "toSurah": 59,
+  "toAyah": 9
+ },
+ {
+  "page": 547,
+  "fromSurah": 59,
+  "fromAyah": 10,
+  "toSurah": 59,
+  "toAyah": 16
+ },
+ {
+  "page": 548,
+  "fromSurah": 59,
+  "fromAyah": 17,
+  "toSurah": 59,
+  "toAyah": 24
+ },
+ {
+  "page": 549,
+  "fromSurah": 60,
+  "fromAyah": 1,
+  "toSurah": 60,
+  "toAyah": 5
+ },
+ {
+  "page": 550,
+  "fromSurah": 60,
+  "fromAyah": 6,
+  "toSurah": 60,
+  "toAyah": 11
+ },
+ {
+  "page": 551,
+  "fromSurah": 60,
+  "fromAyah": 12,
+  "toSurah": 61,
+  "toAyah": 5
+ },
+ {
+  "page": 552,
+  "fromSurah": 61,
+  "fromAyah": 6,
+  "toSurah": 61,
+  "toAyah": 14
+ },
+ {
+  "page": 553,
+  "fromSurah": 62,
+  "fromAyah": 1,
+  "toSurah": 62,
+  "toAyah": 8
+ },
+ {
+  "page": 554,
+  "fromSurah": 62,
+  "fromAyah": 9,
+  "toSurah": 63,
+  "toAyah": 4
+ },
+ {
+  "page": 555,
+  "fromSurah": 63,
+  "fromAyah": 5,
+  "toSurah": 63,
+  "toAyah": 11
+ },
+ {
+  "page": 556,
+  "fromSurah": 64,
+  "fromAyah": 1,
+  "toSurah": 64,
+  "toAyah": 9
+ },
+ {
+  "page": 557,
+  "fromSurah": 64,
+  "fromAyah": 10,
+  "toSurah": 64,
+  "toAyah": 18
+ },
+ {
+  "page": 558,
+  "fromSurah": 65,
+  "fromAyah": 1,
+  "toSurah": 65,
+  "toAyah": 5
+ },
+ {
+  "page": 559,
+  "fromSurah": 65,
+  "fromAyah": 6,
+  "toSurah": 65,
+  "toAyah": 12
+ },
+ {
+  "page": 560,
+  "fromSurah": 66,
+  "fromAyah": 1,
+  "toSurah": 66,
+  "toAyah": 7
+ },
+ {
+  "page": 561,
+  "fromSurah": 66,
+  "fromAyah": 8,
+  "toSurah": 66,
+  "toAyah": 12
+ },
+ {
+  "page": 562,
+  "fromSurah": 67,
+  "fromAyah": 1,
+  "toSurah": 67,
+  "toAyah": 12
+ },
+ {
+  "page": 563,
+  "fromSurah": 67,
+  "fromAyah": 13,
+  "toSurah": 67,
+  "toAyah": 26
+ },
+ {
+  "page": 564,
+  "fromSurah": 67,
+  "fromAyah": 27,
+  "toSurah": 68,
+  "toAyah": 15
+ },
+ {
+  "page": 565,
+  "fromSurah": 68,
+  "fromAyah": 16,
+  "toSurah": 68,
+  "toAyah": 42
+ },
+ {
+  "page": 566,
+  "fromSurah": 68,
+  "fromAyah": 43,
+  "toSurah": 69,
+  "toAyah": 8
+ },
+ {
+  "page": 567,
+  "fromSurah": 69,
+  "fromAyah": 9,
+  "toSurah": 69,
+  "toAyah": 34
+ },
+ {
+  "page": 568,
+  "fromSurah": 69,
+  "fromAyah": 35,
+  "toSurah": 70,
+  "toAyah": 10
+ },
+ {
+  "page": 569,
+  "fromSurah": 70,
+  "fromAyah": 11,
+  "toSurah": 70,
+  "toAyah": 39
+ },
+ {
+  "page": 570,
+  "fromSurah": 70,
+  "fromAyah": 40,
+  "toSurah": 71,
+  "toAyah": 10
+ },
+ {
+  "page": 571,
+  "fromSurah": 71,
+  "fromAyah": 11,
+  "toSurah": 71,
+  "toAyah": 28
+ },
+ {
+  "page": 572,
+  "fromSurah": 72,
+  "fromAyah": 1,
+  "toSurah": 72,
+  "toAyah": 13
+ },
+ {
+  "page": 573,
+  "fromSurah": 72,
+  "fromAyah": 14,
+  "toSurah": 72,
+  "toAyah": 28
+ },
+ {
+  "page": 574,
+  "fromSurah": 73,
+  "fromAyah": 1,
+  "toSurah": 73,
+  "toAyah": 19
+ },
+ {
+  "page": 575,
+  "fromSurah": 73,
+  "fromAyah": 20,
+  "toSurah": 74,
+  "toAyah": 17
+ },
+ {
+  "page": 576,
+  "fromSurah": 74,
+  "fromAyah": 18,
+  "toSurah": 74,
+  "toAyah": 47
+ },
+ {
+  "page": 577,
+  "fromSurah": 74,
+  "fromAyah": 48,
+  "toSurah": 75,
+  "toAyah": 19
+ },
+ {
+  "page": 578,
+  "fromSurah": 75,
+  "fromAyah": 20,
+  "toSurah": 76,
+  "toAyah": 5
+ },
+ {
+  "page": 579,
+  "fromSurah": 76,
+  "fromAyah": 6,
+  "toSurah": 76,
+  "toAyah": 25
+ },
+ {
+  "page": 580,
+  "fromSurah": 76,
+  "fromAyah": 26,
+  "toSurah": 77,
+  "toAyah": 19
+ },
+ {
+  "page": 581,
+  "fromSurah": 77,
+  "fromAyah": 20,
+  "toSurah": 77,
+  "toAyah": 50
+ },
+ {
+  "page": 582,
+  "fromSurah": 78,
+  "fromAyah": 1,
+  "toSurah": 78,
+  "toAyah": 30
+ },
+ {
+  "page": 583,
+  "fromSurah": 78,
+  "fromAyah": 31,
+  "toSurah": 79,
+  "toAyah": 15
+ },
+ {
+  "page": 584,
+  "fromSurah": 79,
+  "fromAyah": 16,
+  "toSurah": 79,
+  "toAyah": 46
+ },
+ {
+  "page": 585,
+  "fromSurah": 80,
+  "fromAyah": 1,
+  "toSurah": 80,
+  "toAyah": 42
+ },
+ {
+  "page": 586,
+  "fromSurah": 81,
+  "fromAyah": 1,
+  "toSurah": 81,
+  "toAyah": 29
+ },
+ {
+  "page": 587,
+  "fromSurah": 82,
+  "fromAyah": 1,
+  "toSurah": 83,
+  "toAyah": 6
+ },
+ {
+  "page": 588,
+  "fromSurah": 83,
+  "fromAyah": 7,
+  "toSurah": 83,
+  "toAyah": 34
+ },
+ {
+  "page": 589,
+  "fromSurah": 83,
+  "fromAyah": 35,
+  "toSurah": 84,
+  "toAyah": 25
+ },
+ {
+  "page": 590,
+  "fromSurah": 85,
+  "fromAyah": 1,
+  "toSurah": 85,
+  "toAyah": 22
+ },
+ {
+  "page": 591,
+  "fromSurah": 86,
+  "fromAyah": 1,
+  "toSurah": 87,
+  "toAyah": 15
+ },
+ {
+  "page": 592,
+  "fromSurah": 87,
+  "fromAyah": 16,
+  "toSurah": 88,
+  "toAyah": 26
+ },
+ {
+  "page": 593,
+  "fromSurah": 89,
+  "fromAyah": 1,
+  "toSurah": 89,
+  "toAyah": 23
+ },
+ {
+  "page": 594,
+  "fromSurah": 89,
+  "fromAyah": 24,
+  "toSurah": 90,
+  "toAyah": 20
+ },
+ {
+  "page": 595,
+  "fromSurah": 91,
+  "fromAyah": 1,
+  "toSurah": 92,
+  "toAyah": 14
+ },
+ {
+  "page": 596,
+  "fromSurah": 92,
+  "fromAyah": 15,
+  "toSurah": 94,
+  "toAyah": 8
+ },
+ {
+  "page": 597,
+  "fromSurah": 95,
+  "fromAyah": 1,
+  "toSurah": 96,
+  "toAyah": 19
+ },
+ {
+  "page": 598,
+  "fromSurah": 97,
+  "fromAyah": 1,
+  "toSurah": 98,
+  "toAyah": 7
+ },
+ {
+  "page": 599,
+  "fromSurah": 98,
+  "fromAyah": 8,
+  "toSurah": 100,
+  "toAyah": 9
+ },
+ {
+  "page": 600,
+  "fromSurah": 100,
+  "fromAyah": 10,
+  "toSurah": 102,
+  "toAyah": 8
+ },
+ {
+  "page": 601,
+  "fromSurah": 103,
+  "fromAyah": 1,
+  "toSurah": 105,
+  "toAyah": 5
+ },
+ {
+  "page": 602,
+  "fromSurah": 106,
+  "fromAyah": 1,
+  "toSurah": 108,
+  "toAyah": 3
+ },
+ {
+  "page": 603,
+  "fromSurah": 109,
+  "fromAyah": 1,
+  "toSurah": 111,
+  "toAyah": 5
+ },
+ {
+  "page": 604,
+  "fromSurah": 112,
+  "fromAyah": 1,
+  "toSurah": 114,
+  "toAyah": 6
+ }
+]
