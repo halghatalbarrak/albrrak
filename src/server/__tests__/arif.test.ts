@@ -17,6 +17,35 @@ import { createProgram, createStudent, createUser } from "../testing/factories";
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
 
+// يبذر للطالب مقاطعَ حفظٍ مُتقنة: أوّلًا مقاطع «التغطية» (تصير راسخة)، ثم ١٠ مقاطع لاحقة
+// (نافذة الترسيخ) تُخرج ما قبلها إلى الراسخ (الحكم ٢). حزب ٦٠ = ٨٧:١ ← ١١٤:٦ (HizbBoundary).
+async function giveRasikh(
+  studentId: string,
+  circleId: string,
+  coverRanges: [number, number, number, number][],
+) {
+  let day = 1;
+  for (const [fs, fa, ts, ta] of coverRanges) {
+    await prisma.dailySession.create({
+      data: {
+        studentId, circleId,
+        date: new Date(`2026-01-${String(day).padStart(2, "0")}`),
+        hifzFromSurah: fs, hifzFromAyah: fa, hifzToSurah: ts, hifzToAyah: ta, hifzMastered: true,
+      },
+    });
+    day++;
+  }
+  for (let i = 1; i <= 10; i++) {
+    await prisma.dailySession.create({
+      data: {
+        studentId, circleId,
+        date: new Date(`2026-02-${String(i).padStart(2, "0")}`),
+        hifzFromSurah: 86, hifzFromAyah: 1, hifzToSurah: 86, hifzToAyah: 1, hifzMastered: true,
+      },
+    });
+  }
+}
+
 // حلقة مراقي بمعلّمها، وطالبان منتسبان: أحدهما عريفٌ محتمَل، والآخر زميلٌ يُسمِّع له العريف.
 async function scaffold() {
   const program = await createProgram(prisma, ProgramKey.MARAQI);
@@ -29,6 +58,15 @@ async function scaffold() {
   const peer = await createStudent(prisma);
   await prisma.enrollment.create({ data: { studentId: arif.student.id, circleId: circle.id } });
   await prisma.enrollment.create({ data: { studentId: peer.student.id, circleId: circle.id } });
+  // مرجع حدود الأحزاب (يمسحه resetDb): نبذر حزب ٦٠ لقياس التغطية — كما في maraqi.test.
+  await prisma.hizbBoundary.create({
+    data: {
+      hizb: 60, juz: 30, startSurahNum: 87, startSurah: "الأعلى", startAyah: 1,
+      endSurahNum: 114, endSurah: "الناس", endAyah: 6,
+    },
+  });
+  // العريف مؤهَّل: رسخ من حفظه حزبٌ كامل (حزب ٦٠) — شرط الحكم ٨.
+  await giveRasikh(arif.student.id, circle.id, [[87, 1, 114, 6]]);
   return { program, circle, teacher, arif, peer };
 }
 
@@ -54,6 +92,29 @@ describe("تعيين العريف (الحكم ٨)", () => {
     await expect(
       appointArif({ circleId: circle.id, arifUserId: outsider.user.id, teacherId: teacher.id }, prisma),
     ).rejects.toBeInstanceOf(ValidationError);
+  });
+});
+
+describe("أهليّة العريف — راسخه ≥ حزب كامل (الحكم ٨)", () => {
+  it("من راسخه أقلّ من حزبٍ كامل ⟵ يُرفض", async () => {
+    const { circle, teacher } = await scaffold();
+    // طالبٌ منتسبٌ لكن راسخه جزءٌ من حزب ٦٠ فقط (٩٠:١ ← ٩٣:٥) — لا يبلغ حزبًا كاملًا.
+    const weak = await createStudent(prisma);
+    await prisma.enrollment.create({ data: { studentId: weak.student.id, circleId: circle.id } });
+    await giveRasikh(weak.student.id, circle.id, [[90, 1, 93, 5]]);
+    await expect(
+      appointArif({ circleId: circle.id, arifUserId: weak.user.id, teacherId: teacher.id }, prisma),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("من بلغ راسخُه حزبًا كاملًا ⟵ يُقبل", async () => {
+    const { circle, teacher } = await scaffold();
+    // طالبٌ منتسبٌ رسخ من حفظه حزبٌ كامل (حزب ٦٠: ٨٧:١ ← ١١٤:٦).
+    const able = await createStudent(prisma);
+    await prisma.enrollment.create({ data: { studentId: able.student.id, circleId: circle.id } });
+    await giveRasikh(able.student.id, circle.id, [[87, 1, 114, 6]]);
+    await appointArif({ circleId: circle.id, arifUserId: able.user.id, teacherId: teacher.id }, prisma);
+    expect(await isActiveArifForCircle(able.user.id, circle.id, prisma)).toBe(true);
   });
 });
 

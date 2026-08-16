@@ -4,13 +4,58 @@ import { prisma } from "@/lib/prisma";
 
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
+import { getConsolidation } from "./tarseekh";
+import { ayahOrdinal } from "./quran-ordinal";
 
 // ═══════════════ العريف (الحكم ٨) ═══════════════
 //
 // العريف: طالبٌ متقدّم في الحلقة يساعد المعلّم — يُسمِّع الترسيخ والمراجعة فقط، بإسنادٍ
 // من المعلّم وتوثيقه ومسؤوليته. حدوده: لا يُسمِّع الحفظ الجديد (حصريّ للمعلّم)، ولا يختبر
-// (الاختبار محايد رسميّ). الأهلية (قرار محمد): طالبٌ منتسبٌ نشطًا في الحلقة نفسها —
-// و«التقدّم» تقدير المعلّم، لا شرطٌ آليّ.
+// (الاختبار محايد رسميّ). الأهلية (قرار محمد) شرطان آليّان مانعان + تقدير المعلّم:
+//   ١) طالبٌ منتسبٌ نشطًا في الحلقة نفسها.
+//   ٢) رسخ من حفظه حزبٌ كاملٌ فأكثر (تغطية حزبٍ كامل — تقاطع الراسخ مع حدود الأحزاب).
+// وما زاد على ذلك تقديرُ المعلّم.
+
+/** أدنى ما يُشترط رسوخُه لتعيين العريف: حزبٌ كاملٌ واحد (الحكم ٨). */
+const MIN_RASIKH_HIZBS = 1;
+
+/**
+ * عدد الأحزاب التي غطّى الطالبُ مداها **راسخًا** بالكامل (الحكم ٨): يُحوّل مقاطعه الراسخة
+ * إلى مواضع عالميّة، يدمج المتلاصق منها، ثم يعدّ أحزاب HizbBoundary التي يحتويها مدًى
+ * راسخٌ واحدٌ بتمامها. الترسيخ (آخر ١٠) لا يُحسَب — الراسخ وحده (review.segments).
+ */
+async function fullyRasikhHizbCount(studentId: string, db: PrismaClient): Promise<number> {
+  const { review } = await getConsolidation(studentId, db);
+  if (review.segments.length === 0) return 0;
+
+  const intervals = review.segments
+    .map((s): [number, number] => {
+      const a = ayahOrdinal(s.fromSurah, s.fromAyah);
+      const b = ayahOrdinal(s.toSurah, s.toAyah);
+      return a <= b ? [a, b] : [b, a];
+    })
+    .sort((x, y) => x[0] - y[0]);
+
+  // دمج المتداخل والمتلاصق (نهاية + ١ = بداية التالي ⟵ متّصلان بلا فجوة).
+  const merged: [number, number][] = [];
+  for (const [a, b] of intervals) {
+    const last = merged[merged.length - 1];
+    if (last && a <= last[1] + 1) last[1] = Math.max(last[1], b);
+    else merged.push([a, b]);
+  }
+
+  const hizbs = await db.hizbBoundary.findMany({
+    select: { startSurahNum: true, startAyah: true, endSurahNum: true, endAyah: true },
+  });
+  let count = 0;
+  for (const h of hizbs) {
+    const lo = ayahOrdinal(h.startSurahNum, h.startAyah);
+    const hi = ayahOrdinal(h.endSurahNum, h.endAyah);
+    const [s, e] = lo <= hi ? [lo, hi] : [hi, lo];
+    if (merged.some((m) => m[0] <= s && m[1] >= e)) count++;
+  }
+  return count;
+}
 
 /** المعلّم (أو المدير) صاحبُ الحلقة — من يملك تعيين/عزل عريفٍ فيها. */
 async function assertTeachesCircle(
@@ -62,6 +107,11 @@ export async function appointArif(args: AppointArifArgs, db: PrismaClient = pris
     : null;
   if (!enrolled) {
     throw new ValidationError("العريف طالبٌ منتسبٌ نشطًا في الحلقة نفسها (الحكم ٨).");
+  }
+  if ((await fullyRasikhHizbCount(student!.id, db)) < MIN_RASIKH_HIZBS) {
+    throw new ValidationError(
+      "لا يُعيَّن عريفًا إلا من رسخ من حفظه حزبٌ كاملٌ فأكثر (الحكم ٨). راسخ هذا الطالب لا يبلغ حزبًا كاملًا بعد.",
+    );
   }
   if (await isActiveArifForCircle(args.arifUserId, args.circleId, db)) {
     throw new ValidationError("هذا الطالب عريفٌ نشطٌ في الحلقة سلفًا.");
