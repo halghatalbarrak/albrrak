@@ -25,3 +25,29 @@
 بالاستعمال في البرمجيّات والمواقع.
 
 **تاريخ التوثيق:** ٢٠٢٦-٠٨-١٦. المرجع الحرفيّ: صفحة الحقوق أعلاه.
+
+---
+
+## quran-svg (quranpedia/quran-svg) — مضلّعات الآيات وبياناتها
+
+**المصدر المعتمد لصفحات العرض ومضلّعات تظليل الآيات (المسار ج١).**
+
+- **المستودع:** https://github.com/quranpedia/quran-svg
+- **المحتوى المستعمَل:** صفحات SVG (نصّ زخرفيّ) + طبقة مضلّعات الآيات + بيانات JSON لكل صفحة (`json/NNN.json`، `surah.json`، `markers.json`).
+
+### الترخيص (نصّ ملفّ LICENSE حرفيًّا — CC0 لمساهمتهم الأصليّة)
+
+> **OUR ORIGINAL CONTRIBUTION — CC0 1.0 (Public Domain Dedication)**
+> All original content created by this project is dedicated to the public domain under CC0 1.0 Universal:
+> - the ayah-polygon hit-layer (`<path class="ayahPolygon">` overlays),
+> - the JSON metadata (per-page polygons, surah.json, markers.json — ayah numbering & boundary data),
+> - the repository structure and tooling.
+>
+> You may copy, modify, and use these freely, **including commercially, with no attribution required** (attribution appreciated).
+
+**زُخرفة/خطوط الصفحات** في ملفّاتهم تعود لطبعات مجمع الملك فهد بشروطها المذكورة أعلاه (حرّة
+لكلّ استعمالٍ رقميّ/برمجيّ). فالذي نأخذه — مضلّعات الآيات وبيانات JSON — **ملكٌ عامّ (CC0)**.
+
+**نصّ القرآن نفسه** ليس محلّ حقوقٍ ولا يجوز تغييره أو اقتطاعه أو تحريفه.
+
+**تاريخ التوثيق:** ٢٠٢٦-٠٨-١٦. المرجع: ملفّ LICENSE وNOTICE.md في المستودع.
