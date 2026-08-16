@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 // تحقّقٌ نقيّ (بلا قاعدة) لخريطة أوجه مصحف المدينة (الحكم ٧، المرحلة ١). مصدر الحقيقة:
 // mushaf_faces.json (من QUL). يُثبِّت: ٦٠٤ صفحة بلا فجوة/تكرار، تتابع ١:١←١١٤:٦، تغطية
-// كل حزبٍ بأوجهٍ متّصلة، وتطابق ترحيل ١٥ مع الملفّ (لا انحراف بين البذر والمصدر).
+// كل حزبٍ بأوجهٍ متّصلة، وتطابق ترحيل ١٩ (طبعة ١٤٤١) مع الملفّ (لا انحراف بين البذر والمصدر).
 
 const ROOT = process.cwd();
 interface Face { page: number; fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }
@@ -59,8 +59,9 @@ describe("خريطة أوجه مصحف المدينة (الحكم ٧، المر�
     }
   });
 
-  it("ترحيل ١٥ يطابق mushaf_faces.json (لا انحراف بين البذر والمصدر)", () => {
-    const sql = readFileSync(path.join(ROOT, "prisma/migrations/15_mushaf_faces/migration.sql"), "utf8");
+  it("ترحيل ١٩ (طبعة ١٤٤١) يطابق mushaf_faces.json (لا انحراف بين البذر والمصدر)", () => {
+    // ترحيل ١٩ أعاد بناء MushafFace من بيانات quran-svg (المصدر النهائيّ للحقيقة).
+    const sql = readFileSync(path.join(ROOT, "prisma/migrations/19_mushaf_faces_1441/migration.sql"), "utf8");
     const rows = [...sql.matchAll(/\((\d+),(\d+),(\d+),(\d+),(\d+)\)/g)].map((m) => ({
       page: +m[1], fromSurah: +m[2], fromAyah: +m[3], toSurah: +m[4], toAyah: +m[5],
     }));
