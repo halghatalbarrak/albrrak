@@ -91,6 +91,7 @@ export default function Home() {
                 <Link href="/admin/students" style={tile}>الطلاب</Link>
                 <Link href="/admin/circles" style={tile}>الحلقات</Link>
                 <Link href="/admin/enrollment" style={tile}>الإسناد</Link>
+                <Link href="/admin/approvals" style={tile}>الاعتمادات</Link>
                 <Link href="/admin/lists" style={tile}>القوائم</Link>
               </>
             )}

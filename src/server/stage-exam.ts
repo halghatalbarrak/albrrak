@@ -8,9 +8,12 @@ import {
 
 import { prisma } from "@/lib/prisma";
 
+import { ApprovalKind } from "@prisma/client";
+
 import { assertCanExamine } from "./examiner-eligibility";
 import { gradeHizbHarvest, type HizbRank } from "./hasad-grading";
 import { facePagesInRange } from "./mushaf";
+import { propose } from "./approval";
 import { emitEvent } from "./events";
 import { ValidationError } from "./errors";
 import type { HasadErrorInput, HasadHesitationInput } from "./hasad";
@@ -71,6 +74,7 @@ export interface StageExamOutcome {
   hizbCount: number;
   plannedSessions: number;
   sessionDates: string[];
+  approvalId: string | null; // اقتراح انتقالٍ معلَّق عند النجاح (الحكم ٧، المرحلة ٧)
 }
 
 /**
@@ -155,6 +159,22 @@ export async function recordStageExam(
     return e.id;
   });
 
+  // نجاح ⟵ اقتراح انتقالٍ تلقائيّ على المحرّك القائم (الحكم ٧): لا انتقال إلا باعتماد المدير.
+  let approvalId: string | null = null;
+  if (status === "PASSED") {
+    const approval = await propose(
+      {
+        kind: ApprovalKind.STAGE_TRANSITION,
+        subjectType: "StageExam",
+        subjectId: examId,
+        proposedBy: args.examinerId,
+        payload: { studentId: args.studentId, mainStageId: args.mainStageId, finalRank },
+      },
+      db,
+    );
+    approvalId = approval.id;
+  }
+
   return {
     examId,
     status,
@@ -162,5 +182,6 @@ export async function recordStageExam(
     hizbCount,
     plannedSessions,
     sessionDates: examSessionDates(args.startedOn, plannedSessions),
+    approvalId,
   };
 }
