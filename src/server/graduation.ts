@@ -192,3 +192,37 @@ export async function decideGraduation(
     return { approvalId: args.approvalId, status: args.decision, graduated, certificateId };
   });
 }
+
+export interface PendingGraduation {
+  approvalId: string;
+  studentId: string;
+  studentName: string;
+  proposedAt: string;
+}
+
+/** اقتراحات التخرّج المعلَّقة — للوحة اعتماد المدير. */
+export async function listPendingGraduations(
+  db: PrismaClient = prisma,
+): Promise<PendingGraduation[]> {
+  const rows = await db.approval.findMany({
+    where: { kind: ApprovalKind.GRADUATION, status: ApprovalStatus.PENDING },
+    select: { id: true, payload: true, proposedAt: true },
+    orderBy: { proposedAt: "asc" },
+  });
+  const out: PendingGraduation[] = [];
+  for (const r of rows) {
+    const p = (r.payload ?? {}) as unknown as GraduationPayload;
+    if (!p.studentId) continue;
+    const student = await db.student.findUnique({
+      where: { id: p.studentId },
+      select: { user: { select: { nameAsInId: true } } },
+    });
+    out.push({
+      approvalId: r.id,
+      studentId: p.studentId,
+      studentName: student?.user.nameAsInId ?? "—",
+      proposedAt: r.proposedAt.toISOString(),
+    });
+  }
+  return out;
+}
