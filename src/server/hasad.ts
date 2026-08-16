@@ -302,3 +302,38 @@ export async function listReadyForHasad(
   }
   return out.sort((a, b) => a.name.localeCompare(b.name, "ar"));
 }
+
+// ═══════════════ أوجه الحزب للشاشة (الحكم ٧، المرحلة ٥) ═══════════════
+
+export interface HizbFaces {
+  stageId: string;
+  hizbNumber: number | null;
+  stageLabel: string;
+  pages: number[]; // أوجه الحزب (صفحات) مرتّبةً تصاعديًّا — يتنقّل بينها المُختبِر
+}
+
+/**
+ * أوجه المرحلة الفرعية (الحزب) للعرض في شاشة الحصاد: صفحات MushafFace المتقاطعة مع حدود
+ * الحزب، مرتّبةً. لمراقي فقط. (الصور والمضلّعات تُجلب لكل وجهٍ عبر /api/mushaf/faces.)
+ */
+export async function getHizbFaces(stageId: string, db: PrismaClient = prisma): Promise<HizbFaces> {
+  const stage = await db.stage.findUnique({
+    where: { id: stageId },
+    select: {
+      kind: true, nameAr: true, hizbNumber: true,
+      fromSurah: true, fromAyah: true, toSurah: true, toAyah: true,
+      program: { select: { key: true } },
+    },
+  });
+  if (!stage || stage.kind !== StageKind.SUB_STAGE || stage.program.key !== ProgramKey.MARAQI) {
+    throw new ValidationError("أوجه الحزب لمرحلةٍ فرعيّة في مراقي فقط.");
+  }
+  if (stage.fromSurah == null || stage.fromAyah == null || stage.toSurah == null || stage.toAyah == null) {
+    throw new ValidationError("حدود المرحلة الفرعية ناقصة.");
+  }
+  const set = await facePagesInRange(
+    { fromSurah: stage.fromSurah, fromAyah: stage.fromAyah, toSurah: stage.toSurah, toAyah: stage.toAyah },
+    db,
+  );
+  return { stageId, hizbNumber: stage.hizbNumber, stageLabel: stage.nameAr, pages: [...set].sort((a, b) => a - b) };
+}
