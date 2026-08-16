@@ -7,7 +7,7 @@ import {
   isActiveArifForCircle,
   listCircleArifs,
 } from "../arif";
-import { recordHifz, recordMurajaah, recordTarseekh } from "../daily-session";
+import { recordHifz, recordMurajaah, recordReviewError, recordTarseekh } from "../daily-session";
 import { canExamine } from "../examiner-eligibility";
 import { recordHasad } from "../hasad";
 import { AuthorizationError, ValidationError } from "../errors";
@@ -115,6 +115,30 @@ describe("أهليّة العريف — راسخه ≥ حزب كامل (الحك
     await giveRasikh(able.student.id, circle.id, [[87, 1, 114, 6]]);
     await appointArif({ circleId: circle.id, arifUserId: able.user.id, teacherId: teacher.id }, prisma);
     expect(await isActiveArifForCircle(able.user.id, circle.id, prisma)).toBe(true);
+  });
+
+  it("عريفٌ راسخُه حزب ⟵ ترميمٌ يُنقصه ⟵ يُعزل آليًّا ولا يُسمِّع بعدها", async () => {
+    const { circle, teacher, arif, peer } = await scaffold();
+    await appointArif({ circleId: circle.id, arifUserId: arif.user.id, teacherId: teacher.id }, prisma);
+    expect(await isActiveArifForCircle(arif.user.id, circle.id, prisma)).toBe(true);
+
+    // المقطع المُغطّي لحزب ٦٠ (أقدم مقطعٍ راسخٍ للعريف).
+    const covering = await prisma.dailySession.findFirstOrThrow({
+      where: { studentId: arif.student.id, hifzFromSurah: 87 },
+    });
+    // خطآن في مراجعته داخل النافذة ⟵ ترميم (الحكم ٥) ⟵ يخرج من الراسخ فينزل تحت حزب.
+    const res = await recordReviewError(
+      { sessionId: covering.id, studentId: arif.student.id, date: "2026-02-15", errorCount: 2, actorId: teacher.id },
+      prisma,
+    );
+    expect(res.reverted).toBe(true);
+
+    // عُزِل آليًّا في حينه (الحكم ٨ — الشرط دائم).
+    expect(await isActiveArifForCircle(arif.user.id, circle.id, prisma)).toBe(false);
+    // ولا يُسمِّع بعد العزل.
+    await expect(
+      recordTarseekh({ studentId: peer.student.id, date: "2026-05-12", done: true, actorId: arif.user.id }, prisma),
+    ).rejects.toBeInstanceOf(AuthorizationError);
   });
 });
 

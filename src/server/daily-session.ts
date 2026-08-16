@@ -10,7 +10,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 
-import { isActiveArifForCircle } from "./arif";
+import { isActiveArifForCircle, autoDismissArifIfBelowThreshold } from "./arif";
 import { displayBoundary } from "./maraqi";
 import { getConsolidation, getWeeklyReview, type ConsolidationView, type WeeklyReview } from "./tarseekh";
 import { emitEvent } from "./events";
@@ -402,7 +402,7 @@ export async function recordReviewError(
 
   const reviewDate = toDateOnly(input.date);
 
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     // ١) سجّل أخطاء هذه المراجعة (سطرٌ لكل خطأ).
     for (let i = 0; i < input.errorCount; i++) {
       await tx.reviewError.create({
@@ -444,6 +444,13 @@ export async function recordReviewError(
     });
     return { reverted: false };
   });
+
+  // العزل الآليّ (الحكم ٨): الترميم هو الحدث الوحيد الذي يُنقص الراسخ ⟵ افحص العرافة فورًا
+  // بعد التزام المعاملة (يرى الحالة بعد خروج المقطع من الراسخ)، لا بفحصٍ دوريّ.
+  if (result.reverted) {
+    await autoDismissArifIfBelowThreshold(input.studentId, db);
+  }
+  return result;
 }
 
 // ═══════════════ عرض الجلسة (للشاشة) ═══════════════

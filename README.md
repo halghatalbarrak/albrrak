@@ -132,7 +132,7 @@ npm test
 
 ```
 Test Files  33 passed (33)
-     Tests  207 passed (207)
+     Tests  208 passed (208)
 ```
 
 > **لغير المبرمج:** افتح Terminal في مجلّد المشروع، اكتب `npm test`، واضغط Enter.
