@@ -14,9 +14,10 @@ import { ayahOrdinal } from "./quran-ordinal";
 // (الاختبار محايد رسميّ). الأهلية (قرار محمد) شرطان آليّان مانعان + تقدير المعلّم:
 //   ١) طالبٌ منتسبٌ نشطًا في الحلقة نفسها.
 //   ٢) رسخ من حفظه حزبٌ كاملٌ فأكثر (تغطية حزبٍ كامل — تقاطع الراسخ مع حدود الأحزاب).
-// وما زاد على ذلك تقديرُ المعلّم.
+// وما زاد على ذلك تقديرُ المعلّم. والشرط الثاني **دائمٌ لا للتعيين فقط**: من نزل راسخُه
+// تحت حزبٍ كامل (بترميم الحكم ٥) يُعزل آليًّا في حينه (autoDismissArifIfBelowThreshold).
 
-/** أدنى ما يُشترط رسوخُه لتعيين العريف: حزبٌ كاملٌ واحد (الحكم ٨). */
+/** أدنى ما يُشترط رسوخُه لأهلية العريف — دائمًا (تعيينًا وبقاءً): حزبٌ كاملٌ واحد (الحكم ٨). */
 const MIN_RASIKH_HIZBS = 1;
 
 /**
@@ -130,6 +131,53 @@ export async function appointArif(args: AppointArifArgs, db: PrismaClient = pris
     });
     return appt;
   });
+}
+
+/**
+ * العزل الآليّ (الحكم ٨ — شرطٌ دائم): يُستدعى **فور** الترميم (الحكم ٥) الذي يُنقص الراسخ
+ * — لا بفحصٍ دوريّ. إن نزل راسخُ الطالب تحت حزبٍ كامل عُزِل من كلّ عرافةٍ نشطةٍ له، ويُصدَر
+ * لكلّ حلقةٍ حدثُ إعلامٍ للمعلّم برسالةٍ عربيّةٍ واضحة. مأمونٌ إن لم يكن عريفًا (لا شيء).
+ */
+export async function autoDismissArifIfBelowThreshold(
+  studentId: string,
+  db: PrismaClient = prisma,
+): Promise<{ dismissed: boolean; circleIds: string[] }> {
+  const student = await db.student.findUnique({
+    where: { id: studentId },
+    select: { userId: true },
+  });
+  if (!student) return { dismissed: false, circleIds: [] };
+
+  const active = await db.arifAppointment.findMany({
+    where: { arifUserId: student.userId, endedAt: null },
+    select: { id: true, circleId: true },
+  });
+  if (active.length === 0) return { dismissed: false, circleIds: [] };
+
+  // ما زال راسخُه حزبًا كاملًا فأكثر؟ فلا عزل.
+  if ((await fullyRasikhHizbCount(studentId, db)) >= MIN_RASIKH_HIZBS) {
+    return { dismissed: false, circleIds: [] };
+  }
+
+  const now = new Date();
+  const circleIds: string[] = [];
+  for (const appt of active) {
+    await db.arifAppointment.update({ where: { id: appt.id }, data: { endedAt: now } });
+    await emitEvent(db, {
+      type: "ARIF_AUTO_DISMISSED",
+      subjectType: "Circle",
+      subjectId: appt.circleId,
+      actorId: student.userId,
+      payload: {
+        arifUserId: student.userId,
+        reason: "RASIKH_BELOW_HIZB",
+        message:
+          "عُزِل العريف آليًّا من الحلقة: نزل حفظُه الراسخ تحت حزبٍ كامل بعد ترميم مقطع (الحكم ٨). لإعادة تعيينه يلزم بلوغُ راسخِه حزبًا كاملًا من جديد.",
+      },
+    });
+    circleIds.push(appt.circleId);
+  }
+  return { dismissed: true, circleIds };
 }
 
 export interface DismissArifArgs {
