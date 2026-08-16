@@ -54,11 +54,11 @@ describe("انتقال الحزب (الحكم ٧) — تلقائيٌّ بلا ا
   it("رسوب الحصاد ← لا انتقال (يبقى بانتظار الحصاد)", async () => {
     const { sub, teacher, student, reciter } = await scaffold();
     await declareHasadReadiness({ studentId: student.id, stageId: sub.id, teacherId: teacher.id }, prisma);
-    // صفحةٌ فيها خطآن ← راسب.
+    // ستّة أخطاء على الحزب ← رسوب (الحكم ٧: ≥٦).
     await recordHasad(
-      { studentId: student.id, stageId: sub.id, reciterId: reciter.id, errors: [
-        { pageNo: 5, errorType: "WORD" }, { pageNo: 5, errorType: "WORD" },
-      ] },
+      { studentId: student.id, stageId: sub.id, reciterId: reciter.id, errors:
+        Array.from({ length: 6 }, () => ({ pageNo: 5, errorType: "WORD" as const })),
+      },
       prisma,
     );
     const p = await progress(student.id, sub.id);

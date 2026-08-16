@@ -3,7 +3,6 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
   declareHasadReadiness,
-  gradeHasad,
   listReadyForHasad,
   recordHasad,
   subStageHarvestRange,
@@ -16,29 +15,8 @@ import { createProgram, createStudent, createUser } from "../testing/factories";
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
 
+// خوارزمية التقدير النقيّة مُختبَرةٌ في hasad-grading.test.ts (الحكم ٧، المرحلة ٢).
 const err = (pageNo: number): HasadErrorInput => ({ pageNo, errorType: "WORD" });
-
-describe("خوارزمية الحدّ (§٨٫٧) — لكل صفحةٍ على حدة", () => {
-  it("خطآن في صفحة واحدة و٥٩ نظيفة ← راسب", () => {
-    const errors = [err(47), err(47), ...Array.from({ length: 59 }, (_, i) => err(i + 1)).filter((e) => e.pageNo !== 47)];
-    const g = gradeHasad(errors);
-    expect(g.result).toBe("FAIL");
-    expect(g.failedPages).toEqual([47]);
-  });
-
-  it("صفحة نظيفة لا تشفع لما بعدها — الأخطاء لا تُرحَّل", () => {
-    // خطأٌ واحد في كل من صفحتين مختلفتين ← لا صفحة فيها خطآن ← ناجح.
-    expect(gradeHasad([err(10), err(20)]).result).toBe("PASS");
-    // صفحة ٩ نظيفة، وصفحة ١٠ فيها خطآن ← راسب (نظافة ٩ لا تشفع).
-    expect(gradeHasad([err(10), err(10)]).result).toBe("FAIL");
-  });
-
-  it("لا أخطاء ← ناجح (ولا «متميّز» — مؤجَّل)", () => {
-    const g = gradeHasad([]);
-    expect(g.result).toBe("PASS");
-    expect(g.failedPages).toEqual([]);
-  });
-});
 
 // سقّالة: مرحلتان أصليتان بأحزابهما، وحلقة مراقي بمعلّمها، وطالبٌ منتسب.
 async function scaffold() {
@@ -116,33 +94,67 @@ describe("تسجيل الحصاد (§٨٫٧) — المُسمِّع ليس مع�
     ).rejects.toBeInstanceOf(ValidationError);
   });
 
-  it("مُسمِّعٌ ليس معلمه ← يُسجَّل، والنتيجة محسوبة (رسوب لصفحةٍ فيها خطآن)", async () => {
+  it("مُسمِّعٌ ليس معلمه ← يُسجَّل، والمرتبة محسوبةٌ تراكميًّا (ستّة أخطاء ← رسوب)", async () => {
     const { student, teacher, reciter, h60 } = await scaffold();
     await declareHasadReadiness({ studentId: student.id, stageId: h60.id, teacherId: teacher.id }, prisma);
     const out = await recordHasad(
-      { studentId: student.id, stageId: h60.id, reciterId: reciter.id, errors: [err(5), err(5), err(9)] },
+      { studentId: student.id, stageId: h60.id, reciterId: reciter.id, errors: Array.from({ length: 6 }, (_, i) => err(i + 1)) },
       prisma,
     );
-    expect(out.result).toBe("FAIL");
-    expect(out.failedPages).toEqual([5]);
+    expect(out.rank).toBe("FAIL");
+    expect(out.totalErrors).toBe(6);
     expect(out.attemptNo).toBe(1);
     const hasad = await prisma.hasad.findUniqueOrThrow({ where: { id: out.hasadId }, include: { pageErrors: true } });
     expect(hasad.result).toBe(HasadResult.FAIL);
-    expect(hasad.pageErrors).toHaveLength(3);
+    expect(hasad.pageErrors).toHaveLength(6);
     // النطاق مشتقٌّ من المرحلة (لا يُدخِله المُسمِّع).
     expect([hasad.fromSurah, hasad.toSurah]).toEqual([87, 114]);
   });
 
-  it("الضربتان: حصادٌ ثانٍ ← attemptNo ٢", async () => {
+  it("المراتب على الحدود: خطأ ← تميّز · خمسة ← اجتياز · ستّة ← رسوب", async () => {
+    const { student, teacher, reciter, h60, h50, h49 } = await scaffold();
+    const stages = [h60, h50, h49];
+    const cases: { errs: number; rank: string }[] = [
+      { errs: 1, rank: "EXCELLENT" }, { errs: 5, rank: "PASS" }, { errs: 6, rank: "FAIL" },
+    ];
+    for (let i = 0; i < cases.length; i++) {
+      await declareHasadReadiness({ studentId: student.id, stageId: stages[i].id, teacherId: teacher.id }, prisma);
+      const out = await recordHasad(
+        { studentId: student.id, stageId: stages[i].id, reciterId: reciter.id, errors: Array.from({ length: cases[i].errs }, (_, j) => err(j + 1)) },
+        prisma,
+      );
+      expect(out.rank).toBe(cases[i].rank);
+    }
+  });
+
+  it("التردّد يُخزَّن ويُحسب (٣ في وجهٍ = خطأ)، ولا يُسجَّل مع الأخطاء", async () => {
     const { student, teacher, reciter, h60 } = await scaffold();
     await declareHasadReadiness({ studentId: student.id, stageId: h60.id, teacherId: teacher.id }, prisma);
-    await recordHasad({ studentId: student.id, stageId: h60.id, reciterId: reciter.id, errors: [err(1), err(1)] }, prisma);
+    const out = await recordHasad(
+      { studentId: student.id, stageId: h60.id, reciterId: reciter.id, errors: [],
+        hesitations: [{ faceNo: 590 }, { faceNo: 590 }, { faceNo: 590 }] },
+      prisma,
+    );
+    expect(out.hesitationErrors).toBe(1);
+    expect(out.totalErrors).toBe(1);
+    expect(out.rank).toBe("EXCELLENT"); // خطأ واحد = تميّز
+    // التردّد يُخزَّن في جدولٍ مستقلّ، لا في أخطاء الصفحة.
+    expect(await prisma.hasadHesitation.count({ where: { hasadId: out.hasadId } })).toBe(3);
+    const hasad = await prisma.hasad.findUniqueOrThrow({ where: { id: out.hasadId }, include: { pageErrors: true } });
+    expect(hasad.pageErrors).toHaveLength(0);
+  });
+
+  it("الضربتان: رسوبٌ أوّل (لا انتقال) ← حصادٌ ثانٍ attemptNo ٢", async () => {
+    const { student, teacher, reciter, h60 } = await scaffold();
+    await declareHasadReadiness({ studentId: student.id, stageId: h60.id, teacherId: teacher.id }, prisma);
+    // رسوب (٦ أخطاء) لا ينقل ← تبقى الجاهزية، فيجوز حصادٌ ثانٍ.
+    await recordHasad({ studentId: student.id, stageId: h60.id, reciterId: reciter.id, errors: Array.from({ length: 6 }, (_, i) => err(i + 1)) }, prisma);
     const second = await recordHasad(
       { studentId: student.id, stageId: h60.id, reciterId: reciter.id, errors: [] },
       prisma,
     );
     expect(second.attemptNo).toBe(2);
-    expect(second.result).toBe("PASS");
+    expect(second.rank).toBe("EXCELLENT"); // صفر خطأ
   });
 });
 

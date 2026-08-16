@@ -487,6 +487,15 @@ enum HasadErrorType {
   FORGOTTEN_AYAH
 }
 
+// التردّد (الحكم ٧): يُنسب للوجه (صفحة). ثلاثٌ في الوجه نفسه = خطأ (يُحسب وقت التقدير).
+// جدولٌ مستقلٌّ بلا FK (كنمط ArifAppointment) — تفاديًا لترتيب الترحيلات المعجميّ.
+model HasadHesitation {
+  id      String @id @default(cuid())
+  hasadId String
+  faceNo  Int                          // الوجه (= صفحة مصحف المدينة) الذي وقع فيه التردّد
+  @@index([hasadId])
+}
+
 model HasadPageError {
   id        String  @id @default(cuid())
   hasadId   String
