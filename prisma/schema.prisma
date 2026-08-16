@@ -496,6 +496,31 @@ model HasadHesitation {
   @@index([hasadId])
 }
 
+// ═══════════════ اختبار المرحلة الأصلية (الحكم ٧) ═══════════════
+
+enum StageExamStatus {
+  IN_PROGRESS
+  PASSED
+  FAILED
+}
+
+// اختبار المرحلة الأصلية: نطاقُه كامل المحفوظ منذ أول يوم، بمُختبِرٍ محايد (الحكم ٦).
+// عدد الجلسات بعدد الأحزاب (≤٢٠→١، ٢١–٤٠→٢، >٤٠→٣)، أيامٌ متتالية بالتقويم (شاملةً العطلة).
+// تجميع: رسوب حزبٍ = رسوب الكلّ، والمرتبة النهائية = أدنى مرتبة. جدولٌ مستقلٌّ بلا FK.
+model StageExam {
+  id              String          @id @default(cuid())
+  studentId       String
+  mainStageId     String                          // المرحلة الأصلية التي أتمّها الطالب
+  examinerId      String                          // المُختبِر المحايد (ليس معلمه)
+  hizbCount       Int                             // عدد الأحزاب المُختبَرة (كامل المحفوظ)
+  plannedSessions Int                             // ١..٣ بحسب عدد الأحزاب
+  startedOn       DateTime        @db.Date
+  status          StageExamStatus
+  finalRank       HasadResult?                    // الأدنى بين الأحزاب (عند الاكتمال)
+  createdAt       DateTime        @default(now())
+  @@index([studentId])
+}
+
 model HasadPageError {
   id        String  @id @default(cuid())
   hasadId   String

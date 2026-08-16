@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import {
   Gender,
   type PrismaClient,
@@ -9,6 +12,14 @@ import { type ApplicationInput } from "../application";
 
 let seq = 0;
 const uniq = () => `${Date.now()}-${seq++}`;
+
+/** يبذر خريطة أوجه مصحف المدينة (٦٠٤) من mushaf_faces.json — يمسحها resetDb، فيُعاد بذرها. */
+export async function seedMushafFaces(db: PrismaClient) {
+  const faces = JSON.parse(
+    readFileSync(path.join(process.cwd(), "mushaf_faces.json"), "utf8"),
+  ) as { page: number; fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }[];
+  await db.mushafFace.createMany({ data: faces });
+}
 
 export async function createUser(
   db: PrismaClient,
