@@ -4,13 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 
-// شاشة الحصاد (م٤ج — §٨٫٧): المُسمِّع (ليس معلمه) يختار طالبًا أُعلنت جاهزيته، يسجّل
-// أخطاء القراءة (موضعها بالصفحة، نوعها)، فيُحسب الحدّ (رسوب/نجاح) والصفحات الراسبة.
-// حالات صريحة (تحميل/دخول/خطأ/فارغ)، لا انهيار.
+// شاشة الحصاد (م٤ج — الحكم ٧): المُسمِّع (ليس معلمه) يختار طالبًا أُعلنت جاهزيته، يسجّل
+// أخطاء القراءة (صفحتها ونوعها)، فتُقدَّر المرتبة (تميّز/اجتياز/رسوب) تراكميًّا على الحزب.
+// (الشاشة الكاملة بالصورة والتردّد والمرتبة اللحظيّة — مرحلةٌ تالية.) لا انهيار.
 
 interface Ready { studentId: string; name: string; stageId: string; stageLabel: string; hizb: number | null }
 interface ErrRow { pageNo: string; errorType: string }
-interface Outcome { result: "PASS" | "FAIL"; failedPages: number[]; attemptNo: number }
+interface Outcome { rank: "EXCELLENT" | "PASS" | "FAIL"; totalErrors: number; attemptNo: number }
+
+const RANK_LABEL: Record<Outcome["rank"], string> = { EXCELLENT: "تميّز", PASS: "اجتياز", FAIL: "رسوب" };
 
 const ERROR_TYPES: { value: string; label: string }[] = [
   { value: "WORD", label: "كلمة" },
@@ -82,7 +84,7 @@ export default function HasadPage() {
     <main dir="rtl" style={box}>
       <h1 style={{ fontSize: "1.4rem" }}>الحصاد</h1>
       <p style={{ opacity: 0.6, fontSize: "0.9rem", marginTop: -6 }}>
-        سجّل أخطاء القراءة: خطآن في صفحةٍ واحدة ← راسب.
+        سجّل أخطاء القراءة (تراكميّ على الحزب): تميّز ≤١ · اجتياز ≤٥ · رسوب ≥٦.
       </p>
 
       {msg && <p style={{ color: "#b00020" }}>{msg}</p>}
@@ -105,11 +107,8 @@ export default function HasadPage() {
           </div>
 
           {outcome ? (
-            <div style={{ padding: "0.5rem", background: outcome.result === "FAIL" ? "#f6dede" : "#DDEAE1", borderRadius: 6 }}>
-              النتيجة: <strong>{outcome.result === "FAIL" ? "راسب" : "ناجح"}</strong> · المحاولة {outcome.attemptNo}
-              {outcome.result === "FAIL" && (
-                <div style={{ marginTop: 4, fontSize: "0.9rem" }}>الصفحات الراسبة: {outcome.failedPages.join("، ")}</div>
-              )}
+            <div style={{ padding: "0.5rem", background: outcome.rank === "FAIL" ? "#f6dede" : "#DDEAE1", borderRadius: 6 }}>
+              المرتبة: <strong>{RANK_LABEL[outcome.rank]}</strong> · الأخطاء: {outcome.totalErrors} · المحاولة {outcome.attemptNo}
             </div>
           ) : (
             <>

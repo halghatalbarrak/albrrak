@@ -1,5 +1,4 @@
 import {
-  HasadResult,
   ProgramKey,
   ProgressState,
   StageKind,
@@ -11,51 +10,31 @@ import { prisma } from "@/lib/prisma";
 import { assertCanExamine, canExamine } from "./examiner-eligibility";
 import { assertTeachesStudent } from "./daily-session";
 import { autoTransitionSubStage } from "./promotion";
+import { gradeHizbHarvest } from "./hasad-grading";
 import { emitEvent } from "./events";
 import { ValidationError } from "./errors";
 
-// ═══════════════ الحصاد (م٤ج — DESIGN §٨٫٧–٨٫٩) ═══════════════
+// ═══════════════ الحصاد (م٤ج + الحكم ٧ — DESIGN §٨٫٧–٨٫٩) ═══════════════
 //
-// النطاق (بقرار): الأساس + الخوارزمية. المعلم يُعلن الجاهزية؛ والمُسمِّع (ليس معلمه —
-// قاعدة مطلقة م١) يسجّل الحصاد وأخطاءه؛ والخادم يحسب الحدّ (رسوب/نجاح).
-//
-// خوارزمية الحدّ (§٨٫٧): لكل صفحةٍ في المسرود — خطآن فأكثر ← راسب (توقّف). صفحةٌ نظيفة
-// لا تشفع لما بعدها (الأخطاء لا تُرحَّل). «متميّز» (كل حزب ≤ خطأ) مؤجَّلٌ حتى يوقّع محمد
-// جدول صفحة←حزب (لا يُشتقّ بـ«÷١٠»). مؤجَّلٌ أيضًا: محرّك إسناد المُسمِّع، والترميم/العودة
-// للصفر وأثر الرسوب، ووقف الحفظ، ولوحة اعتماد المدير (§٨٫٨–٨٫١١).
+// المعلم يُعلن الجاهزية؛ والمُسمِّع (ليس معلمه — قاعدة مطلقة م١) يسجّل الحصاد: أخطاءً عند
+// آياتٍ بعينها وتردّداتٍ منسوبةً للأوجه؛ والخادم يقدّر المرتبة بالمحرّك النقيّ (hasad-grading،
+// الحكم ٧): عدٌّ تراكميٌّ على الحزب + مراتب (تميّز/اجتياز/رسوب)، والتردّد ٣/وجه = خطأ.
 
-function pointLE(s1: number, a1: number, s2: number, a2: number): boolean {
-  return s1 < s2 || (s1 === s2 && a1 <= a2);
-}
-
-// ═══════════════ خوارزمية الحدّ — دالّة نقيّة ═══════════════
-
+// أخطاء القراءة تُسجَّل بصفحتها (= وجهها) ونوعها، وعند آيةٍ بعينها (تغذّي تقرير المعلّم/الحكم ٥).
 export interface HasadErrorInput {
-  pageNo: number;
+  pageNo: number; // = رقم الوجه (صفحة مصحف المدينة)
   errorType: "WORD" | "LETTER" | "FORGOTTEN_AYAH";
   surah?: number;
   ayah?: number;
 }
 
-export interface HasadGrade {
-  /** رسوب/نجاح فقط الآن؛ «متميّز» مؤجَّل. */
-  result: "PASS" | "FAIL";
-  /** الصفحات الراسبة (خطآن فأكثر) — تُعرض للطالب (§٨٫٨). */
-  failedPages: number[];
+/** تردّدٌ منسوبٌ لوجهٍ (صفحة). */
+export interface HasadHesitationInput {
+  faceNo: number;
 }
 
-/**
- * الحدّ لكل صفحةٍ على حدة (§٨٫٧): أي صفحةٍ فيها خطآن فأكثر ← راسب. الصفحة النظيفة
- * لا تشفع لغيرها. دالّة نقيّة قابلة للاختبار.
- */
-export function gradeHasad(errors: HasadErrorInput[]): HasadGrade {
-  const perPage = new Map<number, number>();
-  for (const e of errors) perPage.set(e.pageNo, (perPage.get(e.pageNo) ?? 0) + 1);
-  const failedPages = [...perPage.entries()]
-    .filter(([, count]) => count >= 2)
-    .map(([page]) => page)
-    .sort((a, b) => a - b);
-  return { result: failedPages.length > 0 ? "FAIL" : "PASS", failedPages };
+function pointLE(s1: number, a1: number, s2: number, a2: number): boolean {
+  return s1 < s2 || (s1 === s2 && a1 <= a2);
 }
 
 // ═══════════════ نطاق حصاد المرحلة الفرعية (§٨٫٧) ═══════════════
@@ -158,19 +137,23 @@ export interface RecordHasadArgs {
   stageId: string;
   reciterId: string; // المُسمِّع — ليس معلمه (م١، يُتحقَّق في الخادم)
   errors: HasadErrorInput[];
+  hesitations?: HasadHesitationInput[]; // التردّد المنسوب للأوجه (الحكم ٧)
 }
 
 export interface HasadOutcome {
   hasadId: string;
-  result: "PASS" | "FAIL";
-  failedPages: number[];
+  rank: "EXCELLENT" | "PASS" | "FAIL"; // تميّز/اجتياز/رسوب
+  totalErrors: number; // التراكميّ على الحزب = المباشر + الناتج عن التردّد
+  directErrors: number;
+  hesitationErrors: number;
   attemptNo: number;
 }
 
 /**
- * المُسمِّع يسجّل الحصاد وأخطاءه، فيُحسب الحدّ (رسوب/نجاح). **قاعدة مطلقة:** المُسمِّع
- * ليس معلم الطالب (م١). ويشترط أن تكون الجاهزية أُعلنت (AWAITING_HASAD). أثر النتيجة
- * (الترميم/العودة للصفر/الاعتماد) مؤجَّلٌ لدفعةٍ تالية — هنا يُسجَّل الحصاد ونتيجته فقط.
+ * المُسمِّع يسجّل الحصاد (أخطاءً عند آياتٍ وتردّداتٍ للأوجه)، فتُقدَّر المرتبة بالمحرّك النقيّ
+ * (الحكم ٧): عدٌّ تراكميٌّ على الحزب + مراتب، والتردّد ٣/وجه = خطأ. **قاعدة مطلقة:** المُسمِّع
+ * ليس معلم الطالب (م١)، وتُشترط جاهزيةٌ معلَنة (AWAITING_HASAD). ينتقل الحزب تلقائيًّا عند
+ * النجاح (تميّز/اجتياز — الحكم ٧)؛ الرسوب لا ينقل (أثره — الترميم — مؤجَّل).
  */
 export async function recordHasad(
   args: RecordHasadArgs,
@@ -194,9 +177,16 @@ export async function recordHasad(
       throw new ValidationError("نوع خطأٍ غير معروف.");
     }
   }
+  const hesitations = args.hesitations ?? [];
+  for (const h of hesitations) {
+    if (!Number.isInteger(h.faceNo) || h.faceNo < 1) throw new ValidationError("رقم وجهٍ غير صالح للتردّد.");
+  }
 
   const range = await subStageHarvestRange(args.stageId, db);
-  const grade = gradeHasad(args.errors);
+  const grade = gradeHizbHarvest({
+    errors: args.errors.map((e) => ({ faceNo: e.pageNo, surah: e.surah, ayah: e.ayah, errorType: e.errorType })),
+    hesitations: hesitations.map((h) => ({ faceNo: h.faceNo })),
+  });
   const priorCount = await db.hasad.count({
     where: { studentId: args.studentId, stageId: args.stageId },
   });
@@ -211,7 +201,7 @@ export async function recordHasad(
         conductedAt: new Date(),
         fromSurah: range.fromSurah, fromAyah: range.fromAyah,
         toSurah: range.toSurah, toAyah: range.toAyah,
-        result: grade.result === "FAIL" ? HasadResult.FAIL : HasadResult.PASS,
+        result: grade.rank,
         attemptNo,
         pageErrors: {
           create: args.errors.map((e) => ({
@@ -224,16 +214,20 @@ export async function recordHasad(
       },
       select: { id: true },
     });
+    if (hesitations.length > 0) {
+      await tx.hasadHesitation.createMany({
+        data: hesitations.map((h) => ({ hasadId: hasad.id, faceNo: h.faceNo })),
+      });
+    }
     await emitEvent(tx, {
       type: "HASAD_RECORDED",
       subjectType: "Student",
       subjectId: args.studentId,
       actorId: args.reciterId,
-      payload: { stageId: args.stageId, result: grade.result, attemptNo },
+      payload: { stageId: args.stageId, rank: grade.rank, totalErrors: grade.totalErrors, attemptNo },
     });
-    // انتقال الحزب التلقائيّ بعد نجاح حصاده (م٤د، الحكم ٧) — بلا اعتماد. الرسوب لا ينقل
-    // (أثره — الترميم/العودة للصفر — مؤجَّل).
-    if (grade.result === "PASS") {
+    // انتقال الحزب التلقائيّ بعد نجاحه (تميّز/اجتياز — الحكم ٧) بلا اعتماد. الرسوب لا ينقل.
+    if (grade.rank !== "FAIL") {
       await autoTransitionSubStage(tx, {
         studentId: args.studentId,
         stageId: args.stageId,
@@ -243,7 +237,14 @@ export async function recordHasad(
     return hasad.id;
   });
 
-  return { hasadId, result: grade.result, failedPages: grade.failedPages, attemptNo };
+  return {
+    hasadId,
+    rank: grade.rank,
+    totalErrors: grade.totalErrors,
+    directErrors: grade.directErrors,
+    hesitationErrors: grade.hesitationErrors,
+    attemptNo,
+  };
 }
 
 // ═══════════════ القائمة للمُسمِّع ═══════════════
