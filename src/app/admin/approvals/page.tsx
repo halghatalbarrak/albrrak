@@ -4,14 +4,18 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 
-// لوحة اعتماد المدير (الحكم ٧): اقتراحات انتقال المرحلة المعلَّقة — اعتماد/رفض.
-// الاعتماد ← ينتقل الطالب للمرحلة التالية؛ الرفض يستلزم سببًا.
+// لوحة اعتماد المدير (الحكم ٧): اقتراحات انتقال المرحلة والتخرّج المعلَّقة — اعتماد/رفض.
+// الاعتماد ← ينتقل الطالب / يتخرّج؛ الرفض يستلزم سببًا.
 
-interface Item {
+interface Transition {
   approvalId: string;
   studentName: string;
   mainStageLabel: string;
   finalRank: string | null;
+}
+interface Graduation {
+  approvalId: string;
+  studentName: string;
 }
 const RANK: Record<string, string> = { EXCELLENT: "تميّز", PASS: "اجتياز", FAIL: "رسوب" };
 
@@ -22,9 +26,11 @@ async function token(): Promise<string | null> {
 
 const box: React.CSSProperties = { maxWidth: 820, margin: "0 auto", padding: "1.5rem", fontFamily: "system-ui, sans-serif" };
 const card: React.CSSProperties = { border: "1px solid #ccc", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: 12 };
+const approveBtn: React.CSSProperties = { background: "#1F5C3D", color: "#fff", border: "none", borderRadius: 6, padding: "0.3rem 1rem" };
 
 export default function ApprovalsPage() {
-  const [items, setItems] = useState<Item[]>([]);
+  const [transitions, setTransitions] = useState<Transition[]>([]);
+  const [graduations, setGraduations] = useState<Graduation[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<string | null>(null);
@@ -34,10 +40,15 @@ export default function ApprovalsPage() {
     try {
       const t = await token();
       if (!t) { setStatus("unauth"); return; }
-      const res = await fetch("/api/approvals/stage-transitions", { headers: { authorization: `Bearer ${t}` } });
-      if (res.status === 401 || res.status === 403) { setStatus("unauth"); return; }
-      if (!res.ok) { setStatus("error"); return; }
-      setItems(((await res.json()) as { items?: Item[] }).items ?? []);
+      const headers = { authorization: `Bearer ${t}` };
+      const [rt, rg] = await Promise.all([
+        fetch("/api/approvals/stage-transitions", { headers }),
+        fetch("/api/approvals/graduations", { headers }),
+      ]);
+      if ([rt.status, rg.status].some((s) => s === 401 || s === 403)) { setStatus("unauth"); return; }
+      if (!rt.ok || !rg.ok) { setStatus("error"); return; }
+      setTransitions(((await rt.json()) as { items?: Transition[] }).items ?? []);
+      setGraduations(((await rg.json()) as { items?: Graduation[] }).items ?? []);
       setStatus("ready");
     } catch {
       setStatus("error");
@@ -46,19 +57,34 @@ export default function ApprovalsPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  async function decide(approvalId: string, decision: "APPROVED" | "REJECTED") {
+  async function decide(base: string, approvalId: string, decision: "APPROVED" | "REJECTED") {
     setMsg(null);
     const note = notes[approvalId]?.trim();
     if (decision === "REJECTED" && !note) { setMsg("الرفض يستلزم سببًا."); return; }
     const t = await token();
     if (!t) { setStatus("unauth"); return; }
-    const res = await fetch(`/api/approvals/stage-transitions/${approvalId}`, {
+    const res = await fetch(`${base}/${approvalId}`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
       body: JSON.stringify({ decision, note }),
     });
     if (res.ok) { await load(); }
     else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر حسم الاقتراح."); }
+  }
+
+  function actions(base: string, approvalId: string) {
+    return (
+      <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <input
+          placeholder="سبب الرفض (عند الرفض)"
+          value={notes[approvalId] ?? ""}
+          onChange={(e) => setNotes((n) => ({ ...n, [approvalId]: e.target.value }))}
+          style={{ flex: 1, minWidth: 160 }}
+        />
+        <button type="button" style={approveBtn} onClick={() => void decide(base, approvalId, "APPROVED")}>اعتماد</button>
+        <button type="button" onClick={() => void decide(base, approvalId, "REJECTED")}>رفض</button>
+      </div>
+    );
   }
 
   if (status === "loading") return <main dir="rtl" style={box}>…جارٍ التحميل</main>;
@@ -69,25 +95,26 @@ export default function ApprovalsPage() {
 
   return (
     <main dir="rtl" style={box}>
-      <h1 style={{ fontSize: "1.4rem" }}>اعتماد انتقال المرحلة</h1>
-      <p style={{ opacity: 0.6, fontSize: "0.9rem", marginTop: -6 }}>
-        اعتمادُك ينقل الطالب للمرحلة الأصلية التالية. الرفض يستلزم سببًا.
-      </p>
+      <h1 style={{ fontSize: "1.4rem" }}>الاعتمادات</h1>
       {msg && <p style={{ color: "#b00020" }}>{msg}</p>}
-      {items.length === 0 && <p style={{ opacity: 0.6 }}>لا اقتراحات معلَّقة الآن.</p>}
-      {items.map((it) => (
+
+      <h2 style={{ fontSize: "1.1rem", marginTop: 18 }}>انتقال المرحلة</h2>
+      <p style={{ opacity: 0.6, fontSize: "0.85rem", marginTop: -4 }}>اعتمادُك ينقل الطالب للمرحلة الأصلية التالية.</p>
+      {transitions.length === 0 && <p style={{ opacity: 0.6 }}>لا اقتراحات انتقالٍ معلَّقة.</p>}
+      {transitions.map((it) => (
         <div key={it.approvalId} style={card}>
           <div><strong>{it.studentName}</strong> — {it.mainStageLabel} · المرتبة: {it.finalRank ? RANK[it.finalRank] ?? it.finalRank : "—"}</div>
-          <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <input
-              placeholder="سبب الرفض (عند الرفض)"
-              value={notes[it.approvalId] ?? ""}
-              onChange={(e) => setNotes((n) => ({ ...n, [it.approvalId]: e.target.value }))}
-              style={{ flex: 1, minWidth: 160 }}
-            />
-            <button type="button" style={{ background: "#1F5C3D", color: "#fff", border: "none", borderRadius: 6, padding: "0.3rem 1rem" }} onClick={() => void decide(it.approvalId, "APPROVED")}>اعتماد</button>
-            <button type="button" onClick={() => void decide(it.approvalId, "REJECTED")}>رفض</button>
-          </div>
+          {actions("/api/approvals/stage-transitions", it.approvalId)}
+        </div>
+      ))}
+
+      <h2 style={{ fontSize: "1.1rem", marginTop: 24 }}>التخرّج</h2>
+      <p style={{ opacity: 0.6, fontSize: "0.85rem", marginTop: -4 }}>اعتمادُك يخرّج الطالب ويُصدر شهادة الختم.</p>
+      {graduations.length === 0 && <p style={{ opacity: 0.6 }}>لا اقتراحات تخرّجٍ معلَّقة.</p>}
+      {graduations.map((it) => (
+        <div key={it.approvalId} style={card}>
+          <div><strong>{it.studentName}</strong> — اكتملت ثلاث جولاتٍ ناجحة</div>
+          {actions("/api/approvals/graduations", it.approvalId)}
         </div>
       ))}
     </main>

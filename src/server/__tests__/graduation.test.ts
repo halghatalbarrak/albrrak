@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   addOneCalendarMonth,
   decideGraduation,
+  listPendingGraduations,
   recordGraduationRound,
   roundEndDate,
   roundsSatisfyGraduation,
@@ -136,5 +137,17 @@ describe("جولات التخرّج والاعتماد (الحكم ٧، المر
     expect(cert.studentId).toBe(s.student.id);
     const appr = await prisma.approval.findUniqueOrThrow({ where: { id: r3.graduationProposalId! } });
     expect(appr.status).toBe(ApprovalStatus.APPROVED);
+  });
+
+  it("اللوحة: تعرض اقتراح التخرّج المعلَّق، ويختفي بعد الحسم", async () => {
+    const s = await scaffold();
+    await round(s, "2026-01-01");
+    await round(s, "2026-02-01");
+    const r3 = await round(s, "2026-03-01");
+    const pending = await listPendingGraduations(prisma);
+    expect(pending).toHaveLength(1);
+    expect(pending[0].approvalId).toBe(r3.graduationProposalId);
+    await decideGraduation({ approvalId: r3.graduationProposalId!, decidedBy: s.manager.id, decision: "APPROVED" }, prisma);
+    expect(await listPendingGraduations(prisma)).toHaveLength(0);
   });
 });
