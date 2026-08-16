@@ -65,6 +65,8 @@ export interface StageExamArgs {
   examinerId: string; // المُختبِر المحايد (ليس معلمه)
   startedOn: string; // YYYY-MM-DD
   hizbs: HizbExamInput[]; // كامل المحفوظ (كل الأحزاب المكتملة)
+  /** اقتراح STAGE_TRANSITION تلقائيًّا عند النجاح (افتراضي). جولات التخرّج تعطّله. */
+  autoPropose?: boolean;
 }
 
 export interface StageExamOutcome {
@@ -161,7 +163,7 @@ export async function recordStageExam(
 
   // نجاح ⟵ اقتراح انتقالٍ تلقائيّ على المحرّك القائم (الحكم ٧): لا انتقال إلا باعتماد المدير.
   let approvalId: string | null = null;
-  if (status === "PASSED") {
+  if (status === "PASSED" && (args.autoPropose ?? true)) {
     const approval = await propose(
       {
         kind: ApprovalKind.STAGE_TRANSITION,
