@@ -9,10 +9,12 @@ beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
 
 describe("عرض الوجه (الحكم ٧، المرحلة ٤)", () => {
-  it("الوجه ٦٠٤ ⟵ رابط SVG + آياته الصحيحة (الإخلاص+الفلق+الناس = ١٥ آية)", async () => {
+  it("الوجه ٦٠٤ ⟵ صورة WebP + مضلّعات + آياته الصحيحة (الإخلاص+الفلق+الناس = ١٥ آية)", async () => {
     await seedMushafFaces(prisma);
     const f = await getFace(604, prisma);
-    expect(f.svgUrl).toContain("604.svg");
+    expect(f.imageUrl).toContain("604.webp");
+    expect(f.polygonsUrl).toContain("604.json");
+    expect(f.polygonViewBox).toEqual({ width: 345, height: 550 });
     expect(f.ayahs).toHaveLength(15); // ٤ + ٥ + ٦
     expect(f.ayahs[0]).toEqual({ surah: 112, ayah: 1 });
     expect(f.ayahs.at(-1)).toEqual({ surah: 114, ayah: 6 });

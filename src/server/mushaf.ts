@@ -45,12 +45,18 @@ export interface FaceView {
   toSurah: number;
   toAyah: number;
   ayahs: { surah: number; ayah: number }[]; // كل آيات الوجه (من MushafFace)
-  svgUrl: string; // رابط صفحة quran-svg (القاعدة من إعداد MUSHAF_ASSETS_BASE)
+  imageUrl: string; // صورة الوجه (WebP، مرسومةٌ من quran-svg — دقّة منخفضة)
+  polygonsUrl: string; // مضلّعات آيات الوجه (JSON، من quran-svg) — لتظليل آيةٍ بعينها
+  polygonViewBox: { width: number; height: number }; // فضاء المضلّعات (يُقاس عليه التظليل)
 }
 
+// فضاء مضلّعات quran-svg (viewBox الأصليّ) — التظليل يُقاس بنسبة عرض الصورة إليه.
+const POLYGON_VIEWBOX = { width: 345, height: 550 };
+
 /**
- * عرض الوجه: رابط صورته (SVG) وقائمة آياته المشتقّة من MushafFace (الحكم ٧). قاعدة الرابط
- * من MUSHAF_ASSETS_BASE (تُضبَط عند رفع الأصول). يُستعمل في شاشة الحصاد لعرض الوجه وآياته.
+ * عرض الوجه: رابط صورته (WebP) ومضلّعات آياته (JSON من quran-svg) وقائمة آياته المشتقّة من
+ * MushafFace (الحكم ٧). قاعدة الروابط من MUSHAF_ASSETS_BASE. الصورة والمضلّعات من طبعةٍ
+ * واحدة (١٤٤١)، فالتظليل ينطبق بتكبيرٍ خالصٍ بلا معايرة. يُستعمل في شاشة الحصاد.
  */
 export async function getFace(page: number, db: PrismaClient = prisma): Promise<FaceView> {
   const f = await db.mushafFace.findUnique({ where: { page } });
@@ -64,11 +70,13 @@ export async function getFace(page: number, db: PrismaClient = prisma): Promise<
   }
 
   const base = process.env.MUSHAF_ASSETS_BASE ?? "";
-  const svgUrl = `${base}/${String(page).padStart(3, "0")}.svg`;
+  const n = String(page).padStart(3, "0");
   return {
     page: f.page,
     fromSurah: f.fromSurah, fromAyah: f.fromAyah, toSurah: f.toSurah, toAyah: f.toAyah,
     ayahs,
-    svgUrl,
+    imageUrl: `${base}/${n}.webp`,
+    polygonsUrl: `${base}/${n}.json`,
+    polygonViewBox: POLYGON_VIEWBOX,
   };
 }
