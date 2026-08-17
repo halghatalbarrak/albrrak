@@ -32,11 +32,21 @@ export default function AppShellPreview() {
         title="لوحة التحكّم — معاينة الهيكل"
         crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: "الطلاب" }]}
       >
+        {/* محاكاةُ الصفحة الرئيسة (المرحلة ٥): الخطوة التالية + بطاقات الملخّص */}
+        <Card style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(4), flexWrap: "wrap", borderInlineStart: `4px solid ${ui.color.primary}`, marginBottom: sp(6) }}>
+          <div>
+            <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: 2 }}>الخطوة التالية</div>
+            <div style={{ fontSize: ui.text.lg, fontWeight: 700, color: ui.color.text }}>لديك ٥ طلبَ قيدٍ بانتظار المراجعة</div>
+          </div>
+          <Button variant="primary">راجِع الطلبات</Button>
+        </Card>
+
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: sp(4), marginBottom: sp(8) }}>
-          <Stat label="الطلاب" value="١٤٢" hint="مسجَّلون في الحلقات" />
+          <Stat label="الطلاب" value="١٤٢" hint="في مسار التعلّم" />
           <Stat label="الحلقات" value="٨" tone="bronze" />
-          <Stat label="اعتمادات معلّقة" value="٥" tone="danger" hint="بانتظار مراجعتك" />
-          <Stat label="حضور اليوم" value="٪٨٦" tone="success" />
+          <Stat label="طلبات معلّقة" value="٥" tone="danger" hint="بانتظار القبول" />
+          <Stat label="اعتمادات معلّقة" value="٣" tone="danger" hint="انتقال/تخرّج" />
+          <Stat label="حضور اليوم" value="٦/٨" tone="primary" hint="حلقاتٌ رُصدت" />
         </section>
 
         <Card style={{ marginBottom: sp(6) }}>
