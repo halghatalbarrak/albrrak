@@ -81,6 +81,26 @@ export default function UiPreview() {
             <div><div style={{ fontSize: ui.text.xs, color: ui.color.muted, marginBottom: sp(1) }}>الطالب/الوليّ:</div><Header roles={["STUDENT"]} /></div>
           </div>
         </Card>
+
+        <Card>
+          <h2 style={{ fontSize: ui.text.xl, fontWeight: 600, marginTop: 0 }}>لوحة الداخل (نموذج المدير) — الصفحة الرئيسة</h2>
+          {[
+            { t: "التعلّم", items: [["صفحتي", "تقدّمي ومحفوظي"], ["السلّم البياني", "القاعدة المدنية"], ["مراقي", "مراحل الحفظ وأحزابه"]] },
+            { t: "الإدارة", items: [["الطلبات", "قبول المتقدّمين"], ["الطلاب", "إدارة الطلاب"], ["الحلقات", "الحلقات ومعلّموها"], ["الاعتمادات", "الانتقال والتخرّج"]] },
+          ].map((g) => (
+            <div key={g.t} style={{ marginTop: sp(4) }}>
+              <h3 style={{ fontSize: ui.text.lg, fontWeight: 600, color: ui.color.primary, margin: `0 0 ${sp(3)}` }}>{g.t}</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: sp(3) }}>
+                {g.items.map(([label, desc]) => (
+                  <div key={label} style={{ background: ui.color.surface, border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.lg, boxShadow: ui.shadowCard, padding: sp(4) }}>
+                    <div style={{ fontSize: ui.text.lg, fontWeight: 600 }}>{label}</div>
+                    <div style={{ fontSize: ui.text.xs, color: ui.color.muted, marginTop: sp(1) }}>{desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </Card>
       </div>
     </PageShell>
   );

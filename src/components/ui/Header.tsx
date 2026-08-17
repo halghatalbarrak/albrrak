@@ -25,7 +25,7 @@ export function Header({ roles, userName, activeHref, logoSrc = "/png/logo.jpeg"
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: `${sp(2)} ${sp(4)}`, display: "flex", alignItems: "center", gap: sp(6) }}>
         <Link href="/" aria-label={BRAND} style={{ display: "flex", alignItems: "center", gap: sp(2), textDecoration: "none", color: ui.color.primary }}>
           {logoOk
-            ? <img src={logoSrc} alt={BRAND} style={{ height: "clamp(30px, 6vw, 44px)", width: "auto", display: "block" }} onError={() => setLogoOk(false)} />
+            ? <img src={logoSrc} alt={BRAND} style={{ height: "clamp(40px, 7vw, 56px)", width: "auto", display: "block" }} onError={() => setLogoOk(false)} />
             : <span style={{ fontWeight: 700, fontSize: ui.text.lg, color: ui.color.primary }}>{BRAND}</span>}
         </Link>
 
