@@ -5,57 +5,22 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { Button, Card, PageShell, ui, sp } from "@/components/ui";
+import { AppShell, Button, Card, Stat, Skeleton, ui, sp } from "@/components/ui";
 
-// الصفحة الرئيسة: لوحةٌ حسب دور الداخل بهوية المنصّة. المنطق (جلب /api/me والأدوار) كما هو.
-
-interface Me { name: string; roles: string[] }
-interface Item { href: string; label: string; desc: string }
+// الصفحة الرئيسة: للزائر واجهةٌ ترحيبيّة، وللداخل ملخّصٌ حسب دوره داخل اللوحة (الشريط الجانبيّ).
+// المنطق (جلب الجلسة و/api/me و/api/summary) بلا مساسٍ بأي قاعدة عمل — قراءةٌ فقط.
 
 const BRAND = "حلقات الشيخ محمد البراك";
 
-// أقسام اللوحة — نفس بوّابات الأدوار السابقة، معروضةً بطاقاتٍ مجمّعة.
-const LEARN: Item[] = [
-  { href: "/me", label: "صفحتي", desc: "تقدّمي ومحفوظي" },
-  { href: "/programs/civil-base", label: "السلّم البياني", desc: "القاعدة المدنية" },
-  { href: "/programs/maraqi", label: "مراقي", desc: "مراحل الحفظ وأحزابه" },
-];
-const MANAGE: Item[] = [
-  { href: "/admin/applications", label: "الطلبات", desc: "قبول المتقدّمين" },
-  { href: "/admin/students", label: "الطلاب", desc: "إدارة الطلاب" },
-  { href: "/admin/circles", label: "الحلقات", desc: "الحلقات ومعلّموها" },
-  { href: "/admin/enrollment", label: "الإسناد", desc: "إسناد الطلاب للحلقات" },
-  { href: "/admin/approvals", label: "الاعتمادات", desc: "الانتقال والتخرّج" },
-  { href: "/admin/lists", label: "القوائم", desc: "قوائم وإعدادات" },
-];
-const OPERATE: Item[] = [
-  { href: "/admin/attendance", label: "الحضور", desc: "تسجيل حضور الحلقة" },
-  { href: "/admin/session", label: "الجلسة اليومية", desc: "الحفظ والترسيخ والمراجعة" },
-  { href: "/admin/arifs", label: "العرفاء", desc: "تعيين عرفاء الحلقة" },
-];
-const HARVEST: Item[] = [{ href: "/admin/hasad", label: "الحصاد", desc: "اختبار الأحزاب والمراتب" }];
-
-function Section({ title, items }: { title: string; items: Item[] }) {
-  if (items.length === 0) return null;
-  return (
-    <section style={{ marginTop: sp(6) }}>
-      <h2 style={{ fontSize: ui.text.lg, fontWeight: 600, color: ui.color.primary, margin: `0 0 ${sp(3)}` }}>{title}</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: sp(3) }}>
-        {items.map((it) => (
-          <Link key={it.href} href={it.href} style={{ textDecoration: "none" }}>
-            <Card style={{ padding: sp(4), height: "100%", transition: "border-color .15s, box-shadow .15s" }}>
-              <div style={{ fontSize: ui.text.lg, fontWeight: 600, color: ui.color.text }}>{it.label}</div>
-              <div style={{ fontSize: ui.text.xs, color: ui.color.muted, marginTop: sp(1) }}>{it.desc}</div>
-            </Card>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
+type Tone = "primary" | "bronze" | "success" | "danger";
+interface Me { name: string; roles: string[] }
+interface Card { key: string; label: string; value: string; hint?: string; tone: Tone; href: string }
+interface NextStep { title: string; cta: string; href: string; tone: "primary" | "bronze" | "success" }
+interface Summary { scope: string; greeting: string; nextStep: NextStep; cards: Card[] }
 
 export default function Home() {
   const [me, setMe] = useState<Me | null>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -63,8 +28,13 @@ export default function Home() {
       try {
         const { data: { session } } = await supabaseBrowser().auth.getSession();
         if (session) {
-          const res = await fetch("/api/me", { headers: { authorization: `Bearer ${session.access_token}` } });
-          if (res.ok) setMe((await res.json()) as Me);
+          const auth = { authorization: `Bearer ${session.access_token}` };
+          const meRes = await fetch("/api/me", { headers: auth });
+          if (meRes.ok) {
+            setMe((await meRes.json()) as Me);
+            const sumRes = await fetch("/api/summary", { headers: auth });
+            if (sumRes.ok) setSummary((await sumRes.json()) as Summary);
+          }
         }
       } catch {
         /* اللوحة إضافةٌ لا تُعطّل الصفحة إن فشلت */
@@ -74,12 +44,7 @@ export default function Home() {
     })();
   }, []);
 
-  const roles = me?.roles ?? [];
-  const isManager = roles.includes("SUPER_ADMIN") || roles.includes("CIRCLE_MANAGER");
-  const canRecordAttendance = isManager || roles.includes("TEACHER");
-  const canRecite = isManager || roles.includes("RECITER");
-
-  // غير مسجَّل الدخول: واجهةٌ ترحيبيّة (لا قائمة دور).
+  // ── الزائر: واجهةٌ ترحيبيّة (كما هي، بلا تغيير) ──
   if (!me) {
     return (
       <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text,
@@ -96,16 +61,46 @@ export default function Home() {
     );
   }
 
-  // مسجَّل الدخول: اللوحة بهوية المنصّة.
+  // ── الداخل: اللوحة بالشريط الجانبيّ + الملخّص ──
   return (
-    <PageShell roles={roles} userName={me.name}>
-      <h1 style={{ fontSize: ui.text.xxl, fontWeight: 700, margin: 0 }}>مرحبًا، {me.name}</h1>
-      <p style={{ fontSize: ui.text.base, color: ui.color.muted, margin: `${sp(1)} 0 0` }}>لوحتك — كلٌّ بحسب دوره.</p>
+    <AppShell roles={me.roles} userName={me.name} activeHref="/" title={`مرحبًا، ${me.name}`}
+      crumbs={[{ label: "الرئيسة" }]}>
+      {!summary ? (
+        // لا شاشة فارغة: نبضةُ تحميلٍ ريثما يصل الملخّص.
+        <div style={{ display: "flex", flexDirection: "column", gap: sp(4) }}>
+          <Skeleton height={72} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: sp(4) }}>
+            {[0, 1, 2, 3].map((i) => <Skeleton key={i} height={110} />)}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* الخطوة التالية — يقترحها النظام، لا مجرّد أرقام */}
+          <NextStepBanner step={summary.nextStep} />
 
-      <Section title="التعلّم" items={LEARN} />
-      {isManager && <Section title="الإدارة" items={MANAGE} />}
-      {canRecordAttendance && <Section title="التشغيل" items={OPERATE} />}
-      {canRecite && <Section title="الحصاد" items={HARVEST} />}
-    </PageShell>
+          <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: sp(4), marginTop: sp(6) }}>
+            {summary.cards.map((c) => (
+              <Link key={c.key} href={c.href} style={{ textDecoration: "none" }}>
+                <Stat label={c.label} value={c.value} hint={c.hint} tone={c.tone} />
+              </Link>
+            ))}
+          </section>
+        </>
+      )}
+    </AppShell>
+  );
+}
+
+// شريط «الخطوة التالية» — دعوةٌ واحدةٌ للإجراء (لا قائمة اختياراتٍ يحتار فيها).
+function NextStepBanner({ step }: { step: NextStep }) {
+  const accent = { primary: ui.color.primary, bronze: ui.color.bronze, success: ui.color.success }[step.tone];
+  return (
+    <Card style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(4), flexWrap: "wrap", borderInlineStart: `4px solid ${accent}` }}>
+      <div>
+        <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: 2 }}>الخطوة التالية</div>
+        <div style={{ fontSize: ui.text.lg, fontWeight: 700, color: ui.color.text }}>{step.title}</div>
+      </div>
+      <Link href={step.href}><Button variant={step.tone === "bronze" ? "bronze" : "primary"}>{step.cta}</Button></Link>
+    </Card>
   );
 }
