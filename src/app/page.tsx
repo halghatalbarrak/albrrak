@@ -1,43 +1,59 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- شعارٌ من public/ بأبعادٍ ثابتة؛ لا يحتاج next/image. */
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { Button, Card, PageShell, ui, sp } from "@/components/ui";
 
-// الصفحة الرئيسة: روابط عامة (تقديم/دخول)، ولوحةٌ حسب دور الداخل. كل رابط يصل لشاشةٍ مبنيّة.
+// الصفحة الرئيسة: لوحةٌ حسب دور الداخل بهوية المنصّة. المنطق (جلب /api/me والأدوار) كما هو.
 
-interface Me {
-  name: string;
-  roles: string[];
+interface Me { name: string; roles: string[] }
+interface Item { href: string; label: string; desc: string }
+
+const BRAND = "حلقات الشيخ محمد البراك";
+
+// أقسام اللوحة — نفس بوّابات الأدوار السابقة، معروضةً بطاقاتٍ مجمّعة.
+const LEARN: Item[] = [
+  { href: "/me", label: "صفحتي", desc: "تقدّمي ومحفوظي" },
+  { href: "/programs/civil-base", label: "السلّم البياني", desc: "القاعدة المدنية" },
+  { href: "/programs/maraqi", label: "مراقي", desc: "مراحل الحفظ وأحزابه" },
+];
+const MANAGE: Item[] = [
+  { href: "/admin/applications", label: "الطلبات", desc: "قبول المتقدّمين" },
+  { href: "/admin/students", label: "الطلاب", desc: "إدارة الطلاب" },
+  { href: "/admin/circles", label: "الحلقات", desc: "الحلقات ومعلّموها" },
+  { href: "/admin/enrollment", label: "الإسناد", desc: "إسناد الطلاب للحلقات" },
+  { href: "/admin/approvals", label: "الاعتمادات", desc: "الانتقال والتخرّج" },
+  { href: "/admin/lists", label: "القوائم", desc: "قوائم وإعدادات" },
+];
+const OPERATE: Item[] = [
+  { href: "/admin/attendance", label: "الحضور", desc: "تسجيل حضور الحلقة" },
+  { href: "/admin/session", label: "الجلسة اليومية", desc: "الحفظ والترسيخ والمراجعة" },
+  { href: "/admin/arifs", label: "العرفاء", desc: "تعيين عرفاء الحلقة" },
+];
+const HARVEST: Item[] = [{ href: "/admin/hasad", label: "الحصاد", desc: "اختبار الأحزاب والمراتب" }];
+
+function Section({ title, items }: { title: string; items: Item[] }) {
+  if (items.length === 0) return null;
+  return (
+    <section style={{ marginTop: sp(6) }}>
+      <h2 style={{ fontSize: ui.text.lg, fontWeight: 600, color: ui.color.primary, margin: `0 0 ${sp(3)}` }}>{title}</h2>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: sp(3) }}>
+        {items.map((it) => (
+          <Link key={it.href} href={it.href} style={{ textDecoration: "none" }}>
+            <Card style={{ padding: sp(4), height: "100%", transition: "border-color .15s, box-shadow .15s" }}>
+              <div style={{ fontSize: ui.text.lg, fontWeight: 600, color: ui.color.text }}>{it.label}</div>
+              <div style={{ fontSize: ui.text.xs, color: ui.color.muted, marginTop: sp(1) }}>{it.desc}</div>
+            </Card>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
 }
 
-const box: React.CSSProperties = {
-  display: "flex",
-  minHeight: "100dvh",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "1rem",
-  padding: "2rem",
-  textAlign: "center",
-  fontFamily: "system-ui, sans-serif",
-};
-const grid: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 10,
-  justifyContent: "center",
-  maxWidth: 640,
-};
-const tile: React.CSSProperties = {
-  padding: "0.6rem 1rem",
-  border: "1px solid #1F5C3D",
-  borderRadius: 8,
-  color: "#14281D",
-  textDecoration: "none",
-  background: "#FBFAF5",
-};
 export default function Home() {
   const [me, setMe] = useState<Me | null>(null);
   const [ready, setReady] = useState(false);
@@ -45,13 +61,9 @@ export default function Home() {
   useEffect(() => {
     void (async () => {
       try {
-        const {
-          data: { session },
-        } = await supabaseBrowser().auth.getSession();
+        const { data: { session } } = await supabaseBrowser().auth.getSession();
         if (session) {
-          const res = await fetch("/api/me", {
-            headers: { authorization: `Bearer ${session.access_token}` },
-          });
+          const res = await fetch("/api/me", { headers: { authorization: `Bearer ${session.access_token}` } });
           if (res.ok) setMe((await res.json()) as Me);
         }
       } catch {
@@ -67,51 +79,33 @@ export default function Home() {
   const canRecordAttendance = isManager || roles.includes("TEACHER");
   const canRecite = isManager || roles.includes("RECITER");
 
-  return (
-    <main dir="rtl" style={box}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 700, margin: 0 }}>منصة حلقات البراك</h1>
-
-      {!me && (
-        <div style={grid}>
-          <Link href="/apply" style={tile}>تقديم طلب</Link>
-          <Link href="/login" style={tile}>دخول</Link>
+  // غير مسجَّل الدخول: واجهةٌ ترحيبيّة (لا قائمة دور).
+  if (!me) {
+    return (
+      <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(4), padding: sp(6), textAlign: "center" }}>
+        <img src="/png/logo.jpeg" alt={BRAND} style={{ height: 96, width: "auto", borderRadius: ui.radius.lg }} />
+        <h1 style={{ fontSize: ui.text.xxl, fontWeight: 700, margin: 0 }}>منصّة {BRAND}</h1>
+        <p style={{ fontSize: ui.text.base, color: ui.color.muted, margin: 0, maxWidth: 480 }}>منصّةٌ لإدارة حلقات التحفيظ — التقديم، والحضور، والحفظ، والحصاد، والشهادات.</p>
+        <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", justifyContent: "center" }}>
+          <Link href="/apply"><Button variant="primary">تقديم طلب</Button></Link>
+          <Link href="/login"><Button variant="ghost">دخول</Button></Link>
         </div>
-      )}
+        {ready && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, opacity: 0.8 }}>سجّل الدخول لعرض لوحتك.</p>}
+      </main>
+    );
+  }
 
-      {me && (
-        <>
-          <p style={{ opacity: 0.6, margin: 0 }}>مرحبًا {me.name}</p>
-          <div style={grid}>
-            <Link href="/me" style={tile}>صفحتي</Link>
-            <Link href="/programs/civil-base" style={tile}>السلّم البياني</Link>
-            <Link href="/programs/maraqi" style={tile}>مراقي</Link>
-            {isManager && (
-              <>
-                <Link href="/admin/applications" style={tile}>الطلبات</Link>
-                <Link href="/admin/students" style={tile}>الطلاب</Link>
-                <Link href="/admin/circles" style={tile}>الحلقات</Link>
-                <Link href="/admin/enrollment" style={tile}>الإسناد</Link>
-                <Link href="/admin/approvals" style={tile}>الاعتمادات</Link>
-                <Link href="/admin/lists" style={tile}>القوائم</Link>
-              </>
-            )}
-            {canRecordAttendance && (
-              <>
-                <Link href="/admin/attendance" style={tile}>الحضور</Link>
-                <Link href="/admin/session" style={tile}>الجلسة اليومية</Link>
-                <Link href="/admin/arifs" style={tile}>العرفاء</Link>
-              </>
-            )}
-            {canRecite && (
-              <Link href="/admin/hasad" style={tile}>الحصاد</Link>
-            )}
-          </div>
-        </>
-      )}
+  // مسجَّل الدخول: اللوحة بهوية المنصّة.
+  return (
+    <PageShell roles={roles} userName={me.name}>
+      <h1 style={{ fontSize: ui.text.xxl, fontWeight: 700, margin: 0 }}>مرحبًا، {me.name}</h1>
+      <p style={{ fontSize: ui.text.base, color: ui.color.muted, margin: `${sp(1)} 0 0` }}>لوحتك — كلٌّ بحسب دوره.</p>
 
-      {ready && !me && (
-        <p style={{ opacity: 0.4, margin: 0, fontSize: "0.85rem" }}>سجّل الدخول لعرض لوحتك.</p>
-      )}
-    </main>
+      <Section title="التعلّم" items={LEARN} />
+      {isManager && <Section title="الإدارة" items={MANAGE} />}
+      {canRecordAttendance && <Section title="التشغيل" items={OPERATE} />}
+      {canRecite && <Section title="الحصاد" items={HARVEST} />}
+    </PageShell>
   );
 }
