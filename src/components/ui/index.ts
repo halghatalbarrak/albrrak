@@ -4,6 +4,7 @@ export { Card } from "./Card";
 export { Badge } from "./Badge";
 export { Container } from "./Container";
 export { Table, type Column } from "./Table";
+export { Field, inputStyle } from "./Field";
 export { Header, type HeaderProps } from "./Header";
 export { PageShell } from "./PageShell";
 export { menuForRoles, type NavItem } from "./nav";
