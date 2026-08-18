@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { ui, sp } from "./tokens";
 import { navSections } from "./nav";
+import { Skeleton } from "./Skeleton";
 import { CommandPalette } from "./CommandPalette";
 
 const BRAND = "حلقات الشيخ محمد البراك";
@@ -52,6 +53,12 @@ export function AppShell({ roles, userName, activeHref, title, crumbs, children 
       </div>
 
       <nav style={{ padding: sp(2) }}>
+        {/* الدور لم يصل بعد ⟵ هيكلٌ نابض، لا قائمةٌ مفترضة (إصلاح وميض شريط الطالب). */}
+        {sections.length === 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: sp(2), padding: sp(2) }}>
+            {[0, 1, 2, 3].map((i) => <Skeleton key={i} height={28} />)}
+          </div>
+        )}
         {sections.map((s) => {
           const open = isOpen(s.key);
           return (
