@@ -1,17 +1,19 @@
-// رموز الهوية للأنماط السطريّة (تعكس متغيّرات globals.css). المرحلة ١ — لا منطق.
+// رموز الهوية للأنماط السطريّة. الألوان تشير إلى متغيّرات CSS (globals.css) لتعمل
+// الهوية والوضع الداكن معًا (الفكرة ٦): تبديل [data-theme] يغيّر القيَم دون لمس المكوّنات.
 
 export const ui = {
   font: "'IBM Plex Sans Arabic', system-ui, sans-serif",
   color: {
-    primary: "#574F47", primaryHover: "#443d37",
-    bronze: "#A9834F", bronzeHover: "#8f6d40",
-    bg: "#F5F0E8", surface: "#FFFFFF",
-    text: "#2b2620", muted: "#7a7167", border: "#e6dfd2",
-    success: "#1F5C3D", danger: "#a1231d",
+    primary: "var(--color-primary)", primaryHover: "var(--color-primary-hover)",
+    bronze: "var(--color-bronze)", bronzeHover: "var(--color-bronze-hover)",
+    bg: "var(--color-bg)", surface: "var(--color-surface)",
+    text: "var(--color-text)", muted: "var(--color-muted)", border: "var(--color-border)",
+    success: "var(--color-success)", danger: "var(--color-danger)",
+    soft: "var(--color-soft)", // خلفيّةٌ ناعمة (ترويسة الجدول، العنصر النشط)
   },
   radius: { sm: "4px", md: "8px", lg: "16px", full: "999px" },
   text: { xs: "14px", base: "16px", lg: "20px", xl: "24px", xxl: "32px", xxxl: "40px" },
-  shadowCard: "0 1px 3px rgba(60,50,40,.08), 0 1px 2px rgba(60,50,40,.05)",
+  shadowCard: "var(--shadow-card)",
 } as const;
 
 /** مضاعفات التباعد على أساس ٤px: sp(4) = 16px. */

@@ -16,6 +16,7 @@
   --color-bg:#F5F0E8;       --color-surface:#FFFFFF;
   --color-text:#2b2620;     --color-muted:#7a7167;   --color-border:#e6dfd2;
   --color-success:#1F5C3D;  --color-danger:#a1231d;
+  --color-soft:#efe9e2;     --color-warn-bg:#fdf0d5;  --color-ok-bg:#e8f0ea;
   /* تباعد (أساس ٤px) */
   --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px; --space-12:48px; --space-16:64px;
   /* نصف قطر */
@@ -24,6 +25,24 @@
   --text-xs:14px; --text-base:16px; --text-lg:20px; --text-xl:24px; --text-2xl:32px; --text-3xl:40px;
   /* ظلّ خفيفٌ للبطاقات */
   --shadow-card:0 1px 3px rgba(60,50,40,.08), 0 1px 2px rgba(60,50,40,.05);
+}
+
+/* ═══════════════ الوضع الداكن (الفكرة ٦) — يُطبَّق بـ[data-theme="dark"] ═══════════════ */
+/* دفءٌ لا سواد قارس؛ البرونزيّ والنجاح/الخطر مرفوعةُ الإضاءة ليبقيا مقروءَين على الداكن. */
+:root[data-theme="dark"] {
+  --color-primary:#c9beb0;  --color-primary-hover:#ddd3c6;
+  --color-bronze:#c79a5f;   --color-bronze-hover:#d8ad72;
+  --color-bg:#1b1916;       --color-surface:#26231f;
+  --color-text:#ece7de;     --color-muted:#a49b8c;   --color-border:#3a352e;
+  --color-success:#5fbf8f;  --color-danger:#e0736c;
+  --color-soft:#322d26;     --color-warn-bg:#3a3320;  --color-ok-bg:#22322a;
+  --shadow-card:0 1px 3px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.25);
+}
+/* صور المصحف أحاديّةُ اللون على أبيض — لا تُقلَب ولا تُظلَم في الوضع الداكن (قرار محمد). */
+
+/* اللغة البصريّة (الفكرة ٧): سكونٌ في الحركة — نحترم تفضيل تقليل الحركة. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.001ms !important; transition-duration:.001ms !important; }
 }
 
 /* ═══════════════ هيكل اللوحة AppShell (المرحلة ٤) ═══════════════ */

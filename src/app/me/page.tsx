@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { AppShell, Button, Card, Stat, Badge, Skeleton, ui, sp } from "@/components/ui";
+import { arNum, hijri } from "@/lib/format";
 
 interface MyPage { userId: string; name: string; roles: string[]; student: { id: string; state: string } | null }
 interface MySession {
@@ -101,15 +102,15 @@ export default function MePage() {
             <Card style={{ marginBottom: sp(6), borderInlineStart: `4px solid ${ui.color.bronze}` }}>
               <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>تقديرٌ إرشاديّ (لا موعد يُحاسَب عليه)</div>
               <div style={{ fontSize: ui.text.base }}>
-                على وتيرتك الحاليّة (~{forecast.pacePerDay} آية في يوم الحلقة):
-                {forecast.hizbDoneDate && <> تُتمّ ما بين يديك نحو <strong>{forecast.hizbDoneDate}</strong>؛</>}
-                {forecast.graduationDate && <> وتُتمّ مراقي بإذن الله نحو <strong>{forecast.graduationDate}</strong>.</>}
+                على وتيرتك الحاليّة (~{arNum(forecast.pacePerDay ?? 0)} آية في يوم الحلقة):
+                {forecast.hizbDoneDate && <> تُتمّ ما بين يديك نحو <strong>{hijri(forecast.hizbDoneDate)}</strong>؛</>}
+                {forecast.graduationDate && <> وتُتمّ مراقي بإذن الله نحو <strong>{hijri(forecast.graduationDate)}</strong>.</>}
               </div>
             </Card>
           )}
 
           {sess.today?.mustRepeat && sess.today.repeatRange && (
-            <Card style={{ marginBottom: sp(6), background: "#fdf0d5" }}>
+            <Card style={{ marginBottom: sp(6), background: "var(--color-warn-bg)" }}>
               ⚠️ عليك إعادة مقطع أمس (لم يُتقن): <strong>{sess.today.repeatRange}</strong> — لا حفظ جديد قبله.
             </Card>
           )}

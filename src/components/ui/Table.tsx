@@ -13,7 +13,7 @@ export function Table<T>({ columns, rows, empty = "لا بيانات." }: { colu
     <div className="dtable-wrap" style={{ border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.lg, background: ui.color.surface, overflow: "hidden" }}>
       <table className="dtable" style={{ width: "100%", borderCollapse: "collapse", fontFamily: ui.font, fontSize: ui.text.base, color: ui.color.text }}>
         <thead>
-          <tr style={{ background: "#efe9e2" }}>
+          <tr style={{ background: ui.color.soft }}>
             {columns.map((c) => (
               <th key={c.key} style={{ textAlign: "start", fontWeight: 600, color: ui.color.primary, padding: `${sp(2.5)} ${sp(3)}` }}>{c.header}</th>
             ))}

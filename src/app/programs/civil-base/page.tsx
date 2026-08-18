@@ -137,7 +137,7 @@ export default function CivilBaseLadderPage() {
                   borderRadius: ui.radius.md,
                   fontFamily: ui.font,
                   color: ui.color.text,
-                  background: s.state === "COMPLETED" ? "#e8f0ea" : ui.color.surface,
+                  background: s.state === "COMPLETED" ? "var(--color-ok-bg)" : ui.color.surface,
                   cursor: "pointer",
                 }}
                 title={`ارتفاع تقريبي ${height}`}

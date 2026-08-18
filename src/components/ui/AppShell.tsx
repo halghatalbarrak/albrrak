@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ui, sp } from "./tokens";
 import { navSections } from "./nav";
 import { CommandPalette } from "./CommandPalette";
+import { ThemeToggle } from "./ThemeToggle";
 
 const BRAND = "حلقات الشيخ محمد البراك";
 const STAFF_ROLES = ["TEACHER", "CIRCLE_MANAGER", "SUPER_ADMIN", "RECITER", "REGISTRAR"];
@@ -136,6 +137,7 @@ export function AppShell({ roles, userName, activeHref, title, crumbs, children 
               بحث <kbd style={{ border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.sm, padding: "0 4px", fontSize: 12 }}>Ctrl K</kbd>
             </button>
           )}
+          <ThemeToggle />
           {userName && <span style={{ fontSize: ui.text.xs, color: ui.color.muted, whiteSpace: "nowrap" }}>{userName}</span>}
         </div>
 

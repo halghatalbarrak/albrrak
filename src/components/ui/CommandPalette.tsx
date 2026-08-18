@@ -87,7 +87,7 @@ export function CommandPalette() {
                 const on = idx === active;
                 return (
                   <div key={h.href} onMouseEnter={(() => { const my = flat.indexOf(h); return () => setActive(my); })()} onClick={() => go(h)}
-                    style={{ padding: `${sp(2.5)} ${sp(5)}`, cursor: "pointer", background: on ? "#efe9e2" : "transparent", display: "flex", justifyContent: "space-between", gap: sp(3) }}>
+                    style={{ padding: `${sp(2.5)} ${sp(5)}`, cursor: "pointer", background: on ? ui.color.soft : "transparent", display: "flex", justifyContent: "space-between", gap: sp(3) }}>
                     <span style={{ fontWeight: 600 }}>{h.label}</span>
                     {h.sub && <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{h.sub}</span>}
                   </div>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
+import { arNum, hijri } from "@/lib/format";
 import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
 
 // شاشة الجلسة اليومية (م٦ — التشغيل الذكيّ): كل طلاب الحلقة معروضون فوراً بلا اختيار
@@ -285,9 +286,9 @@ function StudentDetail({ studentId, date, onSaved }: { studentId: string; date: 
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs, margin: 0 }}>{msg}</p>}
       {forecast?.hasPace && (
         <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: 0 }}>
-          تقديرٌ إرشاديّ (~{forecast.pacePerDay} آية/يوم):
-          {forecast.hizbDoneDate && <> إتمام الحزب نحو <strong style={{ color: ui.color.text }}>{forecast.hizbDoneDate}</strong>؛</>}
-          {forecast.graduationDate && <> التخرّج نحو <strong style={{ color: ui.color.text }}>{forecast.graduationDate}</strong>.</>}
+          تقديرٌ إرشاديّ (~{arNum(forecast.pacePerDay ?? 0)} آية/يوم):
+          {forecast.hizbDoneDate && <> إتمام الحزب نحو <strong style={{ color: ui.color.text }}>{hijri(forecast.hizbDoneDate)}</strong>؛</>}
+          {forecast.graduationDate && <> التخرّج نحو <strong style={{ color: ui.color.text }}>{hijri(forecast.graduationDate)}</strong>.</>}
         </p>
       )}
 
@@ -301,7 +302,7 @@ function StudentDetail({ studentId, date, onSaved }: { studentId: string; date: 
       <div>
         <h3 style={label}>الحفظ (المعلم وحده)</h3>
         {view.hifzGate?.mustRepeat && view.hifzGate.range && (
-          <p style={{ margin: `0 0 ${sp(2)}`, padding: `${sp(2)} ${sp(3)}`, background: "#fdf0d5", borderRadius: ui.radius.md, fontSize: ui.text.xs }}>
+          <p style={{ margin: `0 0 ${sp(2)}`, padding: `${sp(2)} ${sp(3)}`, background: "var(--color-warn-bg)", borderRadius: ui.radius.md, fontSize: ui.text.xs }}>
             ⚠️ الحكم ١: يعيد <strong>نفس المقطع</strong> ({range(view.hifzGate.range)})، لا حفظ جديد.
             <Button variant="ghost" size="sm" style={{ marginInlineStart: sp(2) }} onClick={() => setHifz((h) => ({ ...h, fromSurah: String(view.hifzGate!.range!.fromSurah), fromAyah: String(view.hifzGate!.range!.fromAyah), toSurah: String(view.hifzGate!.range!.toSurah), toAyah: String(view.hifzGate!.range!.toAyah) }))}>املأ المقطع</Button>
           </p>

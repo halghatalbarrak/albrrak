@@ -10,9 +10,15 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // يضبط الوضع قبل الرسم (بلا وميض): تفضيلٌ محفوظ، وإلا تلقائيّاً بحسب الوقت
+  // (المغرب/العشاء ⟵ داكن). الفكرة ٦.
+  const themeInit = `(function(){try{var p=localStorage.getItem('albrrak.theme')||'auto';var dark=p==='dark'||(p==='auto'&&new Date().getHours()>=17);document.documentElement.dataset.theme=dark?'dark':'light';}catch(e){}})();`;
   return (
     <html lang="ar" dir="rtl">
-      <body>{children}</body>
+      <body>
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+        {children}
+      </body>
     </html>
   );
 }
