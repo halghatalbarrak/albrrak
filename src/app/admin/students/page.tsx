@@ -1,9 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Button, Select, Badge, EmptyState, Skeleton, Modal, Field, inputStyle, Table, ui, sp, type Column } from "@/components/ui";
+
+// رابطٌ بمظهر زرٍّ خفيف (للتنقّل — Button زرٌّ لا رابط).
+const linkBtn: React.CSSProperties = { fontSize: ui.text.xs, fontWeight: 600, color: ui.color.primary, textDecoration: "none", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, padding: `${sp(1.5)} ${sp(2.5)}` };
 
 interface Row {
   id: string;
@@ -172,6 +176,7 @@ export default function AdminStudentsPage() {
           {r.state === "AWAITING_READING_TEST" && !r.pendingPlacementId && canRecord && (
             <Button variant="bronze" size="sm" onClick={() => setTestFor(r)}>اختبار القراءة</Button>
           )}
+          <Link href={`/admin/students/${r.id}/weakness`} style={linkBtn}>الخريطة</Link>
           {canReveal && <Button variant="ghost" size="sm" onClick={() => revealId(r.id)}>{revealed[r.id] ? `الهوية: ${revealed[r.id]}` : "كشف الهوية"}</Button>}
         </div>
       ),
