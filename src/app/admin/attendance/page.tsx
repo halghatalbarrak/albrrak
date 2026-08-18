@@ -118,7 +118,9 @@ export default function AttendancePage() {
         });
         if (res.ok) {
           const j = (await res.json()) as { circles?: Circle[] };
-          setCircles(j.circles ?? []);
+          const cs = j.circles ?? [];
+          setCircles(cs);
+          if (cs.length) setCircleId((prev) => prev || cs[0].id); // لا اختيارٌ مفروض: تُحمَّل الأولى
         } else {
           setErr("تعذّر تحميل الحلقات.");
         }

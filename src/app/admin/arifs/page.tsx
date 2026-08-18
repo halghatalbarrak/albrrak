@@ -38,8 +38,11 @@ export default function ArifsPage() {
       const t = await token();
       if (!t) { setStatus("unauth"); return; }
       const res = await fetch("/api/attendance/circles", { headers: { authorization: `Bearer ${t}` } });
-      if (res.ok) setCircles(((await res.json()) as { circles?: Circle[] }).circles ?? []);
-      else if (res.status === 401 || res.status === 403) setStatus("unauth");
+      if (res.ok) {
+        const cs = ((await res.json()) as { circles?: Circle[] }).circles ?? [];
+        setCircles(cs);
+        if (cs.length) setCircleId((prev) => prev || cs[0].id); // لا اختيارٌ مفروض: تُحمَّل الأولى
+      } else if (res.status === 401 || res.status === 403) setStatus("unauth");
     })();
   }, []);
 
