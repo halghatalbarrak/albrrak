@@ -33,11 +33,11 @@ export function AppShell({ roles, userName, activeHref, title, crumbs, children 
   const [drawer, setDrawer] = useState(false); // درج الجوّال
   // القسم الذي فيه الصفحة الحاليّة يبدأ مفتوحاً؛ إن لم يُعرف فالأوّل.
   const activeKey = sections.find((s) => s.items.some((it) => it.href === activeHref))?.key ?? sections[0]?.key;
-  const [openKeys, setOpenKeys] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(sections.map((s) => [s.key, s.key === activeKey])),
-  );
-
-  const toggle = (key: string) => setOpenKeys((p) => ({ ...p, [key]: !p[key] }));
+  // القسم النشط مفتوحٌ افتراضاً، وتوجيه المستخدم يتجاوز الافتراض. يتفاعل مع تأخّر
+  // وصول الأدوار (useMe): حين تصل الأقسام يُفتح النشط دون الحاجة لإعادة تهيئة.
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const isOpen = (key: string) => overrides[key] ?? key === activeKey;
+  const toggle = (key: string) => setOverrides((p) => ({ ...p, [key]: !isOpen(key) }));
 
   const aside = (
     <aside className={`appshell-aside${drawer ? " open" : ""}`} style={{ background: ui.color.surface, borderInlineStart: `1px solid ${ui.color.border}` }}>
@@ -50,12 +50,12 @@ export function AppShell({ roles, userName, activeHref, title, crumbs, children 
 
       <nav style={{ padding: sp(2) }}>
         {sections.map((s) => {
-          const isOpen = openKeys[s.key];
+          const open = isOpen(s.key);
           return (
             <div key={s.key} style={{ marginBottom: sp(1) }}>
               <button
                 onClick={() => toggle(s.key)}
-                aria-expanded={isOpen}
+                aria-expanded={open}
                 style={{
                   width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
                   background: "transparent", border: "none", cursor: "pointer",
@@ -64,9 +64,9 @@ export function AppShell({ roles, userName, activeHref, title, crumbs, children 
                 }}
               >
                 <span>{s.label}</span>
-                <span style={{ color: ui.color.muted, fontSize: ui.text.xs, transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform .15s" }}>▾</span>
+                <span style={{ color: ui.color.muted, fontSize: ui.text.xs, transform: open ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform .15s" }}>▾</span>
               </button>
-              {isOpen && (
+              {open && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: `${sp(1)} 0` }}>
                   {s.items.map((it) => {
                     const active = it.href === activeHref;

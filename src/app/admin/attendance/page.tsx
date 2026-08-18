@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { useMe } from "@/lib/useMe";
+import { AppShell, Card, Button, Select, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
 
 // شاشة الرصد (م٢ — DESIGN §١٠٫١): تفترض الجميع حاضرين، والمعلم يؤشّر الغائب فقط.
 // تعمل بلا إنترنت: إن تعذّر الإرسال، يُحفظ الرصد محليًّا (localStorage) ويُزامن لاحقًا.
@@ -64,24 +66,8 @@ function writeQueue(q: QueuedSession[]): void {
   localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
 }
 
-const box: React.CSSProperties = {
-  maxWidth: 820,
-  margin: "0 auto",
-  padding: "1.5rem",
-  fontFamily: "system-ui, sans-serif",
-};
-const row: React.CSSProperties = {
-  display: "flex",
-  gap: 12,
-  alignItems: "center",
-  justifyContent: "space-between",
-  border: "1px solid #ccc",
-  borderRadius: 8,
-  padding: "0.5rem 0.9rem",
-  marginBottom: 8,
-};
-
 export default function AttendancePage() {
+  const { me } = useMe();
   const [circles, setCircles] = useState<Circle[]>([]);
   const [circleId, setCircleId] = useState("");
   const [date, setDate] = useState(todayISO());
@@ -229,78 +215,70 @@ export default function AttendancePage() {
   const isExcused = (s: string) => s === "ABSENT_EXCUSED" || s === "PRE_EXCUSED";
 
   return (
-    <main dir="rtl" style={box}>
-      <h1 style={{ fontSize: "1.4rem" }}>رصد الحضور</h1>
-      <p style={{ opacity: 0.6, fontSize: "0.9rem", marginTop: -6 }}>
+    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/attendance"
+      title="رصد الحضور" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "التشغيل" }, { label: "الحضور" }]}>
+      <p style={{ color: ui.color.muted, margin: `0 0 ${sp(4)}`, fontSize: ui.text.base }}>
         الجميع حاضرون افتراضًا — أشِّر الغائب فقط.
       </p>
 
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-        <select value={circleId} onChange={(e) => setCircleId(e.target.value)}>
+      <div style={{ display: "flex", gap: sp(3), flexWrap: "wrap", alignItems: "center", marginBottom: sp(4) }}>
+        <Select value={circleId} onChange={(e) => setCircleId(e.target.value)} style={{ width: "auto", minWidth: 200 }}>
           <option value="">— اختر حلقة —</option>
           {circles.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nameAr}
-            </option>
+            <option key={c.id} value={c.id}>{c.nameAr}</option>
           ))}
-        </select>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </Select>
+        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ width: "auto" }} />
         {pending > 0 && (
-          <button type="button" onClick={() => void flush()} style={{ color: "#8a5a00" }}>
+          <Button variant="bronze" size="sm" type="button" onClick={() => void flush()}>
             مزامنة ({pending}) مؤجَّل
-          </button>
+          </Button>
         )}
       </div>
 
-      {msg && <p style={{ color: "#1F5C3D" }}>{msg}</p>}
-      {err && <p style={{ color: "#b00020" }}>{err}</p>}
+      {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
+      {err && <p style={{ color: ui.color.danger, fontSize: ui.text.xs }}>{err}</p>}
 
       {/* حالات صريحة: تحميل / فارغ / قائمة */}
-      {loading && <p style={{ opacity: 0.6 }}>…جارٍ التحميل</p>}
+      {loading && (
+        <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
+          {[0, 1, 2].map((i) => <Skeleton key={i} height={48} />)}
+        </div>
+      )}
       {!loading && ready && circles.length === 0 && !err && (
-        <p style={{ opacity: 0.6 }}>لا حلقات تَرصدها.</p>
+        <EmptyState title="لا حلقات تَرصدها" description="لم تُسنَد إليك حلقةٌ للرصد بعد." />
       )}
       {!loading && circleId && roster.length === 0 && !err && (
-        <p style={{ opacity: 0.6 }}>لا طلاب في هذه الحلقة.</p>
+        <EmptyState title="لا طلاب في هذه الحلقة" />
       )}
       {!circleId && !loading && circles.length > 0 && (
-        <p style={{ opacity: 0.6 }}>اختر حلقةً لعرض القائمة.</p>
+        <EmptyState title="اختر حلقةً لعرض القائمة" description="حدّد الحلقة والتاريخ أعلاه." />
       )}
-
-      {!loading &&
-        roster.map((s) => (
-          <div key={s.studentId} style={row}>
-            <strong>{s.name}</strong>
-            {isExcused(s.status) ? (
-              <span style={{ color: "#1F5C3D" }}>{STATUS_LABEL[s.status]} (معتمَد)</span>
-            ) : (
-              <select value={s.status} onChange={(e) => setStatus(s.studentId, e.target.value)}>
-                {MARKABLE.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        ))}
 
       {!loading && roster.length > 0 && (
-        <button
-          type="button"
-          onClick={() => void save()}
-          style={{
-            marginTop: 12,
-            padding: "0.5rem 1.4rem",
-            background: "#1F5C3D",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-          }}
-        >
-          حفظ الرصد
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
+          {roster.map((s) => (
+            <Card key={s.studentId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(3), padding: `${sp(2)} ${sp(4)}` }}>
+              <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
+              {isExcused(s.status) ? (
+                <Badge tone="success">{STATUS_LABEL[s.status]} (معتمَد)</Badge>
+              ) : (
+                <Select value={s.status} onChange={(e) => setStatus(s.studentId, e.target.value)} style={{ width: "auto", minWidth: 130 }}>
+                  {MARKABLE.map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </Select>
+              )}
+            </Card>
+          ))}
+        </div>
       )}
-    </main>
+
+      {!loading && roster.length > 0 && (
+        <Button type="button" onClick={() => void save()} style={{ marginTop: sp(4) }}>
+          حفظ الرصد
+        </Button>
+      )}
+    </AppShell>
   );
 }

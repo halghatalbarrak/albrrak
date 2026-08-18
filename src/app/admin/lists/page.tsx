@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { useMe } from "@/lib/useMe";
+import { AppShell, Button, Input, ui, sp } from "@/components/ui";
 
 interface Item {
   id: string;
@@ -16,15 +18,6 @@ interface Lists {
 }
 type Kind = "nationality" | "schoolStage" | "guardianRelation";
 
-const box: React.CSSProperties = {
-  maxWidth: 900,
-  margin: "0 auto",
-  padding: "1.5rem",
-  fontFamily: "system-ui, sans-serif",
-};
-const input: React.CSSProperties = { padding: "0.4rem", fontSize: "1rem", fontFamily: "inherit" };
-const btn: React.CSSProperties = { padding: "0.3rem 0.7rem", cursor: "pointer", marginInlineStart: 8 };
-
 async function token(): Promise<string | null> {
   const {
     data: { session },
@@ -33,6 +26,7 @@ async function token(): Promise<string | null> {
 }
 
 export default function AdminListsPage() {
+  const { me } = useMe();
   const [lists, setLists] = useState<Lists | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
@@ -101,77 +95,80 @@ export default function AdminListsPage() {
     else setErr("تعذّر تغيير الحالة.");
   }
 
-  if (err) return <main style={box}>{err}</main>;
-  if (!lists) return <main style={box}>جارٍ التحميل…</main>;
-
-  const sections: { kind: Kind; title: string; items: Item[] }[] = [
+  const sections: { kind: Kind; title: string; items: Item[] }[] = lists ? [
     { kind: "nationality", title: "الجنسيات", items: lists.nationalities },
     { kind: "schoolStage", title: "المراحل الدراسية", items: lists.schoolStages },
     { kind: "guardianRelation", title: "صفات القرابة", items: lists.guardianRelations },
-  ];
+  ] : [];
 
   return (
-    <main style={box}>
-      <h1>إدارة القوائم</h1>
-      <p style={{ opacity: 0.75 }}>
-        إضافةٌ وتعطيل (لا حذف — القيمة قد ترتبط بطلباتٍ سابقة). المعطَّل لا يظهر في نموذج القيد.
-      </p>
-      <input
-        style={{ ...input, width: "100%", marginBottom: 16 }}
-        placeholder="تصفية بالاسم…"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-      />
+    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/lists"
+      title="إدارة القوائم" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: "القوائم" }]}>
 
-      {sections.map((sec) => {
-        const shown = filter.trim()
-          ? sec.items.filter((i) => i.nameAr.includes(filter.trim()))
-          : sec.items;
-        return (
-          <section key={sec.kind} style={{ marginBottom: 28 }}>
-            <h2>
-              {sec.title} ({sec.items.length})
-            </h2>
-            <div style={{ display: "flex", marginBottom: 10 }}>
-              <input
-                style={{ ...input, flex: 1 }}
-                placeholder="قيمة جديدة…"
-                value={drafts[sec.kind]}
-                onChange={(e) => setDrafts((d) => ({ ...d, [sec.kind]: e.target.value }))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void add(sec.kind);
-                }}
-              />
-              <button style={btn} onClick={() => void add(sec.kind)}>
-                إضافة
-              </button>
-            </div>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {shown.map((i) => (
-                <li
-                  key={i.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "0.35rem 0",
-                    borderBottom: "1px solid #f0f0f0",
-                    opacity: i.isActive ? 1 : 0.5,
-                  }}
-                >
-                  <span>
-                    {i.nameAr}
-                    {!i.isActive && <span style={{ marginInlineStart: 8, fontSize: "0.8rem" }}>(معطَّل)</span>}
-                  </span>
-                  <button style={btn} onClick={() => void toggle(sec.kind, i)}>
-                    {i.isActive ? "تعطيل" : "تفعيل"}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        );
-      })}
-    </main>
+      {err && <p style={{ color: ui.color.danger }}>{err}</p>}
+      {!err && !lists && <p style={{ color: ui.color.muted }}>جارٍ التحميل…</p>}
+
+      {lists && (
+        <>
+          <p style={{ color: ui.color.muted }}>
+            إضافةٌ وتعطيل (لا حذف — القيمة قد ترتبط بطلباتٍ سابقة). المعطَّل لا يظهر في نموذج القيد.
+          </p>
+          <Input
+            style={{ width: "100%", marginBottom: sp(4) }}
+            placeholder="تصفية بالاسم…"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+
+          {sections.map((sec) => {
+            const shown = filter.trim()
+              ? sec.items.filter((i) => i.nameAr.includes(filter.trim()))
+              : sec.items;
+            return (
+              <section key={sec.kind} style={{ marginBottom: sp(7) }}>
+                <h2 style={{ fontSize: ui.text.lg, fontWeight: 700 }}>
+                  {sec.title} ({sec.items.length})
+                </h2>
+                <div style={{ display: "flex", gap: sp(2), marginBottom: sp(3) }}>
+                  <Input
+                    style={{ flex: 1 }}
+                    placeholder="قيمة جديدة…"
+                    value={drafts[sec.kind]}
+                    onChange={(e) => setDrafts((d) => ({ ...d, [sec.kind]: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void add(sec.kind);
+                    }}
+                  />
+                  <Button size="sm" onClick={() => void add(sec.kind)}>إضافة</Button>
+                </div>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {shown.map((i) => (
+                    <li
+                      key={i.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: `${sp(2)} 0`,
+                        borderBottom: `1px solid ${ui.color.border}`,
+                        opacity: i.isActive ? 1 : 0.5,
+                      }}
+                    >
+                      <span>
+                        {i.nameAr}
+                        {!i.isActive && <span style={{ marginInlineStart: sp(2), fontSize: ui.text.xs }}>(معطَّل)</span>}
+                      </span>
+                      <Button variant="ghost" size="sm" onClick={() => void toggle(sec.kind, i)}>
+                        {i.isActive ? "تعطيل" : "تفعيل"}
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+        </>
+      )}
+    </AppShell>
   );
 }

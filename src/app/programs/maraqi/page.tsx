@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { useMe } from "@/lib/useMe";
+import { AppShell, EmptyState, ui, sp } from "@/components/ui";
 
 // السلّم البياني لمراقي (§٨): تنازليّ. الفاتحة (تمهيد) أولاً، ثم الحزب ٦٠ (الأعلى←الناس)
 // صعودًا إلى الحزب ١ (البقرة ١–٧٤). كل حزب: حدوده بالسورة والآية وجزؤه — ورقمه للكادر
@@ -27,21 +29,22 @@ interface Ladder {
   canSeeHizb: boolean;
 }
 
-const box: React.CSSProperties = {
-  maxWidth: 820,
-  margin: "0 auto",
-  padding: "1.5rem",
-  fontFamily: "system-ui, sans-serif",
+const centered: React.CSSProperties = {
+  minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+  gap: sp(3), background: ui.color.bg, fontFamily: ui.font, color: ui.color.text,
 };
 const stepStyle: React.CSSProperties = {
-  border: "1px solid #1F5C3D",
-  borderRadius: 8,
-  background: "#FBFAF5",
-  padding: "0.5rem 0.9rem",
+  border: `1px solid ${ui.color.primary}`,
+  borderRadius: ui.radius.md,
+  background: ui.color.surface,
+  padding: `${sp(2)} ${sp(3)}`,
   marginBottom: 6,
 };
 
+const CRUMBS = [{ label: "الرئيسة", href: "/" }, { label: "التعلّم" }, { label: "مراقي" }];
+
 export default function MaraqiLadderPage() {
+  const { me } = useMe();
   const [ladder, setLadder] = useState<Ladder | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
 
@@ -77,18 +80,18 @@ export default function MaraqiLadderPage() {
     void load();
   }, [load]);
 
-  if (status === "loading") return <main dir="rtl" style={box}>جارٍ التحميل…</main>;
+  if (status === "loading") return <main dir="rtl" style={centered}>جارٍ التحميل…</main>;
   if (status === "unauth")
     return (
-      <main dir="rtl" style={box}>
+      <main dir="rtl" style={centered}>
         <p>تحتاج دخولًا لعرض السلّم.</p>
-        <a href="/login" style={{ color: "#1F5C3D" }}>تسجيل الدخول</a>
+        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>تسجيل الدخول</a>
       </main>
     );
   if (status === "error")
     return (
-      <main dir="rtl" style={box}>
-        <p style={{ color: "#b00020" }}>تعذّر تحميل السلّم.</p>
+      <main dir="rtl" style={centered}>
+        <p style={{ color: ui.color.danger }}>تعذّر تحميل السلّم.</p>
         <button type="button" onClick={() => void load()}>إعادة المحاولة</button>
       </main>
     );
@@ -96,36 +99,36 @@ export default function MaraqiLadderPage() {
   const mains = ladder?.mainStages ?? [];
   if (!ladder || mains.length === 0)
     return (
-      <main dir="rtl" style={box}>
-        <h1 style={{ fontSize: "1.4rem" }}>مراقي — السلّم البياني</h1>
-        <p style={{ opacity: 0.6 }}>لم تُبذَر المراحل بعد.</p>
-      </main>
+      <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/programs/maraqi"
+        title="مراقي — السلّم البياني" crumbs={CRUMBS}>
+        <EmptyState title="لم تُبذَر المراحل بعد" />
+      </AppShell>
     );
 
   return (
-    <main dir="rtl" style={box}>
-      <h1 style={{ fontSize: "1.4rem" }}>مراقي — السلّم البياني</h1>
-      <p style={{ opacity: 0.6, fontSize: "0.9rem", marginTop: -6 }}>
+    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/programs/maraqi"
+      title="مراقي — السلّم البياني" crumbs={CRUMBS}>
+      <p style={{ color: ui.color.muted, fontSize: ui.text.base, margin: `0 0 ${sp(4)}` }}>
         تنازليّ: من الفاتحة والناس صعودًا إلى البقرة.
       </p>
 
       {/* التمهيد أولاً */}
       {ladder.prelude && (
-        <div style={{ ...stepStyle, background: "#DDEAE1" }}>
+        <div style={{ ...stepStyle, background: "#e8f0ea" }}>
           <strong>تمهيد:</strong> {ladder.prelude.nameAr}
-          <span style={{ opacity: 0.6, fontSize: "0.85rem" }}> · بلا حصاد</span>
+          <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}> · بلا حصاد</span>
         </div>
       )}
 
       {/* المراحل الأصلية بترتيبها التنازليّ، وتحت كلٍّ أحزابها */}
       {mains.map((m) => (
-        <section key={m.stageId} style={{ marginTop: 14 }}>
-          <h2 style={{ fontSize: "1.05rem", color: "#14281D", margin: "0 0 6px" }}>{m.nameAr}</h2>
+        <section key={m.stageId} style={{ marginTop: sp(4) }}>
+          <h2 style={{ fontSize: ui.text.base, fontWeight: 700, color: ui.color.primary, margin: "0 0 6px" }}>{m.nameAr}</h2>
           <ol style={{ listStyle: "none", padding: 0, margin: 0 }}>
             {m.subStages.map((s) => (
               <li key={s.stageId} style={stepStyle}>
                 <strong>{s.label}</strong>
-                <span style={{ opacity: 0.6, fontSize: "0.85rem" }}>
+                <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}>
                   {s.juz != null ? ` · الجزء ${s.juz}` : ""}
                   {s.hizb != null ? ` · الحزب ${s.hizb}` : ""}
                 </span>
@@ -134,6 +137,6 @@ export default function MaraqiLadderPage() {
           </ol>
         </section>
       ))}
-    </main>
+    </AppShell>
   );
 }

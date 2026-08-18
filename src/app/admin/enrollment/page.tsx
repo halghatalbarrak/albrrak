@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { useMe } from "@/lib/useMe";
+import { AppShell, Card, Button, Select, EmptyState, ui, sp } from "@/components/ui";
 
 // شاشة الإسناد: المدير يسند الطالب المقبول إلى حلقة، أو ينقله (بسجلٍّ تاريخي).
 // بها تعمل شاشة الحضور فعليًّا — طلابٌ في حلقات.
@@ -32,24 +34,12 @@ async function token(): Promise<string | null> {
   return session?.access_token ?? null;
 }
 
-const box: React.CSSProperties = {
-  maxWidth: 900,
-  margin: "0 auto",
-  padding: "1.5rem",
-  fontFamily: "system-ui, sans-serif",
-};
-const card: React.CSSProperties = {
-  border: "1px solid #ccc",
-  borderRadius: 8,
-  padding: "0.75rem 1rem",
-  marginBottom: 12,
-  display: "flex",
-  gap: 12,
-  alignItems: "center",
-  flexWrap: "wrap",
+const rowCard: React.CSSProperties = {
+  marginBottom: sp(3), display: "flex", gap: sp(3), alignItems: "center", flexWrap: "wrap",
 };
 
 export default function EnrollmentPage() {
+  const { me } = useMe();
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [circles, setCircles] = useState<CircleRow[]>([]);
   const [pick, setPick] = useState<Record<string, string>>({});
@@ -113,34 +103,33 @@ export default function EnrollmentPage() {
   }
 
   return (
-    <main dir="rtl" style={box}>
-      <h1 style={{ fontSize: "1.4rem" }}>إسناد الطلاب للحلقات</h1>
-      {msg && <p style={{ color: "#1F5C3D" }}>{msg}</p>}
-      {err && <p style={{ color: "#b00020" }}>{err}</p>}
-      {students.length === 0 && <p style={{ opacity: 0.6 }}>لا طلاب.</p>}
+    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/enrollment"
+      title="إسناد الطلاب للحلقات" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: "القيد" }]}>
+      {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
+      {err && <p style={{ color: ui.color.danger, fontSize: ui.text.xs }}>{err}</p>}
+      {students.length === 0 && <EmptyState title="لا طلاب" description="لا طلاب مقبولون للإسناد بعد." />}
       {students.map((s) => (
-        <div key={s.id} style={card}>
+        <Card key={s.id} style={rowCard}>
           <strong>{s.name}</strong>
-          <span style={{ opacity: 0.6 }}>الحلقة: {s.circle ?? "—"}</span>
-          <select
+          <span style={{ color: ui.color.muted }}>الحلقة: {s.circle ?? "—"}</span>
+          <Select
             value={pick[s.id] ?? ""}
             onChange={(e) => setPick((p) => ({ ...p, [s.id]: e.target.value }))}
+            style={{ width: "auto", minWidth: 160 }}
           >
             <option value="">— اختر حلقة —</option>
             {circles.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nameAr}
-              </option>
+              <option key={c.id} value={c.id}>{c.nameAr}</option>
             ))}
-          </select>
-          <button type="button" onClick={() => void assign(s.id)}>
+          </Select>
+          <Button size="sm" type="button" onClick={() => void assign(s.id)}>
             {s.circle ? "نقل" : "إسناد"}
-          </button>
-          <button type="button" onClick={() => void showHistory(s.id)}>
+          </Button>
+          <Button variant="ghost" size="sm" type="button" onClick={() => void showHistory(s.id)}>
             السجلّ
-          </button>
+          </Button>
           {history[s.id] && (
-            <ul style={{ width: "100%", margin: 0, fontSize: "0.85rem", opacity: 0.8 }}>
+            <ul style={{ width: "100%", margin: 0, fontSize: ui.text.xs, color: ui.color.muted }}>
               {history[s.id].map((h) => (
                 <li key={h.id}>
                   {h.circleNameAr} — من {new Date(h.startedAt).toLocaleDateString("ar")}
@@ -149,8 +138,8 @@ export default function EnrollmentPage() {
               ))}
             </ul>
           )}
-        </div>
+        </Card>
       ))}
-    </main>
+    </AppShell>
   );
 }

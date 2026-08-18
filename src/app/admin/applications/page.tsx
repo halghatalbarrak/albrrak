@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { useMe } from "@/lib/useMe";
+import { AppShell, Card, Button, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
 
 interface Row {
   id: string;
@@ -17,20 +19,6 @@ interface Row {
   createdAt: string;
 }
 
-const box: React.CSSProperties = {
-  maxWidth: 900,
-  margin: "0 auto",
-  padding: "1.5rem",
-  fontFamily: "system-ui, sans-serif",
-};
-const card: React.CSSProperties = {
-  border: "1px solid #ccc",
-  borderRadius: 8,
-  padding: "0.75rem 1rem",
-  marginBottom: 10,
-};
-const btn: React.CSSProperties = { padding: "0.4rem 0.8rem", cursor: "pointer", marginInlineStart: 6 };
-
 async function token(): Promise<string | null> {
   const {
     data: { session },
@@ -39,6 +27,7 @@ async function token(): Promise<string | null> {
 }
 
 export default function AdminApplicationsPage() {
+  const { me } = useMe();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -112,45 +101,43 @@ export default function AdminApplicationsPage() {
 
   const canReveal = roles.includes("REGISTRAR") || roles.includes("SUPER_ADMIN");
 
-  if (err) return <main style={box}>{err}</main>;
-  if (!rows) return <main style={box}>جارٍ التحميل…</main>;
-
   return (
-    <main style={box}>
-      <h1>طلبات القيد ({rows.length})</h1>
-      {rows.length === 0 && <p>لا طلبات معلّقة.</p>}
-      {rows.map((r) => (
-        <div key={r.id} style={card}>
-          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}>
-            <strong>{r.name}</strong>
-            <span style={{ opacity: 0.7 }}>
-              {r.status === "WAITLISTED" ? "⏳ قائمة الانتظار" : "طلب جديد"}
-            </span>
+    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/applications"
+      title={`طلبات القيد${rows ? ` (${rows.length})` : ""}`}
+      crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: "الطلبات" }]}>
+
+      {err && <p style={{ color: ui.color.danger }}>{err}</p>}
+      {!err && !rows && (
+        <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
+          {[0, 1, 2].map((i) => <Skeleton key={i} height={90} />)}
+        </div>
+      )}
+      {rows && rows.length === 0 && <EmptyState title="لا طلبات معلّقة" description="ستظهر هنا طلبات القيد الجديدة عند ورودها." />}
+
+      {rows && rows.map((r) => (
+        <Card key={r.id} style={{ marginBottom: sp(3) }}>
+          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", alignItems: "center" }}>
+            <strong style={{ fontSize: ui.text.base }}>{r.name}</strong>
+            {r.status === "WAITLISTED" ? <Badge tone="bronze">⏳ قائمة الانتظار</Badge> : <Badge tone="neutral">طلب جديد</Badge>}
           </div>
-          <div style={{ fontSize: "0.9rem", opacity: 0.85, marginTop: 4 }}>
+          <div style={{ fontSize: ui.text.xs, color: ui.color.muted, marginTop: 4 }}>
             العمر {r.age} • {r.gender === "MALE" ? "ذكر" : "أنثى"} • {r.nationality}
             {r.schoolStage ? ` • ${r.schoolStage}` : ""} • ولي الأمر {r.guardianPhone}
             {r.studentPhone ? ` • جوال الطالب ${r.studentPhone}` : ""}
             {r.priorHifzJuz != null ? ` • حفظ ${r.priorHifzJuz} جزء` : ""}
           </div>
-          <div style={{ marginTop: 8 }}>
-            <button style={btn} onClick={() => decide(r.id, "accept")}>
-              قبول
-            </button>
-            <button style={btn} onClick={() => decide(r.id, "reject")}>
-              رفض بسبب
-            </button>
-            <button style={btn} onClick={() => decide(r.id, "waitlist")}>
-              قائمة الانتظار
-            </button>
+          <div style={{ marginTop: sp(2), display: "flex", gap: sp(2), flexWrap: "wrap" }}>
+            <Button size="sm" onClick={() => decide(r.id, "accept")}>قبول</Button>
+            <Button variant="danger" size="sm" onClick={() => decide(r.id, "reject")}>رفض بسبب</Button>
+            <Button variant="ghost" size="sm" onClick={() => decide(r.id, "waitlist")}>قائمة الانتظار</Button>
             {canReveal && (
-              <button style={btn} onClick={() => revealId(r.id)}>
+              <Button variant="ghost" size="sm" onClick={() => revealId(r.id)}>
                 {revealed[r.id] ? `الهوية: ${revealed[r.id]}` : "كشف رقم الهوية"}
-              </button>
+              </Button>
             )}
           </div>
-        </div>
+        </Card>
       ))}
-    </main>
+    </AppShell>
   );
 }
