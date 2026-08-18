@@ -4,24 +4,23 @@ import { ui, sp } from "./tokens";
 
 type Tone = "primary" | "bronze" | "success" | "danger" | "neutral";
 
-const map: Record<Tone, { bg: string; fg: string }> = {
-  primary: { bg: "#efe9e2", fg: ui.color.primary },
-  bronze: { bg: "#f2e8da", fg: ui.color.bronzeHover },
-  success: { bg: "#dceae2", fg: ui.color.success },
-  danger: { bg: "#f4ddda", fg: ui.color.danger },
-  neutral: { bg: "#eee9e0", fg: ui.color.muted },
+// اللون الأماميّ لكل نبرة (متغيّرٌ يتبع الوضع)، والخلفيّة تُشتقّ منه شفّافةً — فتصلح
+// للفاتح والداكن معًا بلا قيمٍ ثابتة (الفكرة ٦).
+const fgOf: Record<Tone, string> = {
+  primary: ui.color.primary, bronze: ui.color.bronzeHover,
+  success: ui.color.success, danger: ui.color.danger, neutral: ui.color.muted,
 };
 
 /** وسمٌ حبّيّ (للمراتب/الحالات) — المرحلة ١. */
 export function Badge({ tone = "neutral", style, ...props }: HTMLAttributes<HTMLSpanElement> & { tone?: Tone }) {
-  const c = map[tone];
+  const fg = fgOf[tone];
   return (
     <span
       {...props}
       style={{
         display: "inline-block",
         fontFamily: ui.font, fontSize: ui.text.xs, fontWeight: 600,
-        color: c.fg, background: c.bg,
+        color: fg, background: `color-mix(in srgb, ${fg} 16%, transparent)`,
         borderRadius: ui.radius.full,
         padding: `${sp(1)} ${sp(2.5)}`,
         ...style,

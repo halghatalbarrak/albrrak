@@ -114,7 +114,7 @@ export default function MaraqiLadderPage() {
 
       {/* التمهيد أولاً */}
       {ladder.prelude && (
-        <div style={{ ...stepStyle, background: "#e8f0ea" }}>
+        <div style={{ ...stepStyle, background: "var(--color-ok-bg)" }}>
           <strong>تمهيد:</strong> {ladder.prelude.nameAr}
           <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}> · بلا حصاد</span>
         </div>
