@@ -200,8 +200,10 @@ export default function DailySessionPage() {
 }
 
 // ═══════════════ تفاصيل الطالب (التسجيل) — منطق الجلسة السابق كما هو ═══════════════
+interface Forecast { hasPace: boolean; pacePerDay: number | null; hizbDoneDate: string | null; graduationDate: string | null }
 function StudentDetail({ studentId, date, onSaved }: { studentId: string; date: string; onSaved: () => void }) {
   const [view, setView] = useState<SessionView | null>(null);
+  const [forecast, setForecast] = useState<Forecast | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [msg, setMsg] = useState<string | null>(null);
   const [hifz, setHifz] = useState({ fromSurah: "", fromAyah: "", toSurah: "", toAyah: "", attempts: "1", mastered: false });
@@ -215,6 +217,7 @@ function StudentDetail({ studentId, date, onSaved }: { studentId: string; date: 
     if (!res.ok) { setStatus("error"); return; }
     setView((await res.json()) as SessionView);
     setStatus("ready");
+    try { const fr = await fetch(`/api/students/${studentId}/forecast`, { headers: { authorization: `Bearer ${t}` } }); if (fr.ok) setForecast((await fr.json()) as Forecast); } catch { /* التقدير إضافةٌ لا تُعطّل */ }
   }, [studentId, date]);
   useEffect(() => { void load(); }, [load]);
 
@@ -280,6 +283,13 @@ function StudentDetail({ studentId, date, onSaved }: { studentId: string; date: 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: sp(3) }}>
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs, margin: 0 }}>{msg}</p>}
+      {forecast?.hasPace && (
+        <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: 0 }}>
+          تقديرٌ إرشاديّ (~{forecast.pacePerDay} آية/يوم):
+          {forecast.hizbDoneDate && <> إتمام الحزب نحو <strong style={{ color: ui.color.text }}>{forecast.hizbDoneDate}</strong>؛</>}
+          {forecast.graduationDate && <> التخرّج نحو <strong style={{ color: ui.color.text }}>{forecast.graduationDate}</strong>.</>}
+        </p>
+      )}
 
       {cur && (
         <Button variant="bronze" size="sm" style={{ alignSelf: "flex-start" }} onClick={() => void declareReadiness(cur.stageId)} title="الحصاد يُجريه مُسمِّعٌ ليس معلمه — أنت تُعلن الجاهزية فقط">
