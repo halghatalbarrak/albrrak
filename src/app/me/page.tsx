@@ -12,6 +12,7 @@ interface MySession {
   weekly: { done: number; required: number; percent: number; complete: boolean } | null;
   suggestions: { memorize: string; review: string } | null;
 }
+interface Forecast { hasPace: boolean; pacePerDay: number | null; hizbDoneDate: string | null; graduationDate: string | null; note: string }
 
 const STATE_AR: Record<string, string> = {
   APPLIED: "قيد مُقدَّم", PENDING_ACCEPTANCE: "بانتظار القبول", WAITLISTED: "قائمة الانتظار",
@@ -27,6 +28,7 @@ const centered: React.CSSProperties = {
 export default function MePage() {
   const [me, setMe] = useState<MyPage | null>(null);
   const [sess, setSess] = useState<MySession | null>(null);
+  const [forecast, setForecast] = useState<Forecast | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,6 +42,8 @@ export default function MePage() {
         setMe((await res.json()) as MyPage);
         const sres = await fetch("/api/me/session", { headers: auth });
         if (sres.ok) setSess((await sres.json()) as MySession);
+        const fres = await fetch("/api/me/forecast", { headers: auth });
+        if (fres.ok) setForecast((await fres.json()) as Forecast);
       } catch {
         setErr("تعذّر الاتصال بالخادم.");
       }
@@ -92,6 +96,17 @@ export default function MePage() {
             {sess.today && <Stat label="عليك اليوم" value={`${sess.today.tarseekhCount} ترسيخ · خُمس ${sess.today.khums}`} tone="primary" />}
             {sess.weekly && <Stat label="دورة المراجعة" value={`${sess.weekly.percent}٪`} tone={sess.weekly.complete ? "success" : "primary"} hint={`أُنجِز ${sess.weekly.done} من ${sess.weekly.required}`} />}
           </section>
+
+          {forecast?.hasPace && (
+            <Card style={{ marginBottom: sp(6), borderInlineStart: `4px solid ${ui.color.bronze}` }}>
+              <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>تقديرٌ إرشاديّ (لا موعد يُحاسَب عليه)</div>
+              <div style={{ fontSize: ui.text.base }}>
+                على وتيرتك الحاليّة (~{forecast.pacePerDay} آية في يوم الحلقة):
+                {forecast.hizbDoneDate && <> تُتمّ ما بين يديك نحو <strong>{forecast.hizbDoneDate}</strong>؛</>}
+                {forecast.graduationDate && <> وتُتمّ مراقي بإذن الله نحو <strong>{forecast.graduationDate}</strong>.</>}
+              </div>
+            </Card>
+          )}
 
           {sess.today?.mustRepeat && sess.today.repeatRange && (
             <Card style={{ marginBottom: sp(6), background: "#fdf0d5" }}>
