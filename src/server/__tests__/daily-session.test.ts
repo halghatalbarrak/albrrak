@@ -2,6 +2,7 @@ import { ProgramKey, ProgressState, Role, StageKind, StudentState } from "@prism
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  getCircleSessionBoard,
   getHifzGate,
   getSessionView,
   getStudentPosition,
@@ -285,5 +286,32 @@ describe("عرض الجلسة للمعلم", () => {
 
     const stranger = await createUser(prisma, { roles: [Role.TEACHER] });
     await expect(getSessionView(stranger.id, student.id, "2026-05-10", prisma)).rejects.toBeInstanceOf(AuthorizationError);
+  });
+});
+
+describe("لوحة الجلسة للحلقة (م٦) — كل الطلاب بحالهم وخطوتهم التالية", () => {
+  it("طالبٌ لم يبدأ ← خطوته «حدّد مستواه»؛ وبعد الحفظ ← «سمِّع الترسيخ»", async () => {
+    const { circle, teacher, student } = await maraqiScaffold();
+
+    const before = await getCircleSessionBoard(teacher.id, circle.id, "2026-05-10", prisma);
+    expect(before.circle?.id).toBe(circle.id);
+    expect(before.students).toHaveLength(1);
+    expect(before.students[0].studentId).toBe(student.id);
+    expect(before.students[0].started).toBe(false);
+    expect(before.students[0].nextStep).toContain("حدّد مستواه");
+
+    await recordHifz(hifzArgs(student.id, teacher.id), prisma); // 2026-05-10
+    const after = await getCircleSessionBoard(teacher.id, circle.id, "2026-05-10", prisma);
+    expect(after.students[0].todayHifzDone).toBe(true);
+    expect(after.students[0].nextStep).toBe("سمِّع الترسيخ");
+  });
+
+  it("«حفظ أمس» يعكس آخر مقطعٍ قبل اليوم", async () => {
+    const { circle, teacher, student } = await maraqiScaffold();
+    await recordHifz(hifzArgs(student.id, teacher.id), prisma); // 2026-05-10
+    const board = await getCircleSessionBoard(teacher.id, circle.id, "2026-05-11", prisma);
+    expect(board.students[0].yesterday).not.toBeNull();
+    expect(board.students[0].yesterday?.fromSurah).toBe(90);
+    expect(board.students[0].todayHifzDone).toBe(false); // لا حفظ في 05-11 بعد
   });
 });

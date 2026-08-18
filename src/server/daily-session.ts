@@ -546,3 +546,97 @@ export async function listCircleStudents(
     .map((r) => ({ id: r.student.id, name: r.student.user.nameAsInId }))
     .sort((a, b) => a.name.localeCompare(b.name, "ar"));
 }
+
+// ═══════════════ لوحة الجلسة للحلقة كاملةً (م٦ — التشغيل الذكيّ) ═══════════════
+// كل طلاب الحلقة معروضون فوراً بلا اختيار: كلٌّ بحاله (حفظ أمس · المطلوب اليوم ·
+// حزبه · مرحلته)، والنظام يقترح الخطوة التالية لكلٍّ. عرضٌ للقراءة، لا يغيّر شيئًا.
+
+export interface BoardStudent {
+  studentId: string;
+  name: string;
+  program: ProgramKey;
+  started: boolean;
+  stageLabel: string | null;
+  hizb: number | null;
+  /** حفظ أمس: آخر مقطعٍ حُفظ قبل اليوم (نطاقه وهل أُتقن). */
+  yesterday: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number; mastered: boolean } | null;
+  todayHifzDone: boolean;
+  tarseekhDone: boolean | null;
+  /** المطلوب اليوم (مراقي): عدد مقاطع الترسيخ وخُمس المراجعة. */
+  required: { tarseekhCount: number; khums: number } | null;
+  weeklyPercent: number | null;
+  weeklyComplete: boolean;
+  mustRepeat: boolean;
+  /** الخطوة التالية التي يقترحها النظام لهذا الطالب. */
+  nextStep: string;
+}
+
+export interface CircleSessionBoard {
+  circle: { id: string; nameAr: string } | null;
+  students: BoardStudent[];
+}
+
+/** آخر جلسة حفظٍ قبل اليوم (لعرض «حفظ أمس»). */
+async function lastHifzBefore(
+  studentId: string, date: Date, db: PrismaClient,
+): Promise<BoardStudent["yesterday"]> {
+  const r = await db.dailySession.findFirst({
+    where: { studentId, hifzFromSurah: { not: null }, date: { lt: date } },
+    orderBy: { date: "desc" },
+    select: { hifzFromSurah: true, hifzFromAyah: true, hifzToSurah: true, hifzToAyah: true, hifzMastered: true },
+  });
+  if (!r || r.hifzFromSurah == null) return null;
+  return {
+    fromSurah: r.hifzFromSurah, fromAyah: r.hifzFromAyah ?? 1,
+    toSurah: r.hifzToSurah ?? r.hifzFromSurah, toAyah: r.hifzToAyah ?? (r.hifzFromAyah ?? 1),
+    mastered: r.hifzMastered === true,
+  };
+}
+
+/** الخطوة التالية المقترحة لطالب — أولويّةٌ واحدةٌ واضحة (قاعدة: النظام يوجّه). */
+function suggestNextStep(v: SessionView): string {
+  if (v.program !== ProgramKey.MARAQI) return "في القاعدة المدنية — تابِع سلّمه";
+  if (!v.position.started) return "لم يبدأ — حدّد مستواه باختبار المقطع";
+  if (v.hifzGate?.mustRepeat) return "يعيد مقطع أمس (لم يُتقن) — لا حفظ جديد";
+  const memorizedToday = v.session?.hifzFromSurah != null;
+  if (!memorizedToday) return "حفظٌ جديد اليوم";
+  if (v.session?.tarseekhDone !== true) return "سمِّع الترسيخ";
+  if (v.weeklyReview && !v.weeklyReview.complete) return "أكمِل خُمس المراجعة";
+  return "اكتملت جلسته اليوم ✓";
+}
+
+/**
+ * لوحة الجلسة لحلقةٍ كاملة في يومٍ: كل طلابها، كلٌّ بحاله وخطوته التالية.
+ * يعيد استعمال getSessionView (بحُرّاسه) لكل طالب، ويضيف «حفظ أمس».
+ */
+export async function getCircleSessionBoard(
+  actorId: string, circleId: string, date: string | Date, db: PrismaClient = prisma,
+): Promise<CircleSessionBoard> {
+  const circle = await db.circle.findUnique({ where: { id: circleId }, select: { id: true, nameAr: true } });
+  const roster = await listCircleStudents(circleId, db);
+  const d = toDateOnly(date);
+  const students: BoardStudent[] = [];
+  for (const s of roster) {
+    const v = await getSessionView(actorId, s.id, date, db);
+    const yesterday = await lastHifzBefore(s.id, d, db);
+    students.push({
+      studentId: s.id,
+      name: s.name,
+      program: v.program,
+      started: v.position.started,
+      stageLabel: v.position.current?.label ?? null,
+      hizb: v.position.current?.hizb ?? null,
+      yesterday,
+      todayHifzDone: v.session?.hifzFromSurah != null,
+      tarseekhDone: v.session?.tarseekhDone ?? null,
+      required: v.consolidation
+        ? { tarseekhCount: v.consolidation.tarseekh.segments.length, khums: v.consolidation.review.khums }
+        : null,
+      weeklyPercent: v.weeklyReview?.percent ?? null,
+      weeklyComplete: v.weeklyReview?.complete ?? false,
+      mustRepeat: v.hifzGate?.mustRepeat ?? false,
+      nextStep: suggestNextStep(v),
+    });
+  }
+  return { circle, students };
+}
