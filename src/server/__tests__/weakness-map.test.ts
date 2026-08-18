@@ -1,7 +1,8 @@
 import { ProgramKey, Role, StageKind, StudentState, HasadErrorType, HasadResult } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import { tallyAyahErrors, weaknessLevel, rangeWeakness, getStudentWeaknessMap, tallyAyahStudentCounts, getCircleWeaknessMap, assertCircleAccess } from "../weakness-map";
+import { tallyAyahErrors, weaknessLevel, rangeWeakness, getStudentWeaknessMap, tallyAyahStudentCounts, getCircleWeaknessMap, assertCircleAccess, orderSegmentsByWeakness } from "../weakness-map";
+import { getConsolidation } from "../tarseekh";
 import { assertTeachesStudent } from "../daily-session";
 import { AuthorizationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
@@ -115,5 +116,54 @@ describe("getCircleWeaknessMap + assertCircleAccess", () => {
     await expect(assertCircleAccess(stranger.id, circle.id, prisma)).rejects.toBeInstanceOf(AuthorizationError);
     const mgr = await createUser(prisma, { roles: [Role.CIRCLE_MANAGER] });
     await expect(assertCircleAccess(mgr.id, circle.id, prisma)).resolves.toBeUndefined();
+  });
+});
+
+// ── الفكرة ٣: ترتيب المراجعة بالأضعف أوّلاً (المقدار لا يُمسّ) ──
+describe("orderSegmentsByWeakness — ترتيبٌ فقط، المجموعة والمقدار ثابتان", () => {
+  it("الأضعف أوّلاً، والتساوي يحفظ الترتيب الأصليّ، والعناصر لا تتغيّر", () => {
+    const segs = [
+      { id: "a", fromSurah: 100, fromAyah: 1, toSurah: 100, toAyah: 5 },
+      { id: "b", fromSurah: 101, fromAyah: 1, toSurah: 101, toAyah: 5 },
+      { id: "c", fromSurah: 102, fromAyah: 1, toSurah: 102, toAyah: 5 },
+    ];
+    const tally = tallyAyahErrors([
+      { pageNo: 1, surah: 101, ayah: 2 }, { pageNo: 1, surah: 101, ayah: 3 }, // b: خطآن
+      { pageNo: 1, surah: 102, ayah: 1 }, // c: خطأ
+    ]);
+    const ordered = orderSegmentsByWeakness(segs, tally);
+    expect(ordered.map((s) => s.id)).toEqual(["b", "c", "a"]);
+    expect(ordered).toHaveLength(segs.length); // المقدار (العدد) لم يتغيّر
+    expect(new Set(ordered.map((s) => s.id))).toEqual(new Set(["a", "b", "c"])); // المجموعة نفسها
+  });
+});
+
+describe("getConsolidation — المراجعة تُرتَّب بالأضعف، والخُمس ثابت (الحكم ٤)", () => {
+  it("الراسخ الذي فيه أخطاءٌ سابقة يتقدّم، وstockCount/khums كما هما", async () => {
+    await seedMushafFaces(prisma);
+    const { student, circle, sub, reciter } = await harvestScaffold();
+    // ١٢ جلسة حفظٍ متقنة (سور ١٠٠..١١١) ⟵ الراسخ = الأقدم اثنتان (١٠٠ ثمّ ١٠١).
+    for (let i = 0; i < 12; i++) {
+      await prisma.dailySession.create({
+        data: { studentId: student.id, circleId: circle.id, date: new Date(Date.UTC(2026, 4, i + 1)),
+          hifzFromSurah: 100 + i, hifzFromAyah: 1, hifzToSurah: 100 + i, hifzToAyah: 5, hifzAttempts: 1, hifzMastered: true },
+      });
+    }
+    // بلا أخطاء: المراجعة بالأقدم (سورة ١٠٠ أوّلاً).
+    const before = await getConsolidation(student.id, prisma);
+    expect(before.review.stockCount).toBe(2);
+    expect(before.review.khums).toBe(1);
+    expect(before.review.segments[0].fromSurah).toBe(100);
+
+    // خطآن في الراسخ الثاني (سورة ١٠١) ⟵ يتقدّم.
+    const h = await prisma.hasad.create({ data: { studentId: student.id, stageId: sub.id, reciterId: reciter.id, fromSurah: 101, fromAyah: 1, toSurah: 101, toAyah: 5, result: HasadResult.PASS } });
+    await prisma.hasadPageError.create({ data: { hasadId: h.id, pageNo: 1, errorType: HasadErrorType.WORD, surah: 101, ayah: 2 } });
+    await prisma.hasadPageError.create({ data: { hasadId: h.id, pageNo: 1, errorType: HasadErrorType.WORD, surah: 101, ayah: 3 } });
+
+    const after = await getConsolidation(student.id, prisma);
+    expect(after.review.segments[0].fromSurah).toBe(101); // الأضعف أوّلاً — الترتيب تبدّل
+    expect(after.review.stockCount).toBe(2);              // المقدار لم يتغيّر
+    expect(after.review.khums).toBe(1);                   // الخُمس لم يُمسّ
+    expect(after.review.segments).toHaveLength(before.review.segments.length); // المجموعة نفسها
   });
 });
