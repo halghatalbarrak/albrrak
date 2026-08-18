@@ -620,6 +620,7 @@ model Application {
   schoolStageId     String?
   schoolStage       SchoolStage? @relation(fields: [schoolStageId], references: [id])
   guardianPhone     String
+  guardianEmail     String?             // اختياريّ (الفكرة ٩) — نجمعه من أول مسجَّل للرسالة الأسبوعية لاحقًا
   guardianGender    Gender
   // صفة الولي (أب/أخ/…) — قيمة من GuardianRelation. إلزامية نظيفةً (NOT NULL):
   // نموذج القيد هو نقطة الدخول، فالإلزام يُثبَّت في القاعدة لا في التحقّق وحده.
@@ -643,6 +644,24 @@ model Application {
   createdAt         DateTime @default(now())
 
   @@index([status, createdAt])
+}
+
+// ═══════════════ رسائل وليّ الأمر (الفكرة ٩) ═══════════════
+// صندوقٌ داخل المنصّة + قناةٌ بريديّة لاحقاً (emailedAt). بلا FK (نمط الترحيلات المتأخّرة
+// الآمن — تُطبَّق معجميًّا). النوع نصّي: WEEKLY (تقرير أسبوعيّ) | ABSENCE_UNEXCUSED (تنبيه غياب).
+// منع التكرار بـ(الطالب+النوع+refDate): بداية الأسبوع للأسبوعيّة، ويوم الغياب للتنبيه.
+model GuardianMessage {
+  id        String   @id @default(cuid())
+  studentId String
+  kind      String
+  refDate   DateTime @db.Date
+  subject   String
+  body      String
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+  emailedAt DateTime?              // القناة البريديّة لاحقاً — تُملأ عند الإرسال (بلا إعادة بناء)
+  @@unique([studentId, kind, refDate])
+  @@index([studentId])
 }
 
 // ═══════════════ الأحداث (م١) ═══════════════

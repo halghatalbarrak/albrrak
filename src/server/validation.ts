@@ -57,6 +57,12 @@ export function parseApplicationInput(
   const studentPhone = optStr(b.studentPhone);
   const emergencyPhone = str(b.emergencyPhone, "emergencyPhone");
 
+  // بريد الولي — اختياريّ (الفكرة ٩)، وإن وُجد فبصيغةٍ صالحة.
+  const guardianEmail = optStr(b.guardianEmail);
+  if (guardianEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(guardianEmail)) {
+    throw new ValidationError("بريد وليّ الأمر غير صالح.");
+  }
+
   // جوال الطالب: اختياري لمن دون ١٣، إلزامي لمن بلغها (فهو شرط الحساب — §٤/م٤).
   if (age >= 13 && !studentPhone) {
     throw new ValidationError(
@@ -86,6 +92,7 @@ export function parseApplicationInput(
     gender: gender(b.gender, "gender"),
     schoolStageId: optStr(b.schoolStageId),
     guardianPhone,
+    guardianEmail,
     guardianGender: gender(b.guardianGender, "guardianGender"),
     guardianRelationId: str(b.guardianRelationId, "guardianRelationId"),
     studentPhone,

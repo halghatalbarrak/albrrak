@@ -24,7 +24,7 @@ describe("navSections — أقسام الشريط الجانبيّ محكومة�
 
   it("الطالب/الوليّ ⟵ قسم التعلّم", () => {
     expect(navSections(["STUDENT"]).map((x) => x.label)).toEqual(["التعلّم"]);
-    expect(navSections(["STUDENT"])[0].items.map((i) => i.href)).toEqual(["/me", "/programs/civil-base", "/programs/maraqi"]);
+    expect(navSections(["STUDENT"])[0].items.map((i) => i.href)).toEqual(["/me", "/messages", "/programs/civil-base", "/programs/maraqi"]);
     expect(navSections(["GUARDIAN"])).toEqual(navSections(["STUDENT"]));
   });
 

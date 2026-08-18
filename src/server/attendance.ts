@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { assertCapability } from "./authz";
 import { decide } from "./approval";
 import { emitEvent } from "./events";
+import { notifyAbsence } from "./guardian-messages";
 import { AuthorizationError, ValidationError } from "./errors";
 
 // ═══════════════ الحضور والقياس (م٢ — DESIGN §١٠ و§١١) ═══════════════
@@ -299,6 +300,13 @@ export async function recordSession(
       payload: { date: dk, total: roster.size, absent },
     });
   });
+
+  // تنبيه وليّ الأمر بالغياب غير المبرَّر فقط (الفكرة ٩) — بعد الرصد، بلا تعطيلٍ إن فشل.
+  for (const m of marks.values()) {
+    if (m.status === AttendanceStatus.ABSENT_UNEXCUSED) {
+      try { await notifyAbsence(m.studentId, dk, db); } catch { /* التنبيه إضافةٌ لا تُعطّل الرصد */ }
+    }
+  }
 
   return { total: roster.size, present: roster.size - absent, absent };
 }
