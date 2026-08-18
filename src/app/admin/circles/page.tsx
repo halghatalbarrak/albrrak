@@ -1,9 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Button, Select, Field, inputStyle, EmptyState, Skeleton, Table, ui, sp, type Column } from "@/components/ui";
+
+const linkBtn: React.CSSProperties = { fontSize: ui.text.xs, fontWeight: 600, color: ui.color.primary, textDecoration: "none", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, padding: `${sp(1.5)} ${sp(2.5)}` };
 
 interface Circle {
   id: string;
@@ -62,6 +65,7 @@ export default function AdminCirclesPage() {
     { key: "slot", header: "الوقت", cell: (c) => SLOT_AR[c.timeSlot] ?? c.timeSlot },
     { key: "gender", header: "الجنس", cell: (c) => (c.gender === "MALE" ? "بنون" : "بنات") },
     { key: "location", header: "المكان", cell: (c) => c.location ?? "—" },
+    { key: "map", header: "الخريطة", cell: (c) => <div style={{ display: "flex", justifyContent: "flex-end" }}><Link href={`/admin/circles/${c.id}/weakness`} style={linkBtn}>خريطة الضعف</Link></div> },
   ];
 
   return (

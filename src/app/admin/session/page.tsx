@@ -106,7 +106,12 @@ export default function DailySessionPage() {
           ))}
         </div>
       )}
-      {current && <p style={{ color: ui.color.muted, margin: `0 0 ${sp(4)}`, fontSize: ui.text.base }}>{current.nameAr} — طلابها اليوم، كلٌّ بحاله وخطوته التالية.</p>}
+      {current && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(3), flexWrap: "wrap", margin: `0 0 ${sp(4)}` }}>
+          <p style={{ color: ui.color.muted, margin: 0, fontSize: ui.text.base }}>{current.nameAr} — طلابها اليوم، كلٌّ بحاله وخطوته التالية.</p>
+          <a href={`/admin/circles/${circleId}/weakness`} style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.primary, textDecoration: "none", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, padding: `${sp(1.5)} ${sp(3)}` }}>خريطة ضعف الحلقة</a>
+        </div>
+      )}
 
       {status === "error" && <p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" onClick={() => void loadBoard()}>إعادة</Button></p>}
       {status === "loading" && (

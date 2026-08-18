@@ -1,7 +1,7 @@
 import { ProgramKey, Role, StageKind, StudentState, HasadErrorType, HasadResult } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import { tallyAyahErrors, weaknessLevel, rangeWeakness, getStudentWeaknessMap } from "../weakness-map";
+import { tallyAyahErrors, weaknessLevel, rangeWeakness, getStudentWeaknessMap, tallyAyahStudentCounts, getCircleWeaknessMap, assertCircleAccess } from "../weakness-map";
 import { assertTeachesStudent } from "../daily-session";
 import { AuthorizationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
@@ -73,5 +73,47 @@ describe("getStudentWeaknessMap — التاريخ الكامل من أخطاء 
     const { student } = await harvestScaffold();
     const stranger = await createUser(prisma, { roles: [Role.TEACHER] });
     await expect(assertTeachesStudent(stranger.id, student.id, prisma)).rejects.toBeInstanceOf(AuthorizationError);
+  });
+});
+
+// ── الفكرة ٢: خريطة الحلقة (عدد الطلاب المتعثّرين لكل آية) ──
+describe("tallyAyahStudentCounts — عدد الطلاب المتمايزين لكل آية", () => {
+  it("طالبان في الآية نفسها ⟵ ٢؛ وطالبٌ بخطأين في آية ⟵ ١ (distinct)", () => {
+    const t = tallyAyahStudentCounts([
+      { studentId: "a", pageNo: 604, surah: 114, ayah: 1 },
+      { studentId: "b", pageNo: 604, surah: 114, ayah: 1 },
+      { studentId: "a", pageNo: 604, surah: 114, ayah: 1 }, // مكرّرٌ لنفس الطالب — لا يُضاعِف
+      { studentId: "a", pageNo: 604, surah: 113, ayah: 5 },
+    ]);
+    expect(t.find((x) => x.surah === 114)?.count).toBe(2);
+    expect(t.find((x) => x.surah === 113)?.count).toBe(1);
+  });
+});
+
+describe("getCircleWeaknessMap + assertCircleAccess", () => {
+  it("يعدّ الطلاب المتعثّرين في الآية نفسها عبر الحلقة", async () => {
+    await seedMushafFaces(prisma);
+    const { sub, reciter, student, circle } = await harvestScaffold();
+    // طالبٌ ثانٍ في الحلقة نفسها، يتعثّر في الآية نفسها (114:1).
+    const { student: s2 } = await createStudent(prisma);
+    await prisma.enrollment.create({ data: { studentId: s2.id, circleId: circle.id } });
+    await prisma.student.update({ where: { id: s2.id }, data: { state: StudentState.IN_MARAQI } });
+    for (const st of [student, s2]) {
+      const h = await prisma.hasad.create({ data: { studentId: st.id, stageId: sub.id, reciterId: reciter.id, fromSurah: 114, fromAyah: 1, toSurah: 114, toAyah: 6, result: HasadResult.PASS } });
+      await prisma.hasadPageError.create({ data: { hasadId: h.id, pageNo: 604, errorType: HasadErrorType.WORD, surah: 114, ayah: 1 } });
+    }
+    const map = await getCircleWeaknessMap(circle.id, prisma);
+    expect(map.studentCount).toBe(2);
+    const a = map.weakestAyahs.find((x) => x.surah === 114 && x.ayah === 1);
+    expect(a?.count).toBe(2); // طالبان تعثّرا
+    expect(a?.level).toBe(2);
+  });
+
+  it("الحارس: معلّمٌ لا يُدرّس الحلقة ← يُرفض؛ والمدير يمرّ", async () => {
+    const { circle } = await harvestScaffold();
+    const stranger = await createUser(prisma, { roles: [Role.TEACHER] });
+    await expect(assertCircleAccess(stranger.id, circle.id, prisma)).rejects.toBeInstanceOf(AuthorizationError);
+    const mgr = await createUser(prisma, { roles: [Role.CIRCLE_MANAGER] });
+    await expect(assertCircleAccess(mgr.id, circle.id, prisma)).resolves.toBeUndefined();
   });
 });
