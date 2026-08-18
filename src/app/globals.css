@@ -46,3 +46,26 @@
 
 /* نبضةُ التحميل (Skeleton) */
 @keyframes albrrak-shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
+
+/* جدولٌ متجاوب: أعمدةٌ على الكمبيوتر، بطاقاتٌ على الجوّال (المرحلة ٧) */
+.dtable-wrap { overflow-x: auto; }
+@media (max-width:820px) {
+  .dtable-wrap { overflow-x: visible; border: none; background: transparent; }
+  .dtable thead { display: none; }
+  .dtable, .dtable tbody, .dtable tr, .dtable td { display: block; width: 100%; }
+  .dtable tr {
+    border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+    background: var(--color-surface); box-shadow: var(--shadow-card);
+    padding: 4px 0; margin-bottom: 12px;
+  }
+  .dtable td {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    border: none !important; padding: 6px 16px !important; text-align: end;
+  }
+  .dtable td::before {
+    content: attr(data-label); font-size: 14px; font-weight: 600;
+    color: var(--color-muted); text-align: start; flex-shrink: 0;
+  }
+  /* خليّةٌ بلا عنوان (إجراءات) تمتدّ كاملةً */
+  .dtable td[data-label=""]::before { content: none; }
+}

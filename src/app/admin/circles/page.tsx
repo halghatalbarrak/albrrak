@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Card, Button, Select, Field, inputStyle, EmptyState, Skeleton, ui, sp } from "@/components/ui";
+import { AppShell, Card, Button, Select, Field, inputStyle, EmptyState, Skeleton, Table, ui, sp, type Column } from "@/components/ui";
 
 interface Circle {
   id: string;
@@ -14,16 +14,10 @@ interface Circle {
   programKey: string;
   programNameAr: string;
 }
-interface Program {
-  id: string;
-  key: string;
-  nameAr: string;
-}
+interface Program { id: string; key: string; nameAr: string }
 
 async function token(): Promise<string | null> {
-  const {
-    data: { session },
-  } = await supabaseBrowser().auth.getSession();
+  const { data: { session } } = await supabaseBrowser().auth.getSession();
   return session?.access_token ?? null;
 }
 
@@ -37,27 +31,16 @@ export default function AdminCirclesPage() {
 
   const load = useCallback(async () => {
     const t = await token();
-    if (!t) {
-      window.location.href = "/login";
-      return;
-    }
+    if (!t) { window.location.href = "/login"; return; }
     const res = await fetch("/api/admin/circles", { headers: { authorization: `Bearer ${t}` } });
-    if (res.status === 403) {
-      setErr("لا صلاحية — هذه الشاشة للمدير.");
-      return;
-    }
-    if (!res.ok) {
-      setErr("تعذّر جلب الحلقات.");
-      return;
-    }
+    if (res.status === 403) { setErr("لا صلاحية — هذه الشاشة للمدير."); return; }
+    if (!res.ok) { setErr("تعذّر جلب الحلقات."); return; }
     const data = (await res.json().catch(() => ({}))) as { circles?: Circle[]; programs?: Program[] };
     setCircles(Array.isArray(data.circles) ? data.circles : []);
     setPrograms(Array.isArray(data.programs) ? data.programs : []);
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -66,19 +49,20 @@ export default function AdminCirclesPage() {
     const t = await token();
     if (!t) return;
     const res = await fetch("/api/admin/circles", {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
       body: JSON.stringify(body),
     });
-    if (res.status === 201) {
-      form.reset();
-      setErr(null);
-      void load();
-    } else {
-      const j = (await res.json().catch(() => ({}))) as { error?: string };
-      setErr(j.error ?? "تعذّر إنشاء الحلقة.");
-    }
+    if (res.status === 201) { form.reset(); setErr(null); void load(); }
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّر إنشاء الحلقة."); }
   }
+
+  const cols: Column<Circle>[] = [
+    { key: "name", header: "الاسم", cell: (c) => <strong>{c.nameAr}</strong> },
+    { key: "program", header: "البرنامج", cell: (c) => c.programNameAr },
+    { key: "slot", header: "الوقت", cell: (c) => SLOT_AR[c.timeSlot] ?? c.timeSlot },
+    { key: "gender", header: "الجنس", cell: (c) => (c.gender === "MALE" ? "بنون" : "بنات") },
+    { key: "location", header: "المكان", cell: (c) => c.location ?? "—" },
+  ];
 
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/circles"
@@ -101,9 +85,7 @@ export default function AdminCirclesPage() {
               <Field label="البرنامج">
                 <Select name="programId" required defaultValue="">
                   <option value="" disabled>اختر…</option>
-                  {programs.map((p) => (
-                    <option key={p.id} value={p.id}>{p.nameAr}</option>
-                  ))}
+                  {programs.map((p) => <option key={p.id} value={p.id}>{p.nameAr}</option>)}
                 </Select>
               </Field>
               <Field label="الوقت">
@@ -124,16 +106,8 @@ export default function AdminCirclesPage() {
             </form>
           </Card>
 
-          {circles.length === 0 && <EmptyState title="لا حلقات بعد" description="أنشئ الأولى من النموذج أعلاه." />}
-          {circles.map((c) => (
-            <div key={c.id} style={{ borderBottom: `1px solid ${ui.color.border}`, padding: `${sp(2)} 0` }}>
-              <strong>{c.nameAr}</strong>
-              <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}>
-                {` — ${c.programNameAr} • ${SLOT_AR[c.timeSlot] ?? c.timeSlot} • ${c.gender === "MALE" ? "بنون" : "بنات"}`}
-                {c.location ? ` • ${c.location}` : ""}
-              </span>
-            </div>
-          ))}
+          {circles.length === 0 ? <EmptyState title="لا حلقات بعد" description="أنشئ الأولى من النموذج أعلاه." />
+            : <Table columns={cols} rows={circles} />}
         </>
       )}
     </AppShell>

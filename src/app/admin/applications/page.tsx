@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Card, Button, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
+import { AppShell, Card, Button, Badge, EmptyState, Skeleton, Table, ui, sp, type Column } from "@/components/ui";
 
 interface Row {
   id: string;
@@ -101,6 +101,29 @@ export default function AdminApplicationsPage() {
 
   const canReveal = roles.includes("REGISTRAR") || roles.includes("SUPER_ADMIN");
 
+  // النظام يقترح: أقدم طلبٍ معلّق (بالأيام) ليُبدأ به.
+  const oldestDays = rows && rows.length
+    ? Math.floor((Date.now() - Date.parse(rows[0].createdAt)) / 86_400_000)
+    : null;
+
+  const cols: Column<Row>[] = [
+    { key: "name", header: "الاسم", cell: (r) => <strong>{r.name}</strong> },
+    { key: "status", header: "الحالة", cell: (r) => (r.status === "WAITLISTED" ? <Badge tone="bronze">قائمة الانتظار</Badge> : <Badge tone="neutral">جديد</Badge>) },
+    { key: "info", header: "البيانات", cell: (r) => `${r.age} سنة · ${r.gender === "MALE" ? "ذكر" : "أنثى"} · ${r.nationality}` },
+    { key: "guardian", header: "ولي الأمر", cell: (r) => r.guardianPhone },
+    { key: "hifz", header: "الحفظ", cell: (r) => (r.priorHifzJuz != null ? `${r.priorHifzJuz} جزء` : "—") },
+    {
+      key: "actions", header: "إجراءات", cell: (r) => (
+        <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <Button size="sm" onClick={() => decide(r.id, "accept")}>قبول</Button>
+          <Button variant="danger" size="sm" onClick={() => decide(r.id, "reject")}>رفض</Button>
+          <Button variant="ghost" size="sm" onClick={() => decide(r.id, "waitlist")}>انتظار</Button>
+          {canReveal && <Button variant="ghost" size="sm" onClick={() => revealId(r.id)}>{revealed[r.id] ? `الهوية: ${revealed[r.id]}` : "كشف الهوية"}</Button>}
+        </div>
+      ),
+    },
+  ];
+
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/applications"
       title={`طلبات القيد${rows ? ` (${rows.length})` : ""}`}
@@ -109,35 +132,22 @@ export default function AdminApplicationsPage() {
       {err && <p style={{ color: ui.color.danger }}>{err}</p>}
       {!err && !rows && (
         <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
-          {[0, 1, 2].map((i) => <Skeleton key={i} height={90} />)}
+          {[0, 1, 2].map((i) => <Skeleton key={i} height={44} />)}
         </div>
       )}
       {rows && rows.length === 0 && <EmptyState title="لا طلبات معلّقة" description="ستظهر هنا طلبات القيد الجديدة عند ورودها." />}
 
-      {rows && rows.map((r) => (
-        <Card key={r.id} style={{ marginBottom: sp(3) }}>
-          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", alignItems: "center" }}>
-            <strong style={{ fontSize: ui.text.base }}>{r.name}</strong>
-            {r.status === "WAITLISTED" ? <Badge tone="bronze">⏳ قائمة الانتظار</Badge> : <Badge tone="neutral">طلب جديد</Badge>}
-          </div>
-          <div style={{ fontSize: ui.text.xs, color: ui.color.muted, marginTop: 4 }}>
-            العمر {r.age} • {r.gender === "MALE" ? "ذكر" : "أنثى"} • {r.nationality}
-            {r.schoolStage ? ` • ${r.schoolStage}` : ""} • ولي الأمر {r.guardianPhone}
-            {r.studentPhone ? ` • جوال الطالب ${r.studentPhone}` : ""}
-            {r.priorHifzJuz != null ? ` • حفظ ${r.priorHifzJuz} جزء` : ""}
-          </div>
-          <div style={{ marginTop: sp(2), display: "flex", gap: sp(2), flexWrap: "wrap" }}>
-            <Button size="sm" onClick={() => decide(r.id, "accept")}>قبول</Button>
-            <Button variant="danger" size="sm" onClick={() => decide(r.id, "reject")}>رفض بسبب</Button>
-            <Button variant="ghost" size="sm" onClick={() => decide(r.id, "waitlist")}>قائمة الانتظار</Button>
-            {canReveal && (
-              <Button variant="ghost" size="sm" onClick={() => revealId(r.id)}>
-                {revealed[r.id] ? `الهوية: ${revealed[r.id]}` : "كشف رقم الهوية"}
-              </Button>
-            )}
-          </div>
-        </Card>
-      ))}
+      {rows && rows.length > 0 && (
+        <>
+          {oldestDays != null && oldestDays >= 1 && (
+            <Card style={{ marginBottom: sp(4), borderInlineStart: `4px solid ${ui.color.bronze}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(3), flexWrap: "wrap" }}>
+              <span>أقدم طلبٍ معلّق منذ <strong>{oldestDays}</strong> يومًا — ابدأ به.</span>
+              <Badge tone="bronze">{rows.length} بانتظار المراجعة</Badge>
+            </Card>
+          )}
+          <Table columns={cols} rows={rows} />
+        </>
+      )}
     </AppShell>
   );
 }
