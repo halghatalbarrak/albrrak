@@ -13,4 +13,5 @@ export { Skeleton } from "./Skeleton";
 export { Modal } from "./Modal";
 export { AppShell, type AppShellProps, type Crumb } from "./AppShell";
 export { FaceHeatmap } from "./FaceHeatmap";
+export { CommandPalette } from "./CommandPalette";
 export { navSections, type NavItem, type NavSection } from "./nav";
