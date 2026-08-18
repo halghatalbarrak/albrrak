@@ -44,6 +44,21 @@ export function rangeWeakness(
   return tally.filter((t) => ge(t.surah, t.ayah) && le(t.surah, t.ayah)).reduce((sum, t) => sum + t.count, 0);
 }
 
+/**
+ * الفكرة ٣: **ترتيبٌ فقط** — يبدأ بالمقاطع التي فيها أخطاءٌ سابقة (الأضعف أوّلاً).
+ * **المقدار والمجموعة لا يتغيّران** (نفس العناصر بعددها)، والترتيب عند التساوي يبقى كما كان.
+ * نقيّةٌ بلا قاعدة بيانات — تستهلك حصيلة الأخطاء (tallyAyahErrors).
+ */
+export function orderSegmentsByWeakness<T extends { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }>(
+  segments: T[],
+  tally: AyahTally[],
+): T[] {
+  return segments
+    .map((s, i) => ({ s, i, w: rangeWeakness(tally, { surah: s.fromSurah, ayah: s.fromAyah }, { surah: s.toSurah, ayah: s.toAyah }) }))
+    .sort((a, b) => (b.w - a.w) || (a.i - b.i)) // ثبات: التساوي يحفظ الترتيب الأصليّ
+    .map((x) => x.s);
+}
+
 // ── جلب الخريطة من القاعدة ──
 
 export interface WeaknessAyah { surah: number; ayah: number; count: number; level: 0 | 1 | 2 | 3 }
@@ -89,6 +104,15 @@ export async function getStudentWeaknessMap(studentId: string, db: PrismaClient 
     totalErrors: tally.reduce((sum, t) => sum + t.count, 0),
     weakestAyahs: tally.map((t) => ({ surah: t.surah, ayah: t.ayah, count: t.count, level: weaknessLevel(t.count) })),
   };
+}
+
+/** حصيلة أخطاء آيات الطالب من حصاده (للفكرة ٣: ترتيب المراجعة). قراءةٌ فقط. */
+export async function getStudentErrorTally(studentId: string, db: PrismaClient = prisma): Promise<AyahTally[]> {
+  const rows = await db.hasadPageError.findMany({
+    where: { hasad: { studentId }, surah: { not: null }, ayah: { not: null } },
+    select: { pageNo: true, surah: true, ayah: true },
+  });
+  return tallyAyahErrors(rows.map((r) => ({ pageNo: r.pageNo, surah: r.surah as number, ayah: r.ayah as number })));
 }
 
 /** خريطة المستخدم عن نفسه فقط — المعرّف من هويّته لا من المسار (لا يرى غيره). */

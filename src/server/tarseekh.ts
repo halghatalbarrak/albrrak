@@ -1,6 +1,7 @@
 import { type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { getStudentErrorTally, orderSegmentsByWeakness } from "./weakness-map";
 
 // ═══════════════ الترسيخ والمراجعة (MARAQI_RULES الأحكام ٢، ٤، ٩) ═══════════════
 //
@@ -75,12 +76,17 @@ export async function getConsolidation(
   const inTarseekh = segs.slice(cut); // آخر ١٠ (أو أقلّ)
   const rasikh = segs.slice(0, cut); // ما قبلها
 
+  // الفكرة ٣: **ترتيبٌ فقط** للمراجعة — الأضعف (ما فيه أخطاءٌ سابقة) أوّلاً. المقدار
+  // (الخُمس) والمجموعة (stockCount) لا يتغيّران — الحكم ٤ كما أقرّه محمد.
+  const tally = await getStudentErrorTally(studentId, db);
+  const orderedRasikh = orderSegmentsByWeakness(rasikh, tally);
+
   return {
     tarseekh: { windowSize: TARSEEKH_WINDOW, segments: inTarseekh },
     review: {
       stockCount: rasikh.length,
       khums: Math.ceil(rasikh.length / CIRCLE_DAYS_PER_WEEK),
-      segments: rasikh,
+      segments: orderedRasikh,
     },
   };
 }
