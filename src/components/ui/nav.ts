@@ -12,6 +12,9 @@ export interface NavSection { key: string; label: string; items: NavItem[] }
  * تُتاح للوصول — كي «لا تُترك صفحة». المعلّم يرى قسمَي التشغيل والحصاد.
  */
 export function navSections(roles: string[]): NavSection[] {
+  // دورٌ غير معروف (لم يصل بعد) ⟵ لا أقسام إطلاقاً — لا قائمةَ افتراضية (لئلّا يومض
+  // شريطُ الطالب ثمّ يُستبدَل بشريط الدور). كلُّ مستخدمٍ مُحمَّلٍ له دورٌ (STUDENT فأكثر).
+  if (roles.length === 0) return [];
   const has = (r: string) => roles.includes(r);
 
   if (has("CIRCLE_MANAGER") || has("SUPER_ADMIN")) {
