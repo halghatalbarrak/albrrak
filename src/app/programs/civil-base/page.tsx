@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { useMe } from "@/lib/useMe";
+import { AppShell, EmptyState, ui, sp } from "@/components/ui";
 
 // السلّم البياني للقاعدة المدنية (§٧٫٣): الوحدات الـ١٤ (تمهيد + ١٣ باباً) كدرجٍ صاعد.
 // كل باب: اسمه ووزنه ومحطته، وهدفه عند الفتح، وطريقة المؤلف للمعلم. حالات صريحة.
@@ -37,14 +39,15 @@ const STATE_AR: Record<string, string> = {
   COMPLETED: "مكتمل",
 };
 
-const box: React.CSSProperties = {
-  maxWidth: 820,
-  margin: "0 auto",
-  padding: "1.5rem",
-  fontFamily: "system-ui, sans-serif",
+const centered: React.CSSProperties = {
+  minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+  gap: sp(3), background: ui.color.bg, fontFamily: ui.font, color: ui.color.text,
 };
 
+const CRUMBS = [{ label: "الرئيسة", href: "/" }, { label: "التعلّم" }, { label: "السلّم البياني" }];
+
 export default function CivilBaseLadderPage() {
+  const { me } = useMe();
   const [view, setView] = useState<View | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -81,18 +84,18 @@ export default function CivilBaseLadderPage() {
     void load();
   }, [load]);
 
-  if (status === "loading") return <main dir="rtl" style={box}>جارٍ التحميل…</main>;
+  if (status === "loading") return <main dir="rtl" style={centered}>جارٍ التحميل…</main>;
   if (status === "unauth")
     return (
-      <main dir="rtl" style={box}>
+      <main dir="rtl" style={centered}>
         <p>تحتاج دخولًا لعرض السلّم.</p>
-        <a href="/login" style={{ color: "#1F5C3D" }}>تسجيل الدخول</a>
+        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>تسجيل الدخول</a>
       </main>
     );
   if (status === "error")
     return (
-      <main dir="rtl" style={box}>
-        <p style={{ color: "#b00020" }}>تعذّر تحميل السلّم.</p>
+      <main dir="rtl" style={centered}>
+        <p style={{ color: ui.color.danger }}>تعذّر تحميل السلّم.</p>
         <button type="button" onClick={() => void load()}>إعادة المحاولة</button>
       </main>
     );
@@ -100,17 +103,17 @@ export default function CivilBaseLadderPage() {
   const steps = view?.ladder?.steps ?? [];
   if (!view?.ladder || steps.length === 0)
     return (
-      <main dir="rtl" style={box}>
-        <h1 style={{ fontSize: "1.4rem" }}>القاعدة المدنية — السلّم البياني</h1>
-        <p style={{ opacity: 0.6 }}>لم تُبذَر الأبواب بعد.</p>
-      </main>
+      <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/programs/civil-base"
+        title="القاعدة المدنية — السلّم البياني" crumbs={CRUMBS}>
+        <EmptyState title="لم تُبذَر الأبواب بعد" />
+      </AppShell>
     );
 
   return (
-    <main dir="rtl" style={box}>
-      <h1 style={{ fontSize: "1.4rem" }}>القاعدة المدنية — السلّم البياني</h1>
+    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/programs/civil-base"
+      title="القاعدة المدنية — السلّم البياني" crumbs={CRUMBS}>
       {view.ladder.progress && (
-        <p style={{ opacity: 0.7 }}>
+        <p style={{ color: ui.color.muted }}>
           تقدّمك بالوزن: {view.ladder.progress.percent}٪ (
           {view.ladder.progress.completedWeight}/{view.ladder.progress.totalWeight})
         </p>
@@ -129,24 +132,26 @@ export default function CivilBaseLadderPage() {
                   width: `${Math.min(100, 30 + (s.cumulativeWeight / view.ladder!.totalWeight) * 70)}%`,
                   minHeight: 44,
                   textAlign: "start",
-                  padding: "0.5rem 0.9rem",
-                  border: "1px solid #1F5C3D",
-                  borderRadius: 8,
-                  background: s.state === "COMPLETED" ? "#DDEAE1" : "#FBFAF5",
+                  padding: `${sp(2)} ${sp(3)}`,
+                  border: `1px solid ${ui.color.primary}`,
+                  borderRadius: ui.radius.md,
+                  fontFamily: ui.font,
+                  color: ui.color.text,
+                  background: s.state === "COMPLETED" ? "#e8f0ea" : ui.color.surface,
                   cursor: "pointer",
                 }}
                 title={`ارتفاع تقريبي ${height}`}
               >
                 <strong>{s.ordinal === 0 ? "تمهيد" : `الباب ${s.ordinal}`}:</strong> {s.nameAr}
                 {"  "}
-                <span style={{ opacity: 0.6, fontSize: "0.85rem" }}>
+                <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}>
                   · وزن {s.weight}
                   {s.milestone ? ` · محطة ${s.milestone}` : " · خارج المحطات"}
                   {s.state ? ` · ${STATE_AR[s.state] ?? s.state}` : ""}
                 </span>
               </button>
               {isOpen && (
-                <div style={{ padding: "0.5rem 0.9rem", fontSize: "0.9rem" }}>
+                <div style={{ padding: `${sp(2)} ${sp(3)}`, fontSize: ui.text.xs }}>
                   {s.objective && (
                     <p style={{ margin: "0 0 6px" }}>
                       <strong>الهدف:</strong> {s.objective}
@@ -154,16 +159,16 @@ export default function CivilBaseLadderPage() {
                   )}
                   {s.teacherNotes && (
                     <details>
-                      <summary style={{ cursor: "pointer", color: "#1F5C3D" }}>
+                      <summary style={{ cursor: "pointer", color: ui.color.primary }}>
                         للمعلم — طريقة المؤلف
                       </summary>
-                      <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", opacity: 0.85 }}>
+                      <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", color: ui.color.muted }}>
                         {s.teacherNotes}
                       </pre>
                     </details>
                   )}
                   {!s.objective && !s.teacherNotes && (
-                    <p style={{ opacity: 0.5, margin: 0 }}>لا تفاصيل مبذورة لهذا الباب بعد.</p>
+                    <p style={{ color: ui.color.muted, margin: 0 }}>لا تفاصيل مبذورة لهذا الباب بعد.</p>
                   )}
                 </div>
               )}
@@ -171,6 +176,6 @@ export default function CivilBaseLadderPage() {
           );
         })}
       </ol>
-    </main>
+    </AppShell>
   );
 }

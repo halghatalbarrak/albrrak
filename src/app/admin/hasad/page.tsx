@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { gradeHizbHarvest } from "@/server/hasad-grading";
+import { useMe } from "@/lib/useMe";
+import { AppShell, Card, Button, EmptyState, ui, sp } from "@/components/ui";
 
 // شاشة الحصاد الكاملة (الحكم ٧ — نموذج محمد): صورة الوجه + تظليل الآية من المضلّعات،
 // زرّا «خطأ/تردّد»، عدّاد أخطاءٍ تراكميّ على الحزب، عدّاد تردّدٍ على الوجه (يُصفَّر بالانتقال)،
@@ -17,7 +19,7 @@ interface Polygon { surahNumber: number; ayahNumber: number; polygon: string }
 interface Err { pageNo: number; errorType: "WORD" | "LETTER" | "FORGOTTEN_AYAH"; surah: number; ayah: number }
 
 const RANK: Record<string, string> = { EXCELLENT: "تميّز", PASS: "اجتياز", FAIL: "رسوب" };
-const RANK_BG: Record<string, string> = { EXCELLENT: "#1F5C3D", PASS: "#8a6d1f", FAIL: "#b00020" };
+const RANK_BG: Record<string, string> = { EXCELLENT: ui.color.success, PASS: ui.color.bronzeHover, FAIL: ui.color.danger };
 const ETYPE: { v: Err["errorType"]; l: string }[] = [
   { v: "WORD", l: "كلمة" }, { v: "LETTER", l: "حرف" }, { v: "FORGOTTEN_AYAH", l: "نسيان آية" },
 ];
@@ -27,12 +29,13 @@ async function token(): Promise<string | null> {
   return session?.access_token ?? null;
 }
 
-const box: React.CSSProperties = { maxWidth: 520, margin: "0 auto", padding: "1rem", fontFamily: "system-ui, sans-serif" };
-const card: React.CSSProperties = { border: "1px solid #ccc", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: 10 };
-const chip: React.CSSProperties = { padding: "0.25rem 0.6rem", borderRadius: 999, fontSize: "0.85rem", color: "#fff", fontWeight: 700 };
-const btn: React.CSSProperties = { padding: "0.5rem 1rem", borderRadius: 8, border: "1px solid #1F5C3D", background: "#fff", cursor: "pointer" };
+const column: React.CSSProperties = { maxWidth: 520, margin: "0 auto" };
+const chip: React.CSSProperties = { padding: "0.25rem 0.6rem", borderRadius: ui.radius.full, fontSize: ui.text.xs, color: "#fff", fontWeight: 700 };
+const btn: React.CSSProperties = { padding: `${sp(2)} ${sp(3)}`, borderRadius: ui.radius.md, border: `1px solid ${ui.color.primary}`, background: ui.color.surface, fontFamily: ui.font, color: ui.color.text, cursor: "pointer" };
+const CRUMBS = [{ label: "الرئيسة", href: "/" }, { label: "الحصاد" }];
 
 export default function HasadPage() {
+  const { me } = useMe();
   const [ready, setReady] = useState<Ready[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
   const [pick, setPick] = useState<Ready | null>(null);
@@ -112,56 +115,66 @@ export default function HasadPage() {
     else { const j = await res.json() as { error?: string }; setMsg(j.error ?? "تعذّر تسجيل الحصاد."); }
   }
 
-  if (status === "loading") return <main dir="rtl" style={box}>…جارٍ التحميل</main>;
-  if (status === "unauth") return <main dir="rtl" style={box}><p>تحتاج دخولًا كمُسمِّع.</p><a href="/login" style={{ color: "#1F5C3D" }}>دخول</a></main>;
-  if (status === "error") return <main dir="rtl" style={box}><p style={{ color: "#b00020" }}>تعذّر التحميل. <button type="button" onClick={() => void load()}>إعادة</button></p></main>;
+  const Shell = ({ children }: { children: React.ReactNode }) => (
+    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/hasad" title="الحصاد" crumbs={CRUMBS}>
+      <div style={column}>{children}</div>
+    </AppShell>
+  );
+
+  if (status === "unauth")
+    return (
+      <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(3) }}>
+        <p>تحتاج دخولًا كمُسمِّع.</p>
+        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a>
+      </main>
+    );
+  if (status === "loading") return <Shell><p style={{ color: ui.color.muted }}>…جارٍ التحميل</p></Shell>;
+  if (status === "error") return <Shell><p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>إعادة</Button></p></Shell>;
 
   // نتيجة نهائية
   if (outcome) return (
-    <main dir="rtl" style={box}>
-      <h1 style={{ fontSize: "1.3rem" }}>نتيجة الحصاد</h1>
-      <div style={{ ...card, background: RANK_BG[outcome.rank], color: "#fff" }}>
+    <Shell>
+      <Card style={{ background: RANK_BG[outcome.rank], color: "#fff", marginBottom: sp(3) }}>
         المرتبة: <strong>{RANK[outcome.rank]}</strong> · مجموع الأخطاء: {outcome.totalErrors}
-      </div>
-      <button type="button" style={btn} onClick={reset}>حصادٌ جديد</button>
-    </main>
+      </Card>
+      <Button type="button" onClick={reset}>حصادٌ جديد</Button>
+    </Shell>
   );
 
   // اختيار الطالب
   if (!pick) return (
-    <main dir="rtl" style={box}>
-      <h1 style={{ fontSize: "1.3rem" }}>الحصاد</h1>
-      {msg && <p style={{ color: "#b00020" }}>{msg}</p>}
-      {ready.length === 0 && <p style={{ opacity: 0.6 }}>لا طلاب جاهزين للحصاد الآن.</p>}
+    <Shell>
+      {msg && <p style={{ color: ui.color.danger }}>{msg}</p>}
+      {ready.length === 0 && <EmptyState title="لا طلاب جاهزين للحصاد الآن" />}
       {ready.map((r) => (
-        <div key={`${r.studentId}-${r.stageId}`} style={card}>
-          <strong>{r.name}</strong> — {r.stageLabel}{r.hizb != null ? ` · الحزب ${r.hizb}` : ""}
-          <button type="button" style={{ ...btn, marginInlineStart: 12 }} onClick={() => void choose(r)}>ابدأ</button>
-        </div>
+        <Card key={`${r.studentId}-${r.stageId}`} style={{ marginBottom: sp(2), display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), flexWrap: "wrap" }}>
+          <span><strong>{r.name}</strong> — {r.stageLabel}{r.hizb != null ? ` · الحزب ${r.hizb}` : ""}</span>
+          <Button size="sm" type="button" onClick={() => void choose(r)}>ابدأ</Button>
+        </Card>
       ))}
-    </main>
+    </Shell>
   );
 
   // شاشة الحصاد
   const vb = face?.polygonViewBox ?? { width: 345, height: 550 };
   return (
-    <main dir="rtl" style={box}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
+    <Shell>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: sp(2), flexWrap: "wrap", gap: 6 }}>
         <div><strong>{pick.name}</strong> · {pick.stageLabel}{pick.hizb != null ? ` · حزب ${pick.hizb}` : ""}</div>
         <span style={{ ...chip, background: RANK_BG[grade.rank] }}>{RANK[grade.rank]}</span>
       </div>
-      <div style={{ display: "flex", gap: 10, fontSize: "0.9rem", marginBottom: 8, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: sp(2), fontSize: ui.text.xs, marginBottom: sp(2), flexWrap: "wrap" }}>
         <span>الوجه {faceIdx + 1} من {pages.length}{page != null ? ` (ص${page})` : ""}</span>
         <span>· أخطاء الحزب: <strong>{grade.totalErrors}</strong></span>
         <span>· تردّد الوجه: <strong>{faceHes}</strong>{faceHes >= 3 ? " (=خطأ)" : ""}</span>
       </div>
-      {msg && <p style={{ color: "#b00020" }}>{msg}</p>}
+      {msg && <p style={{ color: ui.color.danger }}>{msg}</p>}
 
       {/* صورة الوجه + طبقة تظليل الآيات */}
-      <div style={{ position: "relative", width: "min(92vw, 400px)", margin: "0 auto", border: "1px solid #999", background: "#fff" }}>
+      <div style={{ position: "relative", width: "min(92vw, 400px)", margin: "0 auto", border: `1px solid ${ui.color.border}`, background: ui.color.surface }}>
         {face
           ? <img src={face.imageUrl} alt={`وجه ${page}`} style={{ width: "100%", display: "block" }} />
-          : <div style={{ padding: "3rem", textAlign: "center", opacity: 0.5 }}>…تحميل الوجه</div>}
+          : <div style={{ padding: "3rem", textAlign: "center", color: ui.color.muted }}>…تحميل الوجه</div>}
         {face && (
           <svg viewBox={`0 0 ${vb.width} ${vb.height}`} preserveAspectRatio="none"
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
@@ -174,11 +187,11 @@ export default function HasadPage() {
 
       {/* قائمة آيات الوجه عند «خطأ» */}
       {picking && face && (
-        <div style={{ ...card, marginTop: 10 }}>
-          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+        <Card style={{ marginTop: sp(2) }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: sp(2) }}>
             {ETYPE.map((t) => (
               <button key={t.v} type="button" onClick={() => setEtype(t.v)}
-                style={{ ...btn, padding: "0.2rem 0.6rem", background: etype === t.v ? "#1F5C3D" : "#fff", color: etype === t.v ? "#fff" : "#000" }}>{t.l}</button>
+                style={{ ...btn, padding: "0.2rem 0.6rem", background: etype === t.v ? ui.color.primary : ui.color.surface, color: etype === t.v ? "#fff" : ui.color.text }}>{t.l}</button>
             ))}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -188,19 +201,19 @@ export default function HasadPage() {
               </button>
             ))}
           </div>
-          <button type="button" style={{ ...btn, marginTop: 8, padding: "0.2rem 0.7rem" }} onClick={() => setPicking(false)}>إلغاء</button>
-        </div>
+          <button type="button" style={{ ...btn, marginTop: sp(2), padding: "0.2rem 0.7rem" }} onClick={() => setPicking(false)}>إلغاء</button>
+        </Card>
       )}
 
       {/* الأزرار */}
-      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-        <button type="button" style={{ ...btn, borderColor: "#b00020", color: "#b00020" }} onClick={() => setPicking((v) => !v)} disabled={!face}>خطأ</button>
-        <button type="button" style={{ ...btn, borderColor: "#8a6d1f", color: "#8a6d1f" }} onClick={addHesitation} disabled={!face}>تردّد</button>
-        <button type="button" style={{ ...btn, marginInlineStart: "auto", background: "#1F5C3D", color: "#fff", borderColor: "#1F5C3D" }} onClick={() => void next()} disabled={!face}>
+      <div style={{ display: "flex", gap: sp(2), marginTop: sp(3), flexWrap: "wrap" }}>
+        <button type="button" style={{ ...btn, borderColor: ui.color.danger, color: ui.color.danger }} onClick={() => setPicking((v) => !v)} disabled={!face}>خطأ</button>
+        <button type="button" style={{ ...btn, borderColor: ui.color.bronzeHover, color: ui.color.bronzeHover }} onClick={addHesitation} disabled={!face}>تردّد</button>
+        <button type="button" style={{ ...btn, marginInlineStart: "auto", background: ui.color.primary, color: "#fff", borderColor: ui.color.primary }} onClick={() => void next()} disabled={!face}>
           {faceIdx < pages.length - 1 ? "الوجه التالي ⟵" : "إنهاء الحصاد"}
         </button>
       </div>
-      <button type="button" style={{ ...btn, marginTop: 10, padding: "0.2rem 0.7rem", fontSize: "0.85rem" }} onClick={reset}>إلغاء الحصاد</button>
-    </main>
+      <button type="button" style={{ ...btn, marginTop: sp(2), padding: "0.2rem 0.7rem", fontSize: ui.text.xs }} onClick={reset}>إلغاء الحصاد</button>
+    </Shell>
   );
 }

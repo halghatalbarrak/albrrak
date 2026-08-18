@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { useMe } from "@/lib/useMe";
+import { AppShell, Card, Button, Input, EmptyState, ui, sp } from "@/components/ui";
 
 // لوحة اعتماد المدير (الحكم ٧): اقتراحات انتقال المرحلة والتخرّج المعلَّقة — اعتماد/رفض.
 // الاعتماد ← ينتقل الطالب / يتخرّج؛ الرفض يستلزم سببًا.
@@ -24,11 +26,10 @@ async function token(): Promise<string | null> {
   return session?.access_token ?? null;
 }
 
-const box: React.CSSProperties = { maxWidth: 820, margin: "0 auto", padding: "1.5rem", fontFamily: "system-ui, sans-serif" };
-const card: React.CSSProperties = { border: "1px solid #ccc", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: 12 };
-const approveBtn: React.CSSProperties = { background: "#1F5C3D", color: "#fff", border: "none", borderRadius: 6, padding: "0.3rem 1rem" };
+const sectionTitle: React.CSSProperties = { fontSize: ui.text.lg, fontWeight: 700, marginTop: sp(5) };
 
 export default function ApprovalsPage() {
+  const { me } = useMe();
   const [transitions, setTransitions] = useState<Transition[]>([]);
   const [graduations, setGraduations] = useState<Graduation[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
@@ -74,49 +75,61 @@ export default function ApprovalsPage() {
 
   function actions(base: string, approvalId: string) {
     return (
-      <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <input
+      <div style={{ marginTop: sp(2), display: "flex", gap: sp(2), flexWrap: "wrap" }}>
+        <Input
           placeholder="سبب الرفض (عند الرفض)"
           value={notes[approvalId] ?? ""}
           onChange={(e) => setNotes((n) => ({ ...n, [approvalId]: e.target.value }))}
           style={{ flex: 1, minWidth: 160 }}
         />
-        <button type="button" style={approveBtn} onClick={() => void decide(base, approvalId, "APPROVED")}>اعتماد</button>
-        <button type="button" onClick={() => void decide(base, approvalId, "REJECTED")}>رفض</button>
+        <Button type="button" onClick={() => void decide(base, approvalId, "APPROVED")}>اعتماد</Button>
+        <Button variant="ghost" type="button" onClick={() => void decide(base, approvalId, "REJECTED")}>رفض</Button>
       </div>
     );
   }
 
-  if (status === "loading") return <main dir="rtl" style={box}>…جارٍ التحميل</main>;
   if (status === "unauth")
-    return <main dir="rtl" style={box}><p>تحتاج دخولًا كمدير.</p><a href="/login" style={{ color: "#1F5C3D" }}>دخول</a></main>;
-  if (status === "error")
-    return <main dir="rtl" style={box}><p style={{ color: "#b00020" }}>تعذّر التحميل. <button type="button" onClick={() => void load()}>إعادة</button></p></main>;
+    return (
+      <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(3) }}>
+        <p>تحتاج دخولًا كمدير.</p>
+        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a>
+      </main>
+    );
 
   return (
-    <main dir="rtl" style={box}>
-      <h1 style={{ fontSize: "1.4rem" }}>الاعتمادات</h1>
-      {msg && <p style={{ color: "#b00020" }}>{msg}</p>}
+    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/approvals"
+      title="الاعتمادات" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: "الاعتمادات" }]}>
 
-      <h2 style={{ fontSize: "1.1rem", marginTop: 18 }}>انتقال المرحلة</h2>
-      <p style={{ opacity: 0.6, fontSize: "0.85rem", marginTop: -4 }}>اعتمادُك ينقل الطالب للمرحلة الأصلية التالية.</p>
-      {transitions.length === 0 && <p style={{ opacity: 0.6 }}>لا اقتراحات انتقالٍ معلَّقة.</p>}
-      {transitions.map((it) => (
-        <div key={it.approvalId} style={card}>
-          <div><strong>{it.studentName}</strong> — {it.mainStageLabel} · المرتبة: {it.finalRank ? RANK[it.finalRank] ?? it.finalRank : "—"}</div>
-          {actions("/api/approvals/stage-transitions", it.approvalId)}
-        </div>
-      ))}
+      {status === "loading" && <p style={{ color: ui.color.muted }}>…جارٍ التحميل</p>}
+      {status === "error" && (
+        <p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>إعادة</Button></p>
+      )}
 
-      <h2 style={{ fontSize: "1.1rem", marginTop: 24 }}>التخرّج</h2>
-      <p style={{ opacity: 0.6, fontSize: "0.85rem", marginTop: -4 }}>اعتمادُك يخرّج الطالب ويُصدر شهادة الختم.</p>
-      {graduations.length === 0 && <p style={{ opacity: 0.6 }}>لا اقتراحات تخرّجٍ معلَّقة.</p>}
-      {graduations.map((it) => (
-        <div key={it.approvalId} style={card}>
-          <div><strong>{it.studentName}</strong> — اكتملت ثلاث جولاتٍ ناجحة</div>
-          {actions("/api/approvals/graduations", it.approvalId)}
-        </div>
-      ))}
-    </main>
+      {status === "ready" && (
+        <>
+          {msg && <p style={{ color: ui.color.danger }}>{msg}</p>}
+
+          <h2 style={sectionTitle}>انتقال المرحلة</h2>
+          <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginTop: 2 }}>اعتمادُك ينقل الطالب للمرحلة الأصلية التالية.</p>
+          {transitions.length === 0 && <EmptyState title="لا اقتراحات انتقالٍ معلَّقة" />}
+          {transitions.map((it) => (
+            <Card key={it.approvalId} style={{ marginBottom: sp(3) }}>
+              <div><strong>{it.studentName}</strong> — {it.mainStageLabel} · المرتبة: {it.finalRank ? RANK[it.finalRank] ?? it.finalRank : "—"}</div>
+              {actions("/api/approvals/stage-transitions", it.approvalId)}
+            </Card>
+          ))}
+
+          <h2 style={sectionTitle}>التخرّج</h2>
+          <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginTop: 2 }}>اعتمادُك يخرّج الطالب ويُصدر شهادة الختم.</p>
+          {graduations.length === 0 && <EmptyState title="لا اقتراحات تخرّجٍ معلَّقة" />}
+          {graduations.map((it) => (
+            <Card key={it.approvalId} style={{ marginBottom: sp(3) }}>
+              <div><strong>{it.studentName}</strong> — اكتملت ثلاث جولاتٍ ناجحة</div>
+              {actions("/api/approvals/graduations", it.approvalId)}
+            </Card>
+          ))}
+        </>
+      )}
+    </AppShell>
   );
 }

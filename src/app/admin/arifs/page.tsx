@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { useMe } from "@/lib/useMe";
+import { AppShell, Card, Button, Select, EmptyState, ui, sp } from "@/components/ui";
 
 // شاشة العرفاء (الحكم ٨): المعلّم يعيّن طالباً من حلقته عريفاً، أو يعزله. العريف يُسمِّع
 // الترسيخ/المراجعة بإسناده، لا الحفظ الجديد ولا الاختبار. حالات صريحة، لا انهيار.
@@ -16,13 +18,14 @@ async function token(): Promise<string | null> {
   return session?.access_token ?? null;
 }
 
-const box: React.CSSProperties = { maxWidth: 760, margin: "0 auto", padding: "1.5rem", fontFamily: "system-ui, sans-serif" };
 const row: React.CSSProperties = {
-  display: "flex", justifyContent: "space-between", alignItems: "center",
-  border: "1px solid #ccc", borderRadius: 8, padding: "0.5rem 0.9rem", marginBottom: 8,
+  display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3),
+  padding: `${sp(2)} ${sp(4)}`, marginBottom: sp(2),
 };
+const sectionTitle: React.CSSProperties = { fontSize: ui.text.base, fontWeight: 700, margin: `${sp(4)} 0 ${sp(2)}` };
 
 export default function ArifsPage() {
+  const { me } = useMe();
   const [circles, setCircles] = useState<Circle[]>([]);
   const [circleId, setCircleId] = useState("");
   const [arifs, setArifs] = useState<Arif[]>([]);
@@ -71,46 +74,51 @@ export default function ArifsPage() {
   }
 
   if (status === "unauth")
-    return <main dir="rtl" style={box}><p>تحتاج دخولًا.</p><a href="/login" style={{ color: "#1F5C3D" }}>دخول</a></main>;
+    return (
+      <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(3) }}>
+        <p>تحتاج دخولًا.</p>
+        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a>
+      </main>
+    );
 
   return (
-    <main dir="rtl" style={box}>
-      <h1 style={{ fontSize: "1.4rem" }}>العرفاء</h1>
-      <p style={{ opacity: 0.6, fontSize: "0.9rem", marginTop: -6 }}>
+    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/arifs"
+      title="العرفاء" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "التشغيل" }, { label: "العرفاء" }]}>
+      <p style={{ color: ui.color.muted, margin: `0 0 ${sp(4)}`, fontSize: ui.text.base }}>
         العريف يُسمِّع الترسيخ والمراجعة بإسنادك ومسؤوليتك — لا الحفظ الجديد ولا الاختبار.
       </p>
 
-      <select value={circleId} onChange={(e) => setCircleId(e.target.value)} style={{ marginBottom: 14 }}>
+      <Select value={circleId} onChange={(e) => setCircleId(e.target.value)} style={{ width: "auto", minWidth: 200, marginBottom: sp(4) }}>
         <option value="">— اختر حلقة —</option>
         {circles.map((c) => <option key={c.id} value={c.id}>{c.nameAr}</option>)}
-      </select>
+      </Select>
 
-      {msg && <p style={{ color: "#1F5C3D" }}>{msg}</p>}
-      {status === "loading" && <p style={{ opacity: 0.6 }}>…جارٍ التحميل</p>}
-      {status === "error" && <p style={{ color: "#b00020" }}>تعذّر التحميل. <button type="button" onClick={() => void load()}>إعادة</button></p>}
-      {status === "idle" && <p style={{ opacity: 0.6 }}>اختر حلقةً لإدارة عرفائها.</p>}
+      {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
+      {status === "loading" && <p style={{ color: ui.color.muted }}>…جارٍ التحميل</p>}
+      {status === "error" && <p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>إعادة</Button></p>}
+      {status === "idle" && <EmptyState title="اختر حلقةً لإدارة عرفائها" />}
 
       {status === "ready" && (
         <>
-          <h2 style={{ fontSize: "1.05rem" }}>العرفاء النشطون</h2>
-          {arifs.length === 0 && <p style={{ opacity: 0.6 }}>لا عرفاء بعد.</p>}
+          <h2 style={sectionTitle}>العرفاء النشطون</h2>
+          {arifs.length === 0 && <p style={{ color: ui.color.muted }}>لا عرفاء بعد.</p>}
           {arifs.map((a) => (
-            <div key={a.arifUserId} style={row}>
+            <Card key={a.arifUserId} style={row}>
               <strong>{a.name}</strong>
-              <button type="button" onClick={() => void act(a.arifUserId, "dismiss")}>عزل</button>
-            </div>
+              <Button variant="danger" size="sm" type="button" onClick={() => void act(a.arifUserId, "dismiss")}>عزل</Button>
+            </Card>
           ))}
 
-          <h2 style={{ fontSize: "1.05rem", marginTop: 16 }}>طلاب الحلقة (للتعيين — أنت تقدّر تقدّمهم)</h2>
-          {candidates.length === 0 && <p style={{ opacity: 0.6 }}>لا طلاب متاحين.</p>}
+          <h2 style={sectionTitle}>طلاب الحلقة (للتعيين — أنت تقدّر تقدّمهم)</h2>
+          {candidates.length === 0 && <p style={{ color: ui.color.muted }}>لا طلاب متاحين.</p>}
           {candidates.map((c) => (
-            <div key={c.userId} style={row}>
+            <Card key={c.userId} style={row}>
               <span>{c.name}</span>
-              <button type="button" onClick={() => void act(c.userId, "appoint")}>عيّن عريفًا</button>
-            </div>
+              <Button size="sm" type="button" onClick={() => void act(c.userId, "appoint")}>عيّن عريفًا</Button>
+            </Card>
           ))}
         </>
       )}
-    </main>
+    </AppShell>
   );
 }

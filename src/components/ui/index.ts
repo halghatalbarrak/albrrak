@@ -11,7 +11,5 @@ export { EmptyState } from "./EmptyState";
 export { Stat } from "./Stat";
 export { Skeleton } from "./Skeleton";
 export { Modal } from "./Modal";
-export { Header, type HeaderProps } from "./Header";
-export { PageShell } from "./PageShell";
 export { AppShell, type AppShellProps, type Crumb } from "./AppShell";
-export { menuForRoles, navSections, type NavItem, type NavSection } from "./nav";
+export { navSections, type NavItem, type NavSection } from "./nav";

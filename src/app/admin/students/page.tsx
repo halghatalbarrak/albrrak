@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { useMe } from "@/lib/useMe";
+import { AppShell, Card, Button, Select, Badge, EmptyState, Skeleton, inputStyle, ui, sp } from "@/components/ui";
 
 interface Row {
   id: string;
@@ -32,21 +34,6 @@ const STATE_AR: Record<string, string> = {
   COMPLETED: "أتمّ",
   WITHDRAWN: "منسحب",
 };
-
-const box: React.CSSProperties = {
-  maxWidth: 900,
-  margin: "0 auto",
-  padding: "1.5rem",
-  fontFamily: "system-ui, sans-serif",
-};
-const card: React.CSSProperties = {
-  border: "1px solid #ccc",
-  borderRadius: 8,
-  padding: "0.75rem 1rem",
-  marginBottom: 10,
-};
-const input: React.CSSProperties = { padding: "0.4rem", fontSize: "1rem", fontFamily: "inherit" };
-const btn: React.CSSProperties = { padding: "0.4rem 0.8rem", cursor: "pointer", marginInlineStart: 6 };
 
 async function token(): Promise<string | null> {
   const {
@@ -89,37 +76,36 @@ function ReadingTestForm({
   }
 
   return (
-    <div style={{ marginTop: 8, background: "#fafafa", padding: "0.5rem 0.75rem", borderRadius: 6 }}>
-      <div style={{ fontWeight: 700, marginBottom: 6 }}>تسجيل اختبار القراءة</div>
-      <label style={{ display: "block", marginBottom: 6 }}>
+    <div style={{ marginTop: sp(2), background: ui.color.bg, padding: `${sp(2)} ${sp(3)}`, borderRadius: ui.radius.md }}>
+      <div style={{ fontWeight: 700, marginBottom: sp(2) }}>تسجيل اختبار القراءة</div>
+      <label style={{ display: "block", marginBottom: sp(2) }}>
         <input type="checkbox" checked={fluent} onChange={(e) => setFluent(e.target.checked)} /> يجيد القراءة نظراً
-        <span style={{ opacity: 0.7 }}> ({fluent ? "← بانتظار اختبار المقطع" : "← القاعدة المدنية + حلقة"})</span>
+        <span style={{ color: ui.color.muted }}> ({fluent ? "← بانتظار اختبار المقطع" : "← القاعدة المدنية + حلقة"})</span>
       </label>
       {!fluent && (
-        <select style={{ ...input, display: "block", marginBottom: 6 }} value={circleId} onChange={(e) => setCircleId(e.target.value)}>
+        <Select style={{ display: "block", marginBottom: sp(2) }} value={circleId} onChange={(e) => setCircleId(e.target.value)}>
           <option value="">اختر حلقة القاعدة المدنية…</option>
           {qaidahCircles.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nameAr}
-            </option>
+            <option key={c.id} value={c.id}>{c.nameAr}</option>
           ))}
-        </select>
+        </Select>
       )}
       <textarea
-        style={{ ...input, display: "block", width: "100%", minHeight: 48, marginBottom: 6 }}
+        style={{ ...inputStyle, display: "block", width: "100%", minHeight: 48, marginBottom: sp(2) }}
         placeholder="ملاحظات المختبر…"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
       />
-      {err && <p style={{ color: "#b00020", margin: "4px 0" }}>{err}</p>}
-      <button style={btn} disabled={busy || !notes.trim() || (!fluent && !circleId)} onClick={() => void submit()}>
+      {err && <p style={{ color: ui.color.danger, margin: "4px 0" }}>{err}</p>}
+      <Button size="sm" disabled={busy || !notes.trim() || (!fluent && !circleId)} onClick={() => void submit()}>
         {busy ? "…" : "رفع القرار للاعتماد"}
-      </button>
+      </Button>
     </div>
   );
 }
 
 export default function AdminStudentsPage() {
+  const { me } = useMe();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
   const [circles, setCircles] = useState<Circle[]>([]);
@@ -203,35 +189,36 @@ export default function AdminStudentsPage() {
   const canApprove = roles.includes("CIRCLE_MANAGER") || roles.includes("SUPER_ADMIN");
   const qaidahCircles = circles.filter((c) => c.programKey === "QAIDAH_MADANIYYAH");
 
-  if (err && !rows) return <main style={box}>{err}</main>;
-  if (!rows) return <main style={box}>جارٍ التحميل…</main>;
-
   return (
-    <main style={box}>
-      <h1>الطلاب المقبولون ({rows.length})</h1>
-      {err && <p style={{ color: "#b00020" }}>{err}</p>}
-      {rows.length === 0 && <p>لا طلاب مقبولون بعد.</p>}
-      {rows.map((r) => (
-        <div key={r.id} style={card}>
-          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}>
-            <strong>{r.name}</strong>
-            <span style={{ opacity: 0.7 }}>{STATE_AR[r.state] ?? r.state}</span>
+    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/students"
+      title={`الطلاب المقبولون${rows ? ` (${rows.length})` : ""}`}
+      crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: "الطلاب" }]}>
+
+      {err && <p style={{ color: ui.color.danger }}>{err}</p>}
+      {!err && !rows && (
+        <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
+          {[0, 1, 2].map((i) => <Skeleton key={i} height={80} />)}
+        </div>
+      )}
+      {rows && rows.length === 0 && <EmptyState title="لا طلاب مقبولون بعد" />}
+
+      {rows && rows.map((r) => (
+        <Card key={r.id} style={{ marginBottom: sp(3) }}>
+          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", alignItems: "center" }}>
+            <strong style={{ fontSize: ui.text.base }}>{r.name}</strong>
+            <Badge tone="neutral">{STATE_AR[r.state] ?? r.state}</Badge>
           </div>
-          <div style={{ fontSize: "0.9rem", opacity: 0.85, marginTop: 4 }}>
+          <div style={{ fontSize: ui.text.xs, color: ui.color.muted, marginTop: 4 }}>
             {r.age != null ? `العمر ${r.age}` : "العمر —"}
             {` • الحلقة ${r.circle ?? "لم تُسنَد"}`}
             {` • ولي الأمر ${r.guardian ?? "—"}`}
           </div>
 
           {r.pendingPlacementId && canApprove && (
-            <div style={{ marginTop: 8 }}>
-              <span style={{ color: "#8a6d00", marginInlineEnd: 8 }}>قرار تحديدٍ بانتظار اعتمادك:</span>
-              <button style={btn} onClick={() => decide(r.pendingPlacementId as string, "APPROVED")}>
-                اعتمِد
-              </button>
-              <button style={btn} onClick={() => decide(r.pendingPlacementId as string, "REJECTED")}>
-                ارفض بسبب
-              </button>
+            <div style={{ marginTop: sp(2), display: "flex", gap: sp(2), alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ color: ui.color.bronzeHover }}>قرار تحديدٍ بانتظار اعتمادك:</span>
+              <Button size="sm" onClick={() => decide(r.pendingPlacementId as string, "APPROVED")}>اعتمِد</Button>
+              <Button variant="danger" size="sm" onClick={() => decide(r.pendingPlacementId as string, "REJECTED")}>ارفض بسبب</Button>
             </div>
           )}
 
@@ -240,14 +227,14 @@ export default function AdminStudentsPage() {
           )}
 
           {canReveal && (
-            <div style={{ marginTop: 8 }}>
-              <button style={btn} onClick={() => revealId(r.id)}>
+            <div style={{ marginTop: sp(2) }}>
+              <Button variant="ghost" size="sm" onClick={() => revealId(r.id)}>
                 {revealed[r.id] ? `الهوية: ${revealed[r.id]}` : "كشف رقم الهوية"}
-              </button>
+              </Button>
             </div>
           )}
-        </div>
+        </Card>
       ))}
-    </main>
+    </AppShell>
   );
 }

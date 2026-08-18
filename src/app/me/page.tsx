@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { AppShell, Button, Card, ui, sp } from "@/components/ui";
 
 interface MyPage {
   userId: string;
@@ -23,11 +24,9 @@ const STATE_AR: Record<string, string> = {
   WITHDRAWN: "منسحب",
 };
 
-const box: React.CSSProperties = {
-  maxWidth: 480,
-  margin: "0 auto",
-  padding: "2rem 1.5rem",
-  fontFamily: "system-ui, sans-serif",
+const centered: React.CSSProperties = {
+  minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center",
+  background: ui.color.bg, fontFamily: ui.font, color: ui.color.text,
 };
 
 export default function MePage() {
@@ -58,28 +57,31 @@ export default function MePage() {
     })();
   }, []);
 
-  if (err) return <main style={box}>{err}</main>;
-  if (!me) return <main style={box}>جارٍ التحميل…</main>;
+  if (err) return <main dir="rtl" style={centered}>{err}</main>;
+  if (!me) return <main dir="rtl" style={centered}>جارٍ التحميل…</main>;
 
   return (
-    <main style={box}>
-      <h1>مرحبًا، {me.name}</h1>
-      {me.student ? (
-        <p>
-          حالتك: <strong>{STATE_AR[me.student.state] ?? me.student.state}</strong>
-        </p>
-      ) : (
-        <p>لا سجلّ طالب مرتبط بحسابك.</p>
-      )}
-      <button
+    <AppShell roles={me.roles} userName={me.name} activeHref="/me"
+      title="صفحتي" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "التعلّم" }, { label: "صفحتي" }]}>
+      <Card style={{ maxWidth: 480 }}>
+        {me.student ? (
+          <p style={{ margin: 0 }}>
+            حالتك: <strong>{STATE_AR[me.student.state] ?? me.student.state}</strong>
+          </p>
+        ) : (
+          <p style={{ margin: 0 }}>لا سجلّ طالب مرتبط بحسابك.</p>
+        )}
+      </Card>
+      <Button
+        variant="ghost"
+        style={{ marginTop: sp(4) }}
         onClick={async () => {
           await supabaseBrowser().auth.signOut();
           window.location.href = "/login";
         }}
-        style={{ marginTop: 16, padding: "0.5rem 1rem", cursor: "pointer" }}
       >
         خروج
-      </button>
-    </main>
+      </Button>
+    </AppShell>
   );
 }

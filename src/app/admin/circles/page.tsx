@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { useMe } from "@/lib/useMe";
+import { AppShell, Card, Button, Select, Field, inputStyle, EmptyState, Skeleton, ui, sp } from "@/components/ui";
 
 interface Circle {
   id: string;
@@ -18,16 +20,6 @@ interface Program {
   nameAr: string;
 }
 
-const box: React.CSSProperties = {
-  maxWidth: 900,
-  margin: "0 auto",
-  padding: "1.5rem",
-  fontFamily: "system-ui, sans-serif",
-};
-const input: React.CSSProperties = { padding: "0.4rem", fontSize: "1rem", fontFamily: "inherit" };
-const field: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 };
-const btn: React.CSSProperties = { padding: "0.4rem 0.9rem", cursor: "pointer" };
-
 async function token(): Promise<string | null> {
   const {
     data: { session },
@@ -38,6 +30,7 @@ async function token(): Promise<string | null> {
 const SLOT_AR: Record<string, string> = { ASR: "العصر", MAGHRIB: "المغرب" };
 
 export default function AdminCirclesPage() {
+  const { me } = useMe();
   const [circles, setCircles] = useState<Circle[] | null>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -87,66 +80,62 @@ export default function AdminCirclesPage() {
     }
   }
 
-  if (err && !circles) return <main style={box}>{err}</main>;
-  if (!circles) return <main style={box}>جارٍ التحميل…</main>;
-
   return (
-    <main style={box}>
-      <h1>الحلقات ({circles.length})</h1>
+    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/circles"
+      title={`الحلقات${circles ? ` (${circles.length})` : ""}`}
+      crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: "الحلقات" }]}>
 
-      <form onSubmit={onSubmit} style={{ border: "1px solid #ccc", borderRadius: 8, padding: "1rem", marginBottom: 20 }}>
-        <h2 style={{ marginTop: 0 }}>حلقة جديدة</h2>
-        <label style={field}>
-          <span>الاسم</span>
-          <input style={input} name="nameAr" required />
-        </label>
-        <label style={field}>
-          <span>البرنامج</span>
-          <select style={input} name="programId" required defaultValue="">
-            <option value="" disabled>
-              اختر…
-            </option>
-            {programs.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nameAr}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label style={field}>
-          <span>الوقت</span>
-          <select style={input} name="timeSlot" required defaultValue="MAGHRIB">
-            <option value="ASR">العصر</option>
-            <option value="MAGHRIB">المغرب</option>
-          </select>
-        </label>
-        <label style={field}>
-          <span>الجنس</span>
-          <select style={input} name="gender" required defaultValue="MALE">
-            <option value="MALE">بنون</option>
-            <option value="FEMALE">بنات</option>
-          </select>
-        </label>
-        <label style={field}>
-          <span>المكان (اختياري)</span>
-          <input style={input} name="location" />
-        </label>
-        {err && <p style={{ color: "#b00020" }}>{err}</p>}
-        <button style={{ ...btn, fontWeight: 700 }} type="submit">
-          إنشاء
-        </button>
-      </form>
-
-      {circles.length === 0 && <p>لا حلقات بعد — أنشئ الأولى.</p>}
-      {circles.map((c) => (
-        <div key={c.id} style={{ borderBottom: "1px solid #eee", padding: "0.5rem 0" }}>
-          <strong>{c.nameAr}</strong>
-          <span style={{ opacity: 0.8, fontSize: "0.9rem" }}>
-            {` — ${c.programNameAr} • ${SLOT_AR[c.timeSlot] ?? c.timeSlot} • ${c.gender === "MALE" ? "بنون" : "بنات"}`}
-            {c.location ? ` • ${c.location}` : ""}
-          </span>
+      {err && !circles && <p style={{ color: ui.color.danger }}>{err}</p>}
+      {!err && !circles && (
+        <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
+          {[0, 1, 2].map((i) => <Skeleton key={i} height={40} />)}
         </div>
-      ))}
-    </main>
+      )}
+
+      {circles && (
+        <>
+          <Card style={{ marginBottom: sp(6) }}>
+            <form onSubmit={onSubmit}>
+              <h2 style={{ marginTop: 0, fontSize: ui.text.lg, fontWeight: 700 }}>حلقة جديدة</h2>
+              <Field label="الاسم"><input style={inputStyle} name="nameAr" required /></Field>
+              <Field label="البرنامج">
+                <Select name="programId" required defaultValue="">
+                  <option value="" disabled>اختر…</option>
+                  {programs.map((p) => (
+                    <option key={p.id} value={p.id}>{p.nameAr}</option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="الوقت">
+                <Select name="timeSlot" required defaultValue="MAGHRIB">
+                  <option value="ASR">العصر</option>
+                  <option value="MAGHRIB">المغرب</option>
+                </Select>
+              </Field>
+              <Field label="الجنس">
+                <Select name="gender" required defaultValue="MALE">
+                  <option value="MALE">بنون</option>
+                  <option value="FEMALE">بنات</option>
+                </Select>
+              </Field>
+              <Field label="المكان (اختياري)"><input style={inputStyle} name="location" /></Field>
+              {err && <p style={{ color: ui.color.danger }}>{err}</p>}
+              <Button type="submit">إنشاء</Button>
+            </form>
+          </Card>
+
+          {circles.length === 0 && <EmptyState title="لا حلقات بعد" description="أنشئ الأولى من النموذج أعلاه." />}
+          {circles.map((c) => (
+            <div key={c.id} style={{ borderBottom: `1px solid ${ui.color.border}`, padding: `${sp(2)} 0` }}>
+              <strong>{c.nameAr}</strong>
+              <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}>
+                {` — ${c.programNameAr} • ${SLOT_AR[c.timeSlot] ?? c.timeSlot} • ${c.gender === "MALE" ? "بنون" : "بنات"}`}
+                {c.location ? ` • ${c.location}` : ""}
+              </span>
+            </div>
+          ))}
+        </>
+      )}
+    </AppShell>
   );
 }

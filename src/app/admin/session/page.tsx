@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { useMe } from "@/lib/useMe";
+import { AppShell, Card, Button, Select, Input, Badge, ui, sp } from "@/components/ui";
 
 // شاشة الجلسة اليومية (م٤ب — §٨٫٣): المعلم يفتحها، تعرض موضع الطالب في سلّمه (ومع
 // مراقي: سلّمها مع تمييز الحزب الحاليّ)، ويسجّل الحفظ (المعلم وحده) والترسيخ/المراجعة
@@ -62,15 +64,11 @@ async function token(): Promise<string | null> {
   return session?.access_token ?? null;
 }
 
-const box: React.CSSProperties = {
-  maxWidth: 860, margin: "0 auto", padding: "1.5rem", fontFamily: "system-ui, sans-serif",
-};
-const card: React.CSSProperties = {
-  border: "1px solid #ccc", borderRadius: 8, padding: "0.75rem 1rem", marginBottom: 12,
-};
-const num: React.CSSProperties = { width: 64 };
+const num: React.CSSProperties = { width: 72 };
+const sectionTitle: React.CSSProperties = { fontSize: ui.text.base, fontWeight: 700, margin: `0 0 ${sp(2)}` };
 
 export default function DailySessionPage() {
+  const { me } = useMe();
   const [circles, setCircles] = useState<Circle[]>([]);
   const [circleId, setCircleId] = useState("");
   const [students, setStudents] = useState<StudentLite[]>([]);
@@ -165,7 +163,7 @@ export default function DailySessionPage() {
     });
     if (res.ok) {
       const j = (await res.json()) as { reverted: boolean };
-      setMsg(j.reverted ? "خطآن — عاد المقطع حفظًا جديدًا (خرج من الراسخ)." : "خطأٌ واحد — تنبيهٌ، يبقى راسخًا.");
+      setMsg(j.reverted ? "خطآن — عاد المقطع حفظًا جديدًا (خرج من الراسخ)." : "خطأٌ واحد — تنبيهٌ, يبقى راسخًا.");
       await loadSession();
     } else {
       const j = (await res.json()) as { error?: string };
@@ -188,42 +186,47 @@ export default function DailySessionPage() {
   }
 
   if (status === "unauth")
-    return <main dir="rtl" style={box}><p>تحتاج دخولًا.</p><a href="/login" style={{ color: "#1F5C3D" }}>دخول</a></main>;
+    return (
+      <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(3) }}>
+        <p>تحتاج دخولًا.</p>
+        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a>
+      </main>
+    );
 
   const cur = view?.position.current;
   const s = view?.session;
 
   return (
-    <main dir="rtl" style={box}>
-      <h1 style={{ fontSize: "1.4rem" }}>الجلسة اليومية</h1>
+    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/session"
+      title="الجلسة اليومية" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "التشغيل" }, { label: "الجلسة اليومية" }]}>
 
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-        <select value={circleId} onChange={(e) => setCircleId(e.target.value)}>
+      <div style={{ display: "flex", gap: sp(3), flexWrap: "wrap", marginBottom: sp(4) }}>
+        <Select value={circleId} onChange={(e) => setCircleId(e.target.value)} style={{ width: "auto", minWidth: 180 }}>
           <option value="">— اختر حلقة —</option>
           {circles.map((c) => <option key={c.id} value={c.id}>{c.nameAr}</option>)}
-        </select>
-        <select value={studentId} onChange={(e) => setStudentId(e.target.value)} disabled={!circleId}>
+        </Select>
+        <Select value={studentId} onChange={(e) => setStudentId(e.target.value)} disabled={!circleId} style={{ width: "auto", minWidth: 180 }}>
           <option value="">— اختر طالبًا —</option>
           {students.map((st) => <option key={st.id} value={st.id}>{st.name}</option>)}
-        </select>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </Select>
+        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ width: "auto" }} />
       </div>
 
-      {msg && <p style={{ color: "#1F5C3D" }}>{msg}</p>}
-      {status === "loading" && <p style={{ opacity: 0.6 }}>…جارٍ التحميل</p>}
+      {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
+      {status === "loading" && <p style={{ color: ui.color.muted }}>…جارٍ التحميل</p>}
       {status === "error" && (
-        <p style={{ color: "#b00020" }}>تعذّر تحميل الجلسة. <button type="button" onClick={() => void loadSession()}>إعادة</button></p>
+        <p style={{ color: ui.color.danger }}>تعذّر تحميل الجلسة. <Button variant="ghost" size="sm" type="button" onClick={() => void loadSession()}>إعادة</Button></p>
       )}
-      {status === "idle" && <p style={{ opacity: 0.6 }}>اختر حلقةً وطالبًا لفتح الجلسة.</p>}
+      {status === "idle" && <p style={{ color: ui.color.muted }}>اختر حلقةً وطالبًا لفتح الجلسة.</p>}
 
       {status === "ready" && view && (
         <>
           {/* الموضع الحاليّ */}
-          <div style={{ ...card, background: "#FBFAF5" }}>
+          <Card style={{ marginBottom: sp(3) }}>
             <strong>{view.student.name}</strong>
             {" — "}
             {!view.position.started || !cur ? (
-              <span style={{ opacity: 0.6 }}>لم يبدأ بعد.</span>
+              <span style={{ color: ui.color.muted }}>لم يبدأ بعد.</span>
             ) : (
               <span>
                 موضعه: <strong>{cur.label}</strong>
@@ -231,33 +234,33 @@ export default function DailySessionPage() {
               </span>
             )}
             {view.program === "MARAQI" && cur && (
-              <button
-                type="button"
-                style={{ marginInlineStart: 12 }}
+              <Button
+                variant="bronze" size="sm" type="button"
+                style={{ marginInlineStart: sp(3) }}
                 onClick={() => void declareReadiness(cur.stageId)}
                 title="الحصاد يُجريه مُسمِّعٌ ليس معلمه — أنت تُعلن الجاهزية فقط"
               >
                 أعلن الجاهزية للحصاد
-              </button>
+              </Button>
             )}
-          </div>
+          </Card>
 
           {/* سلّم مراقي مع تمييز الحزب الحاليّ */}
           {view.program === "MARAQI" && ladder && (
-            <div style={card}>
-              <h2 style={{ fontSize: "1rem", margin: "0 0 8px" }}>سلّم مراقي</h2>
+            <Card style={{ marginBottom: sp(3) }}>
+              <h2 style={sectionTitle}>سلّم مراقي</h2>
               {ladder.mainStages.map((m) => (
-                <div key={m.stageId} style={{ marginBottom: 8 }}>
-                  <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{m.nameAr}</div>
+                <div key={m.stageId} style={{ marginBottom: sp(2) }}>
+                  <div style={{ fontWeight: 600, fontSize: ui.text.xs, color: ui.color.primary }}>{m.nameAr}</div>
                   <ul style={{ listStyle: "none", padding: 0, margin: "4px 0 0" }}>
                     {m.subStages.map((sub) => {
                       const here = cur?.stageId === sub.stageId;
                       return (
                         <li key={sub.stageId} style={{
-                          padding: "2px 8px", borderRadius: 6,
-                          background: here ? "#1F5C3D" : "transparent",
+                          padding: "2px 8px", borderRadius: ui.radius.sm,
+                          background: here ? ui.color.bronze : "transparent",
                           color: here ? "#fff" : "inherit",
-                          fontSize: "0.85rem",
+                          fontSize: ui.text.xs,
                         }}>
                           {here ? "◀ " : ""}{sub.label}
                           {sub.hizb != null ? ` · حزب ${sub.hizb}` : ""}
@@ -267,21 +270,21 @@ export default function DailySessionPage() {
                   </ul>
                 </div>
               ))}
-            </div>
+            </Card>
           )}
 
           {/* التسجيل — مراقي فقط */}
           {view.program === "MARAQI" ? (
             <>
-              <div style={card}>
-                <h2 style={{ fontSize: "1rem", margin: "0 0 8px" }}>الحفظ (المعلم وحده)</h2>
+              <Card style={{ marginBottom: sp(3) }}>
+                <h2 style={sectionTitle}>الحفظ (المعلم وحده)</h2>
                 {view.hifzGate?.mustRepeat && view.hifzGate.range && (
-                  <p style={{ margin: "0 0 8px", padding: "0.4rem 0.6rem", background: "#fdf0d5", borderRadius: 6, fontSize: "0.9rem" }}>
+                  <p style={{ margin: `0 0 ${sp(2)}`, padding: `${sp(2)} ${sp(3)}`, background: "#fdf0d5", borderRadius: ui.radius.md, fontSize: ui.text.xs }}>
                     ⚠️ الحكم ١: لم يُتقن مقطع اليوم السابق — يعيد <strong>نفس المقطع</strong> (
                     {view.hifzGate.range.fromSurah}:{view.hifzGate.range.fromAyah} ← {view.hifzGate.range.toSurah}:{view.hifzGate.range.toAyah}
                     )، لا حفظ جديد.
-                    <button
-                      type="button" style={{ marginInlineStart: 8 }}
+                    <Button
+                      variant="ghost" size="sm" type="button" style={{ marginInlineStart: sp(2) }}
                       onClick={() => setHifz((h) => ({
                         ...h,
                         fromSurah: String(view.hifzGate!.range!.fromSurah), fromAyah: String(view.hifzGate!.range!.fromAyah),
@@ -289,101 +292,98 @@ export default function DailySessionPage() {
                       }))}
                     >
                       املأ المقطع
-                    </button>
+                    </Button>
                   </p>
                 )}
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: "0.9rem" }}>
+                <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center", fontSize: ui.text.xs }}>
                   <span>من سورة</span>
-                  <input style={num} type="number" value={hifz.fromSurah} onChange={(e) => setHifz({ ...hifz, fromSurah: e.target.value })} />
+                  <Input style={num} type="number" value={hifz.fromSurah} onChange={(e) => setHifz({ ...hifz, fromSurah: e.target.value })} />
                   <span>آية</span>
-                  <input style={num} type="number" value={hifz.fromAyah} onChange={(e) => setHifz({ ...hifz, fromAyah: e.target.value })} />
+                  <Input style={num} type="number" value={hifz.fromAyah} onChange={(e) => setHifz({ ...hifz, fromAyah: e.target.value })} />
                   <span>إلى سورة</span>
-                  <input style={num} type="number" value={hifz.toSurah} onChange={(e) => setHifz({ ...hifz, toSurah: e.target.value })} />
+                  <Input style={num} type="number" value={hifz.toSurah} onChange={(e) => setHifz({ ...hifz, toSurah: e.target.value })} />
                   <span>آية</span>
-                  <input style={num} type="number" value={hifz.toAyah} onChange={(e) => setHifz({ ...hifz, toAyah: e.target.value })} />
+                  <Input style={num} type="number" value={hifz.toAyah} onChange={(e) => setHifz({ ...hifz, toAyah: e.target.value })} />
                   <span>المحاولات</span>
-                  <input style={num} type="number" min={1} value={hifz.attempts} onChange={(e) => setHifz({ ...hifz, attempts: e.target.value })} />
-                  <label><input type="checkbox" checked={hifz.mastered} onChange={(e) => setHifz({ ...hifz, mastered: e.target.checked })} /> أتقن</label>
-                  <button type="button" onClick={saveHifz}>حفظ</button>
+                  <Input style={num} type="number" min={1} value={hifz.attempts} onChange={(e) => setHifz({ ...hifz, attempts: e.target.value })} />
+                  <label style={{ display: "flex", alignItems: "center", gap: 4 }}><input type="checkbox" checked={hifz.mastered} onChange={(e) => setHifz({ ...hifz, mastered: e.target.checked })} /> أتقن</label>
+                  <Button size="sm" type="button" onClick={saveHifz}>حفظ</Button>
                 </div>
                 {s?.hifzFromSurah != null && (
-                  <p style={{ opacity: 0.6, fontSize: "0.85rem", margin: "6px 0 0" }}>
+                  <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: `${sp(2)} 0 0` }}>
                     مُسجَّل اليوم: {s.hifzFromSurah}:{s.hifzFromAyah} ← {s.hifzToSurah}:{s.hifzToAyah} · محاولات {s.hifzAttempts} · {s.hifzMastered ? "أتقن" : "لم يُتقن"}
                   </p>
                 )}
-              </div>
+              </Card>
 
               {/* ما يُسمَّع اليوم (الأحكام ٢، ٤، ٩): الترسيخ آخر ١٠ مقاطع، والمراجعة خُمس الراسخ */}
               {view.consolidation && (
-                <div style={card}>
-                  <h2 style={{ fontSize: "1rem", margin: "0 0 8px" }}>ما يُسمَّع اليوم</h2>
-                  <p style={{ margin: "0 0 4px", fontSize: "0.9rem" }}>
+                <Card style={{ marginBottom: sp(3) }}>
+                  <h2 style={sectionTitle}>ما يُسمَّع اليوم</h2>
+                  <p style={{ margin: "0 0 4px", fontSize: ui.text.xs }}>
                     <strong>الترسيخ</strong> (آخر {view.consolidation.tarseekh.windowSize} مقاطع — يوميًّا):
                     {view.consolidation.tarseekh.segments.length === 0 ? " — لا مقاطع بعد" : ""}
                   </p>
-                  <ul style={{ margin: "0 0 8px", paddingInlineStart: 18, fontSize: "0.85rem" }}>
+                  <ul style={{ margin: `0 0 ${sp(2)}`, paddingInlineStart: 18, fontSize: ui.text.xs }}>
                     {view.consolidation.tarseekh.segments.map((sg, i) => (
                       <li key={i}>{sg.fromSurah}:{sg.fromAyah} ← {sg.toSurah}:{sg.toAyah}</li>
                     ))}
                   </ul>
-                  <p style={{ margin: 0, fontSize: "0.9rem" }}>
+                  <p style={{ margin: 0, fontSize: ui.text.xs }}>
                     <strong>المراجعة الأسبوعية</strong>: الراسخ {view.consolidation.review.stockCount} مقطعًا · خُمس اليوم ≈ {view.consolidation.review.khums}
-                    <span style={{ opacity: 0.6 }}> (حرٌّ في التعجيل — المهم إتمام الدورة أسبوعيًّا)</span>
+                    <span style={{ color: ui.color.muted }}> (حرٌّ في التعجيل — المهم إتمام الدورة أسبوعيًّا)</span>
                   </p>
                   {view.weeklyReview && (
-                    <div style={{ marginTop: 6, fontSize: "0.9rem" }}>
+                    <div style={{ marginTop: sp(2), fontSize: ui.text.xs }}>
                       دورة الأسبوع: أُنجِز <strong>{view.weeklyReview.done}</strong> من <strong>{view.weeklyReview.required}</strong>
                       {" — "}المتبقّي <strong>{view.weeklyReview.remaining}</strong> ({view.weeklyReview.percent}٪)
-                      {view.weeklyReview.complete && <span style={{ color: "#1F5C3D" }}> · اكتملت ✓</span>}
-                      <div style={{ height: 6, background: "#eee", borderRadius: 4, marginTop: 4 }}>
-                        <div style={{ width: `${view.weeklyReview.percent}%`, height: "100%", background: "#1F5C3D", borderRadius: 4 }} />
+                      {view.weeklyReview.complete && <span style={{ color: ui.color.success }}> · اكتملت ✓</span>}
+                      <div style={{ height: 6, background: ui.color.border, borderRadius: ui.radius.sm, marginTop: 4 }}>
+                        <div style={{ width: `${view.weeklyReview.percent}%`, height: "100%", background: ui.color.success, borderRadius: ui.radius.sm }} />
                       </div>
                     </div>
                   )}
                   {/* الترميم (الحكم ٥): رصد خطأ المراجعة لكل مقطعٍ راسخ */}
                   {view.consolidation.review.segments.length > 0 && (
-                    <ul style={{ margin: "8px 0 0", paddingInlineStart: 0, listStyle: "none", fontSize: "0.85rem" }}>
+                    <ul style={{ margin: `${sp(2)} 0 0`, paddingInlineStart: 0, listStyle: "none", fontSize: ui.text.xs }}>
                       {view.consolidation.review.segments.map((sg) => (
-                        <li key={sg.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 3 }}>
+                        <li key={sg.id} style={{ display: "flex", gap: sp(2), alignItems: "center", marginBottom: 3 }}>
                           <span>{sg.fromSurah}:{sg.fromAyah} ← {sg.toSurah}:{sg.toAyah}</span>
-                          <button type="button" onClick={() => void reviewError(sg.id, 1)}>خطأ واحد</button>
-                          <button type="button" onClick={() => void reviewError(sg.id, 2)}>خطآن ← ترميم</button>
+                          <Button variant="ghost" size="sm" type="button" onClick={() => void reviewError(sg.id, 1)}>خطأ واحد</Button>
+                          <Button variant="danger" size="sm" type="button" onClick={() => void reviewError(sg.id, 2)}>خطآن ← ترميم</Button>
                         </li>
                       ))}
                     </ul>
                   )}
-                </div>
+                </Card>
               )}
 
-              <div style={card}>
-                <h2 style={{ fontSize: "1rem", margin: "0 0 8px" }}>الترسيخ والمراجعة (تمّ/لم يتم)</h2>
-                <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                  <div>
-                    الترسيخ: {s?.tarseekhDone == null ? "—" : s.tarseekhDone ? "تمّ" : "لم يتم"}
-                    <button type="button" style={{ marginInlineStart: 8 }} onClick={() => void post({ kind: "tarseekh", done: true })}>تمّ</button>
-                    <button type="button" onClick={() => void post({ kind: "tarseekh", done: false })}>لم يتم</button>
+              <Card style={{ marginBottom: sp(3) }}>
+                <h2 style={sectionTitle}>الترسيخ والمراجعة (تمّ/لم يتم)</h2>
+                <div style={{ display: "flex", gap: sp(5), flexWrap: "wrap", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: sp(2) }}>
+                    <span>الترسيخ: {s?.tarseekhDone == null ? "—" : s.tarseekhDone ? <Badge tone="success">تمّ</Badge> : <Badge tone="neutral">لم يتم</Badge>}</span>
+                    <Button variant="ghost" size="sm" type="button" onClick={() => void post({ kind: "tarseekh", done: true })}>تمّ</Button>
+                    <Button variant="ghost" size="sm" type="button" onClick={() => void post({ kind: "tarseekh", done: false })}>لم يتم</Button>
                   </div>
-                  <div>
-                    المراجعة اليوم (مقاطع): {s?.murajaahCount ?? "—"}
-                    <input
-                      type="number" min={0} value={reviewCount} style={{ ...num, marginInlineStart: 8 }}
+                  <div style={{ display: "flex", alignItems: "center", gap: sp(2) }}>
+                    <span>المراجعة اليوم (مقاطع): {s?.murajaahCount ?? "—"}</span>
+                    <Input
+                      type="number" min={0} value={reviewCount} style={num}
                       onChange={(e) => setReviewCount(e.target.value)}
                     />
-                    <button
-                      type="button"
-                      onClick={() => void post({ kind: "murajaah", count: Number(reviewCount || 0) })}
-                    >
+                    <Button size="sm" type="button" onClick={() => void post({ kind: "murajaah", count: Number(reviewCount || 0) })}>
                       رصد المقدار
-                    </button>
+                    </Button>
                   </div>
                 </div>
-              </div>
+              </Card>
             </>
           ) : (
-            <p style={{ opacity: 0.6 }}>الجلسة اليومية لطلاب مراقي. هذا الطالب في {view.program === "QAIDAH_MADANIYYAH" ? "القاعدة المدنية" : "برنامجٍ آخر"}.</p>
+            <p style={{ color: ui.color.muted }}>الجلسة اليومية لطلاب مراقي. هذا الطالب في {view.program === "QAIDAH_MADANIYYAH" ? "القاعدة المدنية" : "برنامجٍ آخر"}.</p>
           )}
         </>
       )}
-    </main>
+    </AppShell>
   );
 }
