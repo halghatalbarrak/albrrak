@@ -46,6 +46,37 @@ function stepTone(step: string): "success" | "danger" | "bronze" | "primary" {
 }
 const num: React.CSSProperties = { width: 72 };
 
+// ── العمل بلا إنترنت (الفكرة ١١) — كنمط الحضور م٢ ──
+// الرصد الأساسيّ (حفظ/ترسيخ/مراجعة) يُوجَّه لنقطةٍ واحدة تُحدِّث بمفتاح (الطالب+اليوم)،
+// فإعادة المزامنة idempotent بلا أثرٍ مضاعف. إن تعذّر الإرسال يُحفظ محليّاً ويُزامَن لاحقاً.
+const QUEUE_KEY = "albrrak.session.queue";
+interface QueuedRecord { studentId: string; body: Record<string, unknown> }
+function readQueue(): QueuedRecord[] {
+  try { const raw = localStorage.getItem(QUEUE_KEY); return raw ? (JSON.parse(raw) as QueuedRecord[]) : []; } catch { return []; }
+}
+function writeQueue(q: QueuedRecord[]): void { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+/** يُعيد إرسال كل رصدٍ مؤجَّل (idempotent). يعيد عدد ما بقي مؤجَّلاً. */
+async function flushQueue(): Promise<number> {
+  const q = readQueue();
+  if (q.length === 0) return 0;
+  const t = await token();
+  if (!t) return q.length;
+  const remain: QueuedRecord[] = [];
+  for (const item of q) {
+    try {
+      const res = await fetch(`/api/students/${item.studentId}/session`, {
+        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+        body: JSON.stringify(item.body),
+      });
+      if (!res.ok) remain.push(item); // خطأ خادمٍ (لا شبكة): يبقى للمراجعة.
+    } catch {
+      remain.push(item); // ما زال بلا اتصال.
+    }
+  }
+  writeQueue(remain);
+  return remain.length;
+}
+
 export default function DailySessionPage() {
   const { me } = useMe();
   const date = todayISO();
@@ -54,6 +85,18 @@ export default function DailySessionPage() {
   const [board, setBoard] = useState<BoardStudent[] | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [pending, setPending] = useState(0);
+
+  const refreshPending = useCallback(() => setPending(readQueue().length), []);
+  const flush = useCallback(async () => { setPending(await flushQueue()); }, []);
+
+  // مزامنةٌ عند التحميل وعند عودة الاتصال (كالحضور م٢).
+  useEffect(() => { refreshPending(); void flush(); }, [refreshPending, flush]);
+  useEffect(() => {
+    const onOnline = () => void flush();
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [flush]);
 
   // الحلقات: تُحمَّل مرّةً، وتُختار الأولى تلقائيًّا (بلا اختيارٍ مفروض).
   useEffect(() => {
@@ -113,6 +156,13 @@ export default function DailySessionPage() {
         </div>
       )}
 
+      {pending > 0 && (
+        <Card style={{ marginBottom: sp(4), borderInlineStart: `4px solid ${ui.color.bronze}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(3), flexWrap: "wrap" }}>
+          <span>لا اتصال — <strong>{pending}</strong> رصدٌ محفوظٌ محليّاً، سيُزامن تلقائيّاً عند عودة الشبكة.</span>
+          <Button variant="bronze" size="sm" onClick={() => void flush()}>مزامنة الآن</Button>
+        </Card>
+      )}
+
       {status === "error" && <p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" onClick={() => void loadBoard()}>إعادة</Button></p>}
       {status === "loading" && (
         <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>{[0, 1, 2].map((i) => <Skeleton key={i} height={92} />)}</div>
@@ -140,7 +190,7 @@ export default function DailySessionPage() {
           </button>
           {expanded === s.studentId && (
             <div style={{ borderTop: `1px solid ${ui.color.border}`, padding: sp(4), background: ui.color.bg }}>
-              <StudentDetail studentId={s.studentId} date={date} onSaved={() => void loadBoard()} />
+              <StudentDetail studentId={s.studentId} date={date} onSaved={() => { refreshPending(); void loadBoard(); }} />
             </div>
           )}
         </Card>
@@ -172,37 +222,51 @@ function StudentDetail({ studentId, date, onSaved }: { studentId: string; date: 
     setMsg(null);
     const t = await token();
     if (!t) return;
-    const res = await fetch(`/api/students/${studentId}/session`, {
-      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
-      body: JSON.stringify({ ...body, date }),
-    });
-    if (res.ok) { setMsg("حُفظ."); await load(); onSaved(); }
-    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر الحفظ."); }
+    const full = { ...body, date };
+    try {
+      const res = await fetch(`/api/students/${studentId}/session`, {
+        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+        body: JSON.stringify(full),
+      });
+      if (res.ok) { setMsg("حُفظ."); await load(); onSaved(); }
+      else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر الحفظ."); }
+    } catch {
+      // لا اتصال ⟵ احفظ محليّاً وزامن لاحقاً (كالحضور م٢). idempotent على مفتاح الطالب+اليوم.
+      const q = readQueue(); q.push({ studentId, body: full }); writeQueue(q);
+      setMsg("لا اتصال — حُفظ محليّاً وسيُزامن تلقائيّاً عند عودة الشبكة.");
+      onSaved();
+    }
   }
   function saveHifz() {
     void post({ kind: "hifz", fromSurah: Number(hifz.fromSurah), fromAyah: Number(hifz.fromAyah), toSurah: Number(hifz.toSurah), toAyah: Number(hifz.toAyah), attempts: Number(hifz.attempts), mastered: hifz.mastered });
   }
+  // الترميم وإعلان الجاهزية: رصدٌ غير idempotent (يُلحِق/يغيّر حالة) — لا يُصفّ محليّاً
+  // لئلّا يتضاعف؛ يتطلّب اتصالاً، وإلا يُرشَد المعلّم للإعادة متّصلاً.
   async function reviewError(sessionId: string, errorCount: number) {
     setMsg(null);
     const t = await token();
     if (!t) return;
-    const res = await fetch(`/api/students/${studentId}/review-error`, {
-      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
-      body: JSON.stringify({ sessionId, errorCount, date }),
-    });
-    if (res.ok) { const j = (await res.json()) as { reverted: boolean }; setMsg(j.reverted ? "خطآن — عاد المقطع حفظًا جديدًا." : "خطأٌ واحد — تنبيهٌ، يبقى راسخًا."); await load(); onSaved(); }
-    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر الرصد."); }
+    try {
+      const res = await fetch(`/api/students/${studentId}/review-error`, {
+        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+        body: JSON.stringify({ sessionId, errorCount, date }),
+      });
+      if (res.ok) { const j = (await res.json()) as { reverted: boolean }; setMsg(j.reverted ? "خطآن — عاد المقطع حفظًا جديدًا." : "خطأٌ واحد — تنبيهٌ، يبقى راسخًا."); await load(); onSaved(); }
+      else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر الرصد."); }
+    } catch { setMsg("رصد الترميم يتطلّب اتصالاً — أعِد المحاولة متّصلاً."); }
   }
   async function declareReadiness(stageId: string) {
     setMsg(null);
     const t = await token();
     if (!t) return;
-    const res = await fetch(`/api/students/${studentId}/hasad-readiness`, {
-      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
-      body: JSON.stringify({ stageId }),
-    });
-    if (res.ok) { setMsg("أُعلنت الجاهزية للحصاد."); await load(); onSaved(); }
-    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر إعلان الجاهزية."); }
+    try {
+      const res = await fetch(`/api/students/${studentId}/hasad-readiness`, {
+        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+        body: JSON.stringify({ stageId }),
+      });
+      if (res.ok) { setMsg("أُعلنت الجاهزية للحصاد."); await load(); onSaved(); }
+      else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر إعلان الجاهزية."); }
+    } catch { setMsg("إعلان الجاهزية يتطلّب اتصالاً — أعِد المحاولة متّصلاً."); }
   }
 
   if (status === "loading") return <p style={{ color: ui.color.muted, margin: 0 }}>…جارٍ التحميل</p>;
