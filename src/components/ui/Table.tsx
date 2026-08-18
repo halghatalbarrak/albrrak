@@ -4,11 +4,14 @@ import { ui, sp } from "./tokens";
 
 export interface Column<T> { key: string; header: string; cell: (row: T) => ReactNode }
 
-/** جدولٌ بهوية المنصّة (المرحلة ١) — عرضٌ فقط. */
+/**
+ * جدولٌ متجاوبٌ بهوية المنصّة: أعمدةٌ على الكمبيوتر، وبطاقاتٌ على الجوّال
+ * (كل صفٍّ بطاقة، وكل خليّةٍ مسبوقةٌ بعنوان عمودها). عرضٌ فقط.
+ */
 export function Table<T>({ columns, rows, empty = "لا بيانات." }: { columns: Column<T>[]; rows: T[]; empty?: string }) {
   return (
-    <div style={{ overflowX: "auto", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.lg, background: ui.color.surface }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: ui.font, fontSize: ui.text.base, color: ui.color.text }}>
+    <div className="dtable-wrap" style={{ border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.lg, background: ui.color.surface, overflow: "hidden" }}>
+      <table className="dtable" style={{ width: "100%", borderCollapse: "collapse", fontFamily: ui.font, fontSize: ui.text.base, color: ui.color.text }}>
         <thead>
           <tr style={{ background: "#efe9e2" }}>
             {columns.map((c) => (
@@ -22,7 +25,7 @@ export function Table<T>({ columns, rows, empty = "لا بيانات." }: { colu
           ) : rows.map((row, i) => (
             <tr key={i} style={{ borderTop: `1px solid ${ui.color.border}` }}>
               {columns.map((c) => (
-                <td key={c.key} style={{ padding: `${sp(2.5)} ${sp(3)}` }}>{c.cell(row)}</td>
+                <td key={c.key} data-label={c.header} style={{ padding: `${sp(2.5)} ${sp(3)}` }}>{c.cell(row)}</td>
               ))}
             </tr>
           ))}
