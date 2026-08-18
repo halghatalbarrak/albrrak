@@ -31,7 +31,6 @@ async function token(): Promise<string | null> {
 
 const column: React.CSSProperties = { maxWidth: 520, margin: "0 auto" };
 const chip: React.CSSProperties = { padding: "0.25rem 0.6rem", borderRadius: ui.radius.full, fontSize: ui.text.xs, color: "#fff", fontWeight: 700 };
-const btn: React.CSSProperties = { padding: `${sp(2)} ${sp(3)}`, borderRadius: ui.radius.md, border: `1px solid ${ui.color.primary}`, background: ui.color.surface, fontFamily: ui.font, color: ui.color.text, cursor: "pointer" };
 const CRUMBS = [{ label: "الرئيسة", href: "/" }, { label: "الحصاد" }];
 
 export default function HasadPage() {
@@ -163,11 +162,11 @@ export default function HasadPage() {
         <div><strong>{pick.name}</strong> · {pick.stageLabel}{pick.hizb != null ? ` · حزب ${pick.hizb}` : ""}</div>
         <span style={{ ...chip, background: RANK_BG[grade.rank] }}>{RANK[grade.rank]}</span>
       </div>
-      <div style={{ display: "flex", gap: sp(2), fontSize: ui.text.xs, marginBottom: sp(2), flexWrap: "wrap" }}>
-        <span>الوجه {faceIdx + 1} من {pages.length}{page != null ? ` (ص${page})` : ""}</span>
-        <span>· أخطاء الحزب: <strong>{grade.totalErrors}</strong></span>
-        <span>· تردّد الوجه: <strong>{faceHes}</strong>{faceHes >= 3 ? " (=خطأ)" : ""}</span>
-      </div>
+      <Card style={{ display: "flex", gap: sp(4), fontSize: ui.text.xs, marginBottom: sp(3), flexWrap: "wrap", padding: `${sp(2)} ${sp(4)}` }}>
+        <span>الوجه <strong>{faceIdx + 1}</strong> من {pages.length}{page != null ? ` (ص${page})` : ""}</span>
+        <span>أخطاء الحزب: <strong style={{ color: ui.color.danger }}>{grade.totalErrors}</strong></span>
+        <span>تردّد الوجه: <strong>{faceHes}</strong>{faceHes >= 3 ? " (=خطأ)" : ""}</span>
+      </Card>
       {msg && <p style={{ color: ui.color.danger }}>{msg}</p>}
 
       {/* صورة الوجه + طبقة تظليل الآيات */}
@@ -188,32 +187,32 @@ export default function HasadPage() {
       {/* قائمة آيات الوجه عند «خطأ» */}
       {picking && face && (
         <Card style={{ marginTop: sp(2) }}>
-          <div style={{ display: "flex", gap: 6, marginBottom: sp(2) }}>
+          <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>نوع الخطأ ثمّ الآية:</div>
+          <div style={{ display: "flex", gap: sp(2), marginBottom: sp(3), flexWrap: "wrap" }}>
             {ETYPE.map((t) => (
-              <button key={t.v} type="button" onClick={() => setEtype(t.v)}
-                style={{ ...btn, padding: "0.2rem 0.6rem", background: etype === t.v ? ui.color.primary : ui.color.surface, color: etype === t.v ? "#fff" : ui.color.text }}>{t.l}</button>
+              <Button key={t.v} size="sm" variant={etype === t.v ? "bronze" : "ghost"} type="button" onClick={() => setEtype(t.v)}>{t.l}</Button>
             ))}
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: sp(2) }}>
             {face.ayahs.map((a) => (
-              <button key={`${a.surah}:${a.ayah}`} type="button" style={{ ...btn, padding: "0.25rem 0.6rem" }} onClick={() => addError(a)}>
+              <Button key={`${a.surah}:${a.ayah}`} size="sm" variant="ghost" type="button" onClick={() => addError(a)}>
                 {a.surah}:{a.ayah}
-              </button>
+              </Button>
             ))}
           </div>
-          <button type="button" style={{ ...btn, marginTop: sp(2), padding: "0.2rem 0.7rem" }} onClick={() => setPicking(false)}>إلغاء</button>
+          <Button size="sm" variant="ghost" type="button" style={{ marginTop: sp(3) }} onClick={() => setPicking(false)}>إلغاء</Button>
         </Card>
       )}
 
       {/* الأزرار */}
-      <div style={{ display: "flex", gap: sp(2), marginTop: sp(3), flexWrap: "wrap" }}>
-        <button type="button" style={{ ...btn, borderColor: ui.color.danger, color: ui.color.danger }} onClick={() => setPicking((v) => !v)} disabled={!face}>خطأ</button>
-        <button type="button" style={{ ...btn, borderColor: ui.color.bronzeHover, color: ui.color.bronzeHover }} onClick={addHesitation} disabled={!face}>تردّد</button>
-        <button type="button" style={{ ...btn, marginInlineStart: "auto", background: ui.color.primary, color: "#fff", borderColor: ui.color.primary }} onClick={() => void next()} disabled={!face}>
+      <div style={{ display: "flex", gap: sp(2), marginTop: sp(3), flexWrap: "wrap", alignItems: "center" }}>
+        <Button variant="danger" type="button" onClick={() => setPicking((v) => !v)} disabled={!face}>خطأ</Button>
+        <Button variant="bronze" type="button" onClick={addHesitation} disabled={!face}>تردّد</Button>
+        <Button type="button" style={{ marginInlineStart: "auto" }} onClick={() => void next()} disabled={!face}>
           {faceIdx < pages.length - 1 ? "الوجه التالي ⟵" : "إنهاء الحصاد"}
-        </button>
+        </Button>
       </div>
-      <button type="button" style={{ ...btn, marginTop: sp(2), padding: "0.2rem 0.7rem", fontSize: ui.text.xs }} onClick={reset}>إلغاء الحصاد</button>
+      <Button variant="ghost" size="sm" type="button" style={{ marginTop: sp(3) }} onClick={reset}>إلغاء الحصاد</Button>
     </Shell>
   );
 }
