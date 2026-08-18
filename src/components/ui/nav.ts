@@ -52,6 +52,7 @@ export function navSections(roles: string[]): NavSection[] {
   return [{
     key: "learn", label: "التعلّم", items: [
       { label: "صفحتي", href: "/me" },
+      { label: "الرسائل", href: "/messages" },
       { label: "السلّم البياني", href: "/programs/civil-base" },
       { label: "مراقي", href: "/programs/maraqi" },
     ],

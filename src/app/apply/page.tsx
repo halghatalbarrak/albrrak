@@ -87,6 +87,7 @@ export default function ApplyPage() {
       gender: raw.gender,
       schoolStageId: raw.schoolStageId || undefined,
       guardianPhone: raw.guardianPhone,
+      guardianEmail: raw.guardianEmail || undefined,
       guardianGender: raw.guardianGender,
       guardianRelationId: raw.guardianRelationId,
       studentPhone: raw.studentPhone || undefined,
@@ -197,6 +198,8 @@ export default function ApplyPage() {
         </Field>
 
         <Field label="جوال ولي الأمر (يبدأ بـ 966)"><input style={inputStyle} name="guardianPhone" required inputMode="tel" /></Field>
+
+        <Field label="بريد ولي الأمر (اختياريّ — لتصله تقارير الأسبوع)"><input style={inputStyle} name="guardianEmail" type="email" inputMode="email" autoComplete="off" /></Field>
 
         <Field label="جنس ولي الأمر">
           <select style={inputStyle} name="guardianGender" required defaultValue="MALE">

@@ -24,6 +24,8 @@ export interface ApplicationInput {
   gender: Gender;
   schoolStageId?: string | null;
   guardianPhone: string;
+  /** بريد الولي — اختياريّ (الفكرة ٩): يُجمَع للرسالة الأسبوعية لاحقًا. */
+  guardianEmail?: string | null;
   guardianGender: Gender;
   /** صفة الولي (أب/أخ/…) — قيمة من GuardianRelation. إلزامية. */
   guardianRelationId: string;
@@ -53,6 +55,7 @@ export async function submitApplication(
         gender: input.gender,
         schoolStageId: input.schoolStageId ?? null,
         guardianPhone: input.guardianPhone,
+        guardianEmail: input.guardianEmail?.trim() || null,
         guardianGender: input.guardianGender,
         guardianRelationId: input.guardianRelationId,
         studentPhone: input.studentPhone ?? null,
