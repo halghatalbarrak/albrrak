@@ -6,8 +6,10 @@ import Link from "next/link";
 
 import { ui, sp } from "./tokens";
 import { navSections } from "./nav";
+import { CommandPalette } from "./CommandPalette";
 
 const BRAND = "حلقات الشيخ محمد البراك";
+const STAFF_ROLES = ["TEACHER", "CIRCLE_MANAGER", "SUPER_ADMIN", "RECITER", "REGISTRAR"];
 
 export interface Crumb { label: string; href?: string }
 
@@ -30,6 +32,7 @@ export interface AppShellProps {
  */
 export function AppShell({ roles, userName, activeHref, title, crumbs, children }: AppShellProps) {
   const sections = navSections(roles);
+  const isStaff = roles.some((r) => STAFF_ROLES.includes(r));
   const [drawer, setDrawer] = useState(false); // درج الجوّال
   // القسم الذي فيه الصفحة الحاليّة يبدأ مفتوحاً؛ إن لم يُعرف فالأوّل.
   const activeKey = sections.find((s) => s.items.some((it) => it.href === activeHref))?.key ?? sections[0]?.key;
@@ -124,11 +127,21 @@ export function AppShell({ roles, userName, activeHref, title, crumbs, children 
             )}
             <h1 style={{ margin: 0, fontSize: ui.text.xl, fontWeight: 700, color: ui.color.text }}>{title}</h1>
           </div>
+          {isStaff && (
+            <button
+              onClick={() => window.dispatchEvent(new Event("albrrak:search"))}
+              aria-label="بحث"
+              style={{ display: "flex", alignItems: "center", gap: sp(2), border: `1px solid ${ui.color.border}`, background: ui.color.surface, borderRadius: ui.radius.md, padding: `${sp(1.5)} ${sp(3)}`, cursor: "pointer", color: ui.color.muted, fontFamily: ui.font, fontSize: ui.text.xs, whiteSpace: "nowrap" }}
+            >
+              بحث <kbd style={{ border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.sm, padding: "0 4px", fontSize: 12 }}>Ctrl K</kbd>
+            </button>
+          )}
           {userName && <span style={{ fontSize: ui.text.xs, color: ui.color.muted, whiteSpace: "nowrap" }}>{userName}</span>}
         </div>
 
         <div style={{ padding: sp(6), maxWidth: 1080 }}>{children}</div>
       </main>
+      {isStaff && <CommandPalette />}
     </div>
   );
 }
