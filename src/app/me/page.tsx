@@ -99,7 +99,10 @@ export default function MePage() {
             </Card>
           )}
 
-          <a href="/programs/maraqi" style={{ textDecoration: "none" }}><Button variant="ghost">افتح سلّم مراقي</Button></a>
+          <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
+            <a href="/me/weakness" style={{ textDecoration: "none" }}><Button variant="bronze">مواضع تحتاج مراجعة</Button></a>
+            <a href="/programs/maraqi" style={{ textDecoration: "none" }}><Button variant="ghost">افتح سلّم مراقي</Button></a>
+          </div>
         </>
       )}
 
