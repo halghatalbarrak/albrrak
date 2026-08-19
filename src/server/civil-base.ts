@@ -1,5 +1,8 @@
+import { randomUUID } from "node:crypto";
+
 import {
   ApprovalKind,
+  CertificateTemplate,
   ProgramKey,
   ProgressState,
   Role,
@@ -105,6 +108,19 @@ export async function completeChapter(
       actorId: args.actorId,
       payload: { studentId: args.studentId },
     });
+
+    // إن اكتملت كلّ أبواب القاعدة ⟵ شهادة القاعدة المدنية (م٥) مرّةً واحدة.
+    const stage = await tx.stage.findUnique({ where: { id: args.chapterStageId }, select: { programId: true } });
+    if (stage) {
+      const total = await tx.stage.count({ where: { programId: stage.programId, kind: StageKind.CHAPTER } });
+      const done = await tx.stageProgress.count({ where: { studentId: args.studentId, state: ProgressState.COMPLETED, stage: { programId: stage.programId, kind: StageKind.CHAPTER } } });
+      if (total > 0 && done >= total) {
+        const already = await tx.certificate.findFirst({ where: { studentId: args.studentId, template: CertificateTemplate.QAIDAH }, select: { id: true } });
+        if (!already) {
+          await tx.certificate.create({ data: { studentId: args.studentId, template: CertificateTemplate.QAIDAH, verifyToken: randomUUID() } });
+        }
+      }
+    }
   });
 }
 
