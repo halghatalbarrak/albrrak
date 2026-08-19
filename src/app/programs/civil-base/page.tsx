@@ -44,7 +44,7 @@ const centered: React.CSSProperties = {
   gap: sp(3), background: ui.color.bg, fontFamily: ui.font, color: ui.color.text,
 };
 
-const CRUMBS = [{ label: "الرئيسة", href: "/" }, { label: "التعلّم" }, { label: "السلّم البياني" }];
+const CRUMBS = [{ label: "الرئيسة", href: "/" }, { label: "البرامج" }, { label: "القاعدة المدنية" }];
 
 export default function CivilBaseLadderPage() {
   const { me } = useMe();
