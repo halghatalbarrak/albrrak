@@ -4,6 +4,10 @@ import path from "node:path";
 import chromium from "@sparticuz/chromium";
 import puppeteer, { type Browser } from "puppeteer-core";
 import QRCode from "qrcode";
+import { type PrismaClient } from "@prisma/client";
+
+import { prisma } from "@/lib/prisma";
+import { uploadCertificatePng } from "./storage";
 
 /**
  * مولّد الشهادات — Chromium بلا رأس + قالب HTML/CSS بـ dir="rtl".
@@ -61,6 +65,16 @@ function fontFace(fontsDir: string, weight: number, file: string): string {
   return `@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:${weight};src:url(data:font/ttf;base64,${b64}) format('truetype');}`;
 }
 
+/** شعار المنصّة مُضمَّناً (base64) — من public/png/logo.jpeg. */
+function logoDataUrl(): string {
+  try {
+    const b64 = readFileSync(path.join(process.cwd(), "public", "png", "logo.jpeg")).toString("base64");
+    return `data:image/jpeg;base64,${b64}`;
+  } catch {
+    return "";
+  }
+}
+
 function buildHtml(
   data: CertificateData,
   qrDataUrl: string,
@@ -74,38 +88,36 @@ function buildHtml(
     fontFace(fontsDir, 700, "IBMPlexSansArabic-Bold.ttf"),
   ].join("");
 
-  const brand = data.brand
-    ? `<div class="brand">${esc(data.brand)}</div>`
-    : "";
-  const bodyLine = data.bodyLine
-    ? `<div class="desc">${esc(data.bodyLine)}</div>`
-    : "";
+  const logo = logoDataUrl();
+  const brand = `<div class="brand">${esc(data.brand ?? "حلقات الشيخ محمد البراك")}</div>`;
+  const bodyLine = data.bodyLine ? `<div class="desc">${esc(data.bodyLine)}</div>` : "";
 
+  // بهوية المنصّة (قرار محمد): خلفيّةٌ كريميّة، إطارٌ برونزيّ، عناوين بالتاوپيّ الأساس.
   return `<!doctype html>
 <html dir="rtl" lang="ar"><head><meta charset="utf-8"><style>
 ${fonts}
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{width:${width}px;height:${height}px;}
-.cert{width:${width}px;height:${height}px;background:#FBFAF5;border:18px solid #1F5C3D;
-  padding:64px 72px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
-  font-family:'IBM Plex Sans Arabic',sans-serif;color:#14281D;}
-.head{display:flex;flex-direction:column;align-items:center;}
-.logo{width:96px;height:96px;border-radius:20px;border-top:8px solid #1F5C3D;border-right:8px solid #1F5C3D;margin-bottom:28px;}
-.brand{font-size:34px;font-weight:600;color:#1F5C3D;}
+.cert{width:${width}px;height:${height}px;background:#F5F0E8;border:16px solid #A9834F;outline:2px solid #A9834F;outline-offset:-26px;
+  padding:60px 72px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  font-family:'IBM Plex Sans Arabic',sans-serif;color:#2b2620;}
+.head{display:flex;flex-direction:column;align-items:center;gap:18px;}
+.logo{width:104px;height:auto;border-radius:14px;}
+.brand{font-size:32px;font-weight:700;color:#574F47;}
 .body{display:flex;flex-direction:column;align-items:center;text-align:center;}
-.title{font-size:52px;font-weight:700;margin-bottom:36px;}
-.pre{font-size:28px;color:#4A5550;margin-bottom:20px;}
-.name{font-size:64px;font-weight:700;color:#0D1A12;}
-.desc{font-size:28px;color:#4A5550;margin-top:24px;max-width:${width - 160}px;}
+.title{font-size:52px;font-weight:700;color:#8f6d40;margin-bottom:32px;}
+.pre{font-size:26px;color:#7a7167;margin-bottom:18px;}
+.name{font-size:62px;font-weight:700;color:#2b2620;}
+.desc{font-size:26px;color:#7a7167;margin-top:22px;max-width:${width - 160}px;line-height:1.7;}
 .foot{width:100%;display:flex;flex-direction:row;align-items:flex-end;justify-content:space-between;}
 .doc{display:flex;flex-direction:column;gap:6px;}
-.doc .lbl{font-size:22px;font-weight:600;}
-.token{font-size:20px;color:#4A5550;}
+.doc .lbl{font-size:20px;font-weight:600;color:#574F47;}
+.token{font-size:19px;color:#7a7167;}
 .qr{display:flex;flex-direction:column;align-items:center;gap:8px;}
-.qr .cap{font-size:16px;color:#6A756F;}
+.qr .cap{font-size:15px;color:#7a7167;}
 </style></head>
 <body><div class="cert">
-  <div class="head"><div class="logo"></div>${brand}</div>
+  <div class="head">${logo ? `<img class="logo" src="${logo}" alt="" />` : ""}${brand}</div>
   <div class="body">
     <div class="title">${esc(data.title)}</div>
     <div class="pre">نشهد بأنّ</div>
@@ -117,6 +129,15 @@ html,body{width:${width}px;height:${height}px;}
     <div class="qr"><img src="${qrDataUrl}" width="140" height="140" alt="QR"/><div class="cap">للتحقّق امسح الرمز</div></div>
   </div>
 </div></body></html>`;
+}
+
+/** يبني HTML الشهادة كاملاً (QR + خطوط + شعار مُضمَّنة) — يُشارَك بين الرسم والمعاينة. */
+export async function buildCertificateHtml(data: CertificateData, options: RenderOptions = {}): Promise<string> {
+  const width = options.width ?? DEFAULT_WIDTH;
+  const height = options.height ?? DEFAULT_HEIGHT;
+  const fontsDir = options.fontsDir ?? path.join(process.cwd(), "public", "fonts");
+  const qrDataUrl = await QRCode.toDataURL(data.verifyUrl, { margin: 1, width: 220, color: { dark: "#574F47", light: "#F5F0E8" } });
+  return buildHtml(data, qrDataUrl, fontsDir, width, height);
 }
 
 async function launchBrowser(width: number, height: number): Promise<Browser> {
@@ -148,12 +169,7 @@ export async function renderCertificatePng(
   const height = options.height ?? DEFAULT_HEIGHT;
   const fontsDir = options.fontsDir ?? path.join(process.cwd(), "public", "fonts");
 
-  const qrDataUrl = await QRCode.toDataURL(data.verifyUrl, {
-    margin: 1,
-    width: 220,
-    color: { dark: "#14281D", light: "#FFFFFF" },
-  });
-  const html = buildHtml(data, qrDataUrl, fontsDir, width, height);
+  const html = await buildCertificateHtml(data, { width, height, fontsDir });
 
   let browser: Browser | null = null;
   try {
@@ -174,4 +190,45 @@ export async function renderCertificatePng(
   } finally {
     if (browser) await browser.close();
   }
+}
+
+// ═══════════════ الإصدار الكسول + التخزين (م٥ + الفكرة ١٠) ═══════════════
+
+const CERT_TITLE: Record<string, string> = {
+  KHATM: "شهادة ختم القرآن الكريم",
+  MAIN_STAGE: "شهادة إتمام مرحلة",
+  SUB_STAGE: "شهادة إتمام حزب",
+  QAIDAH: "شهادة القاعدة المدنية",
+};
+const CERT_BODY: Record<string, string> = {
+  KHATM: "بإتمامه حفظ القرآن الكريم كاملاً بحمد الله وتوفيقه",
+  MAIN_STAGE: "بإتمامه هذه المرحلة من مراقي الحفظ بنجاح",
+  SUB_STAGE: "بإتمامه هذا الجزء من محفوظه بنجاح",
+  QAIDAH: "بإتمامه القاعدة المدنية في القراءة والتجويد",
+};
+
+/**
+ * يضمن وجود صورة الشهادة: إن كانت مخزَّنة أعادها؛ وإلا رسمها (كسولٌ عند أول طلب —
+ * Chromium ثقيل) ورفعها إلى التخزين وحفظ رابطها. الاعتماد الثقيل على هذا المسار وحده.
+ */
+export async function ensureCertificateImage(certId: string, db: PrismaClient = prisma): Promise<string> {
+  const c = await db.certificate.findUniqueOrThrow({
+    where: { id: certId },
+    select: { imageUrl: true, verifyToken: true, template: true, isExcellent: true, student: { select: { user: { select: { nameAsInId: true } } } } },
+  });
+  if (c.imageUrl) return c.imageUrl;
+
+  const appBase = (process.env.NEXT_PUBLIC_APP_URL ?? "https://albrrak.vercel.app").replace(/\/$/, "");
+  const bodyBase = CERT_BODY[c.template] ?? "";
+  const png = await renderCertificatePng({
+    recipientName: c.student.user.nameAsInId,
+    title: CERT_TITLE[c.template] ?? "شهادة",
+    token: c.verifyToken,
+    verifyUrl: `${appBase}/verify/${c.verifyToken}`,
+    bodyLine: c.isExcellent ? `${bodyBase}، نيلاً لمرتبة التميّز.` : `${bodyBase}.`,
+    brand: "حلقات الشيخ محمد البراك",
+  });
+  const url = await uploadCertificatePng(png);
+  await db.certificate.update({ where: { id: certId }, data: { imageUrl: url } });
+  return url;
 }
