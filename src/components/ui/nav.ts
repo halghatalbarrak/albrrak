@@ -7,18 +7,24 @@ export interface NavItem { label: string; href: string }
 export interface NavSection { key: string; label: string; items: NavItem[] }
 
 /**
- * أقسام الشريط الجانبيّ (قرار محمد): التعلّم · الإدارة · التشغيل · الحصاد.
- * نفس منطق menuForRoles (الأعلى صلاحيّةً يُقدَّم، لا خلط)، لكن كلّ صفحاتِ الدور
- * تُتاح للوصول — كي «لا تُترك صفحة». المعلّم يرى قسمَي التشغيل والحصاد.
+ * أقسام الشريط الجانبيّ (قرار محمد): **اتّحاد** أقسام كلّ أدوار المستخدم — لا «أعلى
+ * دورٍ يفوز». الترتيب ثابت: الإدارة · التشغيل · الحصاد · التعلّم · الرسائل. لا يُسقط
+ * دورٌ دوراً. ومن لا دور له (لم يصل بعد) ⟵ [] (منع وميض شريط الطالب).
+ *
+ * المشرف العام والمدير يريان **كلّ** أقسام العمل (الإدارة والتشغيل والحصاد)، لأنّ من
+ * يشرف على الحلقات يحتاج أن يرى ما يراه المعلّم ليتابع ويسدّ الغياب. هذا **عرضٌ** فقط
+ * — الصلاحيّات الفعليّة (حرّاس الخادم) لا تُمسّ. و«الرسائل» يراها الطالب ووليّ الأمر.
  */
 export function navSections(roles: string[]): NavSection[] {
-  // دورٌ غير معروف (لم يصل بعد) ⟵ لا أقسام إطلاقاً — لا قائمةَ افتراضية (لئلّا يومض
-  // شريطُ الطالب ثمّ يُستبدَل بشريط الدور). كلُّ مستخدمٍ مُحمَّلٍ له دورٌ (STUDENT فأكثر).
   if (roles.length === 0) return [];
   const has = (r: string) => roles.includes(r);
+  const supervises = has("SUPER_ADMIN") || has("CIRCLE_MANAGER");
 
-  if (has("CIRCLE_MANAGER") || has("SUPER_ADMIN")) {
-    return [{
+  const sections: NavSection[] = [];
+
+  // الإدارة — المدير والمشرف العام.
+  if (supervises) {
+    sections.push({
       key: "manage", label: "الإدارة", items: [
         { label: "الاعتمادات", href: "/admin/approvals" },
         { label: "الطلبات", href: "/admin/applications" },
@@ -28,33 +34,41 @@ export function navSections(roles: string[]): NavSection[] {
         { label: "العرفاء", href: "/admin/arifs" },
         { label: "القيد", href: "/admin/enrollment" },
       ],
-    }];
+    });
   }
 
-  if (has("TEACHER")) {
-    return [
-      {
-        key: "operate", label: "التشغيل", items: [
-          { label: "الجلسة اليومية", href: "/admin/session" },
-          { label: "الحضور", href: "/admin/attendance" },
-          { label: "حلقتي", href: "/admin/circles" },
-          { label: "العرفاء", href: "/admin/arifs" },
-        ],
-      },
-      { key: "harvest", label: "الحصاد", items: [{ label: "الحصاد", href: "/admin/hasad" }] },
-    ];
+  // التشغيل — المعلّم؛ والمشرف/المدير (يرى ما يراه المعلّم ليتابع ويسدّ الغياب).
+  if (has("TEACHER") || supervises) {
+    sections.push({
+      key: "operate", label: "التشغيل", items: [
+        { label: "الجلسة اليومية", href: "/admin/session" },
+        { label: "الحضور", href: "/admin/attendance" },
+        { label: "حلقتي", href: "/admin/circles" },
+        { label: "العرفاء", href: "/admin/arifs" },
+      ],
+    });
   }
 
-  if (has("RECITER")) {
-    return [{ key: "harvest", label: "الحصاد", items: [{ label: "الحصاد", href: "/admin/hasad" }] }];
+  // الحصاد — المعلّم والمُسمِّع؛ والمشرف/المدير.
+  if (has("TEACHER") || has("RECITER") || supervises) {
+    sections.push({ key: "harvest", label: "الحصاد", items: [{ label: "الحصاد", href: "/admin/hasad" }] });
   }
 
-  return [{
-    key: "learn", label: "التعلّم", items: [
-      { label: "صفحتي", href: "/me" },
-      { label: "الرسائل", href: "/messages" },
-      { label: "السلّم البياني", href: "/programs/civil-base" },
-      { label: "مراقي", href: "/programs/maraqi" },
-    ],
-  }];
+  // التعلّم — الطالب (صفحاته الشخصيّة).
+  if (has("STUDENT")) {
+    sections.push({
+      key: "learn", label: "التعلّم", items: [
+        { label: "صفحتي", href: "/me" },
+        { label: "السلّم البياني", href: "/programs/civil-base" },
+        { label: "مراقي", href: "/programs/maraqi" },
+      ],
+    });
+  }
+
+  // الرسائل — الطالب ووليّ الأمر (لا تُحبس في قسم واحد). وليٌّ صرفٌ ⟵ هذا القسم وحده.
+  if (has("STUDENT") || has("GUARDIAN")) {
+    sections.push({ key: "messages", label: "الرسائل", items: [{ label: "الرسائل", href: "/messages" }] });
+  }
+
+  return sections;
 }
