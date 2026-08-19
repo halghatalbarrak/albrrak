@@ -553,6 +553,7 @@ model Certificate {
   issuedAt     DateTime @default(now())
   verifyToken  String  @unique         // ⚠️ عشوائي غير متسلسل
   imageUrl     String?
+  revokedAt    DateTime?               // الفكرة ١٠: إبطالٌ لاحقٌ إن لزم — التحقّق يُظهر «مُبطَلة»
 }
 
 // ═══════════════ الإعدادات ═══════════════
