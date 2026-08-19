@@ -41,7 +41,7 @@ const stepStyle: React.CSSProperties = {
   marginBottom: 6,
 };
 
-const CRUMBS = [{ label: "الرئيسة", href: "/" }, { label: "التعلّم" }, { label: "مراقي" }];
+const CRUMBS = [{ label: "الرئيسة", href: "/" }, { label: "البرامج" }, { label: "مراقي" }];
 
 export default function MaraqiLadderPage() {
   const { me } = useMe();
