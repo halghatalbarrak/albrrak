@@ -1,6 +1,9 @@
+import { randomUUID } from "node:crypto";
+
 import {
   ApprovalKind,
   ApprovalStatus,
+  CertificateTemplate,
   ProgressState,
   type PrismaClient,
 } from "@prisma/client";
@@ -91,6 +94,13 @@ export async function decideStageTransition(
           completedAt: new Date(),
         },
       });
+      // شهادة إتمام المرحلة الأصلية (م٥) — تُصدَر باعتماد المدير (الحكم ٧). مرّةً لكل مرحلة.
+      const already = await tx.certificate.findFirst({ where: { studentId: payload.studentId, template: CertificateTemplate.MAIN_STAGE, stageId: payload.mainStageId }, select: { id: true } });
+      if (!already) {
+        await tx.certificate.create({
+          data: { studentId: payload.studentId, template: CertificateTemplate.MAIN_STAGE, verifyToken: randomUUID(), stageId: payload.mainStageId, isExcellent: payload.finalRank === "EXCELLENT" },
+        });
+      }
       await emitEvent(tx, {
         type: "MAIN_STAGE_TRANSITION",
         subjectType: "Student",
