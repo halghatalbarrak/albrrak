@@ -75,14 +75,21 @@ function fontFace(fontsDir: string, weight: number, file: string): string {
   return `@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:${weight};src:url(data:font/ttf;base64,${b64}) format('truetype');}`;
 }
 
-/** شعار المنصّة مُضمَّناً (base64) — من public/png/logo.jpeg. */
+/** شعار المنصّة مُضمَّناً (base64) — نُفضّل logo.png (خلفية شفّافة) على logo.jpeg. */
 function logoDataUrl(): string {
-  try {
-    const b64 = readFileSync(path.join(process.cwd(), "public", "png", "logo.jpeg")).toString("base64");
-    return `data:image/jpeg;base64,${b64}`;
-  } catch {
-    return "";
+  const candidates: ReadonlyArray<readonly [string, string]> = [
+    ["logo.png", "image/png"],
+    ["logo.jpeg", "image/jpeg"],
+  ];
+  for (const [file, mime] of candidates) {
+    try {
+      const b64 = readFileSync(path.join(process.cwd(), "public", "png", file)).toString("base64");
+      return `data:${mime};base64,${b64}`;
+    } catch {
+      /* جرّب التالي */
+    }
   }
+  return "";
 }
 
 // ── النصوص المتبدّلة بحسب القالب ──
@@ -102,19 +109,6 @@ const DUA: [string, string] = [
   "نسأل الله أن يجعله من أهل القرآن وخاصّته،",
   "وأن يرزقه العملَ به والثباتَ عليه.",
 ];
-
-/** شريطٌ زخرفيّ أفقيّ (معيّنات ودوائر ذهبية)، محدود العرض ليبقى في الوسط. */
-function ornamentBand(id: string, width = 320): string {
-  return `<svg class="band" width="${width}" height="18" viewBox="0 0 ${width} 18" xmlns="http://www.w3.org/2000/svg">
-    <defs><pattern id="${id}" width="28" height="18" patternUnits="userSpaceOnUse">
-      <circle cx="3.5" cy="9" r="2.4" fill="#B08D57"/>
-      <rect x="10" y="3" width="10" height="10" transform="rotate(45 15 9)" fill="#E8D3A4" stroke="#8C6A3D" stroke-width="0.8"/>
-      <circle cx="24.5" cy="9" r="1.6" fill="#8C6A3D"/>
-    </pattern></defs>
-    <line x1="0" y1="9" x2="${width}" y2="9" stroke="#C9A063" stroke-width="1"/>
-    <rect width="${width}" height="18" fill="url(#${id})"/>
-  </svg>`;
-}
 
 function buildHtml(
   data: CertificateData,
@@ -167,14 +161,12 @@ body{font-family:'IBM Plex Sans Arabic',sans-serif;color:var(--text);}
 .corner.bl{bottom:15px;left:15px;transform:rotate(270deg);}
 
 /* منطقة المحتوى الآمنة — بعيدةٌ عن الزوايا بهامشٍ واضح، وموزّعةٌ على كامل الارتفاع. */
-.content{position:absolute;inset:40px 50px;display:flex;flex-direction:column;align-items:center;
-  justify-content:space-between;text-align:center;}
+.content{position:absolute;inset:42px 52px 54px 52px;display:flex;flex-direction:column;align-items:center;
+  justify-content:space-evenly;text-align:center;}
 .sec{display:flex;flex-direction:column;align-items:center;width:100%;}
 
 .basmala{font-size:18px;font-weight:700;color:#8C6A3D;margin-bottom:2px;}
-.logo{width:96px;height:96px;border-radius:14px;object-fit:cover;background:#fff;padding:4px;
-  box-shadow:0 1px 5px rgba(70,61,52,.22);border:1.5px solid var(--line);margin-bottom:2px;}
-.band{display:block;margin:2px auto;}
+.logo{height:100px;width:auto;object-fit:contain;margin-bottom:2px;}
 
 .banner{position:relative;margin:5px 0 1px;background:var(--brown);color:#F3E4C2;
   padding:6px 28px;font-size:22px;font-weight:700;letter-spacing:8px;border-radius:2px;
@@ -192,28 +184,22 @@ body{font-family:'IBM Plex Sans Arabic',sans-serif;color:var(--text);}
 .name{background:var(--field);border:1.5px solid var(--line);border-radius:6px;
   padding:8px 28px;margin:6px 0;font-size:30px;font-weight:700;color:#463D34;
   box-shadow:inset 0 0 0 3px var(--bg);max-width:430px;line-height:1.25;}
-.ach{font-size:13.5px;line-height:1.6;color:var(--text);}
+/* الكتلة الوسطى: صفّان متجاوران — النصّ يميناً (محاذاة يمينية)، الشارة يساراً متمركزةً رأسياً. */
+.midrow{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:30px;width:100%;margin:8px 0;}
+.midtext{display:flex;flex-direction:column;align-items:flex-start;text-align:start;gap:12px;max-width:300px;}
+.midbadge{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:9px;}
+.signblock{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.signblock .role{font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;}
+.signblock .pname{font-size:11.5px;color:var(--muted);white-space:nowrap;}
+.ach{font-size:13.5px;line-height:1.65;color:var(--text);}
+.dua{font-size:13px;line-height:1.6;color:var(--muted);}
 
-.hex{width:70px;height:70px;background:var(--gold);margin:7px 0;
+.hex{width:78px;height:78px;background:var(--gold);
   clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   color:#463D34;box-shadow:0 2px 5px rgba(70,61,52,.28);}
 .hex .k{font-size:9.5px;font-weight:600;opacity:.85;}
-.hex .v{font-size:17px;font-weight:700;line-height:1.1;}
-
-.dua{font-size:13px;line-height:1.55;color:var(--muted);}
-
-.signrow{display:flex;flex-direction:row-reverse;align-items:flex-end;justify-content:space-between;width:100%;margin:3px 0;}
-.seal{width:86px;display:flex;flex-direction:column;align-items:center;gap:3px;}
-.seal .ring{width:70px;height:70px;border:2px solid #B08D57;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;position:relative;background:var(--bg);}
-.seal .ring::before{content:"";position:absolute;inset:5px;border:1px solid var(--line);border-radius:50%;}
-.seal .ring img{width:46px;height:46px;border-radius:50%;object-fit:cover;}
-.seal .cap{font-size:11.5px;font-weight:700;color:#8C6A3D;}
-.sign{width:150px;display:flex;flex-direction:column;align-items:center;gap:4px;}
-.sign .space{height:22px;}
-.sign .ln{width:100%;border-bottom:1.4px solid var(--text);}
-.sign .role{font-size:12.5px;font-weight:700;color:var(--text);}
+.hex .v{font-size:15.5px;font-weight:700;line-height:1.1;}
 
 .qrrow{display:flex;flex-direction:row-reverse;align-items:center;justify-content:center;gap:12px;margin:4px 0 1px;}
 .qr{width:76px;height:76px;border:1px solid var(--line);border-radius:6px;padding:4px;background:#fff;}
@@ -235,7 +221,6 @@ body{font-family:'IBM Plex Sans Arabic',sans-serif;color:var(--text);}
     <div class="sec">
       <div class="basmala">بسم الله الرحمن الرحيم</div>
       ${logo ? `<img class="logo" src="${logo}" alt="" />` : ""}
-      ${ornamentBand("b1")}
       <div class="banner"><span>شهادة</span></div>
       <div class="headline gold">${esc(headline)}</div>
       <div class="uline"></div>
@@ -245,25 +230,23 @@ body{font-family:'IBM Plex Sans Arabic',sans-serif;color:var(--text);}
     <div class="sec">
       <div class="attest">تشهد ${esc(brand)} بأنّ الطالب</div>
       <div class="name">${esc(data.recipientName)}</div>
-      <div class="ach">${esc(ach1)}<br/>${esc(ach2)}</div>
-      <div class="hex"><span class="k">مرتبة</span><span class="v">${esc(rank)}</span></div>
-      <div class="dua">${esc(DUA[0])}<br/>${esc(DUA[1])}</div>
+      <div class="midrow">
+        <div class="midtext">
+          <div class="ach">${esc(ach1)}<br/>${esc(ach2)}</div>
+          <div class="dua">${esc(DUA[0])}<br/>${esc(DUA[1])}</div>
+        </div>
+        <div class="midbadge">
+          <div class="hex"><span class="k">مرتبة</span><span class="v">${esc(rank)}</span></div>
+          <div class="signblock">
+            <div class="role">المشرف العام على الحلقات</div>
+            <div class="pname">د. أحمد بن إبراهيم الشبيلي</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- الذيل -->
     <div class="sec">
-      <div class="signrow">
-        <div class="seal">
-          <div class="ring">${logo ? `<img src="${logo}" alt="" />` : ""}</div>
-          <div class="cap">ختم الحلقات</div>
-        </div>
-        <div class="sign">
-          <div class="space"></div>
-          <div class="ln"></div>
-          <div class="role">مدير الحلقات</div>
-        </div>
-      </div>
-      ${ornamentBand("b2")}
       <div class="qrrow">
         <img class="qr" src="${qrDataUrl}" width="82" height="82" alt="QR" />
         <div class="qrmeta">
