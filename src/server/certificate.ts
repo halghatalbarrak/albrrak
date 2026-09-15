@@ -336,7 +336,7 @@ export async function ensureCertificateImage(certId: string, db: PrismaClient = 
   });
   if (c.imageUrl) return c.imageUrl;
 
-  const appBase = (process.env.NEXT_PUBLIC_APP_URL ?? "https://albrrak.vercel.app").replace(/\/$/, "");
+  const appBase = (process.env.NEXT_PUBLIC_APP_URL ?? "https://halaqat-albarrak.com").replace(/\/$/, "");
   const png = await renderCertificatePng({
     recipientName: c.student.user.nameAsInId,
     template: c.template as CertTemplate,

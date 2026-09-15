@@ -9,7 +9,7 @@ export async function GET() {
       template: "KHATM",
       isExcellent: true,
       token: "K7F29QX4-M3T8-VR51",
-      verifyUrl: "https://albrrak.vercel.app/verify/SAMPLE",
+      verifyUrl: "https://halaqat-albarrak.com/verify/SAMPLE",
       issuedAtIso: "2026-08-19",
       brand: "حلقات الشيخ محمد البراك",
     });
