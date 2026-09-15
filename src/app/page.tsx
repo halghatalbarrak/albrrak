@@ -51,7 +51,6 @@ export default function Home() {
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(4), padding: sp(6), textAlign: "center" }}>
         <img src="/png/logo.jpeg" alt={BRAND} style={{ height: 96, width: "auto", borderRadius: ui.radius.lg }} />
         <h1 style={{ fontSize: ui.text.xxl, fontWeight: 700, margin: 0 }}>منصّة {BRAND}</h1>
-        <p style={{ fontSize: ui.text.base, color: ui.color.muted, margin: 0, maxWidth: 480 }}>منصّةٌ لإدارة حلقات التحفيظ — التقديم، والحضور، والحفظ، والحصاد، والشهادات.</p>
         <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", justifyContent: "center" }}>
           <Link href="/apply"><Button variant="primary">تقديم طلب</Button></Link>
           <Link href="/login"><Button variant="ghost">دخول</Button></Link>
