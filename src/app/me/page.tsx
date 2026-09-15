@@ -14,6 +14,8 @@ interface MySession {
   suggestions: { memorize: string; review: string } | null;
 }
 interface Forecast { hasPace: boolean; pacePerDay: number | null; hizbDoneDate: string | null; graduationDate: string | null; note: string }
+interface LedgerRow { id: string; itemName: string; amount: number; grantedByName: string | null; note: string | null; createdAt: string }
+interface Ledger { balance: number; transactions: LedgerRow[] }
 
 const STATE_AR: Record<string, string> = {
   APPLIED: "قيد مُقدَّم", PENDING_ACCEPTANCE: "بانتظار القبول", WAITLISTED: "قائمة الانتظار",
@@ -30,6 +32,7 @@ export default function MePage() {
   const [me, setMe] = useState<MyPage | null>(null);
   const [sess, setSess] = useState<MySession | null>(null);
   const [forecast, setForecast] = useState<Forecast | null>(null);
+  const [balance, setBalance] = useState<Ledger | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -45,6 +48,8 @@ export default function MePage() {
         if (sres.ok) setSess((await sres.json()) as MySession);
         const fres = await fetch("/api/me/forecast", { headers: auth });
         if (fres.ok) setForecast((await fres.json()) as Forecast);
+        const bres = await fetch("/api/me/balance", { headers: auth });
+        if (bres.ok) setBalance((await bres.json()) as Ledger | null);
       } catch {
         setErr("تعذّر الاتصال بالخادم.");
       }
@@ -59,6 +64,27 @@ export default function MePage() {
   return (
     <AppShell roles={me.roles} userName={me.name} activeHref="/me"
       title={`مرحبًا، ${me.name}`} crumbs={[{ label: "الرئيسة", href: "/" }, { label: "التعلّم" }, { label: "صفحتي" }]}>
+
+      {balance && (
+        <section style={{ marginBottom: sp(6) }}>
+          <div style={{ marginBottom: sp(3) }}>
+            <Stat label="نقاطي" value={arNum(balance.balance)} tone="bronze" hint="رصيدك من النقاط" />
+          </div>
+          {balance.transactions.length > 0 && (
+            <Card>
+              <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>آخر الحركات</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
+                {balance.transactions.slice(0, 5).map((t) => (
+                  <div key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: sp(2), alignItems: "center" }}>
+                    <span>{t.itemName}{t.note ? <span style={{ color: ui.color.muted }}> — {t.note}</span> : null}</span>
+                    <Badge tone={t.amount >= 0 ? "success" : "danger"}>{t.amount >= 0 ? "+" : "−"}{arNum(Math.abs(t.amount))}</Badge>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </section>
+      )}
 
       {!sess ? (
         <div style={{ display: "flex", flexDirection: "column", gap: sp(4) }}>

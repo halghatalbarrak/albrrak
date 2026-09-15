@@ -37,6 +37,7 @@ export function navSections(roles: string[]): NavSection[] {
         { label: "الحلقات", href: "/admin/circles" },
         { label: "الطلاب", href: "/admin/students" },
         { label: "القوائم", href: "/admin/lists" },
+        { label: "النقاط", href: "/admin/economy" },
         { label: "العرفاء", href: "/admin/arifs" },
         { label: "القيد", href: "/admin/enrollment" },
       ],
@@ -49,6 +50,7 @@ export function navSections(roles: string[]): NavSection[] {
       key: "operate", label: "التشغيل", items: [
         { label: "الجلسة اليومية", href: "/admin/session" },
         { label: "الحضور", href: "/admin/attendance" },
+        { label: "منح نقاط", href: "/admin/grant-points" },
         { label: "حلقتي", href: "/admin/circles" },
         { label: "العرفاء", href: "/admin/arifs" },
       ],

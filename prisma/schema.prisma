@@ -665,6 +665,51 @@ model GuardianMessage {
   @@index([studentId])
 }
 
+// ═══════════════ الاقتصاد — بنود النقاط (م٦أ) ═══════════════
+// ECONOMY_RULES.md الركن ١. جدولان بلا FK (نمط الترحيلات المتأخّرة الآمن — تُطبَّق
+// معجميًّا، اسم الترحيل «9zzz»). الرصيد **مشتقٌّ** من مجموع الحركات (لا عمود مخزّن):
+// الدفتر (PointTransaction) هو مصدر الحقيقة الوحيد، فلا يَشرُد رصيدٌ مخزَّنٌ عن دفتره.
+// كلّ البنود تديرها الإدارة (إضافة/تعديل قيمة/تعطيل — لا حذف): active=false تعطيلٌ لا محو.
+
+enum PointGrantSource {
+  AUTO      // النظام تلقائيًّا عند حدث (الحضور/الاختبار) — مؤجَّلٌ لدفعة م٦أ-٢
+  TEACHER   // يدويّ من المعلّم (لطلاب حلقته فقط)
+  ADMIN     // يدويّ من الإدارة
+}
+
+enum PointLimitPeriod {
+  DAY
+  WEEK
+  NONE      // بلا حدّ
+}
+
+// بند نقاطٍ يديره المدير. القيمة موجبة (كسب) أو سالبة (خصم). الحدّ = عدد/فترة لكلّ بند.
+model PointItem {
+  id          String           @id @default(cuid())
+  nameAr      String
+  value       Int              // موجب = كسب، سالب = خصم
+  grantSource PointGrantSource
+  limitCount  Int?             // عدد مرّات المنح المسموح بها في الفترة (null/الفترة NONE = بلا حدّ)
+  limitPeriod PointLimitPeriod @default(NONE)
+  active      Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+}
+
+// حركةٌ في دفتر النقاط — سطرٌ لكلّ عملية منحٍ/خصم. amount وgrantSource **لقطتان تاريخيّتان**
+// وقت المنح، فلا يُعيد تعديلُ البند لاحقًا كتابةَ الماضي. الرصيد = SUM(amount) لكلّ طالب.
+model PointTransaction {
+  id              String           @id @default(cuid())
+  studentId       String
+  pointItemId     String
+  amount          Int              // = قيمة البند وقت المنح (موقّعة)
+  grantSource     PointGrantSource // مصدر المنح وقت العملية
+  grantedByUserId String?          // من منحها (null لمنح النظام لاحقًا في م٦أ-٢)
+  note            String?
+  createdAt       DateTime         @default(now())
+  @@index([studentId])
+  @@index([pointItemId])
+}
+
 // ═══════════════ الأحداث (م١) ═══════════════
 // قاعدة العمل ٥: كل تغيير حالة يُصدِر حدثًا. سجلٌّ ملحق (append-only) يستهلكه
 // الاقتصاد لاحقًا بلا هجرة (م٦: points.source_event). النوع نصّي عمدًا — تيّارُ
