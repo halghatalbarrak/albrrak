@@ -70,7 +70,7 @@ function newToken(): string {
 }
 
 function activationUrl(token: string): string {
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? "https://albrrak.vercel.app").replace(/\/$/, "");
+  const base = (process.env.NEXT_PUBLIC_APP_URL ?? "https://halaqat-albarrak.com").replace(/\/$/, "");
   return `${base}/activate?token=${token}`;
 }
 
