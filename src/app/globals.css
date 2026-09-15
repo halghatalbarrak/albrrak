@@ -12,9 +12,10 @@
   --font-sans: 'IBM Plex Sans Arabic', system-ui, sans-serif;
   /* ألوان حلقات البراك (قرار محمد) */
   --color-primary:#574F47;  --color-primary-hover:#443d37;
-  --color-bronze:#A9834F;   --color-bronze-hover:#8f6d40;
+  --color-bronze:#A9834F;   --color-bronze-hover:#7a5a30;
   --color-bg:#F5F0E8;       --color-surface:#FFFFFF;
-  --color-text:#2b2620;     --color-muted:#7a7167;   --color-border:#e6dfd2;
+  --color-text:#2b2620;     --color-muted:#625a4e;   --color-border:#d3c7b1;
+  --color-ghost-text:#574F47;   /* نصّ الزرّ الثانويّ (ghost) — يساوي لون الهوية في الفاتح (لا تغيير مرئيّ) */
   --color-success:#1F5C3D;  --color-danger:#a1231d;
   --color-soft:#efe9e2;     --color-warn-bg:#fdf0d5;  --color-ok-bg:#e8f0ea;
   /* تباعد (أساس ٤px) */
@@ -33,7 +34,8 @@
   --color-primary:#c9beb0;  --color-primary-hover:#ddd3c6;
   --color-bronze:#c79a5f;   --color-bronze-hover:#d8ad72;
   --color-bg:#1b1916;       --color-surface:#26231f;
-  --color-text:#ece7de;     --color-muted:#a49b8c;   --color-border:#3a352e;
+  --color-text:#ece7de;     --color-muted:#b8afa0;   --color-border:#4c463c;
+  --color-ghost-text:#e8dfd0;   /* نصّ الزرّ الثانويّ (ghost) — شبه أبيضَ دافئ، أوضح كثيراً من لون الهوية (#c9beb0) */
   --color-success:#5fbf8f;  --color-danger:#e0736c;
   --color-soft:#322d26;     --color-warn-bg:#3a3320;  --color-ok-bg:#22322a;
   --shadow-card:0 1px 3px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.25);
