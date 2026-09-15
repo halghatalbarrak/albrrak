@@ -23,6 +23,8 @@ export function navSections(roles: string[]): NavSection[] {
   if (roles.length === 0) return [];
   const has = (r: string) => roles.includes(r);
   const supervises = has("SUPER_ADMIN") || has("CIRCLE_MANAGER");
+  // إدارة المستخدمين (ROLES.md): للمشرف العام والمدير التقنيّ فقط — لا مدير الحلقات.
+  const managesUsers = has("SUPER_ADMIN") || has("TECH_ADMIN");
   // كلّ ذي دورٍ حقيقيٍّ في المنصّة يرى المنهج؛ الوليّ الصرف (رسائل فقط) لا يراه.
   const seesPrograms = supervises || has("TEACHER") || has("RECITER") || has("STUDENT");
 
@@ -40,6 +42,15 @@ export function navSections(roles: string[]): NavSection[] {
         { label: "النقاط", href: "/admin/economy" },
         { label: "العرفاء", href: "/admin/arifs" },
         { label: "القيد", href: "/admin/enrollment" },
+      ],
+    });
+  }
+
+  // المستخدمون — إدارة الكادر والأدوار (ROLES.md): المشرف العام والمدير التقنيّ فقط.
+  if (managesUsers) {
+    sections.push({
+      key: "users", label: "المستخدمون", items: [
+        { label: "المستخدمون", href: "/admin/users" },
       ],
     });
   }

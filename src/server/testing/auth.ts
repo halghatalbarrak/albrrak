@@ -8,6 +8,9 @@ export const fakeAuthProvider: AuthProvider = {
     seq += 1;
     return { authId: `auth-${email}-${seq}` };
   },
+  async setPassword() {
+    // بلا شبكة — كافٍ ألّا يرمي (الاختبار يتحقّق من أثر القاعدة: usedAt).
+  },
 };
 
 function secret(): Uint8Array {
