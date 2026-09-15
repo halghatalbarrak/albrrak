@@ -9,7 +9,7 @@ const bg: Record<Variant, string> = {
   primary: ui.color.primary, bronze: ui.color.bronze, ghost: "transparent", danger: ui.color.danger,
 };
 const fg: Record<Variant, string> = {
-  primary: "#fff", bronze: "#fff", ghost: ui.color.primary, danger: "#fff",
+  primary: "#fff", bronze: "#fff", ghost: "var(--color-ghost-text)", danger: "#fff",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
