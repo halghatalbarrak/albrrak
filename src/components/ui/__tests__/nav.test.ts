@@ -18,13 +18,17 @@ describe("navSections — اتّحاد أقسام كلّ أدوار المستخ
     expect(k).toContain("harvest");
     // ويرى البرامج (المنهج المشترك)، والرسائل (لأنّه وليٌّ أيضاً).
     expect(k).toContain("programs");
-    // الترتيب الثابت محفوظ: الإدارة · التشغيل · الحصاد · البرامج · … · الرسائل.
-    expect(k).toEqual(["manage", "operate", "harvest", "programs", "messages"]);
+    // الترتيب الثابت محفوظ: الإدارة · المستخدمون · التشغيل · الحصاد · البرامج · … · الرسائل.
+    expect(k).toEqual(["manage", "users", "operate", "harvest", "programs", "messages"]);
   });
 
-  it("المشرف/المدير ⟵ يرى كلّ أقسام العمل الثلاثة والبرامج (قرار محمد: العرض لا الصلاحية)", () => {
-    expect(keys(["SUPER_ADMIN"])).toEqual(["manage", "operate", "harvest", "programs"]);
-    expect(navSections(["SUPER_ADMIN"])).toEqual(navSections(["CIRCLE_MANAGER"]));
+  it("المشرف يرى «المستخدمون» ومدير الحلقات لا يراها (ROLES.md: إدارة المستخدمين للمشرف/التقنيّ)", () => {
+    expect(keys(["SUPER_ADMIN"])).toEqual(["manage", "users", "operate", "harvest", "programs"]);
+    expect(keys(["CIRCLE_MANAGER"])).toEqual(["manage", "operate", "harvest", "programs"]);
+    expect(keys(["SUPER_ADMIN"])).toContain("users");
+    expect(keys(["CIRCLE_MANAGER"])).not.toContain("users");
+    // المدير التقنيّ يرى «المستخدمون» أيضاً.
+    expect(keys(["TECH_ADMIN"])).toContain("users");
   });
 
   it("وليٌّ صرفٌ ⟵ الرسائل فقط، ولا يسقط إلى قسم الطالب ولا يرى البرامج", () => {

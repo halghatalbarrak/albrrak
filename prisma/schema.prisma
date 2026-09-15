@@ -17,6 +17,7 @@ generator client {
 // ═══════════════ الأساس ═══════════════
 
 enum Role {
+  TECH_ADMIN
   SUPER_ADMIN
   CIRCLE_MANAGER
   REGISTRAR
@@ -708,6 +709,28 @@ model PointTransaction {
   createdAt       DateTime         @default(now())
   @@index([studentId])
   @@index([pointItemId])
+}
+
+// ═══════════════ إدارة المستخدمين (المرحلة أ) — ROLES.md ═══════════════
+// رابط تفعيلٍ لمرّةٍ واحدة: يُنشأ عند إضافة كادرٍ (ACTIVATE) أو إعادة تعيين (RESET)،
+// يُسلَّم للمعلّم فيضبط كلمة سرّه في Supabase Auth. usedAt يبطله، وينتهي بعد ٧ أيّام.
+// بلا FK (نمط الترحيلات المتأخّرة الآمن — تُطبَّق معجميًّا، اسم «9zzzz»).
+
+enum ActivationPurpose {
+  ACTIVATE
+  RESET
+}
+
+model ActivationLink {
+  id              String            @id @default(cuid())
+  userId          String
+  token           String            @unique   // عشوائيّ قويّ — لا يُخمَّن
+  purpose         ActivationPurpose
+  expiresAt       DateTime
+  usedAt          DateTime?                    // null = لم يُستعمل بعد
+  createdByUserId String?                      // من أنشأه (كادر الإدارة)
+  createdAt       DateTime          @default(now())
+  @@index([userId])
 }
 
 // ═══════════════ الأحداث (م١) ═══════════════
