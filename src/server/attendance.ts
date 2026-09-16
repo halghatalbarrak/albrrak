@@ -2,6 +2,7 @@ import {
   ApprovalKind,
   ApprovalStatus,
   AttendanceStatus,
+  AutoEventType,
   ProgressState,
   Role,
   type Prisma,
@@ -12,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 
 import { assertCapability } from "./authz";
 import { decide } from "./approval";
+import { grantAuto } from "./economy";
 import { emitEvent } from "./events";
 import { notifyAbsence } from "./guardian-messages";
 import { AuthorizationError, ValidationError } from "./errors";
@@ -290,6 +292,12 @@ export async function recordSession(
         ...(excuseBy !== undefined ? { excuseAcceptedBy: excuseBy } : {}),
         ...(excuseAt !== undefined ? { excuseAcceptedAt: excuseAt } : {}),
       });
+
+      // منح تلقائيّ للحضور (م٦أ-٢): للحالات المحسوبة حضورًا فقط، مرّةً لكلّ طالبٍ في اليوم
+      // (المرجع = مفتاح اليوم dk) — إعادة الرصد لا تُكرّر المنح. لا أثر رجعيّ.
+      if (isCounted(status)) {
+        await grantAuto(tx, AutoEventType.ATTENDANCE, studentId, dk);
+      }
     }
 
     await emitEvent(tx, {

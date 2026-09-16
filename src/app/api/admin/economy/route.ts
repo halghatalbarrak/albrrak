@@ -27,6 +27,11 @@ function readItemBody(body: Record<string, unknown>): PointItemInput {
         : typeof body.limitCount === "number"
           ? body.limitCount
           : NaN,
+    // نوع الحدث لبنود AUTO (م٦أ-٢) — التحقّق منه في economy.validateItemInput.
+    eventType:
+      typeof body.eventType === "string"
+        ? (body.eventType as PointItemInput["eventType"])
+        : null,
   };
 }
 

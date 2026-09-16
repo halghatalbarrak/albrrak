@@ -1,4 +1,5 @@
 import {
+  AutoEventType,
   PointGrantSource,
   PointLimitPeriod,
   Role,
@@ -48,6 +49,8 @@ export interface PointItemInput {
   grantSource: PointGrantSource;
   limitCount?: number | null;
   limitPeriod?: PointLimitPeriod;
+  /** لبنود AUTO فقط: نوع الحدث المربوط (م٦أ-٢). إلزاميٌّ مع AUTO، مُهمَلٌ مع غيره. */
+  eventType?: AutoEventType | null;
 }
 
 /** يتحقّق من صحّة حقول البند (القيمة عددٌ صحيحٌ غير صفر، والحدّ متّسقٌ مع الفترة). */
@@ -57,6 +60,7 @@ function validateItemInput(input: PointItemInput): {
   grantSource: PointGrantSource;
   limitPeriod: PointLimitPeriod;
   limitCount: number | null;
+  eventType: AutoEventType | null;
 } {
   const nameAr = input.nameAr?.trim();
   if (!nameAr) throw new ValidationError("اسم البند مطلوب.");
@@ -78,7 +82,45 @@ function validateItemInput(input: PointItemInput): {
     }
     limitCount = input.limitCount;
   }
-  return { nameAr, value: input.value, grantSource: input.grantSource, limitPeriod, limitCount };
+  // نوع الحدث: إلزاميٌّ لبنود AUTO (م٦أ-٢)، ويُهمَل لغيرها.
+  let eventType: AutoEventType | null = null;
+  if (input.grantSource === PointGrantSource.AUTO) {
+    if (!input.eventType || !Object.values(AutoEventType).includes(input.eventType)) {
+      throw new ValidationError("بند تلقائيّ (AUTO) يلزمه نوع حدثٍ للربط.");
+    }
+    eventType = input.eventType;
+  }
+  return { nameAr, value: input.value, grantSource: input.grantSource, limitPeriod, limitCount, eventType };
+}
+
+/**
+ * يزامن قاعدة الربط التلقائيّ (AutoGrantRule) مع حالة البند:
+ *   • مصدره AUTO ⟵ يربطه بنوع الحدث (قاعدةٌ مفعّلة)، بعد التأكّد أنّ الحدث غير مربوطٍ ببندٍ
+ *     مفعّلٍ آخر (حدثٌ واحدٌ لبندٍ مفعّلٍ واحد — يمنع ازدواج القواعد).
+ *   • مصدره غير AUTO ⟵ يعطّل أيّ قاعدةٍ سابقةٍ لهذا البند (تحوّلٌ من AUTO لغيره).
+ */
+async function syncAutoRule(
+  db: PrismaClient | Prisma.TransactionClient,
+  pointItemId: string,
+  grantSource: PointGrantSource,
+  eventType: AutoEventType | null,
+): Promise<void> {
+  if (grantSource !== PointGrantSource.AUTO || eventType == null) {
+    await db.autoGrantRule.updateMany({ where: { pointItemId }, data: { active: false } });
+    return;
+  }
+  const conflict = await db.autoGrantRule.findFirst({
+    where: { eventType, active: true, pointItemId: { not: pointItemId } },
+    select: { id: true },
+  });
+  if (conflict) {
+    throw new ValidationError("هذا الحدث مربوطٌ ببندٍ مفعّلٍ آخر — عطّله أوّلاً.");
+  }
+  await db.autoGrantRule.upsert({
+    where: { pointItemId },
+    update: { eventType, active: true },
+    create: { pointItemId, eventType, active: true },
+  });
 }
 
 export async function createPointItem(
@@ -87,16 +129,19 @@ export async function createPointItem(
   db: PrismaClient = prisma,
 ) {
   await assertAdmin(actorId, db);
-  const data = validateItemInput(input);
-  const item = await db.pointItem.create({ data });
-  await emitEvent(db, {
-    type: "POINT_ITEM_CREATED",
-    subjectType: "PointItem",
-    subjectId: item.id,
-    actorId,
-    payload: { nameAr: item.nameAr, value: item.value, grantSource: item.grantSource },
+  const { eventType, ...data } = validateItemInput(input);
+  return db.$transaction(async (tx) => {
+    const item = await tx.pointItem.create({ data });
+    await syncAutoRule(tx, item.id, item.grantSource, eventType);
+    await emitEvent(tx, {
+      type: "POINT_ITEM_CREATED",
+      subjectType: "PointItem",
+      subjectId: item.id,
+      actorId,
+      payload: { nameAr: item.nameAr, value: item.value, grantSource: item.grantSource },
+    });
+    return item;
   });
-  return item;
 }
 
 export async function updatePointItem(
@@ -108,16 +153,19 @@ export async function updatePointItem(
   await assertAdmin(actorId, db);
   const existing = await db.pointItem.findUnique({ where: { id: itemId }, select: { id: true } });
   if (!existing) throw new ValidationError("بند غير موجود.");
-  const data = validateItemInput(input);
-  const item = await db.pointItem.update({ where: { id: itemId }, data });
-  await emitEvent(db, {
-    type: "POINT_ITEM_UPDATED",
-    subjectType: "PointItem",
-    subjectId: item.id,
-    actorId,
-    payload: { value: item.value, grantSource: item.grantSource },
+  const { eventType, ...data } = validateItemInput(input);
+  return db.$transaction(async (tx) => {
+    const item = await tx.pointItem.update({ where: { id: itemId }, data });
+    await syncAutoRule(tx, item.id, item.grantSource, eventType);
+    await emitEvent(tx, {
+      type: "POINT_ITEM_UPDATED",
+      subjectType: "PointItem",
+      subjectId: item.id,
+      actorId,
+      payload: { value: item.value, grantSource: item.grantSource },
+    });
+    return item;
   });
-  return item;
 }
 
 /** تعطيل/تفعيل بند — لا حذف (ECONOMY_RULES الركن ١). */
@@ -130,19 +178,41 @@ export async function setPointItemActive(
   await assertAdmin(actorId, db);
   const existing = await db.pointItem.findUnique({ where: { id: itemId }, select: { id: true } });
   if (!existing) throw new ValidationError("بند غير موجود.");
-  const item = await db.pointItem.update({ where: { id: itemId }, data: { active } });
-  await emitEvent(db, {
-    type: active ? "POINT_ITEM_ENABLED" : "POINT_ITEM_DISABLED",
-    subjectType: "PointItem",
-    subjectId: item.id,
-    actorId,
+  return db.$transaction(async (tx) => {
+    const item = await tx.pointItem.update({ where: { id: itemId }, data: { active } });
+    // تعطيل/تفعيل البند يُرافقه قاعدته التلقائيّة (إن كان AUTO) فلا يمنح بندٌ معطَّل.
+    await tx.autoGrantRule.updateMany({ where: { pointItemId: itemId }, data: { active } });
+    await emitEvent(tx, {
+      type: active ? "POINT_ITEM_ENABLED" : "POINT_ITEM_DISABLED",
+      subjectType: "PointItem",
+      subjectId: item.id,
+      actorId,
+    });
+    return item;
   });
-  return item;
 }
 
-export async function listPointItems(actorId: string, db: PrismaClient = prisma) {
+/** بندٌ + نوع الحدث المربوط به (لبنود AUTO) — لعرضه وتعبئة نموذج التعديل في الشاشة. */
+export type PointItemWithEvent = Prisma.PointItemGetPayload<Record<string, never>> & {
+  eventType: AutoEventType | null;
+};
+
+export async function listPointItems(
+  actorId: string,
+  db: PrismaClient = prisma,
+): Promise<PointItemWithEvent[]> {
   await assertAdmin(actorId, db);
-  return db.pointItem.findMany({ orderBy: [{ active: "desc" }, { createdAt: "asc" }] });
+  const items = await db.pointItem.findMany({ orderBy: [{ active: "desc" }, { createdAt: "asc" }] });
+  const rules = await db.autoGrantRule.findMany({
+    where: { pointItemId: { in: items.map((i) => i.id) } },
+    select: { pointItemId: true, eventType: true },
+  });
+  const eventByItem = new Map(rules.map((r) => [r.pointItemId, r.eventType]));
+  // نوع الحدث يُعرَض لبنود AUTO فقط — بندٌ حُوّل لمصدرٍ يدويّ لا يحمل حدثًا (ولو بقيت قاعدةٌ معطَّلة).
+  return items.map((i) => ({
+    ...i,
+    eventType: i.grantSource === PointGrantSource.AUTO ? eventByItem.get(i.id) ?? null : null,
+  }));
 }
 
 // ═══════════════ حدود المنح — من يملك مصدر البند، ولطلاب من ═══════════════
@@ -256,6 +326,73 @@ export async function grantPoints(args: GrantArgs, db: PrismaClient = prisma) {
     });
     return txn;
   });
+}
+
+// ═══════════════ المنح التلقائيّ (م٦أ-٢ — تفعيل AUTO) ═══════════════
+//
+// يُستدعى من محرّكات النظام عند **نقطة النجاح الفعليّة** (تأكيد الحضور، اجتياز الاختبار،
+// إتمام الحصاد، الانتقال) — يُمرَّر عميل المعاملة (tx) ليقع المنح داخل معاملة المحرّك نفسها.
+// يمنح البند المربوط بنوع الحدث تلقائياً، بشرط:
+//   • وجود قاعدةٍ مفعّلة (AutoGrantRule.active) وبندها مفعّل — وإلّا لا منح (صمتًا).
+//   • عدم الازدواج: مفتاح (نوع الحدث + المرجع + الطالب) لم يُمنح قبلُ (AutoGrant الفريد).
+//   • احترام حدّ البند وفترته (كالمنح اليدويّ) — تجاوزُه يمنع المنح صمتًا.
+// **لا أثر رجعيّ:** لا يُستدعى إلّا وقت الحدث؛ لا يبحث في سجلّاتٍ سابقة.
+// grantSource=AUTO وgrantedByUserId=null (لقطةٌ تاريخيّة كالمنح اليدويّ).
+
+export async function grantAuto(
+  db: PrismaClient | Prisma.TransactionClient,
+  eventType: AutoEventType,
+  studentId: string,
+  sourceRef: string,
+): Promise<Prisma.PointTransactionGetPayload<Record<string, never>> | null> {
+  // القاعدة المفعّلة المطابقة (active يُرافق تفعيل البند، فيكفي فحصه) وبندها.
+  const rule = await db.autoGrantRule.findFirst({
+    where: { eventType, active: true },
+    orderBy: { createdAt: "desc" },
+    select: { pointItemId: true },
+  });
+  if (!rule) return null;
+  const item = await db.pointItem.findUnique({ where: { id: rule.pointItemId } });
+  if (!item || !item.active) return null;
+
+  // منع الازدواج: هل مُنح هذا الحدث (بمرجعه) لهذا الطالب قبلُ؟
+  const already = await db.autoGrant.findUnique({
+    where: { eventType_sourceRef_studentId: { eventType, sourceRef, studentId } },
+    select: { id: true },
+  });
+  if (already) return null;
+
+  // حدّ البند في فترته (نافذةٌ منزلقة) — كالمنح اليدويّ.
+  if (item.limitPeriod !== PointLimitPeriod.NONE && item.limitCount != null) {
+    const start = limitWindowStart(item.limitPeriod, new Date())!;
+    const count = await db.pointTransaction.count({
+      where: { studentId, pointItemId: item.id, createdAt: { gte: start } },
+    });
+    if (count >= item.limitCount) return null;
+  }
+
+  const txn = await db.pointTransaction.create({
+    data: {
+      studentId,
+      pointItemId: item.id,
+      amount: item.value, // لقطة تاريخيّة
+      grantSource: PointGrantSource.AUTO,
+      grantedByUserId: null,
+      note: null,
+    },
+  });
+  // سطر منع الازدواج — القيد الفريد يصدّ أيّ منحٍ متزامنٍ مكرّرٍ (backstop).
+  await db.autoGrant.create({
+    data: { eventType, sourceRef, studentId, pointTransactionId: txn.id },
+  });
+  await emitEvent(db, {
+    type: "POINTS_GRANTED_AUTO",
+    subjectType: "Student",
+    subjectId: studentId,
+    actorId: null,
+    payload: { pointItemId: item.id, amount: item.value, eventType, sourceRef },
+  });
+  return txn;
 }
 
 // ═══════════════ الرصيد والدفتر (مشتقّان من الحركات) ═══════════════

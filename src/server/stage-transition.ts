@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import {
   ApprovalKind,
   ApprovalStatus,
+  AutoEventType,
   CertificateTemplate,
   ProgressState,
   type PrismaClient,
@@ -10,6 +11,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 
+import { grantAuto } from "./economy";
 import { emitEvent } from "./events";
 import { ValidationError } from "./errors";
 
@@ -108,6 +110,8 @@ export async function decideStageTransition(
         actorId: args.decidedBy,
         payload: { mainStageId: payload.mainStageId, automatic: false },
       });
+      // منح تلقائيّ للترقية/الانتقال (م٦أ-٢) — المرجع = المرحلة، فلكلّ ترقيةٍ منحٌ واحد.
+      await grantAuto(tx, AutoEventType.PROMOTION, payload.studentId, payload.mainStageId);
       transitioned = true;
     }
 
