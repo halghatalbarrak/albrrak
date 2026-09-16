@@ -22,7 +22,7 @@ const STAFF_ROLES: Role[] = ["TECH_ADMIN", "SUPER_ADMIN", "CIRCLE_MANAGER", "REG
 const ROLE_AR: Record<Role, string> = {
   TECH_ADMIN: "مدير تقنيّ", SUPER_ADMIN: "مشرف عام", CIRCLE_MANAGER: "مدير حلقات",
   REGISTRAR: "مُسجِّل", TEACHER: "معلّم", RECITER: "مُسمِّع", ARIF: "عريف",
-  STUDENT: "طالب", GUARDIAN: "وليّ", SELLER: "بائع",
+  STUDENT: "طالب", GUARDIAN: "وليّ", SELLER: "أمين البيدر",
 };
 
 async function token(): Promise<string | null> {

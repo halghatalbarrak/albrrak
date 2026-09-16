@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   try {
     const actor = await requireRoles(req, [Role.SELLER]);
     const code = new URL(req.url).searchParams.get("code");
-    if (!code) throw new ValidationError("أدخل الكود.");
+    if (!code) throw new ValidationError("أدخل الرمز.");
     return Response.json(await lookupStudentByCode(actor.id, code));
   } catch (e) {
     return errorResponse(e);

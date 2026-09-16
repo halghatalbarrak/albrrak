@@ -35,7 +35,7 @@ export default function AdminMarketPage() {
     if (!t) { window.location.href = "/login"; return; }
     const res = await fetch("/api/admin/market", { headers: { authorization: `Bearer ${t}` } });
     if (res.status === 403) { setErr("لا صلاحية — هذه الشاشة للإدارة."); return; }
-    if (!res.ok) { setErr("تعذّر جلب السلع."); return; }
+    if (!res.ok) { setErr("تعذّر جلب الثمار."); return; }
     const data = (await res.json().catch(() => null)) as { items?: Item[] } | null;
     setItems(data?.items ?? []);
   }, []);
@@ -81,15 +81,15 @@ export default function AdminMarketPage() {
   }
 
   const cols: Column<Item>[] = [
-    { key: "name", header: "السلعة", cell: (i) => (
+    { key: "name", header: "الثمرة", cell: (i) => (
       <span style={{ display: "flex", gap: sp(2), alignItems: "center", opacity: i.active ? 1 : 0.5 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {i.imageUrl && <img src={i.imageUrl} alt="" width={32} height={32} style={{ borderRadius: ui.radius.sm, objectFit: "cover" }} />}
         {i.nameAr}
       </span>
     ) },
-    { key: "price", header: "السعر", cell: (i) => <Badge tone="bronze">{arNum(i.pricePoints)} نقطة</Badge> },
-    { key: "stock", header: "المخزون", cell: (i) => <span>{i.stock == null ? "بلا حدّ" : arNum(i.stock)}</span> },
+    { key: "price", header: "قيمة الثمرة", cell: (i) => <Badge tone="bronze">{arNum(i.pricePoints)} نقطة</Badge> },
+    { key: "stock", header: "المتوفّر", cell: (i) => <span>{i.stock == null ? "بلا حدّ" : arNum(i.stock)}</span> },
     { key: "state", header: "الحالة", cell: (i) => (i.active ? <Badge tone="success">مُفعَّل</Badge> : <Badge tone="neutral">معطَّل</Badge>) },
     { key: "act", header: "إجراء", cell: (i) => (
       <div style={{ display: "flex", gap: sp(2), justifyContent: "flex-end" }}>
@@ -101,7 +101,7 @@ export default function AdminMarketPage() {
 
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/market"
-      title="سلع السوق" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: "السوق" }]}>
+      title="ثمار البيدر" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: "البيدر" }]}>
 
       {err && <p style={{ color: ui.color.danger }}>{err}</p>}
       {!err && !items && <p style={{ color: ui.color.muted }}>جارٍ التحميل…</p>}
@@ -109,15 +109,15 @@ export default function AdminMarketPage() {
       {items && (
         <>
           <p style={{ color: ui.color.muted }}>
-            السعر بالنقاط. المخزون فارغٌ = بلا حدّ. البائع لا يُدخل السعر — يُخصَم المثبّت هنا. تعطيلٌ لا حذف.
+            قيمة الثمرة بالنقاط. المتوفّر فارغٌ = بلا حدّ. أمين البيدر لا يُدخل القيمة — تُخصَم المثبّتة هنا. تعطيلٌ لا حذف.
           </p>
 
           <section style={{ background: ui.color.surface, border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.lg, padding: sp(4), marginBottom: sp(6) }}>
-            <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(3) }}>{form.id ? "تعديل سلعة" : "سلعةٌ جديدة"}</h2>
+            <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(3) }}>{form.id ? "تعديل ثمرة" : "ثمرةٌ جديدة"}</h2>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: sp(3) }}>
               <Field label="الاسم"><Input value={form.nameAr} onChange={(e) => setForm((f) => ({ ...f, nameAr: e.target.value }))} placeholder="مثال: قلم رصاص" /></Field>
-              <Field label="السعر (نقاط)"><Input type="number" value={form.pricePoints} onChange={(e) => setForm((f) => ({ ...f, pricePoints: e.target.value }))} placeholder="10" /></Field>
-              <Field label="المخزون (اتركه فارغًا = بلا حدّ)"><Input type="number" value={form.stock} onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))} placeholder="بلا حدّ" /></Field>
+              <Field label="قيمة الثمرة (نقاط)"><Input type="number" value={form.pricePoints} onChange={(e) => setForm((f) => ({ ...f, pricePoints: e.target.value }))} placeholder="10" /></Field>
+              <Field label="المتوفّر (اتركه فارغًا = بلا حدّ)"><Input type="number" value={form.stock} onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))} placeholder="بلا حدّ" /></Field>
               <Field label="رابط الصورة (اختياريّ)"><Input value={form.imageUrl} onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))} placeholder="https://…" style={{ direction: "ltr" }} /></Field>
             </div>
             <div style={{ display: "flex", gap: sp(2), marginTop: sp(3) }}>
@@ -126,7 +126,7 @@ export default function AdminMarketPage() {
             </div>
           </section>
 
-          <Table columns={cols} rows={items} empty="لا سلع بعد — أضِف أوّل سلعة." />
+          <Table columns={cols} rows={items} empty="لا ثمار بعد — أضِف أوّل ثمرة." />
         </>
       )}
     </AppShell>

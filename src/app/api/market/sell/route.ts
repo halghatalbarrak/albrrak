@@ -11,8 +11,8 @@ export async function POST(req: Request) {
   try {
     const actor = await requireRoles(req, [Role.SELLER]);
     const body = (await req.json()) as Record<string, unknown>;
-    if (typeof body.code !== "string") throw new ValidationError("الكود مطلوب.");
-    if (typeof body.marketItemId !== "string") throw new ValidationError("السلعة مطلوبة.");
+    if (typeof body.code !== "string") throw new ValidationError("الرمز مطلوب.");
+    if (typeof body.marketItemId !== "string") throw new ValidationError("الثمرة مطلوبة.");
     const result = await sellToStudentByCode({
       sellerUserId: actor.id,
       code: body.code,
