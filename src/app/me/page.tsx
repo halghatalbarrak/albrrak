@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { AppShell, Button, Card, Stat, Badge, Skeleton, ui, sp } from "@/components/ui";
 import { arNum, hijri } from "@/lib/format";
+import { CodeSection } from "./CodeSection";
 
 interface MyPage { userId: string; name: string; roles: string[]; student: { id: string; state: string } | null }
 interface MySession {
@@ -64,6 +65,8 @@ export default function MePage() {
   return (
     <AppShell roles={me.roles} userName={me.name} activeHref="/me"
       title={`مرحبًا، ${me.name}`} crumbs={[{ label: "الرئيسة", href: "/" }, { label: "التعلّم" }, { label: "صفحتي" }]}>
+
+      <CodeSection hasOwnStudent={me.student != null} />
 
       {balance && (
         <section style={{ marginBottom: sp(6) }}>
