@@ -26,6 +26,7 @@ enum Role {
   ARIF
   STUDENT
   GUARDIAN
+  SELLER
 }
 
 enum Gender {
@@ -709,6 +710,51 @@ model PointTransaction {
   createdAt       DateTime         @default(now())
   @@index([studentId])
   @@index([pointItemId])
+}
+
+// ═══════════════ الاقتصاد — السوق الحقيقيّ بالكود (م٦ب) ═══════════════
+// ECONOMY_RULES.md الركن ٢. ثلاثة جداول بلا FK (نمط الترحيلات المتأخّرة الآمن — تُطبَّق
+// معجميًّا، اسم الترحيل «9zzzzz_market» يقع بعد «9zzzz_user_management»). الخصم **لا رصيد
+// منفصل**: يُنشئ حركةً سالبةً في دفتر م٦أ نفسه (PointTransaction)، فالرصيد يبقى SUM(amount).
+// «البائع» صلاحيّةٌ مستقلّة (Role.SELLER) تُمنح عبر إدارة المستخدمين القائمة.
+
+// سلعةٌ حقيقيّة تديرها الإدارة (إضافة/تعديل/تعطيل — لا حذف). السعر بالنقاط موجبٌ.
+// stock=null ⟵ بلا حدّ مخزون؛ عددٌ ⟵ يُنقَص عند كلّ بيع، والصفر يمنع البيع.
+model MarketItem {
+  id          String   @id @default(cuid())
+  nameAr      String
+  imageUrl    String?
+  pricePoints Int                       // سعرٌ بالنقاط — موجبٌ دومًا
+  stock       Int?                      // null = بلا حدّ
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+// كود الطالب المتغيّر اللحظيّ (ECONOMY_RULES §الركن ٢): يطلبه الطالب أو وليّه، فيُولَّد
+// كودٌ قصيرٌ عشوائيّ (~٦ خانات، أبجديّةٌ غير ملتبسة) يُعرَض كـQR ورقمٍ احتياطيّ، وينتهي
+// بعد ~٥ دقائق (expiresAt)، ويُستعمل مرّةً واحدة (usedAt). الكود نفسه هو حمولة الـQR.
+model StudentCode {
+  id        String    @id @default(cuid())
+  studentId String
+  code      String    @unique          // قصيرٌ عشوائيّ — للمسح والإدخال اليدويّ كليهما
+  expiresAt DateTime
+  usedAt    DateTime?                   // null = لم يُستعمل بعد
+  createdAt DateTime  @default(now())
+  @@index([studentId])
+}
+
+// عمليّة شراء: لقطةٌ تاريخيّة للسعر (pricePaid) + البائع + ربطٌ بحركة الخصم في دفتر م٦أ.
+// pointTransactionId يوثّق أنّ الخصم وقع فعلًا في الدفتر الموحّد (لا رصيد منفصل).
+model Purchase {
+  id                 String   @id @default(cuid())
+  studentId          String
+  marketItemId       String
+  pricePaid          Int                // لقطة السعر وقت البيع
+  sellerUserId       String             // البائع (Role.SELLER) الذي أجرى العمليّة
+  pointTransactionId String?            // حركة الخصم السالبة في دفتر م٦أ
+  createdAt          DateTime @default(now())
+  @@index([studentId])
+  @@index([sellerUserId])
 }
 
 // ═══════════════ إدارة المستخدمين (المرحلة أ) — ROLES.md ═══════════════
