@@ -35,7 +35,7 @@ export default function SellPage() {
     const t = await token();
     if (!t) { window.location.href = "/login"; return; }
     const res = await fetch("/api/market/items", { headers: { authorization: `Bearer ${t}` } });
-    if (res.status === 403) { setErr("لا صلاحية — شاشة البيع للبائع وحده."); return; }
+    if (res.status === 403) { setErr("لا صلاحية — شاشة الجَنْي لأمين البيدر وحده."); return; }
     if (res.ok) { const d = (await res.json()) as { items: Sellable[] }; setItems(d.items); }
   }, []);
 
@@ -56,12 +56,12 @@ export default function SellPage() {
   const lookup = useCallback(async (raw: string) => {
     setErr(null); setOk(null); setStudent(null);
     const c = raw.trim();
-    if (!c) { setErr("أدخل الكود."); return; }
+    if (!c) { setErr("أدخل الرمز."); return; }
     const t = await token();
     if (!t) return;
     const res = await fetch(`/api/market/lookup?code=${encodeURIComponent(c)}`, { headers: { authorization: `Bearer ${t}` } });
     if (res.ok) { setCode(c.toUpperCase()); setStudent((await res.json()) as Lookup); }
-    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "كود غير صالح."); }
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "رمز غير صالح."); }
   }, []);
 
   // بدء المسح بضغطة (لا نطلب إذن الكاميرا تلقائيًّا) — لطفًا بالمستخدم.
@@ -104,13 +104,13 @@ export default function SellPage() {
     });
     if (res.ok) {
       const r = (await res.json()) as { itemName: string; pricePaid: number; balanceAfter: number };
-      setOk(`تمّ البيع: ${r.itemName} (−${arNum(r.pricePaid)}) — رصيد ${student.name} الآن ${arNum(r.balanceAfter)}.`);
+      setOk(`تمّ الجَنْي: ${r.itemName} (−${arNum(r.pricePaid)}) — رصيد ${student.name} الآن ${arNum(r.balanceAfter)}.`);
       // ابدأ عمليّةً جديدة — الكود استُعمل مرّةً.
       setStudent(null); setCode(""); setManual("");
       void loadItems(); // تحديث المخزون
     } else {
       const j = (await res.json().catch(() => ({}))) as { error?: string };
-      setErr(j.error ?? "تعذّر البيع.");
+      setErr(j.error ?? "تعذّر الجَنْي.");
       // الكود قد يكون استُعمل/انتهى أثناء ذلك ⟵ اطلب كودًا جديدًا.
       setStudent(null); setCode(""); setManual("");
     }
@@ -119,14 +119,14 @@ export default function SellPage() {
 
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/sell"
-      title="البيع" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "السوق" }, { label: "البيع" }]}>
+      title="الجَنْي" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "البيدر" }, { label: "الجَنْي" }]}>
 
       {err && <p style={{ color: ui.color.danger }}>{err}</p>}
       {ok && <p style={{ color: ui.color.success, fontWeight: 600 }}>{ok}</p>}
 
       {!student ? (
         <section style={{ maxWidth: 480 }}>
-          <p style={{ color: ui.color.muted }}>امسح كود الطالب بالكاميرا، أو أدخِل رقمه الاحتياطيّ.</p>
+          <p style={{ color: ui.color.muted }}>امسح رمز الحاصد بالكاميرا، أو أدخِل رقمه الاحتياطيّ.</p>
 
           {/* حاوية الماسح — تبقى في DOM ليجدها html5-qrcode، وتظهر حين المسح. */}
           <div id="qr-reader" style={{ display: scanning ? "block" : "none", width: "100%", maxWidth: 320, marginBottom: sp(3), borderRadius: ui.radius.lg, overflow: "hidden" }} />
@@ -154,7 +154,7 @@ export default function SellPage() {
             </div>
           </Card>
 
-          <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(3) }}>اختر السلعة</h2>
+          <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(3) }}>اختر الثمرة</h2>
           <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: sp(3) }}>
             {items.map((i) => {
               const afford = student.balance >= i.pricePoints;
@@ -179,7 +179,7 @@ export default function SellPage() {
               );
             })}
           </section>
-          {items.length === 0 && <p style={{ color: ui.color.muted }}>لا سلع متاحة الآن.</p>}
+          {items.length === 0 && <p style={{ color: ui.color.muted }}>لا ثمار متاحة الآن.</p>}
         </>
       )}
     </AppShell>

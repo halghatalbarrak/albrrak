@@ -51,7 +51,7 @@ export function CodeSection({ hasOwnStudent }: { hasOwnStudent: boolean }) {
       body: JSON.stringify(studentId ? { studentId } : {}),
     });
     if (res.ok) setIssued((await res.json()) as Issued);
-    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّر توليد الكود."); }
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّر توليد الرمز."); }
     setBusy(false);
   }, []);
 
@@ -61,12 +61,12 @@ export function CodeSection({ hasOwnStudent }: { hasOwnStudent: boolean }) {
 
   return (
     <section style={{ marginBottom: sp(6) }}>
-      <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>كود السوق</div>
+      <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>رمز الحاصد</div>
       <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", marginBottom: sp(3) }}>
-        {hasOwnStudent && <Button variant="bronze" onClick={() => void generate()} disabled={busy}>أظهر كودي</Button>}
+        {hasOwnStudent && <Button variant="bronze" onClick={() => void generate()} disabled={busy}>أظهر رمزي</Button>}
         {guarded.map((g) => (
           <Button key={g.studentId} variant="ghost" onClick={() => void generate(g.studentId)} disabled={busy}>
-            كود {g.name}
+            رمز {g.name}
           </Button>
         ))}
       </div>
@@ -81,11 +81,11 @@ export function CodeSection({ hasOwnStudent }: { hasOwnStudent: boolean }) {
               <img src={issued.qrDataUrl} alt="رمز الاستجابة السريعة" width={220} height={220} style={{ maxWidth: "100%", height: "auto" }} />
               <div style={{ fontSize: ui.text.xl, fontWeight: 700, letterSpacing: 4, direction: "ltr", marginTop: sp(2) }}>{issued.code}</div>
               <div style={{ color: ui.color.muted, marginTop: sp(1) }}>ينتهي بعد {arNum(mmss)}</div>
-              <p style={{ fontSize: ui.text.xs, color: ui.color.muted, marginTop: sp(2) }}>أظهِر هذا الكود للبائع.</p>
+              <p style={{ fontSize: ui.text.xs, color: ui.color.muted, marginTop: sp(2) }}>أظهِر هذا الرمز لأمين البيدر.</p>
             </>
           ) : (
             <>
-              <p style={{ margin: 0, color: ui.color.muted }}>انتهت صلاحيّة الكود.</p>
+              <p style={{ margin: 0, color: ui.color.muted }}>انتهت صلاحيّة الرمز.</p>
               <div style={{ marginTop: sp(2) }}><Button variant="bronze" size="sm" onClick={() => void generate(lastTarget)} disabled={busy}>أعد الطلب</Button></div>
             </>
           )}

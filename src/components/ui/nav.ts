@@ -40,7 +40,7 @@ export function navSections(roles: string[]): NavSection[] {
         { label: "الطلاب", href: "/admin/students" },
         { label: "القوائم", href: "/admin/lists" },
         { label: "النقاط", href: "/admin/economy" },
-        { label: "السوق", href: "/admin/market" },
+        { label: "البيدر", href: "/admin/market" },
         { label: "العرفاء", href: "/admin/arifs" },
         { label: "القيد", href: "/admin/enrollment" },
       ],
@@ -76,7 +76,7 @@ export function navSections(roles: string[]): NavSection[] {
 
   // السوق — البائع (Role.SELLER، صلاحيّةٌ مستقلّة م٦ب): شاشة البيع كنقطة بيع سريعة.
   if (has("SELLER")) {
-    sections.push({ key: "market", label: "السوق", items: [{ label: "البيع", href: "/sell" }] });
+    sections.push({ key: "market", label: "البيدر", items: [{ label: "الجَنْي", href: "/sell" }] });
   }
 
   // البرامج — المنهج المشترك (سلالم القاعدة المدنية ومراقي)، يراه كلّ ذي دور.

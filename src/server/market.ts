@@ -32,7 +32,7 @@ const ADMIN_ROLES: readonly Role[] = [Role.SUPER_ADMIN, Role.CIRCLE_MANAGER];
 // بندٌ نظاميّ (م٦أ) يجمع كلّ خصوم السوق تحت مسمّى واحد في الدفتر — قيمته لقطةٌ per-txn،
 // فقيمة البند نفسها لا تُستعمل (AUTO ⟵ لا يُمنح يدويًّا). يُنشأ بـupsert عند أوّل بيع.
 const MARKET_ITEM_ID = "system-market-purchase";
-const MARKET_ITEM_NAME = "شراء من السوق";
+const MARKET_ITEM_NAME = "جَنْي من البيدر";
 
 const CODE_TTL_MS = 5 * 60 * 1000; // ~٥ دقائق
 const CODE_LENGTH = 6;
@@ -48,7 +48,7 @@ async function assertMarketAdmin(actorId: string, db: PrismaClient): Promise<Rol
   const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
   if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
   if (!isAdmin(actor.roles)) {
-    throw new AuthorizationError("إدارة السلع للإدارة وحدها (ECONOMY_RULES الركن ٢).");
+    throw new AuthorizationError("إدارة الثمار للإدارة وحدها (ECONOMY_RULES الركن ٢).");
   }
   return actor.roles;
 }
@@ -58,7 +58,7 @@ async function assertSeller(actorId: string, db: PrismaClient): Promise<Role[]> 
   const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
   if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
   if (!actor.roles.includes(Role.SELLER)) {
-    throw new AuthorizationError("البيع للبائع وحده (Role.SELLER).");
+    throw new AuthorizationError("الجَنْي لأمين البيدر وحده (Role.SELLER).");
   }
   return actor.roles;
 }
@@ -80,14 +80,14 @@ function validateItemInput(input: MarketItemInput): {
   stock: number | null;
 } {
   const nameAr = input.nameAr?.trim();
-  if (!nameAr) throw new ValidationError("اسم السلعة مطلوب.");
+  if (!nameAr) throw new ValidationError("اسم الثمرة مطلوب.");
   if (!Number.isInteger(input.pricePoints) || input.pricePoints < 1) {
-    throw new ValidationError("سعر السلعة عددٌ صحيحٌ موجب (١ فأكثر).");
+    throw new ValidationError("قيمة الثمرة عددٌ صحيحٌ موجب (١ فأكثر).");
   }
   let stock: number | null = null;
   if (input.stock != null) {
     if (!Number.isInteger(input.stock) || input.stock < 0) {
-      throw new ValidationError("المخزون عددٌ صحيحٌ غير سالب، أو اتركه فارغًا (بلا حدّ).");
+      throw new ValidationError("المتوفّر عددٌ صحيحٌ غير سالب، أو اتركه فارغًا (بلا حدّ).");
     }
     stock = input.stock;
   }
@@ -121,7 +121,7 @@ export async function updateMarketItem(
 ) {
   await assertMarketAdmin(actorId, db);
   const existing = await db.marketItem.findUnique({ where: { id: itemId }, select: { id: true } });
-  if (!existing) throw new ValidationError("سلعة غير موجودة.");
+  if (!existing) throw new ValidationError("ثمرة غير موجودة.");
   const data = validateItemInput(input);
   const item = await db.marketItem.update({ where: { id: itemId }, data });
   await emitEvent(db, {
@@ -143,7 +143,7 @@ export async function setMarketItemActive(
 ) {
   await assertMarketAdmin(actorId, db);
   const existing = await db.marketItem.findUnique({ where: { id: itemId }, select: { id: true } });
-  if (!existing) throw new ValidationError("سلعة غير موجودة.");
+  if (!existing) throw new ValidationError("ثمرة غير موجودة.");
   const item = await db.marketItem.update({ where: { id: itemId }, data: { active } });
   await emitEvent(db, {
     type: active ? "MARKET_ITEM_ENABLED" : "MARKET_ITEM_DISABLED",
@@ -246,7 +246,7 @@ export async function requestStudentCode(
       throw e;
     }
   }
-  throw new ValidationError("تعذّر توليد كودٍ فريد — أعِد المحاولة.");
+  throw new ValidationError("تعذّر توليد رمزٍ فريد — أعِد المحاولة.");
 }
 
 // ═══════════════ بحث الكود (البائع: اسمٌ ورصيدٌ فقط) ═══════════════
@@ -268,15 +268,15 @@ export async function lookupStudentByCode(
 ): Promise<CodeLookup> {
   await assertSeller(sellerUserId, db);
   const code = rawCode?.trim().toUpperCase();
-  if (!code) throw new ValidationError("أدخل الكود.");
+  if (!code) throw new ValidationError("أدخل الرمز.");
 
   const row = await db.studentCode.findUnique({
     where: { code },
     select: { studentId: true, usedAt: true, expiresAt: true },
   });
-  if (!row) throw new ValidationError("كود غير صالح.");
-  if (row.usedAt) throw new ValidationError("كودٌ مستعمَل من قبل.");
-  if (row.expiresAt.getTime() < Date.now()) throw new ValidationError("انتهت صلاحيّة الكود — اطلب كودًا جديدًا.");
+  if (!row) throw new ValidationError("رمز غير صالح.");
+  if (row.usedAt) throw new ValidationError("رمزٌ مستعمَل من قبل.");
+  if (row.expiresAt.getTime() < Date.now()) throw new ValidationError("انتهت صلاحيّة الرمز — اطلب رمزًا جديدًا.");
 
   const student = await db.student.findUnique({
     where: { id: row.studentId },
@@ -314,7 +314,7 @@ export interface SellResult {
 export async function sellToStudentByCode(args: SellArgs, db: PrismaClient = prisma): Promise<SellResult> {
   await assertSeller(args.sellerUserId, db);
   const code = args.code?.trim().toUpperCase();
-  if (!code) throw new ValidationError("أدخل الكود.");
+  if (!code) throw new ValidationError("أدخل الرمز.");
 
   return db.$transaction(async (tx) => {
     // ١) الكود صالح؟
@@ -322,17 +322,17 @@ export async function sellToStudentByCode(args: SellArgs, db: PrismaClient = pri
       where: { code },
       select: { id: true, studentId: true, usedAt: true, expiresAt: true },
     });
-    if (!codeRow) throw new ValidationError("كود غير صالح.");
-    if (codeRow.usedAt) throw new ValidationError("كودٌ مستعمَل من قبل.");
+    if (!codeRow) throw new ValidationError("رمز غير صالح.");
+    if (codeRow.usedAt) throw new ValidationError("رمزٌ مستعمَل من قبل.");
     if (codeRow.expiresAt.getTime() < Date.now()) {
-      throw new ValidationError("انتهت صلاحيّة الكود — اطلب كودًا جديدًا.");
+      throw new ValidationError("انتهت صلاحيّة الرمز — اطلب رمزًا جديدًا.");
     }
 
     // ٢) السلعة مفعّلة والمخزون متاح؟
     const item = await tx.marketItem.findUnique({ where: { id: args.marketItemId } });
-    if (!item) throw new ValidationError("سلعة غير موجودة.");
-    if (!item.active) throw new ValidationError("السلعة معطّلة — لا تُباع.");
-    if (item.stock != null && item.stock <= 0) throw new ValidationError("المخزون نافد.");
+    if (!item) throw new ValidationError("ثمرة غير موجودة.");
+    if (!item.active) throw new ValidationError("الثمرة معطّلة — لا تُجنى.");
+    if (item.stock != null && item.stock <= 0) throw new ValidationError("المتوفّر نفد.");
 
     // ٣) الرصيد يكفي السعر المثبّت؟ (الرصيد = SUM(amount) — دفتر م٦أ نفسه، داخل المعاملة)
     const agg = await tx.pointTransaction.aggregate({
@@ -340,14 +340,14 @@ export async function sellToStudentByCode(args: SellArgs, db: PrismaClient = pri
       _sum: { amount: true },
     });
     const balance = agg._sum.amount ?? 0;
-    if (balance < item.pricePoints) throw new ValidationError("الرصيد لا يكفي سعر السلعة.");
+    if (balance < item.pricePoints) throw new ValidationError("الرصيد لا يكفي قيمة الثمرة.");
 
     // ٤) وسمُ الكود مستعملًا — محميٌّ من السباق (لا يُستعمل إلا إن كان لم يُستعمل بعد).
     const usedNow = await tx.studentCode.updateMany({
       where: { id: codeRow.id, usedAt: null },
       data: { usedAt: new Date() },
     });
-    if (usedNow.count === 0) throw new ValidationError("كودٌ مستعمَل من قبل.");
+    if (usedNow.count === 0) throw new ValidationError("رمزٌ مستعمَل من قبل.");
 
     // ٥) إنقاص المخزون — محميٌّ من السباق (لا يُنقَص إن نفد بين الفحص والكتابة).
     if (item.stock != null) {
@@ -355,7 +355,7 @@ export async function sellToStudentByCode(args: SellArgs, db: PrismaClient = pri
         where: { id: item.id, stock: { gt: 0 } },
         data: { stock: { decrement: 1 } },
       });
-      if (dec.count === 0) throw new ValidationError("المخزون نافد.");
+      if (dec.count === 0) throw new ValidationError("المتوفّر نفد.");
     }
 
     // ٦) الخصم في دفتر م٦أ عبر البند النظاميّ (upsert — يبقى بعد تصفير الاختبارات).
@@ -377,7 +377,7 @@ export async function sellToStudentByCode(args: SellArgs, db: PrismaClient = pri
         amount: -item.pricePoints, // خصمٌ سالب — لقطةٌ تاريخيّة للسعر
         grantSource: PointGrantSource.AUTO,
         grantedByUserId: args.sellerUserId, // من أجرى البيع
-        note: `شراء: ${item.nameAr}`,
+        note: `جَنْي: ${item.nameAr}`,
       },
     });
 

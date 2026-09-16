@@ -77,19 +77,19 @@ describe("navSections — اتّحاد أقسام كلّ أدوار المستخ
     expect(navSections([])).toEqual([]);
   });
 
-  it("بائعٌ صرفٌ (م٦ب) ⟵ قسم «السوق» وحده بمدخل «البيع» (لا برامج ولا إدارة)", () => {
+  it("أمينُ بيدرٍ صرفٌ (م٦ب) ⟵ قسم «البيدر» وحده بمدخل «الجَنْي» (لا برامج ولا إدارة)", () => {
     const s = navSections(["SELLER"]);
     expect(s.map((x) => x.key)).toEqual(["market"]);
     expect(s[0].items.map((i) => i.href)).toEqual(["/sell"]);
     expect(s.map((x) => x.key)).not.toContain("programs");
   });
 
-  it("المدير يرى «السوق» (إدارة السلع) ضمن قسم الإدارة", () => {
+  it("المدير يرى «البيدر» (إدارة الثمار) ضمن قسم الإدارة", () => {
     const manage = navSections(["CIRCLE_MANAGER"]).find((x) => x.key === "manage")!;
     expect(manage.items.map((i) => i.href)).toContain("/admin/market");
   });
 
-  it("مدير + بائع ⟵ يرى «السوق» في الإدارة وقسم «السوق» للبيع كليهما", () => {
+  it("مدير + أمين بيدر ⟵ يرى «البيدر» في الإدارة وقسم «البيدر» للجَنْي كليهما", () => {
     const k = navSections(["CIRCLE_MANAGER", "SELLER"]).map((x) => x.key);
     expect(k).toContain("manage");
     expect(k).toContain("market");
