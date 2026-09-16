@@ -68,6 +68,15 @@ export default function MePage() {
 
       <CodeSection hasOwnStudent={me.student != null} />
 
+      {me.roles.includes("GUARDIAN") && (
+        <a href="/bidder" style={{ textDecoration: "none" }}>
+          <Card style={{ marginBottom: sp(6), borderInlineStart: `4px solid ${ui.color.bronze}`, cursor: "pointer" }}>
+            <div style={{ fontWeight: 700, color: ui.color.text }}>بيدر أبنائي 🌱</div>
+            <p style={{ margin: `${sp(1)} 0 0`, color: ui.color.muted }}>تابِع بيدر أبنائك وأضِف ثمرةً تحفيزيّة يجنيها ابنك بنقاطه.</p>
+          </Card>
+        </a>
+      )}
+
       {balance && (
         <section style={{ marginBottom: sp(6) }}>
           <div style={{ marginBottom: sp(3) }}>

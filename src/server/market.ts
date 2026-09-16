@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 
 import {
   GuardianLinkStatus,
+  MarketItemApproval,
   PointGrantSource,
   Role,
   type PrismaClient,
@@ -168,18 +169,51 @@ export interface SellableItem {
   stock: number | null;
 }
 
-/** السلع المتاحة للبيع (مفعّلة، والمخزون غير نافد) — لشبكة شاشة البائع. */
+/**
+ * الثمرات العامّة المتاحة للجَنْي (مفعّلة · معتمَدة · عامّة · المخزون غير نافد) — للبائع
+ * قبل تحديد الطالب. لا تشمل ثمرة الوليّ المعلّقة (PENDING) ولا الموجَّهة لطالبٍ بعينه.
+ */
 export async function listSellableItems(
   actorId: string,
   db: PrismaClient = prisma,
 ): Promise<SellableItem[]> {
   await assertSeller(actorId, db);
   const items = await db.marketItem.findMany({
-    where: { active: true },
+    where: { active: true, approvalStatus: MarketItemApproval.APPROVED, targetStudentId: null },
     orderBy: { createdAt: "asc" },
     select: { id: true, nameAr: true, imageUrl: true, pricePoints: true, stock: true },
   });
-  // نُخفي النافد (stock=0) من الشبكة؛ والخادم يرفضه أيضًا في البيع (حارسٌ مزدوج).
+  // نُخفي النافد (stock=0) من الشبكة؛ والخادم يرفضه أيضًا في الجَنْي (حارسٌ مزدوج).
+  return items.filter((i) => i.stock == null || i.stock > 0);
+}
+
+/**
+ * بيدر طالبٍ بعينه للبائع بعد تحديده بالرمز: الثمرات المعتمَدة المتاحة التي يحقّ لهذا
+ * الطالب جَنْيُها — العامّة + الموجَّهة إليه وحده. (المصدر addedالبائع لا يُعرَض.)
+ */
+export async function listSellableItemsForStudent(
+  sellerUserId: string,
+  studentId: string,
+  db: PrismaClient = prisma,
+): Promise<SellableItem[]> {
+  await assertSeller(sellerUserId, db);
+  return bidderItems(studentId, db);
+}
+
+/**
+ * محرّك عرض البيدر لطالب: مفعّلة · معتمَدة · (عامّة أو موجَّهة له) · المخزون غير نافد.
+ * لا يُرجِع addedByUserId إطلاقًا (خصوصيّة المصدر عن الطالب — ECONOMY_RULES الركن ٢-ب).
+ */
+async function bidderItems(studentId: string, db: PrismaClient): Promise<SellableItem[]> {
+  const items = await db.marketItem.findMany({
+    where: {
+      active: true,
+      approvalStatus: MarketItemApproval.APPROVED,
+      OR: [{ targetStudentId: null }, { targetStudentId: studentId }],
+    },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, nameAr: true, imageUrl: true, pricePoints: true, stock: true },
+  });
   return items.filter((i) => i.stock == null || i.stock > 0);
 }
 
@@ -328,10 +362,17 @@ export async function sellToStudentByCode(args: SellArgs, db: PrismaClient = pri
       throw new ValidationError("انتهت صلاحيّة الرمز — اطلب رمزًا جديدًا.");
     }
 
-    // ٢) السلعة مفعّلة والمخزون متاح؟
+    // ٢) الثمرة مفعّلة · معتمَدة · في بيدر هذا الطالب · والمخزون متاح؟
     const item = await tx.marketItem.findUnique({ where: { id: args.marketItemId } });
     if (!item) throw new ValidationError("ثمرة غير موجودة.");
     if (!item.active) throw new ValidationError("الثمرة معطّلة — لا تُجنى.");
+    // م٦ب-٢: لا تُجنى ثمرةٌ غير معتمَدة (PENDING/REJECTED)، ولا ثمرةٌ موجَّهةٌ لطالبٍ آخر.
+    if (item.approvalStatus !== MarketItemApproval.APPROVED) {
+      throw new ValidationError("الثمرة غير معتمَدة بعد — لا تُجنى.");
+    }
+    if (item.targetStudentId != null && item.targetStudentId !== codeRow.studentId) {
+      throw new ValidationError("هذه الثمرة ليست في بيدر هذا الطالب.");
+    }
     if (item.stock != null && item.stock <= 0) throw new ValidationError("المتوفّر نفد.");
 
     // ٣) الرصيد يكفي السعر المثبّت؟ (الرصيد = SUM(amount) — دفتر م٦أ نفسه، داخل المعاملة)
@@ -428,4 +469,203 @@ export async function listGuardedStudents(
   return links
     .map((l) => ({ studentId: l.student.id, name: l.student.user.nameAsInId }))
     .sort((a, b) => a.name.localeCompare(b.name, "ar"));
+}
+
+// ═══════════════ هدايا وليّ الأمر (م٦ب-٢) — ECONOMY_RULES الركن ٢-ب ═══════════════
+//
+// امتدادٌ لنموذج الثمرة — لا نظام جديد. القواعد المطلقة في الخادم:
+//   • الإضافة: GUARDIAN وحده، ولأبنائه المرتبطين به فقط (الموجَّهة)؛ تبدأ PENDING.
+//   • العرض للطالب: العامّة المعتمَدة + الموجَّهة إليه المعتمَدة فقط — بلا كشف المصدر.
+//   • الاعتماد: الإدارة تثبّت القيمة (من المقترحة أو تعدّلها) ← APPROVED، أو REJECTED.
+//   • الجَنْي: بنفس المسار (sellToStudentByCode) — يحترم الاعتماد والتوجيه (حارسٌ في الخادم).
+
+/** يرمي AuthorizationError إن لم يكن الفاعل وليَّ أمر (Role.GUARDIAN). */
+async function assertGuardian(actorId: string, db: PrismaClient): Promise<void> {
+  const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
+  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor.roles.includes(Role.GUARDIAN)) {
+    throw new AuthorizationError("إضافة الثمرة لوليّ الأمر (Role.GUARDIAN).");
+  }
+}
+
+export interface GuardianGiftInput {
+  nameAr: string;
+  proposedPricePoints: number;
+  imageUrl?: string | null;
+  /** طالبٌ بعينه (خاصّة به) أو null/غياب (عامّة لكلّ البيدر). */
+  targetStudentId?: string | null;
+}
+
+/**
+ * وليّ الأمر يضيف ثمرةً (جائزة): تبدأ PENDING بقيمةٍ مقترحة، addedBy=الوليّ. الموجَّهة
+ * تحتاج ولايةً نشطةً على الطالب (وإلّا رُفضت). القيمة المثبّتة تُساوي المقترحة حتى يعتمدها
+ * المدير أو يعدّلها. المخزون الافتراضيّ ١ (جائزةٌ واحدةٌ يُحضِرها الوليّ).
+ */
+export async function addGuardianGift(
+  guardianUserId: string,
+  input: GuardianGiftInput,
+  db: PrismaClient = prisma,
+) {
+  await assertGuardian(guardianUserId, db);
+
+  const nameAr = input.nameAr?.trim();
+  if (!nameAr) throw new ValidationError("اسم الثمرة مطلوب.");
+  if (!Number.isInteger(input.proposedPricePoints) || input.proposedPricePoints < 1) {
+    throw new ValidationError("القيمة المقترحة عددٌ صحيحٌ موجب (١ فأكثر).");
+  }
+  const imageUrl = input.imageUrl?.trim() || null;
+
+  let targetStudentId: string | null = null;
+  if (input.targetStudentId) {
+    // ثمرةٌ موجَّهة ⟵ لا بدّ من ولايةٍ نشطةٍ على هذا الطالب (رفضُ «لغير ابنه»).
+    const link = await db.guardianLink.findFirst({
+      where: { guardianId: guardianUserId, studentId: input.targetStudentId, status: GuardianLinkStatus.ACTIVE },
+      select: { id: true },
+    });
+    if (!link) throw new AuthorizationError("لا تملك إضافة ثمرةٍ لهذا الطالب.");
+    targetStudentId = input.targetStudentId;
+  }
+
+  const item = await db.marketItem.create({
+    data: {
+      nameAr,
+      imageUrl,
+      pricePoints: input.proposedPricePoints, // القيمة المثبّتة = المقترحة حتى يعتمدها المدير
+      proposedPricePoints: input.proposedPricePoints,
+      stock: 1, // جائزةٌ واحدةٌ يُحضِرها الوليّ (الإدارة تعدّلها إن شاءت)
+      addedByUserId: guardianUserId,
+      targetStudentId,
+      approvalStatus: MarketItemApproval.PENDING,
+    },
+  });
+  await emitEvent(db, {
+    type: "GUARDIAN_GIFT_PROPOSED",
+    subjectType: "MarketItem",
+    subjectId: item.id,
+    actorId: guardianUserId,
+    payload: { proposedPricePoints: input.proposedPricePoints, targetStudentId },
+  });
+  return item;
+}
+
+/**
+ * بيدر طالبٍ لعرضه للطالب نفسه أو وليّه (نافذةٌ لا جَنْي): الثمرات المعتمَدة المتاحة له.
+ * **لا يكشف المصدر** (addedBy) للطالب — خصوصيّة الركن ٢-ب. الوصول: الطالب أو وليٌّ نشط.
+ */
+export async function listBidderForStudent(
+  viewerUserId: string,
+  studentId: string | undefined,
+  db: PrismaClient = prisma,
+): Promise<SellableItem[]> {
+  const target = await resolveCodeTarget(viewerUserId, studentId, db); // الطالب نفسه أو وليٌّ نشط
+  return bidderItems(target, db);
+}
+
+export interface PendingGift {
+  id: string;
+  nameAr: string;
+  imageUrl: string | null;
+  proposedPricePoints: number | null;
+  targetStudentId: string | null;
+  targetStudentName: string | null; // null = عامّة
+  proposedByName: string | null;    // للإدارة فقط — لا يظهر للطالب أبدًا
+  createdAt: Date;
+}
+
+/** ثمرات الوليّ المعلّقة (PENDING) — لشاشة الإدارة، مع مقترِحها والطالب المستهدف. */
+export async function listPendingGuardianGifts(
+  actorId: string,
+  db: PrismaClient = prisma,
+): Promise<PendingGift[]> {
+  await assertMarketAdmin(actorId, db);
+  const rows = await db.marketItem.findMany({
+    where: { approvalStatus: MarketItemApproval.PENDING },
+    orderBy: { createdAt: "asc" },
+  });
+
+  // أسماء المقترِحين والطلاب المستهدَفين (بلا FK — استعلامٌ واحدٌ لكلٍّ).
+  const proposerIds = [...new Set(rows.map((r) => r.addedByUserId).filter((x): x is string => !!x))];
+  const targetIds = [...new Set(rows.map((r) => r.targetStudentId).filter((x): x is string => !!x))];
+  const [proposers, targets] = await Promise.all([
+    proposerIds.length
+      ? db.user.findMany({ where: { id: { in: proposerIds } }, select: { id: true, nameAsInId: true } })
+      : Promise.resolve([]),
+    targetIds.length
+      ? db.student.findMany({ where: { id: { in: targetIds } }, select: { id: true, user: { select: { nameAsInId: true } } } })
+      : Promise.resolve([]),
+  ]);
+  const proposerName = new Map(proposers.map((p) => [p.id, p.nameAsInId]));
+  const targetName = new Map(targets.map((t) => [t.id, t.user.nameAsInId]));
+
+  return rows.map((r) => ({
+    id: r.id,
+    nameAr: r.nameAr,
+    imageUrl: r.imageUrl,
+    proposedPricePoints: r.proposedPricePoints,
+    targetStudentId: r.targetStudentId,
+    targetStudentName: r.targetStudentId ? targetName.get(r.targetStudentId) ?? null : null,
+    proposedByName: r.addedByUserId ? proposerName.get(r.addedByUserId) ?? null : null,
+    createdAt: r.createdAt,
+  }));
+}
+
+/** الإدارة تعتمد ثمرة الوليّ: تثبّت القيمة النهائيّة (من المقترحة أو معدَّلة) ← APPROVED. */
+export async function approveGuardianGift(
+  actorId: string,
+  itemId: string,
+  finalPricePoints: number,
+  db: PrismaClient = prisma,
+) {
+  await assertMarketAdmin(actorId, db);
+  if (!Number.isInteger(finalPricePoints) || finalPricePoints < 1) {
+    throw new ValidationError("القيمة المعتمَدة عددٌ صحيحٌ موجب (١ فأكثر).");
+  }
+  const existing = await db.marketItem.findUnique({
+    where: { id: itemId },
+    select: { id: true, approvalStatus: true },
+  });
+  if (!existing) throw new ValidationError("ثمرة غير موجودة.");
+  if (existing.approvalStatus !== MarketItemApproval.PENDING) {
+    throw new ValidationError("لا تُعتمَد إلّا ثمرةٌ بانتظار الموافقة.");
+  }
+  const item = await db.marketItem.update({
+    where: { id: itemId },
+    data: { pricePoints: finalPricePoints, approvalStatus: MarketItemApproval.APPROVED },
+  });
+  await emitEvent(db, {
+    type: "GUARDIAN_GIFT_APPROVED",
+    subjectType: "MarketItem",
+    subjectId: item.id,
+    actorId,
+    payload: { pricePoints: finalPricePoints },
+  });
+  return item;
+}
+
+/** الإدارة ترفض ثمرة الوليّ ← REJECTED (لا تُعرَض ولا تُجنى). */
+export async function rejectGuardianGift(
+  actorId: string,
+  itemId: string,
+  db: PrismaClient = prisma,
+) {
+  await assertMarketAdmin(actorId, db);
+  const existing = await db.marketItem.findUnique({
+    where: { id: itemId },
+    select: { id: true, approvalStatus: true },
+  });
+  if (!existing) throw new ValidationError("ثمرة غير موجودة.");
+  if (existing.approvalStatus !== MarketItemApproval.PENDING) {
+    throw new ValidationError("لا تُرفَض إلّا ثمرةٌ بانتظار الموافقة.");
+  }
+  const item = await db.marketItem.update({
+    where: { id: itemId },
+    data: { approvalStatus: MarketItemApproval.REJECTED },
+  });
+  await emitEvent(db, {
+    type: "GUARDIAN_GIFT_REJECTED",
+    subjectType: "MarketItem",
+    subjectId: item.id,
+    actorId,
+  });
+  return item;
 }
