@@ -718,16 +718,35 @@ model PointTransaction {
 // منفصل**: يُنشئ حركةً سالبةً في دفتر م٦أ نفسه (PointTransaction)، فالرصيد يبقى SUM(amount).
 // «البائع» صلاحيّةٌ مستقلّة (Role.SELLER) تُمنح عبر إدارة المستخدمين القائمة.
 
+// حالة اعتماد الثمرة (م٦ب-٢): ثمرات الإدارة APPROVED افتراضًا، وثمرة الوليّ تبدأ PENDING.
+enum MarketItemApproval {
+  APPROVED
+  PENDING
+  REJECTED
+}
+
 // سلعةٌ حقيقيّة تديرها الإدارة (إضافة/تعديل/تعطيل — لا حذف). السعر بالنقاط موجبٌ.
 // stock=null ⟵ بلا حدّ مخزون؛ عددٌ ⟵ يُنقَص عند كلّ بيع، والصفر يمنع البيع.
+// م٦ب-٢ (هدايا وليّ الأمر): حقولٌ تُضاف بقيمٍ افتراضيّة لا تكسر الثمرات القائمة —
+// addedByUserId=null (الإدارة) · targetStudentId=null (عامّة) · approvalStatus=APPROVED
+// (معروضة) · proposedPricePoints=null. الحقول بلا FK (نمط جداول الاقتصاد المتأخّرة).
 model MarketItem {
   id          String   @id @default(cuid())
   nameAr      String
   imageUrl    String?
-  pricePoints Int                       // سعرٌ بالنقاط — موجبٌ دومًا
+  pricePoints Int                       // سعرٌ بالنقاط — موجبٌ دومًا (القيمة المثبّتة للجَنْي)
   stock       Int?                      // null = بلا حدّ
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
+
+  // ── م٦ب-٢ ──
+  addedByUserId       String?                                     // مَن أضافها (null = الإدارة)
+  targetStudentId     String?                                     // خاصّةٌ بطالبٍ (null = عامّة)
+  approvalStatus      MarketItemApproval @default(APPROVED)        // ثمرة الوليّ تبدأ PENDING
+  proposedPricePoints Int?                                        // قيمة الوليّ المقترحة (الإدارة تعتمدها/تعدّلها)
+
+  @@index([approvalStatus])
+  @@index([targetStudentId])
 }
 
 // كود الطالب المتغيّر اللحظيّ (ECONOMY_RULES §الركن ٢): يطلبه الطالب أو وليّه، فيُولَّد

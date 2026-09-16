@@ -17,6 +17,15 @@ interface Item {
   active: boolean;
 }
 
+interface PendingGift {
+  id: string;
+  nameAr: string;
+  imageUrl: string | null;
+  proposedPricePoints: number | null;
+  targetStudentName: string | null; // null = عامّة
+  proposedByName: string | null;
+}
+
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
   return session?.access_token ?? null;
@@ -27,6 +36,8 @@ const EMPTY = { id: "", nameAr: "", pricePoints: "", stock: "", imageUrl: "" };
 export default function AdminMarketPage() {
   const { me } = useMe();
   const [items, setItems] = useState<Item[] | null>(null);
+  const [gifts, setGifts] = useState<PendingGift[]>([]);
+  const [priceEdits, setPriceEdits] = useState<Record<string, string>>({});
   const [err, setErr] = useState<string | null>(null);
   const [form, setForm] = useState<typeof EMPTY>(EMPTY);
 
@@ -38,9 +49,29 @@ export default function AdminMarketPage() {
     if (!res.ok) { setErr("تعذّر جلب الثمار."); return; }
     const data = (await res.json().catch(() => null)) as { items?: Item[] } | null;
     setItems(data?.items ?? []);
+    // ثمرات الوليّ المعلّقة (م٦ب-٢).
+    const gres = await fetch("/api/admin/market/gifts", { headers: { authorization: `Bearer ${t}` } });
+    if (gres.ok) setGifts(((await gres.json()) as { gifts: PendingGift[] }).gifts);
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  async function decideGift(id: string, action: "approve" | "reject") {
+    const t = await token();
+    if (!t) return;
+    const body: Record<string, unknown> = { id, action };
+    if (action === "approve") {
+      const raw = priceEdits[id];
+      const g = gifts.find((x) => x.id === id);
+      body.pricePoints = raw != null && raw.trim() !== "" ? Number(raw) : g?.proposedPricePoints ?? NaN;
+    }
+    const res = await fetch("/api/admin/market/gifts", {
+      method: "PATCH", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) { setErr(null); void load(); }
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّر تنفيذ الإجراء."); }
+  }
 
   async function save() {
     const t = await token();
@@ -108,6 +139,37 @@ export default function AdminMarketPage() {
 
       {items && (
         <>
+          {gifts.length > 0 && (
+            <section style={{ background: "var(--color-warn-bg)", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.lg, padding: sp(4), marginBottom: sp(6) }}>
+              <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(1) }}>ثمرات بانتظار الموافقة</h2>
+              <p style={{ color: ui.color.muted, marginTop: 0 }}>ثمرات أضافها أولياء الأمور. اعتمِد القيمة المقترحة أو عدّلها، أو ارفض.</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: sp(3) }}>
+                {gifts.map((g) => (
+                  <div key={g.id} style={{ display: "flex", flexWrap: "wrap", gap: sp(3), alignItems: "flex-end", justifyContent: "space-between", borderTop: `1px solid ${ui.color.border}`, paddingTop: sp(3) }}>
+                    <div style={{ display: "flex", gap: sp(2), alignItems: "center" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {g.imageUrl && <img src={g.imageUrl} alt="" width={40} height={40} style={{ borderRadius: ui.radius.sm, objectFit: "cover" }} />}
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{g.nameAr}</div>
+                        <div style={{ fontSize: ui.text.xs, color: ui.color.muted }}>
+                          {g.targetStudentName ? `خاصّة بـ ${g.targetStudentName}` : "عامّة لكلّ البيدر"} · اقترحها {g.proposedByName ?? "—"}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: sp(2), alignItems: "flex-end" }}>
+                      <Field label="القيمة المعتمَدة">
+                        <Input type="number" value={priceEdits[g.id] ?? String(g.proposedPricePoints ?? "")}
+                          onChange={(e) => setPriceEdits((p) => ({ ...p, [g.id]: e.target.value }))} style={{ width: 96 }} />
+                      </Field>
+                      <Button size="sm" onClick={() => void decideGift(g.id, "approve")}>اعتماد</Button>
+                      <Button variant="ghost" size="sm" onClick={() => void decideGift(g.id, "reject")}>رفض</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           <p style={{ color: ui.color.muted }}>
             قيمة الثمرة بالنقاط. المتوفّر فارغٌ = بلا حدّ. أمين البيدر لا يُدخل القيمة — تُخصَم المثبّتة هنا. تعطيلٌ لا حذف.
           </p>

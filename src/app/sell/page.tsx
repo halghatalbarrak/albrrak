@@ -31,10 +31,12 @@ export default function SellPage() {
   const [busy, setBusy] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
-  const loadItems = useCallback(async () => {
+  // بيدر البائع: قبل تحديد الطالب ثمراتٌ عامّة؛ وبعده بيدر ذلك الطالب (عامّة + موجَّهة إليه).
+  const loadItems = useCallback(async (studentId?: string) => {
     const t = await token();
     if (!t) { window.location.href = "/login"; return; }
-    const res = await fetch("/api/market/items", { headers: { authorization: `Bearer ${t}` } });
+    const url = studentId ? `/api/market/items?studentId=${encodeURIComponent(studentId)}` : "/api/market/items";
+    const res = await fetch(url, { headers: { authorization: `Bearer ${t}` } });
     if (res.status === 403) { setErr("لا صلاحية — شاشة الجَنْي لأمين البيدر وحده."); return; }
     if (res.ok) { const d = (await res.json()) as { items: Sellable[] }; setItems(d.items); }
   }, []);
@@ -60,9 +62,13 @@ export default function SellPage() {
     const t = await token();
     if (!t) return;
     const res = await fetch(`/api/market/lookup?code=${encodeURIComponent(c)}`, { headers: { authorization: `Bearer ${t}` } });
-    if (res.ok) { setCode(c.toUpperCase()); setStudent((await res.json()) as Lookup); }
+    if (res.ok) {
+      const st = (await res.json()) as Lookup;
+      setCode(c.toUpperCase()); setStudent(st);
+      void loadItems(st.studentId); // بيدر هذا الطالب (عامّة + موجَّهة إليه)
+    }
     else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "رمز غير صالح."); }
-  }, []);
+  }, [loadItems]);
 
   // بدء المسح بضغطة (لا نطلب إذن الكاميرا تلقائيًّا) — لطفًا بالمستخدم.
   async function startScan() {
