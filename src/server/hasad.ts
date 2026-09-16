@@ -1,4 +1,5 @@
 import {
+  AutoEventType,
   ProgramKey,
   ProgressState,
   StageKind,
@@ -9,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 
 import { assertCanExamine, canExamine } from "./examiner-eligibility";
 import { assertTeachesStudent } from "./daily-session";
+import { grantAuto } from "./economy";
 import { autoTransitionSubStage } from "./promotion";
 import { gradeHizbHarvest } from "./hasad-grading";
 import { facePagesInRange } from "./mushaf";
@@ -237,6 +239,8 @@ export async function recordHasad(
       actorId: args.reciterId,
       payload: { stageId: args.stageId, rank: grade.rank, totalErrors: grade.totalErrors, attemptNo },
     });
+    // منح تلقائيّ لإتمام الحصاد اليوميّ (م٦أ-٢) — المرجع = سجلّ الحصاد، فلكلّ حصادٍ منحٌ واحد.
+    await grantAuto(tx, AutoEventType.DAILY_HARVEST, args.studentId, hasad.id);
     // انتقال الحزب التلقائيّ بعد نجاحه (تميّز/اجتياز — الحكم ٧) بلا اعتماد. الرسوب لا ينقل.
     if (grade.rank !== "FAIL") {
       await autoTransitionSubStage(tx, {

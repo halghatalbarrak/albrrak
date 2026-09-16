@@ -10,6 +10,9 @@ import {
 
 type GrantSource = "AUTO" | "TEACHER" | "ADMIN";
 type LimitPeriod = "DAY" | "WEEK" | "NONE";
+type EventType =
+  | "ATTENDANCE" | "HIZB_EXAM_PASS"
+  | "STAGE_EXAM_PASS" | "DAILY_HARVEST" | "PROMOTION";
 
 interface Item {
   id: string;
@@ -19,6 +22,7 @@ interface Item {
   limitCount: number | null;
   limitPeriod: LimitPeriod;
   active: boolean;
+  eventType: EventType | null;
 }
 
 const SOURCE_AR: Record<GrantSource, string> = {
@@ -27,13 +31,21 @@ const SOURCE_AR: Record<GrantSource, string> = {
   ADMIN: "الإدارة",
 };
 const PERIOD_AR: Record<LimitPeriod, string> = { DAY: "يوميّ", WEEK: "أسبوعيّ", NONE: "بلا حدّ" };
+// أنواع الأحداث الخمسة للربط التلقائيّ (م٦أ-٢).
+const EVENT_AR: Record<EventType, string> = {
+  ATTENDANCE: "حضور",
+  HIZB_EXAM_PASS: "اجتياز الحزب",
+  STAGE_EXAM_PASS: "اجتياز اختبار المرحلة",
+  DAILY_HARVEST: "إتمام الحصاد اليوميّ",
+  PROMOTION: "ترقية/انتقال المرحلة",
+};
 
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
   return session?.access_token ?? null;
 }
 
-const EMPTY = { id: "", nameAr: "", value: "", grantSource: "TEACHER" as GrantSource, limitPeriod: "NONE" as LimitPeriod, limitCount: "" };
+const EMPTY = { id: "", nameAr: "", value: "", grantSource: "TEACHER" as GrantSource, limitPeriod: "NONE" as LimitPeriod, limitCount: "", eventType: "ATTENDANCE" as EventType };
 
 export default function AdminEconomyPage() {
   const { me } = useMe();
@@ -63,6 +75,8 @@ export default function AdminEconomyPage() {
       grantSource: form.grantSource,
       limitPeriod: form.limitPeriod,
       limitCount: form.limitPeriod === "NONE" ? null : Number(form.limitCount),
+      // نوع الحدث يُرسَل لبنود AUTO فقط (م٦أ-٢).
+      eventType: form.grantSource === "AUTO" ? form.eventType : null,
     };
     const res = await fetch("/api/admin/economy", {
       method: form.id ? "PATCH" : "POST",
@@ -89,6 +103,7 @@ export default function AdminEconomyPage() {
       id: item.id, nameAr: item.nameAr, value: String(item.value),
       grantSource: item.grantSource, limitPeriod: item.limitPeriod,
       limitCount: item.limitCount == null ? "" : String(item.limitCount),
+      eventType: item.eventType ?? "ATTENDANCE",
     });
   }
 
@@ -97,7 +112,9 @@ export default function AdminEconomyPage() {
     { key: "value", header: "القيمة", cell: (i) => (
       <Badge tone={i.value >= 0 ? "success" : "danger"}>{i.value >= 0 ? "+" : "−"}{arNum(Math.abs(i.value))}</Badge>
     ) },
-    { key: "source", header: "المصدر", cell: (i) => <span>{SOURCE_AR[i.grantSource]}</span> },
+    { key: "source", header: "المصدر", cell: (i) => (
+      <span>{SOURCE_AR[i.grantSource]}{i.grantSource === "AUTO" && i.eventType ? ` — ${EVENT_AR[i.eventType]}` : ""}</span>
+    ) },
     { key: "limit", header: "الحدّ", cell: (i) => (
       <span>{i.limitPeriod === "NONE" ? "بلا حدّ" : `${arNum(i.limitCount ?? 0)} / ${PERIOD_AR[i.limitPeriod]}`}</span>
     ) },
@@ -120,7 +137,7 @@ export default function AdminEconomyPage() {
       {items && (
         <>
           <p style={{ color: ui.color.muted }}>
-            القيمة الموجبة كسبٌ والسالبة خصم. المصدر يحدّد من يمنح (المعلّم/الإدارة)؛ التلقائيّ منح النظام (مؤجَّل).
+            القيمة الموجبة كسبٌ والسالبة خصم. المصدر يحدّد من يمنح (المعلّم/الإدارة)؛ والتلقائيّ يمنحه النظام عند حدثٍ تختاره.
             الحدّ عددُ مرّاتٍ في فترة. تعطيلٌ لا حذف.
           </p>
 
@@ -145,6 +162,15 @@ export default function AdminEconomyPage() {
               </Field>
               {form.limitPeriod !== "NONE" && (
                 <Field label="عدد المرّات في الفترة"><Input type="number" value={form.limitCount} onChange={(e) => setForm((f) => ({ ...f, limitCount: e.target.value }))} placeholder="مثال: 1" /></Field>
+              )}
+              {form.grantSource === "AUTO" && (
+                <Field label="الحدث المربوط (يمنحه النظام تلقائياً)">
+                  <Select value={form.eventType} onChange={(e) => setForm((f) => ({ ...f, eventType: e.target.value as EventType }))}>
+                    {(Object.keys(EVENT_AR) as EventType[]).map((k) => (
+                      <option key={k} value={k}>{EVENT_AR[k]}</option>
+                    ))}
+                  </Select>
+                </Field>
               )}
             </div>
             <div style={{ display: "flex", gap: sp(2), marginTop: sp(3) }}>

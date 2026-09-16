@@ -1,4 +1,5 @@
 import {
+  AutoEventType,
   ProgramKey,
   ProgressState,
   StageExamStatus,
@@ -11,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { ApprovalKind } from "@prisma/client";
 
 import { assertCanExamine } from "./examiner-eligibility";
+import { grantAuto } from "./economy";
 import { gradeHizbHarvest, type HizbRank } from "./hasad-grading";
 import { facePagesInRange } from "./mushaf";
 import { propose } from "./approval";
@@ -158,6 +160,10 @@ export async function recordStageExam(
       actorId: args.examinerId,
       payload: { mainStageId: args.mainStageId, status, finalRank, hizbCount, plannedSessions },
     });
+    // منح تلقائيّ لاجتياز اختبار المرحلة (م٦أ-٢) — النجاح فقط، المرجع = سجلّ الاختبار.
+    if (status !== "FAILED") {
+      await grantAuto(tx, AutoEventType.STAGE_EXAM_PASS, args.studentId, e.id);
+    }
     return e.id;
   });
 

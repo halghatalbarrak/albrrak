@@ -712,6 +712,45 @@ model PointTransaction {
   @@index([pointItemId])
 }
 
+// ═══════════════ الاقتصاد — الربط التلقائيّ (م٦أ-٢) ═══════════════
+// ECONOMY_RULES.md الركن ١ (تفعيل AUTO). الإدارة تربط بنداً مصدره AUTO بنوع حدثٍ من قائمةٍ
+// ثابتة؛ عند وقوع الحدث يمنح النظام البند تلقائياً عبر منطق م٦أ نفسه (PointTransaction،
+// grantSource=AUTO، grantedByUserId=null). جدولان بلا FK (نمط الترحيلات المتأخّرة الآمن).
+
+// أنواع الأحداث المدعومة للربط التلقائيّ (قائمةٌ ثابتة — لا تُدار من الشاشة). خمسةٌ فقط.
+enum AutoEventType {
+  ATTENDANCE        // حضور (حالةٌ محسوبة: حاضر/متأخّر/منصرف مبكّرًا)
+  HIZB_EXAM_PASS    // اجتياز الحزب (انتقاله التلقائيّ بحصاده — الحكم ٧)
+  STAGE_EXAM_PASS   // اجتياز اختبار المرحلة الأصلية
+  DAILY_HARVEST     // إتمام الحصاد اليوميّ
+  PROMOTION         // ترقية/انتقال المرحلة الأصلية (باعتماد المدير)
+}
+
+// قاعدةٌ تربط بنداً (PointItem مصدره AUTO) بنوع حدث. الإدارة تنشئها من شاشة النقاط.
+// بندٌ واحدٌ ← قاعدةٌ واحدة (@@unique). ويُضمَن حدَثٌ واحدٌ لبندٍ مفعّلٍ واحدٍ في طبقة الخادم.
+// active يُرافق تفعيل/تعطيل البند (مرآةٌ في economy.ts) ليَسهُل على grantAuto اختيار القاعدة.
+model AutoGrantRule {
+  id          String        @id @default(cuid())
+  pointItemId String        @unique
+  eventType   AutoEventType
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  @@index([eventType, active])
+}
+
+// دفتر منعِ الازدواج: سطرٌ لكلّ منحٍ تلقائيّ فعليّ. القيد الفريد (نوع الحدث + المرجع +
+// الطالب) يمنع منح الحدث الواحد مرّتين ولو أُعيد تسجيله. يرتبط بحركة الدفتر التي أنشأها.
+model AutoGrant {
+  id                 String        @id @default(cuid())
+  eventType          AutoEventType
+  sourceRef          String        // معرّف الحدث/السجلّ الأصليّ (سجلّ الحضور/الاختبار/الحصاد/الانتقال)
+  studentId          String
+  pointTransactionId String
+  createdAt          DateTime      @default(now())
+  @@unique([eventType, sourceRef, studentId])
+  @@index([studentId])
+}
+
 // ═══════════════ الاقتصاد — السوق الحقيقيّ بالكود (م٦ب) ═══════════════
 // ECONOMY_RULES.md الركن ٢. ثلاثة جداول بلا FK (نمط الترحيلات المتأخّرة الآمن — تُطبَّق
 // معجميًّا، اسم الترحيل «9zzzzz_market» يقع بعد «9zzzz_user_management»). الخصم **لا رصيد

@@ -1,4 +1,4 @@
-import { PointGrantSource, PointLimitPeriod, ProgramKey, Role } from "@prisma/client";
+import { AutoEventType, PointGrantSource, PointLimitPeriod, ProgramKey, Role } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -35,7 +35,7 @@ describe("إدارة بنود النقاط (م٦أ) — للإدارة وحده�
   it("المدير ينشئ بندًا؛ والقيمة الموجبة كسبٌ والسالبة خصم", async () => {
     const { manager } = await scaffold();
     const item = await createPointItem(manager.id, {
-      nameAr: "حضور مبكّر",
+      nameAr: "إتقان الحفظ",
       value: 5,
       grantSource: PointGrantSource.TEACHER,
     });
@@ -117,6 +117,7 @@ describe("المنح اليدويّ — القواعد المطلقة في ال�
       nameAr: "بند تلقائيّ",
       value: 2,
       grantSource: PointGrantSource.AUTO,
+      eventType: AutoEventType.ATTENDANCE,
     });
     await expect(
       grantPoints({ studentId: student.id, pointItemId: autoItem.id, grantedBy: manager.id }, prisma),
@@ -209,7 +210,7 @@ describe("عروض شاشة المعلّم — البنود والطلاب ال�
     const { manager, teacher } = await scaffold();
     await createPointItem(manager.id, { nameAr: "معلّم", value: 5, grantSource: PointGrantSource.TEACHER });
     await createPointItem(manager.id, { nameAr: "إدارة", value: 5, grantSource: PointGrantSource.ADMIN });
-    await createPointItem(manager.id, { nameAr: "تلقائيّ", value: 5, grantSource: PointGrantSource.AUTO });
+    await createPointItem(manager.id, { nameAr: "تلقائيّ", value: 5, grantSource: PointGrantSource.AUTO, eventType: AutoEventType.ATTENDANCE });
 
     const forTeacher = await listGrantableItems(teacher.id, prisma);
     expect(forTeacher.map((i) => i.grantSource)).toEqual([PointGrantSource.TEACHER]);

@@ -1,5 +1,6 @@
-import { ProgressState, type Prisma } from "@prisma/client";
+import { AutoEventType, ProgressState, type Prisma } from "@prisma/client";
 
+import { grantAuto } from "./economy";
 import { emitEvent } from "./events";
 
 // ═══════════════ الترقية (م٤د — MARAQI_RULES الحكم ٧) ═══════════════
@@ -39,4 +40,6 @@ export async function autoTransitionSubStage(
     actorId: args.actorId,
     payload: { stageId: args.stageId, automatic: true },
   });
+  // منح تلقائيّ لاجتياز الحزب (م٦أ-٢) — المرجع = الحزب (المرحلة الفرعية)، فلكلّ حزبٍ منحٌ واحد.
+  await grantAuto(tx, AutoEventType.HIZB_EXAM_PASS, args.studentId, args.stageId);
 }
