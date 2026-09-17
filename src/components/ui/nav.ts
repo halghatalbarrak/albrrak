@@ -61,6 +61,7 @@ export function navSections(roles: string[]): NavSection[] {
     sections.push({
       key: "operate", label: "التشغيل", items: [
         { label: "الجلسة اليومية", href: "/admin/session" },
+        { label: "جلسة القاعدة", href: "/admin/qaidah-session" },
         { label: "الحضور", href: "/admin/attendance" },
         { label: "منح نقاط", href: "/admin/grant-points" },
         { label: "حلقتي", href: "/admin/circles" },

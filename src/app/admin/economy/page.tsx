@@ -12,7 +12,7 @@ type GrantSource = "AUTO" | "TEACHER" | "ADMIN";
 type LimitPeriod = "DAY" | "WEEK" | "NONE";
 type EventType =
   | "ATTENDANCE" | "HIZB_EXAM_PASS"
-  | "STAGE_EXAM_PASS" | "DAILY_HARVEST" | "PROMOTION";
+  | "STAGE_EXAM_PASS" | "DAILY_HARVEST" | "PROMOTION" | "QAIDAH_COMPLETE";
 
 interface Item {
   id: string;
@@ -38,6 +38,7 @@ const EVENT_AR: Record<EventType, string> = {
   STAGE_EXAM_PASS: "اجتياز اختبار المرحلة",
   DAILY_HARVEST: "إتمام الحصاد اليوميّ",
   PROMOTION: "ترقية/انتقال المرحلة",
+  QAIDAH_COMPLETE: "إتمام القاعدة المدنية",
 };
 
 async function token(): Promise<string | null> {
