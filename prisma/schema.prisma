@@ -410,6 +410,19 @@ model DailySession {
   @@index([circleId, date])
 }
 
+// حالة الجلسة «مؤجَّل» (مشترَكة بين مراقي والقاعدة — MARAQI_RULES/QAIDAH_RULES): الطالب حاضرٌ
+// جاهزٌ لم يُسمَّع/يُقيَّم لضيق الوقت. سطرٌ محايدٌ إيجابيّ: **لا يحرّك الموضع، ولا يمنح/يخصم**.
+// مرّةً لليوم (@@unique) — إعادة التسجيل idempotent. بلا FK (نمط الجداول المتأخّرة الآمن).
+model DeferredSession {
+  id         String   @id @default(cuid())
+  studentId  String
+  date       DateTime @db.Date
+  recordedBy String
+  createdAt  DateTime @default(now())
+  @@unique([studentId, date])
+  @@index([studentId])
+}
+
 // ═══════════════ الحضور ═══════════════
 
 enum AttendanceStatus {

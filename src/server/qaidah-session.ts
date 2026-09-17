@@ -12,10 +12,11 @@ import {
 
 import { prisma } from "@/lib/prisma";
 
-import { assertCanRecordCircle } from "./attendance";
+import { assertCanRecordCircle, toDateOnly } from "./attendance";
 import { assertTeachesStudent, listCircleStudents } from "./daily-session";
 import { grantAuto } from "./economy";
 import { emitEvent } from "./events";
+import { latestDeferralDate } from "./session-deferral";
 import { ValidationError } from "./errors";
 
 // ═══════════════ جلسة القاعدة المدنية (QAIDAH_RULES.md) ═══════════════
@@ -88,11 +89,14 @@ export interface QaidahPosition {
   completedLessons: number;
   percent: number; // ٠..١٠٠
   current: QaidahCurrent | null; // null إن تخرّج أو لم يُبذَر
+  lastDeferredAt: string | null; // آخر تاريخ تأجيل (YYYY-MM-DD) أو null
+  deferredIsLatest: boolean; // آخر تقييمٍ للطالب «مؤجَّل» (تأجيلٌ بعد آخر تقدّم)
 }
 
 const emptyPosition: QaidahPosition = {
   seeded: false, started: false, graduated: false,
   totalLessons: 0, completedLessons: 0, percent: 0, current: null,
+  lastDeferredAt: null, deferredIsLatest: false,
 };
 
 function buildCurrent(set: QaidahLessonSet, lesson: OrderedLesson): QaidahCurrent {
@@ -121,12 +125,22 @@ async function positionFromSet(
       state: ProgressState.COMPLETED,
       stage: { programId: set.programId, kind: StageKind.LESSON },
     },
-    select: { stageId: true },
+    select: { stageId: true, completedAt: true },
   });
   const doneIds = new Set(completed.map((r) => r.stageId));
   const completedLessons = set.lessons.filter((l) => doneIds.has(l.id)).length;
   const current = set.lessons.find((l) => !doneIds.has(l.id)) ?? null;
   const total = set.lessons.length;
+
+  // «مؤجَّل»: هل آخر جلسةٍ للطالب تأجيلٌ (بعد آخر تقدّم)؟ عرضٌ فقط — لا يمسّ الموضع.
+  const lastCompletedAt = completed.reduce<Date | null>(
+    (max, r) => (r.completedAt && (!max || r.completedAt > max) ? r.completedAt : max),
+    null,
+  );
+  const lastDeferred = await latestDeferralDate(studentId, db);
+  const deferredIsLatest =
+    !!lastDeferred && (!lastCompletedAt || lastDeferred >= toDateOnly(lastCompletedAt));
+
   return {
     seeded: true,
     started: completedLessons > 0,
@@ -135,6 +149,8 @@ async function positionFromSet(
     completedLessons,
     percent: total > 0 ? Math.round((completedLessons / total) * 100) : 0,
     current: current ? buildCurrent(set, current) : null,
+    lastDeferredAt: lastDeferred ? lastDeferred.toISOString().slice(0, 10) : null,
+    deferredIsLatest,
   };
 }
 
@@ -299,6 +315,7 @@ export interface QaidahBoardStudent {
   name: string;
   started: boolean;
   graduated: boolean;
+  deferred: boolean; // آخر جلسةٍ «مؤجَّل»
   chapterName: string | null;
   lessonName: string | null;
   lessonIndexInChapter: number | null;
@@ -340,6 +357,7 @@ export async function getQaidahSessionBoard(
       name: s.name,
       started: pos.started,
       graduated: pos.graduated,
+      deferred: pos.deferredIsLatest,
       chapterName: pos.current?.chapterName ?? null,
       lessonName: pos.current?.lessonName ?? null,
       lessonIndexInChapter: pos.current?.lessonIndexInChapter ?? null,

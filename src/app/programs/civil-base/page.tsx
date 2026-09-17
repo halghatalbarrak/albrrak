@@ -34,6 +34,7 @@ interface QaidahPosition {
   seeded: boolean; started: boolean; graduated: boolean;
   totalLessons: number; completedLessons: number; percent: number;
   current: { lessonName: string; chapterName: string | null; lessonIndexInChapter: number; lessonsInChapter: number } | null;
+  deferredIsLatest: boolean;
 }
 
 const STATE_AR: Record<string, string> = {
@@ -133,6 +134,7 @@ export default function CivilBaseLadderPage() {
               {position.current.chapterName ? <>الباب «{position.current.chapterName}» — </> : null}
               الدرس «{position.current.lessonName}» (الدرس {position.current.lessonIndexInChapter} من {position.current.lessonsInChapter})
               {" · "}أتممتَ {position.completedLessons} من {position.totalLessons} ({position.percent}٪)
+              {position.deferredIsLatest ? <> · <strong style={{ color: ui.color.bronze }}>آخر جلسة: مؤجَّل</strong></> : null}
             </>
           ) : (
             <span style={{ color: ui.color.muted }}>لم تبدأ الدروس بعد.</span>

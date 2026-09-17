@@ -5,6 +5,7 @@ import {
   recordMurajaah,
   recordTarseekh,
 } from "@/server/daily-session";
+import { deferSession } from "@/server/session-deferral";
 import { requireAuth, requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
 import { ValidationError } from "@/server/errors";
@@ -35,6 +36,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const { id } = await ctx.params;
     const b = (await req.json()) as Record<string, unknown>;
     if (typeof b.date !== "string") throw new ValidationError("التاريخ مطلوب.");
+
+    // «مؤجَّل» (حاضرٌ لم يُسمَّع لضيق الوقت): لا يحرّك الموضع ولا يمنح — سطرٌ محايد.
+    if (b.kind === "defer") {
+      await deferSession({ studentId: id, actorId: actor.id, date: b.date });
+      return Response.json({ ok: true }, { status: 201 });
+    }
 
     if (b.kind === "hifz") {
       const nums = ["fromSurah", "fromAyah", "toSurah", "toAyah", "attempts"] as const;

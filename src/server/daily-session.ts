@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { isActiveArifForCircle, autoDismissArifIfBelowThreshold } from "./arif";
 import { displayBoundary } from "./maraqi";
 import { getConsolidation, getWeeklyReview, type ConsolidationView, type WeeklyReview } from "./tarseekh";
+import { deferredStudentIdsForDate } from "./session-deferral";
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
 
@@ -562,6 +563,8 @@ export interface BoardStudent {
   yesterday: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number; mastered: boolean } | null;
   todayHifzDone: boolean;
   tarseekhDone: boolean | null;
+  /** «مؤجَّل» اليوم: حاضرٌ لم يُسمَّع لضيق الوقت (لا ينقل الموضع). */
+  deferredToday: boolean;
   /** المطلوب اليوم (مراقي): عدد مقاطع الترسيخ وخُمس المراجعة. */
   required: { tarseekhCount: number; khums: number } | null;
   weeklyPercent: number | null;
@@ -615,6 +618,8 @@ export async function getCircleSessionBoard(
   const circle = await db.circle.findUnique({ where: { id: circleId }, select: { id: true, nameAr: true } });
   const roster = await listCircleStudents(circleId, db);
   const d = toDateOnly(date);
+  // «مؤجَّل» اليوم لهذه الحلقة (عرضٌ فقط — لا يمسّ منطق الجلسة).
+  const deferredToday = await deferredStudentIdsForDate(roster.map((s) => s.id), d, db);
   const students: BoardStudent[] = [];
   for (const s of roster) {
     const v = await getSessionView(actorId, s.id, date, db);
@@ -629,6 +634,7 @@ export async function getCircleSessionBoard(
       yesterday,
       todayHifzDone: v.session?.hifzFromSurah != null,
       tarseekhDone: v.session?.tarseekhDone ?? null,
+      deferredToday: deferredToday.has(s.id),
       required: v.consolidation
         ? { tarseekhCount: v.consolidation.tarseekh.segments.length, khums: v.consolidation.review.khums }
         : null,

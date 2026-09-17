@@ -16,7 +16,7 @@ interface BoardStudent {
   studentId: string; name: string; program: string; started: boolean;
   stageLabel: string | null; hizb: number | null;
   yesterday: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number; mastered: boolean } | null;
-  todayHifzDone: boolean; tarseekhDone: boolean | null;
+  todayHifzDone: boolean; tarseekhDone: boolean | null; deferredToday: boolean;
   required: { tarseekhCount: number; khums: number } | null;
   weeklyPercent: number | null; weeklyComplete: boolean; mustRepeat: boolean; nextStep: string;
 }
@@ -180,7 +180,10 @@ export default function DailySessionPage() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), flexWrap: "wrap" }}>
               <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
-              <Badge tone={stepTone(s.nextStep)}>{s.nextStep}</Badge>
+              <div style={{ display: "flex", gap: sp(2), alignItems: "center" }}>
+                {s.deferredToday && <Badge tone="bronze">مؤجَّل اليوم</Badge>}
+                <Badge tone={stepTone(s.nextStep)}>{s.nextStep}</Badge>
+              </div>
             </div>
             <div style={{ display: "flex", gap: sp(4), flexWrap: "wrap", fontSize: ui.text.xs, color: ui.color.muted }}>
               <span>مرحلته: <strong style={{ color: ui.color.text }}>{s.stageLabel ?? "—"}</strong>{s.hizb != null ? ` · حزب ${s.hizb}` : ""}</span>
@@ -297,6 +300,11 @@ function StudentDetail({ studentId, date, onSaved }: { studentId: string; date: 
           أعلن الجاهزية للحصاد
         </Button>
       )}
+
+      {/* «مؤجَّل»: حاضرٌ لم يُسمَّع لضيق الوقت — لا يحرّك الموضع ولا يمنح/يخصم. */}
+      <Button variant="ghost" size="sm" style={{ alignSelf: "flex-start" }} onClick={() => void post({ kind: "defer" })} title="حاضرٌ جاهزٌ لم يُسمَّع لضيق الوقت — يُوثَّق حاضراً أدّى، بلا نقلٍ للموضع">
+        مؤجَّل (حاضرٌ لم يُسمَّع)
+      </Button>
 
       {/* الحفظ */}
       <div>
