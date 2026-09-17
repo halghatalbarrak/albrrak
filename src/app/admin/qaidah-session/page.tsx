@@ -13,7 +13,7 @@ import { AppShell, Card, Button, Badge, EmptyState, Skeleton, ui, sp } from "@/c
 
 interface Circle { id: string; nameAr: string }
 interface BoardStudent {
-  studentId: string; name: string; started: boolean; graduated: boolean;
+  studentId: string; name: string; started: boolean; graduated: boolean; deferred: boolean;
   chapterName: string | null; lessonName: string | null;
   lessonIndexInChapter: number | null; lessonsInChapter: number | null; percent: number;
 }
@@ -60,14 +60,14 @@ export default function QaidahSessionPage() {
 
   useEffect(() => { void loadBoard(); }, [loadBoard]);
 
-  async function evaluate(studentId: string, mastered: boolean) {
+  async function evaluate(studentId: string, body: { mastered: boolean } | { defer: true }) {
     setSaving(studentId);
     const t = await token();
     if (!t) { setSaving(null); return; }
     try {
       await fetch(`/api/students/${studentId}/qaidah-session`, {
         method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
-        body: JSON.stringify({ mastered }),
+        body: JSON.stringify(body),
       });
       await loadBoard();
     } finally { setSaving(null); }
@@ -118,13 +118,15 @@ export default function QaidahSessionPage() {
                 الدرس: <strong style={{ color: ui.color.text }}>{s.lessonName ?? "—"}</strong>
                 {s.lessonIndexInChapter && s.lessonsInChapter ? ` (${arNum(s.lessonIndexInChapter)}/${arNum(s.lessonsInChapter)})` : ""}
                 {" · "}{arNum(s.percent)}٪
+                {s.deferred ? <> · <Badge tone="bronze">مؤجَّل</Badge></> : null}
               </span>
             )}
           </div>
           {!s.graduated && (
             <div style={{ display: "flex", gap: sp(2) }}>
-              <Button size="sm" disabled={saving === s.studentId} onClick={() => void evaluate(s.studentId, true)}>متقن</Button>
-              <Button variant="ghost" size="sm" disabled={saving === s.studentId} onClick={() => void evaluate(s.studentId, false)}>غير متقن</Button>
+              <Button size="sm" disabled={saving === s.studentId} onClick={() => void evaluate(s.studentId, { mastered: true })}>متقن</Button>
+              <Button variant="ghost" size="sm" disabled={saving === s.studentId} onClick={() => void evaluate(s.studentId, { mastered: false })}>غير متقن</Button>
+              <Button variant="ghost" size="sm" disabled={saving === s.studentId} onClick={() => void evaluate(s.studentId, { defer: true })} title="حاضرٌ لم يُقيَّم لضيق الوقت — لا ينقل الموضع">مؤجَّل</Button>
             </div>
           )}
         </Card>
