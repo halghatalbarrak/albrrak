@@ -30,6 +30,11 @@ interface View {
   ladder: Ladder | null;
   canSeeTeacherNotes: boolean;
 }
+interface QaidahPosition {
+  seeded: boolean; started: boolean; graduated: boolean;
+  totalLessons: number; completedLessons: number; percent: number;
+  current: { lessonName: string; chapterName: string | null; lessonIndexInChapter: number; lessonsInChapter: number } | null;
+}
 
 const STATE_AR: Record<string, string> = {
   NOT_STARTED: "لم يبدأ",
@@ -49,6 +54,7 @@ const CRUMBS = [{ label: "الرئيسة", href: "/" }, { label: "البرامج
 export default function CivilBaseLadderPage() {
   const { me } = useMe();
   const [view, setView] = useState<View | null>(null);
+  const [position, setPosition] = useState<QaidahPosition | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
@@ -75,6 +81,11 @@ export default function CivilBaseLadderPage() {
       }
       setView((await res.json()) as View);
       setStatus("ready");
+      // موضع الطالب في الدروس (إضافةٌ لا تُعطّل السلّم إن غابت) — الجلسة اليوميّة (QAIDAH_RULES).
+      try {
+        const pr = await fetch("/api/me/qaidah", { headers: { authorization: `Bearer ${session.access_token}` } });
+        if (pr.ok) setPosition(((await pr.json()) as { position: QaidahPosition | null }).position);
+      } catch { /* الموضع إضافةٌ اختياريّة */ }
     } catch {
       setStatus("error");
     }
@@ -112,6 +123,22 @@ export default function CivilBaseLadderPage() {
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/programs/civil-base"
       title="القاعدة المدنية — السلّم البياني" crumbs={CRUMBS}>
+      {position?.seeded && (
+        <div style={{ padding: `${sp(3)} ${sp(4)}`, marginBottom: sp(4), background: ui.color.surface, border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, borderInlineStart: `4px solid ${ui.color.primary}` }}>
+          {position.graduated ? (
+            <strong style={{ color: ui.color.success }}>أتممتَ دروس القاعدة المدنية — بارك الله فيك ✓</strong>
+          ) : position.current ? (
+            <>
+              <strong>موضعك الآن:</strong>{" "}
+              {position.current.chapterName ? <>الباب «{position.current.chapterName}» — </> : null}
+              الدرس «{position.current.lessonName}» (الدرس {position.current.lessonIndexInChapter} من {position.current.lessonsInChapter})
+              {" · "}أتممتَ {position.completedLessons} من {position.totalLessons} ({position.percent}٪)
+            </>
+          ) : (
+            <span style={{ color: ui.color.muted }}>لم تبدأ الدروس بعد.</span>
+          )}
+        </div>
+      )}
       {view.ladder.progress && (
         <p style={{ color: ui.color.muted }}>
           تقدّمك بالوزن: {view.ladder.progress.percent}٪ (

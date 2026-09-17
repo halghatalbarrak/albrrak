@@ -254,6 +254,7 @@ enum StageKind {
   MILESTONE
   MAIN_STAGE
   SUB_STAGE
+  LESSON      // القاعدة المدنية: الدرس (وحدة الجلسة) — ابنٌ للباب (CHAPTER) عبر parentId
 }
 
 model Stage {
@@ -724,6 +725,7 @@ enum AutoEventType {
   STAGE_EXAM_PASS   // اجتياز اختبار المرحلة الأصلية
   DAILY_HARVEST     // إتمام الحصاد اليوميّ
   PROMOTION         // ترقية/انتقال المرحلة الأصلية (باعتماد المدير)
+  QAIDAH_COMPLETE   // إتمام القاعدة المدنية (كلّ الدروس) — تخرّجٌ من القاعدة
 }
 
 // قاعدةٌ تربط بنداً (PointItem مصدره AUTO) بنوع حدث. الإدارة تنشئها من شاشة النقاط.
