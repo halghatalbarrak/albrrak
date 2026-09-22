@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { AppShell, Button, Card, Stat, Skeleton, ui, sp } from "@/components/ui";
+import { AppShell, Button, Card, NabawiBackdrop, Stat, Skeleton, ui, sp } from "@/components/ui";
 
 // الصفحة الرئيسة: للزائر واجهةٌ ترحيبيّة، وللداخل ملخّصٌ حسب دوره داخل اللوحة (الشريط الجانبيّ).
 // المنطق (جلب الجلسة و/api/me و/api/summary) بلا مساسٍ بأي قاعدة عمل — قراءةٌ فقط.
@@ -44,18 +44,22 @@ export default function Home() {
     })();
   }, []);
 
-  // ── الزائر: واجهةٌ ترحيبيّة (كما هي، بلا تغيير) ──
+  // ── الزائر: واجهةٌ ترحيبيّة بلمسةٍ نبويّة (صفحة الزائر فقط — لا حالة المستخدم الداخل) ──
   if (!me) {
     return (
-      <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text,
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(4), padding: sp(6), textAlign: "center" }}>
-        <img src="/png/logo.jpeg" alt={BRAND} style={{ height: 96, width: "auto", borderRadius: ui.radius.lg }} />
-        <h1 style={{ fontSize: ui.text.xxl, fontWeight: 700, margin: 0 }}>منصّة {BRAND}</h1>
-        <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", justifyContent: "center" }}>
-          <Link href="/apply"><Button variant="primary">تقديم طلب</Button></Link>
-          <Link href="/login"><Button variant="ghost">دخول</Button></Link>
-        </div>
-        {ready && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, opacity: 0.8 }}>سجّل الدخول لعرض لوحتك.</p>}
+      <main dir="rtl" style={{ background: "linear-gradient(160deg, var(--login-bg-from), var(--login-bg-to))", minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text,
+        position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(4), padding: sp(6) }}>
+        <NabawiBackdrop />
+        <img src="/png/logo.png" alt={BRAND} style={{ position: "relative", zIndex: 1, height: 96, width: "auto" }} />
+        <Card style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 440, textAlign: "center",
+          border: `1px solid ${ui.color.goldLine}`, boxShadow: `0 0 0 4px rgba(201,160,99,0.12), ${ui.shadowCard}` }}>
+          <h1 style={{ fontSize: ui.text.xxl, fontWeight: 700, margin: 0 }}>منصّة {BRAND}</h1>
+          <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", justifyContent: "center", marginTop: sp(5) }}>
+            <Link href="/apply"><Button variant="primary">تقديم طلب</Button></Link>
+            <Link href="/login"><Button variant="ghost">دخول</Button></Link>
+          </div>
+          {ready && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, opacity: 0.8, marginTop: sp(4), marginBottom: 0 }}>سجّل الدخول لعرض لوحتك.</p>}
+        </Card>
       </main>
     );
   }

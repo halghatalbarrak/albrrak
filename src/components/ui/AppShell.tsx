@@ -48,7 +48,7 @@ export function AppShell({ roles, userName, activeHref, title, crumbs, children 
     <aside className={`appshell-aside${drawer ? " open" : ""}`} style={{ background: ui.color.surface, borderInlineStart: `1px solid ${ui.color.border}` }}>
       <div style={{ padding: sp(4), borderBottom: `1px solid ${ui.color.border}`, display: "flex", alignItems: "center", gap: sp(2) }}>
         <Link href="/" aria-label={BRAND} onClick={() => setDrawer(false)} style={{ display: "flex", alignItems: "center", gap: sp(2), textDecoration: "none" }}>
-          <img src="/png/logo.jpeg" alt={BRAND} style={{ height: 44, width: "auto", borderRadius: ui.radius.sm }} />
+          <img src="/png/logo.png" alt={BRAND} style={{ height: 44, width: "auto" }} />
           <span style={{ fontWeight: 700, fontSize: ui.text.base, color: ui.color.primary, lineHeight: 1.2 }}>حلقات الشيخ<br />محمد البراك</span>
         </Link>
       </div>
