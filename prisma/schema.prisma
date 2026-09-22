@@ -390,6 +390,22 @@ model MushafLine {
   @@index([endSurah, endAyah])
 }
 
+// وحدات المسارات المُجهَّزة (البند ٢، المرحلة ٣): القرآن مقسّمٌ مسبقًا لكل مسارٍ بمقداره
+// (linesPerDay) إلى وحداتٍ بحدود آيات، مرقّمةً بترتيب حفظ مراقي (١ = أول وحدةٍ من الفاتحة/الناس،
+// تصاعدًا نحو البقرة). تُبذَر بسكربتٍ منفصل، وقابلةٌ لتعديل الإدارة (حدود وحدة). بلا FK (نمط
+// الجداول المتأخّرة) — trackId مرجعٌ لـTrack. طبقة قراءةٍ فقط للجلسة.
+model TrackUnit {
+  id         String @id @default(cuid())
+  trackId    String                     // المسار (Track)
+  unitNo     Int                        // ترتيب الحفظ (١ = الأولى المحفوظة، تنازليّ بالسور)
+  startSurah Int
+  startAyah  Int
+  endSurah   Int
+  endAyah    Int
+  @@unique([trackId, unitNo])
+  @@index([trackId, startSurah, startAyah])
+}
+
 // ═══════════════ الجلسة اليومية — مراقي فقط ═══════════════
 
 model DailySession {
