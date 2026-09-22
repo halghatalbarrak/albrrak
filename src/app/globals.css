@@ -18,6 +18,12 @@
   --color-ghost-text:#574F47;   /* نصّ الزرّ الثانويّ (ghost) — يساوي لون الهوية في الفاتح (لا تغيير مرئيّ) */
   --color-success:#1F5C3D;  --color-danger:#a1231d;
   --color-soft:#efe9e2;     --color-warn-bg:#fdf0d5;  --color-ok-bg:#e8f0ea;
+  /* الذهب النبويّ (منقولٌ من الشهادة certificate.ts) — قابلٌ لإعادة الاستعمال */
+  --gold:linear-gradient(135deg,#E3C68B,#B08D57,#8C6A3D);
+  --gold-line:#C9A063;      /* خطٌّ ذهبيّ للإطارات والزخارف */
+  --color-teal:#2E8B8B;     /* فيروزيٌّ نبويٌّ هادئ — لمسةٌ صغيرة */
+  /* خلفيّة الدخول (كريميّ دافئ) — متغيّرةٌ بالوضع ليعمل الداكن */
+  --login-bg-from:#FBF8F2;  --login-bg-to:#F5F0E8;
   /* تباعد (أساس ٤px) */
   --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px; --space-12:48px; --space-16:64px;
   /* نصف قطر */
@@ -39,6 +45,10 @@
   --color-success:#5fbf8f;  --color-danger:#e0736c;
   --color-soft:#322d26;     --color-warn-bg:#3a3320;  --color-ok-bg:#22322a;
   --shadow-card:0 1px 3px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.25);
+  /* الذهب يبقى مقروءًا على الداكن؛ الفيروزيّ أرفع إضاءةً، وخلفيّة الدخول دافئةٌ داكنة. */
+  --gold-line:#cBA463;
+  --color-teal:#5FB3B3;
+  --login-bg-from:#26231f;  --login-bg-to:#1b1916;
 }
 /* صور المصحف أحاديّةُ اللون على أبيض — لا تُقلَب ولا تُظلَم في الوضع الداكن (قرار محمد). */
 
