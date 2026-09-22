@@ -70,9 +70,15 @@ export function navSections(roles: string[]): NavSection[] {
     });
   }
 
-  // الحصاد — المعلّم والمُسمِّع؛ والمشرف/المدير.
+  // الحصاد — المعلّم والمُسمِّع؛ والمشرف/المدير. ويضمّ اختبار المرحلة (المختبِر يُجريه،
+  // والمعلّم يرى إجازات طلابه ويؤجّل).
   if (has("TEACHER") || has("RECITER") || supervises) {
-    sections.push({ key: "harvest", label: "الحصاد", items: [{ label: "الحصاد", href: "/admin/hasad" }] });
+    sections.push({
+      key: "harvest", label: "الحصاد", items: [
+        { label: "الحصاد", href: "/admin/hasad" },
+        { label: "اختبار المرحلة", href: "/admin/stage-exam" },
+      ],
+    });
   }
 
   // السوق — البائع (Role.SELLER، صلاحيّةٌ مستقلّة م٦ب): شاشة البيع كنقطة بيع سريعة.
