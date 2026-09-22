@@ -2,6 +2,7 @@ import { AutoEventType, ProgressState, type Prisma } from "@prisma/client";
 
 import { grantAuto } from "./economy";
 import { emitEvent } from "./events";
+import { maybeStartStageExamLeave } from "./stage-exam-leave";
 
 // ═══════════════ الترقية (م٤د — MARAQI_RULES الحكم ٧) ═══════════════
 //
@@ -42,4 +43,6 @@ export async function autoTransitionSubStage(
   });
   // منح تلقائيّ لاجتياز الحزب (م٦أ-٢) — المرجع = الحزب (المرحلة الفرعية)، فلكلّ حزبٍ منحٌ واحد.
   await grantAuto(tx, AutoEventType.HIZB_EXAM_PASS, args.studentId, args.stageId);
+  // بدء إجازة اختبار المرحلة تلقائيًّا إن اكتمل بهذا الحزب آخرُ أحزاب مرحلته الأصليّة (البند ١).
+  await maybeStartStageExamLeave(tx, { studentId: args.studentId, completedStageId: args.stageId, actorId: args.actorId });
 }

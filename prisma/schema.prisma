@@ -539,6 +539,25 @@ model StageExam {
   @@index([studentId])
 }
 
+// إجازة اختبار المرحلة (البند ١): تبدأ تلقائيًّا بإتمام كل أحزاب المرحلة الأصلية — توقّفٌ تامّ
+// ٧ أيّام تقويميّة. للمعلّم تأجيلٌ واحد (+٧)، والمتكرّر بيد الإدارة (+٧ لكلٍّ). المُحتسب
+// effectiveEndsOn = base + التأجيلات. جدولٌ مستقلٌّ بلا FK (نمط StageExam/DeferredSession)
+// تفاديًا لترتيب الترحيلات المعجميّ. لا حالة ProgressState جديدة — «في إجازة» تُشتقّ من هذا السطر.
+model StageExamLeave {
+  id                  String   @id @default(cuid())
+  studentId           String
+  mainStageId         String                       // المرحلة الأصلية التي أُتمّت
+  startedOn           DateTime @db.Date            // يوم إكمال آخر حزب
+  baseEndsOn          DateTime @db.Date            // بعد ٧ أيّام تقويميّة
+  teacherDeferredOnce Boolean  @default(false)     // تأجيل المعلّم — مرّةً واحدة
+  adminDeferrals      Int      @default(0)         // تأجيلات الإدارة — بلا حدّ
+  effectiveEndsOn     DateTime @db.Date            // المُحتسب = base + التأجيلات
+  createdAt           DateTime @default(now())
+  @@unique([studentId, mainStageId])
+  @@index([effectiveEndsOn])
+  @@index([studentId])
+}
+
 model HasadPageError {
   id        String  @id @default(cuid())
   hasadId   String

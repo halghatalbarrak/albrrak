@@ -49,7 +49,7 @@ describe("navSections — اتّحاد أقسام كلّ أدوار المستخ
   it("المُسمِّع ⟵ الحصاد والبرامج", () => {
     const s = navSections(["RECITER"]);
     expect(s.map((x) => x.key)).toEqual(["harvest", "programs"]);
-    expect(s[0].items.map((i) => i.href)).toEqual(["/admin/hasad"]);
+    expect(s[0].items.map((i) => i.href)).toEqual(["/admin/hasad", "/admin/stage-exam"]);
   });
 
   it("الطالب ⟵ البرامج والتعلّم والرسائل", () => {
