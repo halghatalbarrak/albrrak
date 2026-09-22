@@ -34,7 +34,7 @@ export default function VerifyPage() {
   return (
     <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: sp(6) }}>
       <div style={{ display: "flex", alignItems: "center", gap: sp(2), marginBottom: sp(5) }}>
-        <img src="/png/logo.jpeg" alt="" style={{ height: 56, borderRadius: ui.radius.md }} />
+        <img src="/png/logo.png" alt="" style={{ height: 56 }} />
         <span style={{ fontWeight: 700, fontSize: ui.text.lg, color: ui.color.primary }}>حلقات الشيخ محمد البراك</span>
       </div>
 

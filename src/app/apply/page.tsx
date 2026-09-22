@@ -17,7 +17,7 @@ function Page({ children }: { children: React.ReactNode }) {
   return (
     <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, padding: sp(4) }}>
       <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: sp(3) }}>
-        <Link href="/" aria-label={BRAND}><img src="/png/logo.jpeg" alt={BRAND} style={{ height: 64, width: "auto", borderRadius: ui.radius.md }} /></Link>
+        <Link href="/" aria-label={BRAND}><img src="/png/logo.png" alt={BRAND} style={{ height: 64, width: "auto" }} /></Link>
         <Card style={{ width: "100%" }}>{children}</Card>
       </div>
     </main>
