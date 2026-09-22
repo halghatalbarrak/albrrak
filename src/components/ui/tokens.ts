@@ -10,6 +10,9 @@ export const ui = {
     text: "var(--color-text)", muted: "var(--color-muted)", border: "var(--color-border)",
     success: "var(--color-success)", danger: "var(--color-danger)",
     soft: "var(--color-soft)", // خلفيّةٌ ناعمة (ترويسة الجدول، العنصر النشط)
+    gold: "var(--gold)",       // تدرّجٌ ذهبيّ (خلفيّةٌ فقط — منقولٌ من الشهادة)
+    goldLine: "var(--gold-line)", // خطٌّ ذهبيّ للإطارات والزخارف
+    teal: "var(--color-teal)", // فيروزيٌّ نبويٌّ هادئ
   },
   radius: { sm: "4px", md: "8px", lg: "16px", full: "999px" },
   text: { xs: "14px", base: "16px", lg: "20px", xl: "24px", xxl: "32px", xxxl: "40px" },
