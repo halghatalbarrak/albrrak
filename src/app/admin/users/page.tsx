@@ -41,6 +41,20 @@ export default function AdminUsersPage() {
 
   useEffect(() => { void load(); }, [load]);
 
+  // انتحال الشخصيّة: يظهر لـTECH_ADMIN فقط، ولا يظهر عند مديرٍ تقنيٍّ آخر (ولا عند نفسه — فهو تقنيّ).
+  const canImpersonate = (u: UserRow) => (me?.roles?.includes("TECH_ADMIN") ?? false) && !u.roles.includes("TECH_ADMIN");
+
+  async function startImpersonate(u: UserRow) {
+    const t = await token();
+    if (!t) return;
+    const res = await fetch("/api/impersonate/start", {
+      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      body: JSON.stringify({ targetUserId: u.id }),
+    });
+    if (res.ok) { window.location.href = "/"; } // يرى المنصّة بعينه
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّر بدء الانتحال."); }
+  }
+
   async function toggleActive(u: UserRow) {
     const t = await token();
     if (!t) return;
@@ -84,6 +98,7 @@ export default function AdminUsersPage() {
     { key: "state", header: "الحالة", cell: (u) => (u.isActive ? <Badge tone="success">مُفعّل</Badge> : <Badge tone="neutral">معطَّل</Badge>) },
     { key: "act", header: "إجراء", cell: (u) => (
       <div style={{ display: "flex", gap: sp(2), justifyContent: "flex-end", flexWrap: "wrap" }}>
+        {canImpersonate(u) && <Button variant="bronze" size="sm" onClick={() => void startImpersonate(u)}>انتحال</Button>}
         <Button variant="ghost" size="sm" onClick={() => { setEditUser(u); setEditRoles(u.roles.filter((r) => STAFF_ROLES.includes(r))); }}>الأدوار</Button>
         <Button variant="ghost" size="sm" onClick={() => void reset(u)}>إعادة تعيين</Button>
         <Button variant="ghost" size="sm" onClick={() => void toggleActive(u)}>{u.isActive ? "تعطيل" : "تفعيل"}</Button>

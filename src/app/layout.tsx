@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./legacy.css";
+import { ImpersonationBar } from "@/components/ImpersonationBar";
 
 export const metadata: Metadata = {
   title: "منصة حلقات البراك",
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="ar" dir="rtl">
       <body>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+        <ImpersonationBar />
         {children}
       </body>
     </html>

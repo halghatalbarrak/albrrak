@@ -13,7 +13,7 @@ import { ApprovalKind } from "@prisma/client";
 
 import { assertCanExamine } from "./examiner-eligibility";
 import { grantAuto } from "./economy";
-import { gradeHizbHarvest, type HizbRank } from "./hasad-grading";
+import { gradeHizbHarvest, aggregateExamRanks, type HizbRank } from "./hasad-grading";
 import { facePagesInRange } from "./mushaf";
 import { propose } from "./approval";
 import { emitEvent } from "./events";
@@ -46,12 +46,9 @@ export function examSessionDates(startISO: string, sessions: number): string[] {
   return out;
 }
 
-/** التجميع (الحكم ٧): رسوب حزبٍ = رسوب الكلّ، والمرتبة النهائية = أدنى مرتبة نالها. */
-export function aggregateExamRanks(ranks: HizbRank[]): { status: "PASSED" | "FAILED"; finalRank: HizbRank } {
-  if (ranks.includes("FAIL")) return { status: "FAILED", finalRank: "FAIL" };
-  if (ranks.includes("PASS")) return { status: "PASSED", finalRank: "PASS" };
-  return { status: "PASSED", finalRank: "EXCELLENT" }; // كلّها تميّز (أو لا أحزاب)
-}
+// التجميع (الحكم ٧) دالّةٌ نقيّة انتقلت إلى hasad-grading (تُشارَك مع الواجهة بلا تبعيّاتٍ
+// خادميّة)؛ يُعاد تصديرها هنا لمن يستوردها من هذا المقام.
+export { aggregateExamRanks };
 
 // ─────────── التسجيل ───────────
 

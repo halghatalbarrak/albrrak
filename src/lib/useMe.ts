@@ -6,7 +6,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 
 // خطّافٌ مشترك: يجلب اسم الداخل وأدواره (للشريط الجانبيّ في AppShell). قراءةٌ فقط،
 // إضافةٌ للواجهة لا تمسّ منطق الصفحة. الصفحات محميّةٌ في الخادم أصلاً.
-export interface MeInfo { name: string; roles: string[] }
+export interface MeInfo { name: string; roles: string[]; impersonating?: boolean }
 
 export function useMe(): { me: MeInfo | null; loading: boolean } {
   const [me, setMe] = useState<MeInfo | null>(null);

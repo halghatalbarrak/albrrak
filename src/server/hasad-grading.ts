@@ -18,6 +18,16 @@ export const RANK_THRESHOLDS = { EXCELLENT_MAX: 1, PASS_MAX: 5 } as const;
 /** مرتبة الحزب — تُطابق enum HasadResult. */
 export type HizbRank = "EXCELLENT" | "PASS" | "FAIL";
 
+/**
+ * التجميع (الحكم ٧): رسوب حزبٍ = رسوب الكلّ، والمرتبة النهائية = أدنى مرتبة نالها. دالّةٌ
+ * نقيّة (تُشارَك مع الواجهة للمعاينة الحيّة، فتعيش هنا بلا تبعيّاتٍ خادميّة).
+ */
+export function aggregateExamRanks(ranks: HizbRank[]): { status: "PASSED" | "FAILED"; finalRank: HizbRank } {
+  if (ranks.includes("FAIL")) return { status: "FAILED", finalRank: "FAIL" };
+  if (ranks.includes("PASS")) return { status: "PASSED", finalRank: "PASS" };
+  return { status: "PASSED", finalRank: "EXCELLENT" }; // كلّها تميّز (أو لا أحزاب)
+}
+
 export interface HarvestError {
   faceNo: number; // الوجه الذي وقع فيه الخطأ (للتقرير/الترميم — لا يؤثّر في العدّ)
   surah?: number; // الآية بعينها (تغذّي تقرير المعلّم والحكم ٥)

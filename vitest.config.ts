@@ -26,6 +26,7 @@ export default defineConfig({
       DIRECT_URL: "postgresql://postgres:postgres@localhost:54329/albrrak_test",
       NATIONAL_ID_ENC_KEY: "LBGwjQPLd+P1XtYQ0sfL16wDLaD0T4S2uuhNqBL4j2U=",
       SUPABASE_JWT_SECRET: "albrrak-local-test-jwt-secret-not-production",
+      IMPERSONATION_SECRET: "albrrak-local-test-impersonation-secret-not-prod",
     },
   },
 });
