@@ -155,8 +155,8 @@ describe("الربط بالمحرّك — الحضور (لا أثر رجعيّ +
     await recordSession({ circleId: circle.id, date: "2026-05-11", exceptions: [], recorderId: teacher.id }, prisma);
     expect(await getBalance(student.id, prisma)).toBe(0);
 
-    // (٢) الإدارة تفعّل بند حضورٍ تلقائيّ.
-    await createAutoItem(manager.id, AutoEventType.ATTENDANCE, 5);
+    // (٢) الإدارة تفعّل بند حضورٍ تلقائيّ (الحالة المفصّلة «حاضر» — م ب).
+    await createAutoItem(manager.id, AutoEventType.ATTENDANCE_PRESENT, 5);
 
     // (٣) رصدٌ جديدٌ ليومٍ آخر ← يُمنح؛ واليوم السابق يبقى بلا منح (لا رجعيّة).
     await recordSession({ circleId: circle.id, date: "2026-05-12", exceptions: [], recorderId: teacher.id }, prisma);

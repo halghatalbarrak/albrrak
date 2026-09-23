@@ -1,4 +1,5 @@
 import {
+  AutoEventType,
   ProgramKey,
   ProgressState,
   Role,
@@ -11,11 +12,15 @@ import {
 import { prisma } from "@/lib/prisma";
 
 import { isActiveArifForCircle, autoDismissArifIfBelowThreshold } from "./arif";
+import { grantAuto } from "./economy";
 import { displayBoundary } from "./maraqi";
 import { getConsolidation, getWeeklyReview, type ConsolidationView, type WeeklyReview } from "./tarseekh";
 import { deferredStudentIdsForDate } from "./session-deferral";
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
+
+/** مفتاح اليوم (YYYY-MM-DD) — مرجع منع ازدواج المنح التلقائيّ للمهمّة (مرّةً لليوم). */
+const dayKey = (d: Date) => d.toISOString().slice(0, 10);
 
 // ═══════════════ الجلسة اليومية (م٤ب — DESIGN §٨٫٣) ═══════════════
 //
@@ -278,6 +283,8 @@ export async function recordHifz(input: HifzInput, db: PrismaClient = prisma): P
       actorId: input.teacherId,
       payload: { attempts: input.attempts, mastered: input.mastered },
     });
+    // منح/خصم تلقائيّ للحفظ (م ب): أتقن ⟵ HIFZ_DONE، لم يُتقن ⟵ HIFZ_MISSED. مرّةً لليوم.
+    await grantAuto(tx, input.mastered ? AutoEventType.HIFZ_DONE : AutoEventType.HIFZ_MISSED, input.studentId, dayKey(date));
   });
 }
 
@@ -329,6 +336,8 @@ export async function recordTarseekh(input: ConsolidationInput, db: PrismaClient
       actorId: input.actorId,
       payload: { done: input.done, listenerId: listener, delegated: listener !== input.actorId },
     });
+    // منح/خصم تلقائيّ للترسيخ (م ب): تمّ ⟵ TARSEEKH_DONE، لم يتمّ ⟵ TARSEEKH_MISSED. مرّةً لليوم.
+    await grantAuto(tx, input.done ? AutoEventType.TARSEEKH_DONE : AutoEventType.TARSEEKH_MISSED, input.studentId, dayKey(date));
   });
 }
 
@@ -362,6 +371,8 @@ export async function recordMurajaah(input: MurajaahInput, db: PrismaClient = pr
       actorId: input.actorId,
       payload: { count: input.count, listenerId: listener, delegated: listener !== input.actorId },
     });
+    // منح/خصم تلقائيّ للمراجعة (م ب): مقدارٌ موجب ⟵ MURAJAAH_DONE، صفرٌ ⟵ MURAJAAH_MISSED. مرّةً لليوم.
+    await grantAuto(tx, input.count > 0 ? AutoEventType.MURAJAAH_DONE : AutoEventType.MURAJAAH_MISSED, input.studentId, dayKey(date));
   });
 }
 
