@@ -70,6 +70,31 @@ function dateKey(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+// ═══════════════ قلب الأصل إلى «غياب» (م ج) — بلا أثر رجعيّ ═══════════════
+//
+// القرار (م ج): من لم يُرصد يومًا = غائب، لا حاضر. لكن **القلب يسري من تاريخ النشر
+// فصاعدًا فقط**؛ الأيّام السابقة له تبقى على الأصل القديم (حاضر). الآليّة: عتبةٌ
+// تاريخيّة صريحة (ABSENT_DEFAULT_FROM) — كلّ اشتقاقٍ لحالة طالبٍ لم يُرصد يمرّ بها،
+// فيُشتقّ الماضي حاضرًا والحاضر/المستقبل غيابًا. لا كتابة، لا تعديل لسجلٍّ ماضٍ:
+// السجلّات المخزّنة أصلًا (بمفتاح الطالب+اليوم) لا تُمَسّ — الاشتقاق للفراغ فقط.
+//
+// لماذا آمن؟ (١) الأيّام المرصودة سابقًا لها سجلّاتٌ ثابتة تُقرأ كما هي (لا اشتقاق).
+// (٢) الفراغ في يومٍ ماضٍ (< العتبة) ما زال يُشتقّ حاضرًا — فلا حلقةٌ قائمةٌ تنقلب.
+// (٣) الشاشة الموحّدة (م ج) هي أداة رفع الحاضرين؛ فالقلب آمنٌ معها.
+
+/** عتبة قلب الأصل إلى «غياب» — تاريخ النشر. فيها وبعدها: الأصل غياب. قبلها: حاضر. */
+export const ABSENT_DEFAULT_FROM = toDateOnly("2026-09-23");
+
+/**
+ * الحالة الافتراضيّة لطالبٍ **لم يُرصد** في يومٍ ما — بحسب عتبة القلب (§ م ج).
+ * تاريخٌ في العتبة أو بعدها ← غائب (ABSENT_UNEXCUSED)؛ قبلها ← حاضر (لا أثر رجعيّ).
+ */
+export function defaultStatusFor(date: string | Date): AttendanceStatus {
+  return toDateOnly(date).getTime() >= ABSENT_DEFAULT_FROM.getTime()
+    ? AttendanceStatus.ABSENT_UNEXCUSED
+    : AttendanceStatus.PRESENT;
+}
+
 // ═══════════════ حدود الرصد في الخادم ═══════════════
 
 /**
@@ -290,7 +315,8 @@ export async function recordSession(
         excuseBy = pre.by;
         excuseAt = new Date();
       } else {
-        status = AttendanceStatus.PRESENT;
+        // الأصل بحسب عتبة القلب (م ج): ماضٍ ← حاضر، اليوم/مستقبل ← غياب. لا أثر رجعيّ.
+        status = defaultStatusFor(date);
         note = null;
       }
 
@@ -331,6 +357,40 @@ export async function recordSession(
   }
 
   return { total: roster.size, present: roster.size - absent, absent };
+}
+
+export interface MarkAttendanceArgs {
+  circleId: string;
+  studentId: string;
+  status: AttendanceStatus;
+  date: string | Date;
+  recorderId: string;
+}
+
+/**
+ * تأشير حضور **طالبٍ واحد** (للشاشة الموحّدة — م ج): يرفع حالته وحده بلا اشتقاق البقيّة،
+ * ويُطلق حدثها التلقائيّ (حاضر/متأخّر/غائب/خرج بلا إذن؛ مستأذن ⟵ لا حدث). المرجع = مفتاح
+ * اليوم (منع ازدواج)، والعدّاد يتحرّك بالانتقال (كنمط recordSession). idempotent.
+ */
+export async function markStudentAttendance(
+  args: MarkAttendanceArgs,
+  db: PrismaClient = prisma,
+): Promise<{ status: AttendanceStatus }> {
+  await assertCanRecordCircle(args.recorderId, args.circleId, db);
+  if (!Object.values(AttendanceStatus).includes(args.status)) throw new ValidationError("حالة حضورٍ غير معروفة.");
+  const date = toDateOnly(args.date);
+  const enr = await db.enrollment.findFirst({
+    where: { studentId: args.studentId, circleId: args.circleId, endedAt: null },
+    select: { id: true },
+  });
+  if (!enr) throw new ValidationError("الطالب ليس من هذه الحلقة.");
+  const dk = dateKey(date);
+  await db.$transaction(async (tx) => {
+    await upsertAttendance(tx, { studentId: args.studentId, circleId: args.circleId, date, status: args.status, recordedBy: args.recorderId });
+    const evt = attendanceEvent(args.status);
+    if (evt) await grantAuto(tx, evt, args.studentId, dk);
+  });
+  return { status: args.status };
 }
 
 export interface RecordableCircle {
@@ -392,7 +452,7 @@ export async function getSessionRoster(
       return {
         studentId: e.student.id,
         name: e.student.user.nameAsInId,
-        status: rec?.status ?? AttendanceStatus.PRESENT,
+        status: rec?.status ?? defaultStatusFor(d), // م ج: الفراغ = غياب من العتبة فصاعدًا
         note: rec?.note ?? null,
       };
     })
