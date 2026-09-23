@@ -61,6 +61,7 @@ export function navSections(roles: string[]): NavSection[] {
   if (has("TEACHER") || supervises) {
     sections.push({
       key: "operate", label: "التشغيل", items: [
+        { label: "الشاشة الموحّدة", href: "/admin/unified" },
         { label: "الجلسة اليومية", href: "/admin/session" },
         { label: "جلسة القاعدة", href: "/admin/qaidah-session" },
         { label: "الحضور", href: "/admin/attendance" },
