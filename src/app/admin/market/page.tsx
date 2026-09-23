@@ -1,21 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { arNum } from "@/lib/format";
 import {
   AppShell, Button, Input, Field, Badge, Table, ui, sp, type Column,
 } from "@/components/ui";
-
-interface Item {
-  id: string;
-  nameAr: string;
-  imageUrl: string | null;
-  pricePoints: number;
-  stock: number | null;
-  active: boolean;
-}
+import { type Item } from "./shared";
 
 interface PendingGift {
   id: string;
@@ -31,15 +24,13 @@ async function token(): Promise<string | null> {
   return session?.access_token ?? null;
 }
 
-const EMPTY = { id: "", nameAr: "", pricePoints: "", stock: "", imageUrl: "" };
-
 export default function AdminMarketPage() {
   const { me } = useMe();
+  const router = useRouter();
   const [items, setItems] = useState<Item[] | null>(null);
   const [gifts, setGifts] = useState<PendingGift[]>([]);
   const [priceEdits, setPriceEdits] = useState<Record<string, string>>({});
   const [err, setErr] = useState<string | null>(null);
-  const [form, setForm] = useState<typeof EMPTY>(EMPTY);
 
   const load = useCallback(async () => {
     const t = await token();
@@ -73,25 +64,6 @@ export default function AdminMarketPage() {
     else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّر تنفيذ الإجراء."); }
   }
 
-  async function save() {
-    const t = await token();
-    if (!t) return;
-    const body = {
-      ...(form.id ? { id: form.id } : {}),
-      nameAr: form.nameAr.trim(),
-      pricePoints: Number(form.pricePoints),
-      stock: form.stock.trim() === "" ? null : Number(form.stock),
-      imageUrl: form.imageUrl.trim() || null,
-    };
-    const res = await fetch("/api/admin/market", {
-      method: form.id ? "PATCH" : "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
-      body: JSON.stringify(body),
-    });
-    if (res.ok) { setForm(EMPTY); setErr(null); void load(); }
-    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّر الحفظ."); }
-  }
-
   async function toggle(item: Item) {
     const t = await token();
     if (!t) return;
@@ -101,14 +73,6 @@ export default function AdminMarketPage() {
     });
     if (res.ok) void load();
     else setErr("تعذّر تغيير الحالة.");
-  }
-
-  function edit(item: Item) {
-    setForm({
-      id: item.id, nameAr: item.nameAr, pricePoints: String(item.pricePoints),
-      stock: item.stock == null ? "" : String(item.stock),
-      imageUrl: item.imageUrl ?? "",
-    });
   }
 
   const cols: Column<Item>[] = [
@@ -124,7 +88,7 @@ export default function AdminMarketPage() {
     { key: "state", header: "الحالة", cell: (i) => (i.active ? <Badge tone="success">مُفعَّل</Badge> : <Badge tone="neutral">معطَّل</Badge>) },
     { key: "act", header: "إجراء", cell: (i) => (
       <div style={{ display: "flex", gap: sp(2), justifyContent: "flex-end" }}>
-        <Button variant="ghost" size="sm" onClick={() => edit(i)}>تعديل</Button>
+        <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/market/${i.id}/edit`)}>تعديل</Button>
         <Button variant="ghost" size="sm" onClick={() => void toggle(i)}>{i.active ? "تعطيل" : "تفعيل"}</Button>
       </div>
     ) },
@@ -170,25 +134,14 @@ export default function AdminMarketPage() {
             </section>
           )}
 
-          <p style={{ color: ui.color.muted }}>
-            قيمة الثمرة بالنقاط. المتوفّر فارغٌ = بلا حدّ. أمين البيدر لا يُدخل القيمة — تُخصَم المثبّتة هنا. تعطيلٌ لا حذف.
-          </p>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), marginBottom: sp(4) }}>
+            <p style={{ color: ui.color.muted, margin: 0 }}>
+              قيمة الثمرة بالنقاط. المتوفّر فارغٌ = بلا حدّ. أمين البيدر لا يُدخل القيمة — تُخصَم المثبّتة هنا. تعطيلٌ لا حذف.
+            </p>
+            <Button onClick={() => router.push("/admin/market/new")}>+ جديد</Button>
+          </div>
 
-          <section style={{ background: ui.color.surface, border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.lg, padding: sp(4), marginBottom: sp(6) }}>
-            <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(3) }}>{form.id ? "تعديل ثمرة" : "ثمرةٌ جديدة"}</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: sp(3) }}>
-              <Field label="الاسم"><Input value={form.nameAr} onChange={(e) => setForm((f) => ({ ...f, nameAr: e.target.value }))} placeholder="مثال: قلم رصاص" /></Field>
-              <Field label="قيمة الثمرة (نقاط)"><Input type="number" value={form.pricePoints} onChange={(e) => setForm((f) => ({ ...f, pricePoints: e.target.value }))} placeholder="10" /></Field>
-              <Field label="المتوفّر (اتركه فارغًا = بلا حدّ)"><Input type="number" value={form.stock} onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))} placeholder="بلا حدّ" /></Field>
-              <Field label="رابط الصورة (اختياريّ)"><Input value={form.imageUrl} onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))} placeholder="https://…" style={{ direction: "ltr" }} /></Field>
-            </div>
-            <div style={{ display: "flex", gap: sp(2), marginTop: sp(3) }}>
-              <Button onClick={() => void save()}>{form.id ? "حفظ التعديل" : "إضافة"}</Button>
-              {form.id && <Button variant="ghost" onClick={() => setForm(EMPTY)}>إلغاء</Button>}
-            </div>
-          </section>
-
-          <Table columns={cols} rows={items} empty="لا ثمار بعد — أضِف أوّل ثمرة." />
+          <Table columns={cols} rows={items} empty="لا ثمار بعد — أضِف أوّل ثمرة بزرّ «+ جديد»." />
         </>
       )}
     </AppShell>
