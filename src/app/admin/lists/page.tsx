@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Button, Input, Badge, Table, ui, sp, type Column } from "@/components/ui";
@@ -16,10 +17,10 @@ async function token(): Promise<string | null> {
 
 export default function AdminListsPage() {
   const { me } = useMe();
+  const router = useRouter();
   const [lists, setLists] = useState<Lists | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
-  const [drafts, setDrafts] = useState<Record<Kind, string>>({ nationality: "", schoolStage: "", guardianRelation: "" });
 
   const load = useCallback(async () => {
     const t = await token();
@@ -32,19 +33,6 @@ export default function AdminListsPage() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
-
-  async function add(kind: Kind) {
-    const nameAr = drafts[kind].trim();
-    if (!nameAr) return;
-    const t = await token();
-    if (!t) return;
-    const res = await fetch("/api/admin/lists", {
-      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
-      body: JSON.stringify({ kind, nameAr }),
-    });
-    if (res.ok) { setDrafts((d) => ({ ...d, [kind]: "" })); setErr(null); void load(); }
-    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّرت الإضافة."); }
-  }
 
   async function toggle(kind: Kind, item: Item) {
     const t = await token();
@@ -78,7 +66,10 @@ export default function AdminListsPage() {
 
       {lists && (
         <>
-          <p style={{ color: ui.color.muted }}>إضافةٌ وتعطيل (لا حذف — القيمة قد ترتبط بطلباتٍ سابقة). المعطَّل لا يظهر في نموذج القيد.</p>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), marginBottom: sp(4) }}>
+            <p style={{ color: ui.color.muted, margin: 0 }}>إضافةٌ وتعطيل (لا حذف — القيمة قد ترتبط بطلباتٍ سابقة). المعطَّل لا يظهر في نموذج القيد.</p>
+            <Button onClick={() => router.push("/admin/lists/new")}>+ جديد</Button>
+          </div>
           <Input style={{ width: "100%", marginBottom: sp(5) }} placeholder="تصفية بالاسم…" value={filter} onChange={(e) => setFilter(e.target.value)} />
 
           {sections.map((sec) => {
@@ -86,12 +77,6 @@ export default function AdminListsPage() {
             return (
               <section key={sec.kind} style={{ marginBottom: sp(7) }}>
                 <h2 style={{ fontSize: ui.text.lg, fontWeight: 700 }}>{sec.title} ({sec.items.length})</h2>
-                <div style={{ display: "flex", gap: sp(2), marginBottom: sp(3) }}>
-                  <Input style={{ flex: 1 }} placeholder="قيمة جديدة…" value={drafts[sec.kind]}
-                    onChange={(e) => setDrafts((d) => ({ ...d, [sec.kind]: e.target.value }))}
-                    onKeyDown={(e) => { if (e.key === "Enter") void add(sec.kind); }} />
-                  <Button size="sm" onClick={() => void add(sec.kind)}>إضافة</Button>
-                </div>
                 <Table columns={colsFor(sec.kind)} rows={shown} empty="لا قيم." />
               </section>
             );
