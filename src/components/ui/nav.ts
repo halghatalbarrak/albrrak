@@ -43,6 +43,7 @@ export function navSections(roles: string[]): NavSection[] {
         { label: "البيدر", href: "/admin/market" },
         { label: "العرفاء", href: "/admin/arifs" },
         { label: "القيد", href: "/admin/enrollment" },
+        { label: "المسارات المُجهَّزة", href: "/admin/tracks" },
       ],
     });
   }

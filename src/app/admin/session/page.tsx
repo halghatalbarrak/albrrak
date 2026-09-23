@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { arNum, hijri } from "@/lib/format";
-import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
+import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, TodayTargetView, type TTData, type TTBound, ui, sp } from "@/components/ui";
 
 // شاشة الجلسة اليومية (م٦ — التشغيل الذكيّ): كل طلاب الحلقة معروضون فوراً بلا اختيار
 // تاريخٍ ولا حلقة (الافتراض: حلقة المعلّم واليوم). كلٌّ بحاله (حفظ أمس · المطلوب اليوم ·
@@ -19,6 +19,7 @@ interface BoardStudent {
   todayHifzDone: boolean; tarseekhDone: boolean | null; deferredToday: boolean;
   required: { tarseekhCount: number; khums: number } | null;
   weeklyPercent: number | null; weeklyComplete: boolean; mustRepeat: boolean; nextStep: string;
+  today: TTData; // وجهة اليوم (م٤): الحفظ المقترح + الترسيخ + المراجعة بحدودها
 }
 
 // ── تفاصيل الطالب عند التوسيع (التسجيل) — نفس منطق الجلسة السابق ──
@@ -38,6 +39,12 @@ async function token(): Promise<string | null> {
 
 const ayah = (s: number, a: number) => `${s}:${a}`;
 const range = (r: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }) => `${ayah(r.fromSurah, r.fromAyah)} ← ${ayah(r.toSurah, r.toAyah)}`;
+
+// المقترح لملء حقل الحفظ تلقائيًّا: الوحدة التالية أو إعادة أمس (مرن — المعلّم يعدّل).
+function suggestedBound(t: TTData): TTBound | null {
+  const n = t.newHifz;
+  return n && (n.kind === "NEW" || n.kind === "REPEAT") && n.bound ? n.bound : null;
+}
 
 function stepTone(step: string): "success" | "danger" | "bronze" | "primary" {
   if (step.includes("اكتملت")) return "success";
@@ -192,9 +199,16 @@ export default function DailySessionPage() {
               {s.weeklyPercent != null && <span>دورة الأسبوع: <strong style={{ color: ui.color.text }}>{s.weeklyPercent}٪</strong></span>}
             </div>
           </button>
+          {/* وجهة اليوم (م٤) — المهامّ الثلاث جاهزةً بحدودها، دائمة الظهور */}
+          {s.program === "MARAQI" && (
+            <div style={{ borderTop: `1px solid ${ui.color.border}`, padding: `${sp(3)} ${sp(4)}` }}>
+              <div style={{ fontSize: ui.text.xs, fontWeight: 700, color: ui.color.primary, marginBottom: sp(2) }}>وجهة اليوم</div>
+              <TodayTargetView t={s.today} />
+            </div>
+          )}
           {expanded === s.studentId && (
             <div style={{ borderTop: `1px solid ${ui.color.border}`, padding: sp(4), background: ui.color.bg }}>
-              <StudentDetail studentId={s.studentId} date={date} onSaved={() => { refreshPending(); void loadBoard(); }} />
+              <StudentDetail studentId={s.studentId} date={date} suggestion={suggestedBound(s.today)} onSaved={() => { refreshPending(); void loadBoard(); }} />
             </div>
           )}
         </Card>
@@ -205,12 +219,17 @@ export default function DailySessionPage() {
 
 // ═══════════════ تفاصيل الطالب (التسجيل) — منطق الجلسة السابق كما هو ═══════════════
 interface Forecast { hasPace: boolean; pacePerDay: number | null; hizbDoneDate: string | null; graduationDate: string | null }
-function StudentDetail({ studentId, date, onSaved }: { studentId: string; date: string; onSaved: () => void }) {
+function StudentDetail({ studentId, date, suggestion, onSaved }: { studentId: string; date: string; suggestion: TTBound | null; onSaved: () => void }) {
   const [view, setView] = useState<SessionView | null>(null);
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [msg, setMsg] = useState<string | null>(null);
-  const [hifz, setHifz] = useState({ fromSurah: "", fromAyah: "", toSurah: "", toAyah: "", attempts: "1", mastered: false });
+  // حقل الحفظ مملوءٌ بالمقترح (وجهة اليوم) وقابلٌ للتعديل — المعلّم يؤكّد أو يغيّر.
+  const [hifz, setHifz] = useState({
+    fromSurah: suggestion ? String(suggestion.fromSurah) : "", fromAyah: suggestion ? String(suggestion.fromAyah) : "",
+    toSurah: suggestion ? String(suggestion.toSurah) : "", toAyah: suggestion ? String(suggestion.toAyah) : "",
+    attempts: "1", mastered: false,
+  });
   const [reviewCount, setReviewCount] = useState("");
 
   const load = useCallback(async () => {
@@ -309,6 +328,11 @@ function StudentDetail({ studentId, date, onSaved }: { studentId: string; date: 
       {/* الحفظ */}
       <div>
         <h3 style={label}>الحفظ (المعلم وحده)</h3>
+        {suggestion && !view.hifzGate?.mustRepeat && (
+          <p style={{ margin: `0 0 ${sp(2)}`, fontSize: ui.text.xs, color: ui.color.muted }}>
+            الحقل مملوءٌ بمقترح وجهة اليوم ({range(suggestion)}) — أكّده أو عدّله.
+          </p>
+        )}
         {view.hifzGate?.mustRepeat && view.hifzGate.range && (
           <p style={{ margin: `0 0 ${sp(2)}`, padding: `${sp(2)} ${sp(3)}`, background: "var(--color-warn-bg)", borderRadius: ui.radius.md, fontSize: ui.text.xs }}>
             ⚠️ الحكم ١: يعيد <strong>نفس المقطع</strong> ({range(view.hifzGate.range)})، لا حفظ جديد.

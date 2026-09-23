@@ -14,6 +14,7 @@ export { Modal } from "./Modal";
 export { AppShell, type AppShellProps, type Crumb } from "./AppShell";
 export { FaceHeatmap } from "./FaceHeatmap";
 export { NabawiBackdrop } from "./NabawiBackdrop";
+export { TodayTargetView, type TTData, type TTBound } from "./TodayTargetCard";
 export { CommandPalette } from "./CommandPalette";
 export { ThemeToggle } from "./ThemeToggle";
 export { navSections, type NavItem, type NavSection } from "./nav";
