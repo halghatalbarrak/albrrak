@@ -59,6 +59,14 @@ describe("ربط الحضور (م ب) — حدثٌ مفصّلٌ لكلّ حال�
     await rec(); await rec();
     expect(await getBalance(student.id, prisma)).toBe(5); // مرّةً واحدة
   });
+
+  it("لا ازدواج بين العام والمفصّل: الرصد يُطلق المفصّل فقط، لا ATTENDANCE العام (خامد)", async () => {
+    const { circle, teacher, student, manager } = await scaffold();
+    await bind(manager.id, AutoEventType.ATTENDANCE_PRESENT, 5);
+    await bind(manager.id, AutoEventType.ATTENDANCE, 100); // بندٌ على العام الخامد — يجب ألّا يُطلَق
+    await recordSession({ circleId: circle.id, date: DATE, exceptions: [], recorderId: teacher.id }, prisma);
+    expect(await getBalance(student.id, prisma)).toBe(5); // المفصّل فقط (لا ١٠٥)
+  });
 });
 
 describe("ربط المهامّ (م ب) — تمّ/لم يتمّ", () => {
