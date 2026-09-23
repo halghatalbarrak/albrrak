@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { AppShell, Button, Card, Stat, Badge, Skeleton, ui, sp } from "@/components/ui";
+import { AppShell, Button, Card, Stat, Badge, Skeleton, TodayTargetView, type TTData, ui, sp } from "@/components/ui";
 import { arNum, hijri } from "@/lib/format";
 import { CodeSection } from "./CodeSection";
 
@@ -13,6 +13,7 @@ interface MySession {
   today: { mustRepeat: boolean; repeatRange: string | null; tarseekhCount: number; khums: number } | null;
   weekly: { done: number; required: number; percent: number; complete: boolean } | null;
   suggestions: { memorize: string; review: string } | null;
+  target: TTData | null;
 }
 interface Forecast { hasPace: boolean; pacePerDay: number | null; hizbDoneDate: string | null; graduationDate: string | null; note: string }
 interface LedgerRow { id: string; itemName: string; amount: number; grantedByName: string | null; note: string | null; createdAt: string }
@@ -119,13 +120,10 @@ export default function MePage() {
       ) : (
         // لوحة مراقي: موضعه · رسوخه · اليوم · الدورة + اقتراحات
         <>
-          {sess.suggestions && (
-            <Card style={{ marginBottom: sp(6), borderInlineStart: `4px solid ${ui.color.primary}` }}>
-              <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>يقترح النظام</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
-                <div><Badge tone="primary">تحفظ</Badge> <span style={{ marginInlineStart: sp(2) }}>{sess.suggestions.memorize}</span></div>
-                <div><Badge tone="bronze">تراجع</Badge> <span style={{ marginInlineStart: sp(2) }}>{sess.suggestions.review}</span></div>
-              </div>
+          {sess.target && (
+            <Card style={{ marginBottom: sp(6), borderInlineStart: `4px solid ${ui.color.goldLine}` }}>
+              <div style={{ fontSize: ui.text.base, fontWeight: 700, color: ui.color.primary, marginBottom: sp(3) }}>مهمّتك اليوم</div>
+              <TodayTargetView t={sess.target} forStudent />
             </Card>
           )}
 

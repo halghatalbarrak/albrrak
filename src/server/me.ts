@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 import { getStudentPosition, getHifzGate } from "./daily-session";
 import { getConsolidation, getWeeklyReview } from "./tarseekh";
+import { todayTarget, type TodayTarget } from "./today-target";
 
 // صفحة المستخدم عن نفسه — بلا رقم هوية، بلا بيانات غيره.
 export interface MyPage {
@@ -51,6 +52,8 @@ export interface MyStudentSession {
   today: { mustRepeat: boolean; repeatRange: string | null; tarseekhCount: number; khums: number } | null;
   weekly: { done: number; required: number; percent: number; complete: boolean } | null;
   suggestions: { memorize: string; review: string } | null;
+  /** وجهة اليوم المحسوبة بحدودها (م٤) — الحفظ الجديد المقترح والترسيخ والمراجعة. */
+  target: TodayTarget | null;
 }
 
 const rangeStr = (r: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }) =>
@@ -63,7 +66,7 @@ export async function getMyStudentSession(
 ): Promise<MyStudentSession> {
   const empty: MyStudentSession = {
     hasStudent: false, program: null, state: null, started: false,
-    positionLabel: null, raasikhCount: null, today: null, weekly: null, suggestions: null,
+    positionLabel: null, raasikhCount: null, today: null, weekly: null, suggestions: null, target: null,
   };
 
   const user = await db.user.findUnique({ where: { id: userId }, select: { student: { select: { id: true, state: true } } } });
@@ -86,10 +89,11 @@ export async function getMyStudentSession(
     };
   }
 
-  const [cons, weekly, gate] = await Promise.all([
+  const [cons, weekly, gate, target] = await Promise.all([
     getConsolidation(student.id, db),
     getWeeklyReview(student.id, today, db),
     getHifzGate(student.id, today, db),
+    todayTarget(student.id, today, db),
   ]);
   const memorize = gate.mustRepeat && gate.range
     ? `أعِد مقطع أمس مع معلّمك (${rangeStr(gate.range)})`
@@ -105,5 +109,6 @@ export async function getMyStudentSession(
     today: { mustRepeat: gate.mustRepeat, repeatRange: gate.range ? rangeStr(gate.range) : null, tarseekhCount: cons.tarseekh.segments.length, khums: cons.review.khums },
     weekly: { done: weekly.done, required: weekly.required, percent: weekly.percent, complete: weekly.complete },
     suggestions: { memorize, review },
+    target,
   };
 }
