@@ -784,12 +784,28 @@ model PointTransaction {
 
 // أنواع الأحداث المدعومة للربط التلقائيّ (قائمةٌ ثابتة — لا تُدار من الشاشة). خمسةٌ فقط.
 enum AutoEventType {
-  ATTENDANCE        // حضور (حالةٌ محسوبة: حاضر/متأخّر/منصرف مبكّرًا)
+  ATTENDANCE        // خامدٌ (م ب): استُبدل بالحالات المفصّلة أدناه — يبقى للربط القديم إن وُجد
   HIZB_EXAM_PASS    // اجتياز الحزب (انتقاله التلقائيّ بحصاده — الحكم ٧)
   STAGE_EXAM_PASS   // اجتياز اختبار المرحلة الأصلية
   DAILY_HARVEST     // إتمام الحصاد اليوميّ
   PROMOTION         // ترقية/انتقال المرحلة الأصلية (باعتماد المدير)
   QAIDAH_COMPLETE   // إتمام القاعدة المدنية (كلّ الدروس) — تخرّجٌ من القاعدة
+  // ── حالات الحضور المفصّلة (م ب — شاشة التشغيل الموحّدة). «مستأذن» = لا حدث (صفر). ──
+  ATTENDANCE_PRESENT            // حاضر
+  ATTENDANCE_LATE               // متأخّر
+  ATTENDANCE_ABSENT             // غائب
+  ATTENDANCE_LEFT_NO_PERMISSION // خرج بدون إذن
+  // ── المهامّ اليوميّة الثلاث: تمّ/لم يتمّ ──
+  HIFZ_DONE
+  HIFZ_MISSED
+  TARSEEKH_DONE
+  TARSEEKH_MISSED
+  MURAJAAH_DONE
+  MURAJAAH_MISSED
+  // ── الإنجاز الزائد (زرّ «+زيادة» في الشاشة الموحّدة — م ج) ──
+  HIFZ_EXTRA
+  TARSEEKH_EXTRA
+  MURAJAAH_EXTRA
 }
 
 // قاعدةٌ تربط بنداً (PointItem مصدره AUTO) بنوع حدث. الإدارة تنشئها من شاشة النقاط.

@@ -44,6 +44,20 @@ export const PEER_ALERT_MIN_COMPLETIONS = 20;
 
 const isCounted = (s: AttendanceStatus) => COUNTED_STATUSES.has(s);
 
+/**
+ * حدث النقاط التلقائيّ المطابق لحالة الحضور (م ب). «مستأذن» (بعذرٍ/مسبقًا) و«خرج مبكّرًا»
+ * المتقاعَدة ⟵ null (لا حدث، صفر). الإدارة تربط بنداً بكلّ حدثٍ بالقيمة التي تختارها.
+ */
+function attendanceEvent(s: AttendanceStatus): AutoEventType | null {
+  switch (s) {
+    case AttendanceStatus.PRESENT: return AutoEventType.ATTENDANCE_PRESENT;
+    case AttendanceStatus.LATE: return AutoEventType.ATTENDANCE_LATE;
+    case AttendanceStatus.ABSENT_UNEXCUSED: return AutoEventType.ATTENDANCE_ABSENT;
+    case AttendanceStatus.LEFT_NO_PERMISSION: return AutoEventType.ATTENDANCE_LEFT_NO_PERMISSION;
+    default: return null; // ABSENT_EXCUSED · PRE_EXCUSED · LEFT_EARLY (متقاعَدة)
+  }
+}
+
 /** يحوّل مدخلًا (نص ISO أو Date) إلى تاريخٍ بلا وقت (منتصف ليل UTC) — يطابق @db.Date. */
 export function toDateOnly(input: string | Date): Date {
   const d = typeof input === "string" ? new Date(input) : input;
@@ -293,11 +307,11 @@ export async function recordSession(
         ...(excuseAt !== undefined ? { excuseAcceptedAt: excuseAt } : {}),
       });
 
-      // منح تلقائيّ للحضور (م٦أ-٢): للحالات المحسوبة حضورًا فقط، مرّةً لكلّ طالبٍ في اليوم
-      // (المرجع = مفتاح اليوم dk) — إعادة الرصد لا تُكرّر المنح. لا أثر رجعيّ.
-      if (isCounted(status)) {
-        await grantAuto(tx, AutoEventType.ATTENDANCE, studentId, dk);
-      }
+      // منح/خصم تلقائيّ بحسب حالة الحضور (م ب): حدثٌ مفصّلٌ لكلّ حالة (حاضر/متأخّر/غائب/خرج
+      // بلا إذن)، مرّةً لكلّ طالبٍ في اليوم (المرجع = مفتاح اليوم dk). «مستأذن» ⟵ لا حدث.
+      // منع الازدواج الصارم لكلّ (حدث + يوم + طالب). لا أثر رجعيّ.
+      const evt = attendanceEvent(status);
+      if (evt) await grantAuto(tx, evt, studentId, dk);
     }
 
     await emitEvent(tx, {

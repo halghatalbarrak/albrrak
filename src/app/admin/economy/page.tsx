@@ -12,7 +12,10 @@ type GrantSource = "AUTO" | "TEACHER" | "ADMIN";
 type LimitPeriod = "DAY" | "WEEK" | "NONE";
 type EventType =
   | "ATTENDANCE" | "HIZB_EXAM_PASS"
-  | "STAGE_EXAM_PASS" | "DAILY_HARVEST" | "PROMOTION" | "QAIDAH_COMPLETE";
+  | "STAGE_EXAM_PASS" | "DAILY_HARVEST" | "PROMOTION" | "QAIDAH_COMPLETE"
+  | "ATTENDANCE_PRESENT" | "ATTENDANCE_LATE" | "ATTENDANCE_ABSENT" | "ATTENDANCE_LEFT_NO_PERMISSION"
+  | "HIFZ_DONE" | "HIFZ_MISSED" | "TARSEEKH_DONE" | "TARSEEKH_MISSED" | "MURAJAAH_DONE" | "MURAJAAH_MISSED"
+  | "HIFZ_EXTRA" | "TARSEEKH_EXTRA" | "MURAJAAH_EXTRA";
 
 interface Item {
   id: string;
@@ -31,14 +34,27 @@ const SOURCE_AR: Record<GrantSource, string> = {
   ADMIN: "الإدارة",
 };
 const PERIOD_AR: Record<LimitPeriod, string> = { DAY: "يوميّ", WEEK: "أسبوعيّ", NONE: "بلا حدّ" };
-// أنواع الأحداث الخمسة للربط التلقائيّ (م٦أ-٢).
+// أنواع الأحداث للربط التلقائيّ (م٦أ-٢ + م ب). «حضور» العام خامدٌ — استعمل الحالات المفصّلة.
 const EVENT_AR: Record<EventType, string> = {
-  ATTENDANCE: "حضور",
+  ATTENDANCE: "حضور (عامّ — خامد، استعمل المفصّلة)",
   HIZB_EXAM_PASS: "اجتياز الحزب",
   STAGE_EXAM_PASS: "اجتياز اختبار المرحلة",
   DAILY_HARVEST: "إتمام الحصاد اليوميّ",
   PROMOTION: "ترقية/انتقال المرحلة",
   QAIDAH_COMPLETE: "إتمام القاعدة المدنية",
+  ATTENDANCE_PRESENT: "حضور: حاضر",
+  ATTENDANCE_LATE: "حضور: متأخّر",
+  ATTENDANCE_ABSENT: "حضور: غائب",
+  ATTENDANCE_LEFT_NO_PERMISSION: "حضور: خرج بدون إذن",
+  HIFZ_DONE: "الحفظ: أتقن",
+  HIFZ_MISSED: "الحفظ: لم يُتقن",
+  TARSEEKH_DONE: "الترسيخ: تمّ",
+  TARSEEKH_MISSED: "الترسيخ: لم يتمّ",
+  MURAJAAH_DONE: "المراجعة: تمّت",
+  MURAJAAH_MISSED: "المراجعة: لم تتمّ",
+  HIFZ_EXTRA: "الحفظ: زيادة",
+  TARSEEKH_EXTRA: "الترسيخ: زيادة",
+  MURAJAAH_EXTRA: "المراجعة: زيادة",
 };
 
 async function token(): Promise<string | null> {
