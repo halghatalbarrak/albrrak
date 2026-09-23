@@ -4,9 +4,11 @@ import {
   jwtVerify,
   type JWTVerifyGetKey,
 } from "jose";
-import { type PrismaClient, type Role } from "@prisma/client";
+import { Role, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AuthenticationError, AuthorizationError } from "./errors";
+import { enterRequestContext, setImpersonator } from "./request-context";
+import { parseImpCookie, verifyImpersonation } from "./impersonation";
 
 // المصادقة الحقيقية: JWT من Supabase Auth. الدخول يقع في المتصفّح عبر supabase-js
 // ولا يمرّ بخادمنا — فأول تحقّقٍ فعليّ هو هنا. Supabase قد يوقّع بمفتاحٍ غير متماثل
@@ -14,8 +16,14 @@ import { AuthenticationError, AuthorizationError } from "./errors";
 // المسار: Authorization: Bearer <jwt> ← تحقّق التوقيع ← sub ← User.authId ← الأدوار.
 
 export interface Actor {
+  /** الهويّة الفعليّة: المنتحَل أثناء انتحال، وإلا الفاعل الحقيقيّ. الأفعال تُنفَّذ بها. */
   id: string;
+  /** الأدوار الفعليّة (أدوار المنتحَل أثناء انتحال). التحكّم يقوم عليها. */
   roles: Role[];
+  /** الفاعل الحقيقيّ (الداخل فعلاً) — **دائمًا محفوظ**. = id عند عدم الانتحال. */
+  realActorId: string;
+  /** أهذا الطلب أثناء انتحال؟ */
+  impersonating: boolean;
 }
 
 /** السرّ المشترك (HS256) — مسارٌ بديل تحتاجه الاختبارات (بلا شبكة). */
@@ -101,15 +109,37 @@ export async function requireAuth(
   req: Request,
   db: PrismaClient = prisma,
 ): Promise<Actor> {
+  // **يُدخَل سياق الطلب تزامنيًّا هنا — قبل أيّ await** — فيقع في سياق المعالج فيرثه كلّ
+  // ما بعده، فيُختَم كلّ حدثٍ لاحقٍ بالفاعل الحقيقيّ عند الانتحال (بلا لمس المعالجات).
+  enterRequestContext();
+
   const sub = await verifiedSub(req);
-  const user = await db.user.findUnique({
+  const realUser = await db.user.findUnique({
     where: { authId: sub },
     select: { id: true, roles: true, isActive: true },
   });
-  if (!user || !user.isActive) {
+  if (!realUser || !realUser.isActive) {
     throw new AuthorizationError("حساب غير موجود أو معطَّل.");
   }
-  return { id: user.id, roles: user.roles };
+
+  // انتحالٌ نشط؟ يُقبل فقط إن: الكوكي موقّعةٌ صحيحة + مربوطةٌ بهذا الفاعل الحقيقيّ +
+  // الفاعل الحقيقيّ TECH_ADMIN + الهدف فعّالٌ وليس TECH_ADMIN. وإلا ⟵ الفاعل الحقيقيّ
+  // (فشلٌ آمن نحو الهويّة الحقيقيّة، لا نحو صلاحيّةٍ أعلى). لا تلاعبٌ من المتصفّح.
+  const cookie = parseImpCookie(req.headers.get("cookie"));
+  const payload = cookie ? verifyImpersonation(cookie) : null;
+  if (payload && payload.act === realUser.id && realUser.roles.includes(Role.TECH_ADMIN)) {
+    const target = await db.user.findUnique({
+      where: { id: payload.imp },
+      select: { id: true, roles: true, isActive: true },
+    });
+    if (target && target.isActive && !target.roles.includes(Role.TECH_ADMIN)) {
+      setImpersonator(realUser.id); // كلّ حدثٍ لاحقٍ يحمل الفاعل الحقيقيّ
+      return { id: target.id, roles: target.roles, realActorId: realUser.id, impersonating: true };
+    }
+  }
+
+  setImpersonator(null);
+  return { id: realUser.id, roles: realUser.roles, realActorId: realUser.id, impersonating: false };
 }
 
 /** يتطلّب مصادقة + أحد الأدوار. غير المخوّل ⟵ 403. */

@@ -71,8 +71,8 @@ const ACTIVE_STUDENT_STATES: StudentState[] = [
   StudentState.COMPLETED,
 ];
 
-/** الملخّص حسب الدور (الأعلى صلاحيّةً يُقدَّم — كترتيب القوائم). */
-export async function getSummary(actor: Actor, db: PrismaClient = prisma): Promise<Summary> {
+/** الملخّص حسب الدور (الأعلى صلاحيّةً يُقدَّم — كترتيب القوائم). يكفيه الهويّة والأدوار. */
+export async function getSummary(actor: Pick<Actor, "id" | "roles">, db: PrismaClient = prisma): Promise<Summary> {
   const has = (r: Role) => actor.roles.includes(r);
   const today = toDateOnly(new Date());
 

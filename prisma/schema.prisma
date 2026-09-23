@@ -928,9 +928,11 @@ model Event {
   type        String                 // مثال: STUDENT_ACCEPTED, APPROVAL_DECIDED
   subjectType String                 // Student | Approval | GuardianLink | ...
   subjectId   String
-  actorId     String?                // من أحدث التغيير (null لأحداث النظام)
+  actorId     String?                // من أحدث التغيير (الفاعل الفعليّ؛ المنتحَل أثناء انتحال). null لأحداث النظام
+  impersonatorId String?             // الفاعل الحقيقيّ (المدير التقنيّ) حين يقع الفعل أثناء انتحال الشخصيّة. null في الأصل
   payload     Json?
   createdAt   DateTime @default(now())
   @@index([subjectType, subjectId])
   @@index([type, createdAt])
+  @@index([impersonatorId])
 }
