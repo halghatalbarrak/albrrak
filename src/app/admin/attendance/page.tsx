@@ -26,18 +26,20 @@ interface QueuedSession {
   exceptions: { studentId: string; status: string }[];
 }
 
-// الحالات القابلة للتأشير على الشاشة (الأعذار تُطبَّق عبر محرّك الاعتمادات لا هنا).
+// الحالات القابلة للتأشير على الشاشة (الأعذار تُطبَّق عبر محرّك الاعتمادات لا هنا — قرار محمد).
+// «خرج مبكّراً» (LEFT_EARLY) مُتقاعَدةٌ ومُرحَّلةٌ إلى حاضر؛ محلّها «خرج بدون إذن».
 const MARKABLE: { value: string; label: string }[] = [
   { value: "PRESENT", label: "حاضر" },
   { value: "ABSENT_UNEXCUSED", label: "غائب" },
   { value: "LATE", label: "متأخر" },
-  { value: "LEFT_EARLY", label: "خرج مبكرًا" },
+  { value: "LEFT_NO_PERMISSION", label: "خرج بدون إذن" },
 ];
 const STATUS_LABEL: Record<string, string> = {
   PRESENT: "حاضر",
   ABSENT_UNEXCUSED: "غائب",
   LATE: "متأخر",
-  LEFT_EARLY: "خرج مبكرًا",
+  LEFT_NO_PERMISSION: "خرج بدون إذن",
+  LEFT_EARLY: "خرج مبكرًا", // تسميةٌ للسجلّات القديمة إن بقيت (مُرحَّلة أصلاً)
   ABSENT_EXCUSED: "غائب بعذر",
   PRE_EXCUSED: "مستأذن مسبقًا",
 };

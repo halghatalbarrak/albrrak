@@ -462,7 +462,8 @@ enum AttendanceStatus {
   ABSENT_EXCUSED
   LATE
   PRE_EXCUSED
-  LEFT_EARLY
+  LEFT_EARLY            // مُتقاعَدة (المرحلة أ): تُرحَّل سجلّاتها إلى PRESENT، ولا تُعرَض للتأشير
+  LEFT_NO_PERMISSION    // «خرج بدون إذن» (شاشة التشغيل الموحّدة، م أ) — لا يُحتسب حضورًا
 }
 
 model Attendance {
