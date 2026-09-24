@@ -1,10 +1,11 @@
-import { AttendanceStatus, AutoEventType, type PrismaClient } from "@prisma/client";
+import { AttendanceStatus, AutoEventType, ProgramKey, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
 import { defaultStatusFor, toDateOnly } from "./attendance";
 import { assertCanRecordListening } from "./daily-session";
 import { grantAuto } from "./economy";
+import { getQaidahPosition, qaidahBoardRow, type QaidahBoardStudent } from "./qaidah-session";
 import { nextUnitForStudent } from "./track-units";
 import { sessionBoardWithTarget, type BoardStudentWithTarget } from "./today-target";
 
@@ -25,16 +26,24 @@ const EXTRA_EVENT: Record<"hifz" | "tarseekh" | "murajaah", AutoEventType> = {
 export interface UnifiedStudent extends BoardStudentWithTarget {
   /** حالة الحضور المسجَّلة اليوم، أو null إن لم تُرفَع بعد (يُبيّن «من بقي»). */
   attendanceStatus: AttendanceStatus | null;
+  /** كتلة القاعدة المدنية (م ج): الباب + الدرس الحاليّ + النسبة + تقييم اليوم + العدّاد + القفل.
+   *  null لغير حلقات القاعدة (لمراقي تُستعمل today). */
+  qaidah: QaidahBoardStudent | null;
 }
 
 export interface UnifiedBoard {
   circle: { id: string; nameAr: string } | null;
+  /** برنامج الحلقة — تُبدّل الواجهة فرعها بحسبه (مراقي: وجهة اليوم · القاعدة: الدرس). */
+  program: ProgramKey | null;
   students: UnifiedStudent[];
   /** هل الأصل «غياب» لهذا اليوم؟ (§ م ج: من العتبة فصاعدًا) — تُبيّنه الواجهة لمن لم يُرفَع. */
   absentDefault: boolean;
 }
 
-/** لوحة الحلقة الموحّدة: كل طالبٍ بحالة حضوره ووجهة يومه (اقتراح الحفظ + الترسيخ + المراجعة). */
+/**
+ * لوحة الحلقة الموحّدة: كل طالبٍ بحالة حضوره + (لمراقي) وجهة يومه، أو (للقاعدة) درسه الحاليّ.
+ * برنامج الحلقة يحدّد الكتلة المرفقة (today لمراقي، qaidah للقاعدة) — والواجهة تبدّل بحسبه.
+ */
 export async function getUnifiedBoard(
   actorId: string,
   circleId: string,
@@ -47,9 +56,24 @@ export async function getUnifiedBoard(
     select: { studentId: true, status: true },
   });
   const statusBy = new Map(rows.map((r) => [r.studentId, r.status]));
+
+  // برنامج الحلقة: للقاعدة نُرفق كتلة الدرس الحاليّ لكل طالب (getQaidahPosition).
+  const circle = await db.circle.findUnique({ where: { id: circleId }, select: { program: { select: { key: true } } } });
+  const program = circle?.program.key ?? null;
+  const isQaidah = program === ProgramKey.QAIDAH_MADANIYYAH;
+
+  const students: UnifiedStudent[] = [];
+  for (const s of board.students) {
+    const qaidah = isQaidah
+      ? qaidahBoardRow(s.studentId, s.name, await getQaidahPosition(s.studentId, db, date))
+      : null;
+    students.push({ ...s, attendanceStatus: statusBy.get(s.studentId) ?? null, qaidah });
+  }
+
   return {
     circle: board.circle,
-    students: board.students.map((s) => ({ ...s, attendanceStatus: statusBy.get(s.studentId) ?? null })),
+    program,
+    students,
     absentDefault: defaultStatusFor(date) === AttendanceStatus.ABSENT_UNEXCUSED,
   };
 }

@@ -1,7 +1,6 @@
-import { Role } from "@prisma/client";
+import { QaidahEvalResult, Role } from "@prisma/client";
 
 import { recordQaidahSession, getQaidahPosition } from "@/server/qaidah-session";
-import { deferSession } from "@/server/session-deferral";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
 import { ValidationError } from "@/server/errors";
@@ -26,10 +25,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const actor = await requireRoles(req, ROLES);
     const { id } = await ctx.params;
     const b = (await req.json()) as Record<string, unknown>;
-    // «مؤجَّل» (حاضرٌ لم يُقيَّم): لا يحرّك الموضع ولا يمنح — سطرٌ محايد.
+    // «مؤجَّل» (حاضرٌ لم يُقيَّم): لا يحرّك الموضع ولا يمنح — يُسجَّل في QaidahDailyEval (ق٦).
     if (b.defer === true) {
-      await deferSession({ studentId: id, actorId: actor.id });
-      return Response.json({ ok: true, position: await getQaidahPosition(id) }, { status: 201 });
+      const position = await recordQaidahSession({ studentId: id, actorId: actor.id, result: QaidahEvalResult.DEFERRED });
+      return Response.json({ ok: true, position }, { status: 201 });
     }
     if (typeof b.mastered !== "boolean") throw new ValidationError("حقل «متقن» أو «مؤجَّل» مطلوب.");
     const position = await recordQaidahSession({ studentId: id, actorId: actor.id, mastered: b.mastered });
