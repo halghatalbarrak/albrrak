@@ -1,8 +1,9 @@
-import { type PrismaClient } from "@prisma/client";
+import { ProgramHistoryReason, type ProgramKey, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
 import { emitEvent } from "./events";
+import { recordProgramEntry, closeProgramHistory, resolveStudentProgram } from "./program-placement";
 import { ValidationError } from "./errors";
 
 /**
@@ -20,6 +21,10 @@ export interface EnrollmentRow {
   circleNameAr: string;
   startedAt: Date;
   endedAt: Date | null;
+  /** برنامج القيد الفعليّ (ق١) — يُملأ للقيد النشط عبر المحلّل الواحد. */
+  programKey?: ProgramKey | null;
+  /** انتقالٌ برنامجيٌّ معلّقٌ لم يحن بعد (ق٥) — تعرضه الواجهة «ينتقل إلى X في Y». */
+  pending?: { programKey: ProgramKey; from: Date } | null;
 }
 
 export interface EnrollArgs {
@@ -28,11 +33,12 @@ export interface EnrollArgs {
   actorId: string;
 }
 
-/** الانتساب النشط الحاليّ للطالب (أو null). */
+/** الانتساب النشط الحاليّ للطالب (أو null) — عبر المحلّل الواحد (يطبّق المعلّق إن حان، ويُظهره). */
 export async function getActiveEnrollment(
   studentId: string,
   db: PrismaClient = prisma,
 ): Promise<EnrollmentRow | null> {
+  const view = await resolveStudentProgram(db, studentId); // ضابط ٢: كلّ عرضٍ للبرنامج يمرّ به
   const e = await db.enrollment.findFirst({
     where: { studentId, endedAt: null },
     select: {
@@ -44,7 +50,7 @@ export async function getActiveEnrollment(
     },
   });
   return e
-    ? { id: e.id, circleId: e.circleId, circleNameAr: e.circle.nameAr, startedAt: e.startedAt, endedAt: e.endedAt }
+    ? { id: e.id, circleId: e.circleId, circleNameAr: e.circle.nameAr, startedAt: e.startedAt, endedAt: e.endedAt, programKey: view.programKey, pending: view.pending }
     : null;
 }
 
@@ -90,7 +96,7 @@ export async function enrollStudent(
   if (!student) throw new ValidationError("طالب غير موجود.");
   const circle = await db.circle.findUnique({
     where: { id: args.circleId },
-    select: { id: true, nameAr: true },
+    select: { id: true, nameAr: true, programId: true },
   });
   if (!circle) throw new ValidationError("حلقة غير موجودة.");
 
@@ -105,15 +111,17 @@ export async function enrollStudent(
     }
 
     if (active) {
-      // نقل: أنهِ القديم أولًا (وإلا رفض الفهرس وجود نشطَين).
+      // نقل: أنهِ القديم أولًا (وإلا رفض الفهرس وجود نشطَين)، وأغلِق تاريخ برنامجه المفتوح.
       await tx.enrollment.update({
         where: { id: active.id },
         data: { endedAt: new Date() },
       });
+      await closeProgramHistory(tx, args.studentId);
     }
 
+    // ق١: البرنامج يُسنَد من برنامج الحلقة الافتراضيّ (يغيّره المشرف لاحقًا بتغيير البرنامج).
     const created = await tx.enrollment.create({
-      data: { studentId: args.studentId, circleId: args.circleId },
+      data: { studentId: args.studentId, circleId: args.circleId, programId: circle.programId },
       select: {
         id: true,
         circleId: true,
@@ -121,6 +129,13 @@ export async function enrollStudent(
         endedAt: true,
         circle: { select: { nameAr: true } },
       },
+    });
+    // ق٦: تاريخ البرامج — دخولٌ ببرنامج الحلقة (إسنادٌ أوّل، أو تغييرٌ عند النقل).
+    await recordProgramEntry(tx, {
+      studentId: args.studentId,
+      programId: circle.programId,
+      reason: active ? ProgramHistoryReason.CHANGE : ProgramHistoryReason.ASSIGNMENT,
+      actorId: args.actorId,
     });
 
     await emitEvent(tx, {

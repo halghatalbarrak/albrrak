@@ -46,6 +46,19 @@ function toDateOnly(input: string | Date): Date {
 
 const unitBound = (u: UnitRow): AyahBound => ({ fromSurah: u.startSurah, fromAyah: u.startAyah, toSurah: u.endSurah, toAyah: u.endAyah });
 
+/** يحلّل نطاقات المحفوظ خارج الترتيب المسكَّن (JSON) إلى حدودٍ صالحة، متجاهلاً التالف. */
+function parseOutOfOrder(raw: unknown): AyahBound[] {
+  if (!Array.isArray(raw)) return [];
+  const out: AyahBound[] = [];
+  for (const r of raw) {
+    const o = r as Record<string, unknown>;
+    if ([o.fromSurah, o.fromAyah, o.toSurah, o.toAyah].every((n) => typeof n === "number")) {
+      out.push({ fromSurah: o.fromSurah as number, fromAyah: o.fromAyah as number, toSurah: o.toSurah as number, toAyah: o.toAyah as number });
+    }
+  }
+  return out;
+}
+
 /** إجازة مرحلةٍ نشطة (لم تنقضِ مهلتها) ⟵ توقّفٌ تامّ، لا وجهة (البند ١). */
 async function onStageExamLeave(studentId: string, today: Date, db: PrismaClient): Promise<boolean> {
   const leave = await db.stageExamLeave.findFirst({ where: { studentId, effectiveEndsOn: { gte: today } }, select: { id: true } });
@@ -91,20 +104,38 @@ export async function todayTarget(
   // مسار الطالب ووحداته، وموضعه فيها (عدد الوحدات التي بلغها قبل اليوم).
   const assignment = await db.trackAssignment.findFirst({ where: { studentId, endedAt: null }, orderBy: { startedAt: "desc" }, select: { trackId: true } });
   const units = assignment ? await unitsForTrack(assignment.trackId, db) : [];
-  const frontier = await frontierBeforeToday(studentId, today, db);
+
+  // التسكين (ق٣): موضع الوصول المسكَّن + المحفوظ خارج الترتيب يُدمجان مع الجلسات.
+  const placement = await db.maraqiPlacement.findUnique({
+    where: { studentId },
+    select: { reachedSurah: true, reachedAyah: true, outOfOrder: true },
+  });
+  const sessFrontier = await frontierBeforeToday(studentId, today, db);
+  const placedFrontier = placement?.reachedSurah != null ? maraqiKey(placement.reachedSurah, placement.reachedAyah ?? 1) : null;
+  const frontier = sessFrontier == null ? placedFrontier
+    : placedFrontier == null ? sessFrontier : Math.max(sessFrontier, placedFrontier);
   const reached = frontier === null ? 0 : units.filter((u) => maraqiKey(u.startSurah, u.startAyah) <= frontier).length;
 
-  const memorized = units.slice(0, reached); // الوحدات المحفوظة (١..reached)
-  const rasikhCut = Math.max(0, reached - TARSEEKH_WINDOW);
-  const tarseekhUnits = memorized.slice(rasikhCut); // آخر ١٠ (السابقة لوحدة اليوم)
-  const rasikhUnits = memorized.slice(0, rasikhCut); // الراسخ (خرج من العشر)
+  // محفوظٌ خارج الترتيب (ضمن نطاقات التسكين): يدخل المراجعة فورًا، ويتخطّاه الحفظ الجديد.
+  const oooRanges = parseOutOfOrder(placement?.outOfOrder);
+  const isOutOfOrder = (u: UnitRow) => oooRanges.some((r) =>
+    maraqiKey(u.startSurah, u.startAyah) >= maraqiKey(r.fromSurah, r.fromAyah) &&
+    maraqiKey(u.endSurah, u.endAyah) <= maraqiKey(r.toSurah, r.toAyah));
 
-  // ── الحفظ الجديد المقترح ──
+  const inOrder = units.slice(0, reached); // المحفوظ بالترتيب (١..reached)
+  const rasikhCut = Math.max(0, reached - TARSEEKH_WINDOW);
+  const tarseekhUnits = inOrder.slice(rasikhCut); // آخر ١٠ بالترتيب
+  const oooUnits = units.slice(reached).filter(isOutOfOrder); // محفوظٌ خارج الترتيب (راسخٌ فورًا)
+  const rasikhUnits = [...inOrder.slice(0, rasikhCut), ...oooUnits]; // الراسخ: قديم الترتيب + خارج الترتيب
+
+  // ── الحفظ الجديد: أوّل وحدةٍ غير محفوظةٍ بالترتيب، تتخطّى المحفوظ خارج الترتيب ──
   const gate = await getHifzGate(studentId, today, db);
+  let nextIdx = reached;
+  while (nextIdx < units.length && isOutOfOrder(units[nextIdx])) nextIdx++;
   let newHifz: NewHifzSuggestion;
   if (gate.mustRepeat && gate.range) newHifz = { kind: "REPEAT", bound: gate.range };
   else if (!assignment) newHifz = { kind: "NO_TRACK" };
-  else if (reached < units.length) newHifz = { kind: "NEW", bound: unitBound(units[reached]) };
+  else if (nextIdx < units.length) newHifz = { kind: "NEW", bound: unitBound(units[nextIdx]) };
   else newHifz = { kind: "COMPLETED" };
 
   // ── المراجعة: الراسخ ٥ حصص، تنازليًّا من الأحدث للأقدم؛ حصّة اليوم، الأضعف أوّلاً ──

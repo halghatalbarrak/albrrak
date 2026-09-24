@@ -17,6 +17,7 @@ import { prisma } from "@/lib/prisma";
 import { assertCanRecordCircle, toDateOnly } from "./attendance";
 import { assertTeachesStudent, listCircleStudents } from "./daily-session";
 import { grantAuto, reverseConflictingAutoGrants, QAIDAH_LESSON_EVENT_GROUP } from "./economy";
+import { scheduleTransition, nextDay } from "./program-placement";
 import { emitEvent } from "./events";
 import { ValidationError } from "./errors";
 
@@ -325,6 +326,19 @@ export async function recordQaidahSession(
         }
         await emitEvent(tx, { type: "QAIDAH_COMPLETED", subjectType: "Student", subjectId: args.studentId, actorId: args.actorId, payload: { programId: set.programId } });
         await grantAuto(tx, AutoEventType.QAIDAH_COMPLETE, args.studentId, set.programId);
+
+        // ق٥: انتقالٌ مؤجَّلٌ لليوم التالي إن ضُبط nextProgram + المسار الافتراضيّ؛ وإلا تنبيه المشرف
+        // بدل الفشل الصامت. يوم التخرّج يبقى قاعدة (القفل ق٧ ساري، والتطبيق كسولٌ من الغد).
+        const prog = await tx.program.findUnique({ where: { id: set.programId }, select: { nextProgramId: true, defaultTrackForIncomingId: true } });
+        if (prog?.nextProgramId && prog.defaultTrackForIncomingId) {
+          await scheduleTransition(tx, { studentId: args.studentId, nextProgramId: prog.nextProgramId, trackId: prog.defaultTrackForIncomingId, from: nextDay(date) });
+        } else {
+          await emitEvent(tx, {
+            type: "PROGRAM_TRANSITION_UNCONFIGURED",
+            subjectType: "Student", subjectId: args.studentId, actorId: args.actorId,
+            payload: { programId: set.programId, missing: !prog?.nextProgramId ? "nextProgram" : "defaultTrack" },
+          });
+        }
       }
 
       // نقاط الدرس المُتقَن (م ج، ق٤) — مرجعُ اليوم (منع ازدواج + قابلية عكس).
@@ -402,16 +416,24 @@ export async function getQaidahSessionBoard(
   await assertCanRecordCircle(actorId, circleId, db);
   const circle = await db.circle.findUnique({
     where: { id: circleId },
-    select: { id: true, nameAr: true, program: { select: { key: true } } },
+    select: { id: true, nameAr: true },
   });
   if (!circle) return { circle: null, seeded: false, students: [] };
-  if (circle.program.key !== ProgramKey.QAIDAH_MADANIYYAH) {
-    throw new ValidationError("لوحة جلسة القاعدة لحلقات القاعدة المدنية.");
-  }
   const set = await loadQaidah(db);
   const roster = await listCircleStudents(circleId, db);
+
+  // ق١: طلاب القاعدة في هذه الحلقة يُقرَؤون من قيدهم لا من الحلقة (تدعم الحلقة المختلطة).
+  const enr = await db.enrollment.findMany({
+    where: { circleId, endedAt: null },
+    select: { studentId: true, program: { select: { key: true } }, circle: { select: { program: { select: { key: true } } } } },
+  });
+  const qaidahIds = new Set(
+    enr.filter((e) => (e.program?.key ?? e.circle.program.key) === ProgramKey.QAIDAH_MADANIYYAH).map((e) => e.studentId),
+  );
+
   const students: QaidahBoardStudent[] = [];
   for (const s of roster) {
+    if (!qaidahIds.has(s.id)) continue; // غير طلاب القاعدة لا يظهرون في لوحتها
     const pos = set && set.lessons.length > 0 ? await positionFromSet(s.id, set, db) : emptyPosition;
     students.push(qaidahBoardRow(s.id, s.name, pos));
   }

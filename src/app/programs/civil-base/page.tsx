@@ -124,6 +124,11 @@ export default function CivilBaseLadderPage() {
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/programs/civil-base"
       title="القاعدة المدنية — السلّم البياني" crumbs={CRUMBS}>
+      {(me?.roles ?? []).some((r) => ["CIRCLE_MANAGER", "SUPER_ADMIN", "TECH_ADMIN"].includes(r)) && (
+        <div style={{ marginBottom: sp(3) }}>
+          <a href="/admin/programs/QAIDAH_MADANIYYAH/settings" style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.primary, textDecoration: "none", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, padding: `${sp(1.5)} ${sp(2.5)}` }}>⚙ إعدادات الانتقال إلى مراقي</a>
+        </div>
+      )}
       {position?.seeded && (
         <div style={{ padding: `${sp(3)} ${sp(4)}`, marginBottom: sp(4), background: ui.color.surface, border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, borderInlineStart: `4px solid ${ui.color.primary}` }}>
           {position.graduated ? (

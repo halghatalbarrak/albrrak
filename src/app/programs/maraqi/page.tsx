@@ -98,6 +98,7 @@ export default function MaraqiProgramPage() {
       <div style={{ display: "flex", gap: sp(2), marginBottom: sp(4), borderBottom: `1px solid ${ui.color.border}`, paddingBottom: sp(2), flexWrap: "wrap" }}>
         <Button size="sm" variant={activeTab === "ladder" ? "bronze" : "ghost"} onClick={() => setTab("ladder")}>السلّم البياني</Button>
         {isAdmin && <Button size="sm" variant={activeTab === "tracks" ? "bronze" : "ghost"} onClick={() => setTab("tracks")}>المسارات المُجهَّزة</Button>}
+        {isAdmin && <Button size="sm" variant="ghost" onClick={() => { window.location.href = "/admin/programs/MARAQI/settings"; }}>⚙ إعدادات الانتقال</Button>}
       </div>
 
       {activeTab === "tracks" ? (

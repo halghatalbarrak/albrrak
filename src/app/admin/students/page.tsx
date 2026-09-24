@@ -177,6 +177,7 @@ export default function AdminStudentsPage() {
             <Button variant="bronze" size="sm" onClick={() => setTestFor(r)}>اختبار القراءة</Button>
           )}
           <Link href={`/admin/students/${r.id}/weakness`} style={linkBtn}>الخريطة</Link>
+          <Link href={`/admin/students/${r.id}/placement`} style={linkBtn}>تسكين</Link>
           {canReveal && <Button variant="ghost" size="sm" onClick={() => revealId(r.id)}>{revealed[r.id] ? `الهوية: ${revealed[r.id]}` : "كشف الهوية"}</Button>}
         </div>
       ),

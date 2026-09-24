@@ -99,6 +99,14 @@ model Program {
   stages   Stage[]
   tracks   Track[]
   settings Setting[]
+  enrollments Enrollment[]
+  // ق٤: مسار الانتقال (القاعدة ← مراقي ← المُدَّكِر) — يُدار من الإدارة، لا محفورٌ في المنطق.
+  nextProgramId String?
+  nextProgram   Program?  @relation("ProgramNext", fields: [nextProgramId], references: [id])
+  nextOf        Program[] @relation("ProgramNext")
+  // ق٥: المسار الافتراضيّ للمنتقلين إلى هذا البرنامج (يبدؤون من الفاتحة به).
+  defaultTrackForIncomingId String?
+  defaultTrackForIncoming   Track?  @relation("ProgramDefaultTrack", fields: [defaultTrackForIncomingId], references: [id])
 }
 
 model Circle {
@@ -150,6 +158,12 @@ model Student {
   priorHifzAmount    String? // مقدار الحفظ — للجهة (الصيغة؟)
   priorHifzLocations Json? // مواضع الحفظ — لاختيار المقطع
 
+  // ق٥: انتقالٌ برنامجيٌّ مؤجَّلٌ بالتاريخ (كسولٌ يُطبَّق أوّل قراءةٍ في يومٍ ≥ pendingFrom).
+  // يُخزَّن عند تخرّج القاعدة؛ يُطبَّقه المحلّل الواحد (resolveStudentProgram) بأمانٍ من السباق.
+  pendingProgramId String?
+  pendingTrackId   String?
+  pendingFrom      DateTime? @db.Date
+
   // جهة اتصال الطوارئ — تُستعمل حين لا يردّ الولي. ليست بياناً إدارياً:
   // يراها معلّم الطالب فقط، بضغطة صريحة، وبسطرٍ في EmergencyAccessLog.
   emergencyName       String?
@@ -174,11 +188,15 @@ model Enrollment {
   circleId  String
   student   Student   @relation(fields: [studentId], references: [id])
   circle    Circle    @relation(fields: [circleId], references: [id])
+  // ق١: البرنامج صفةٌ في القيد (لا في الحلقة). مبذورٌ من برنامج الحلقة للقيود القائمة.
+  programId String?
+  program   Program?  @relation(fields: [programId], references: [id])
   startedAt DateTime  @default(now())
   endedAt   DateTime? // النشط = null
   // ⚠️ قيد: انتساب نشط واحد لكل طالب — partial unique index (يُضاف في م١ مع منطق الأعمار)
 
   @@index([studentId, endedAt])
+  @@index([programId])
 }
 
 enum GuardianLinkStatus {
@@ -309,8 +327,47 @@ model StageProgress {
   attendanceDays  Int           @default(0) // ⭐ القياس بأيام الحضور
   readyDeclaredAt DateTime? // إعلان الجاهزية
   failureCount    Int           @default(0) // للضربتين
+  // ق٢: مصدر الإتقان — PLACEMENT (تسكينٌ، بلا نقاط) مقابل null (إتقانٌ فعليّ في جلسة).
+  source          PlacementSource?
 
   @@unique([studentId, stageId])
+}
+
+// ق٢: يميّز الإتقان المسكَّن عن الفعليّ (تُصنع القيمة PLACEMENT عند التسكين فقط).
+enum PlacementSource {
+  PLACEMENT
+}
+
+// ق٣: محفوظ مراقي المسكَّن — موضع الوصول بالترتيب + نطاقات خارج الترتيب. تقرؤه وجهة اليوم.
+// جدولٌ متأخّرٌ بلا FK (نمط الترحيلات الآمن، كـTrackUnit).
+model MaraqiPlacement {
+  id           String   @id @default(cuid())
+  studentId    String   @unique
+  reachedSurah Int? // آخر سورةٍ بلغها بالترتيب (الجبهة المسكَّنة)
+  reachedAyah  Int? // وآيتها
+  outOfOrder   Json? // [{fromSurah,fromAyah,toSurah,toAyah}] محفوظٌ قبل بلوغه
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ق٦: تاريخ برامج الطالب (دخل/خرج/السبب/الفاعل). جدولٌ متأخّرٌ بلا FK.
+enum ProgramHistoryReason {
+  ASSIGNMENT // إسنادٌ أوّليّ
+  READING_TEST // اختبار قراءة (تحديد)
+  GRADUATION // تخرّجٌ وانتقال
+  CHANGE // تغييرٌ إداريّ
+}
+
+model ProgramEnrollmentHistory {
+  id        String               @id @default(cuid())
+  studentId String
+  programId String
+  enteredAt DateTime             @default(now())
+  exitedAt  DateTime?
+  reason    ProgramHistoryReason
+  actorId   String?
+
+  @@index([studentId])
 }
 
 // ═══════════════ المسارات ═══════════════
@@ -324,6 +381,7 @@ model Track {
   ordinal     Int
   isActive    Boolean           @default(true)
   assignments TrackAssignment[]
+  defaultForPrograms Program[]  @relation("ProgramDefaultTrack")
 
   @@unique([programId, ordinal])
 }

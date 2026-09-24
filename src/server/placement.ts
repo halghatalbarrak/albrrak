@@ -3,11 +3,13 @@ import {
   ApprovalStatus,
   type Prisma,
   type PrismaClient,
+  ProgramHistoryReason,
   ProgramKey,
   StudentState,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "./events";
+import { recordProgramEntry } from "./program-placement";
 import { ValidationError } from "./errors";
 
 // §٦٫٣ اختبار القراءة (التحديد): المُسجِّل يقرر ← المدير يعتمد قبل النفاذ ← الإسناد.
@@ -181,8 +183,18 @@ export async function decideReadingTest(
 
     // لا يجيد نظراً ← قاعدة مدنية ← حلقة + IN_QAIDAH.
     if (!p.circleId) throw new ValidationError("قرار القاعدة المدنية بلا حلقة — تعذّر الإسناد.");
+    // ق١: القيد يحمل برنامجه (لا مصدرين) — من برنامج حلقة القاعدة المُتحقَّق منه سابقًا.
+    const circle = await tx.circle.findUnique({ where: { id: p.circleId }, select: { programId: true } });
+    if (!circle) throw new ValidationError("حلقة القرار غير موجودة.");
     await tx.enrollment.create({
-      data: { studentId: approval.subjectId, circleId: p.circleId },
+      data: { studentId: approval.subjectId, circleId: p.circleId, programId: circle.programId },
+    });
+    // ق٦: تاريخ البرامج — دخولٌ بسبب اختبار القراءة.
+    await recordProgramEntry(tx, {
+      studentId: approval.subjectId,
+      programId: circle.programId,
+      reason: ProgramHistoryReason.READING_TEST,
+      actorId: args.decidedBy,
     });
     await tx.student.update({
       where: { id: approval.subjectId },
