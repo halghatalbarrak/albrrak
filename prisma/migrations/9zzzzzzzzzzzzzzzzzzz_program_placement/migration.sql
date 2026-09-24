@@ -35,6 +35,11 @@ CREATE TABLE "MaraqiPlacement" (
 );
 CREATE UNIQUE INDEX "MaraqiPlacement_studentId_key" ON "MaraqiPlacement"("studentId");
 
+-- ═══ ق٥: انتقالٌ برنامجيٌّ مؤجَّلٌ بالتاريخ (كسولٌ، race-safe) — حقولٌ على الطالب ═══
+ALTER TABLE "Student" ADD COLUMN "pendingProgramId" TEXT;
+ALTER TABLE "Student" ADD COLUMN "pendingTrackId" TEXT;
+ALTER TABLE "Student" ADD COLUMN "pendingFrom" DATE;
+
 -- ═══ ق٦: تاريخ البرامج (دخل/خرج/السبب/الفاعل) — جدولٌ متأخّرٌ بلا FK ═══
 CREATE TYPE "ProgramHistoryReason" AS ENUM ('ASSIGNMENT', 'READING_TEST', 'GRADUATION', 'CHANGE');
 CREATE TABLE "ProgramEnrollmentHistory" (

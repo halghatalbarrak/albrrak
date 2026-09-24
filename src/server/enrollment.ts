@@ -1,9 +1,9 @@
-import { ProgramHistoryReason, type PrismaClient } from "@prisma/client";
+import { ProgramHistoryReason, type ProgramKey, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
 import { emitEvent } from "./events";
-import { recordProgramEntry, closeProgramHistory } from "./program-placement";
+import { recordProgramEntry, closeProgramHistory, resolveStudentProgram } from "./program-placement";
 import { ValidationError } from "./errors";
 
 /**
@@ -21,6 +21,10 @@ export interface EnrollmentRow {
   circleNameAr: string;
   startedAt: Date;
   endedAt: Date | null;
+  /** برنامج القيد الفعليّ (ق١) — يُملأ للقيد النشط عبر المحلّل الواحد. */
+  programKey?: ProgramKey | null;
+  /** انتقالٌ برنامجيٌّ معلّقٌ لم يحن بعد (ق٥) — تعرضه الواجهة «ينتقل إلى X في Y». */
+  pending?: { programKey: ProgramKey; from: Date } | null;
 }
 
 export interface EnrollArgs {
@@ -29,11 +33,12 @@ export interface EnrollArgs {
   actorId: string;
 }
 
-/** الانتساب النشط الحاليّ للطالب (أو null). */
+/** الانتساب النشط الحاليّ للطالب (أو null) — عبر المحلّل الواحد (يطبّق المعلّق إن حان، ويُظهره). */
 export async function getActiveEnrollment(
   studentId: string,
   db: PrismaClient = prisma,
 ): Promise<EnrollmentRow | null> {
+  const view = await resolveStudentProgram(db, studentId); // ضابط ٢: كلّ عرضٍ للبرنامج يمرّ به
   const e = await db.enrollment.findFirst({
     where: { studentId, endedAt: null },
     select: {
@@ -45,7 +50,7 @@ export async function getActiveEnrollment(
     },
   });
   return e
-    ? { id: e.id, circleId: e.circleId, circleNameAr: e.circle.nameAr, startedAt: e.startedAt, endedAt: e.endedAt }
+    ? { id: e.id, circleId: e.circleId, circleNameAr: e.circle.nameAr, startedAt: e.startedAt, endedAt: e.endedAt, programKey: view.programKey, pending: view.pending }
     : null;
 }
 

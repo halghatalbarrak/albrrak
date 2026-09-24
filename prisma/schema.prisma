@@ -158,6 +158,12 @@ model Student {
   priorHifzAmount    String? // مقدار الحفظ — للجهة (الصيغة؟)
   priorHifzLocations Json? // مواضع الحفظ — لاختيار المقطع
 
+  // ق٥: انتقالٌ برنامجيٌّ مؤجَّلٌ بالتاريخ (كسولٌ يُطبَّق أوّل قراءةٍ في يومٍ ≥ pendingFrom).
+  // يُخزَّن عند تخرّج القاعدة؛ يُطبَّقه المحلّل الواحد (resolveStudentProgram) بأمانٍ من السباق.
+  pendingProgramId String?
+  pendingTrackId   String?
+  pendingFrom      DateTime? @db.Date
+
   // جهة اتصال الطوارئ — تُستعمل حين لا يردّ الولي. ليست بياناً إدارياً:
   // يراها معلّم الطالب فقط، بضغطة صريحة، وبسطرٍ في EmergencyAccessLog.
   emergencyName       String?

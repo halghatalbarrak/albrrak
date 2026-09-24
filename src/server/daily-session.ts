@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 
 import { isActiveArifForCircle, autoDismissArifIfBelowThreshold } from "./arif";
 import { grantAuto, reverseConflictingAutoGrants, HIFZ_EVENT_GROUP, TARSEEKH_EVENT_GROUP, MURAJAAH_EVENT_GROUP } from "./economy";
+import { applyDueTransition } from "./program-placement";
 import { displayBoundary } from "./maraqi";
 import { getConsolidation, getWeeklyReview, type ConsolidationView, type WeeklyReview } from "./tarseekh";
 import { deferredStudentIdsForDate } from "./session-deferral";
@@ -64,6 +65,8 @@ async function activeCircle(
   studentId: string,
   db: PrismaClient | Prisma.TransactionClient,
 ): Promise<StudentCircle> {
+  // ضابط ٢: كلّ قراءةٍ لبرنامج الطالب تمرّ بالمحلّل الواحد — يطبّق الانتقال المعلَّق إن حان أوّلاً.
+  await applyDueTransition(db, studentId);
   const enrollment = await db.enrollment.findFirst({
     where: { studentId, endedAt: null },
     select: {
