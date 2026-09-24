@@ -9,6 +9,14 @@ import { assertCanPlace, type OutOfOrderRange } from "./placement-actions";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
+export interface ProgramHistoryRow {
+  program: string;
+  enteredAt: string;
+  exitedAt: string | null;
+  reason: string; // ASSIGNMENT | READING_TEST | GRADUATION | CHANGE
+  actor: string | null;
+}
+
 export interface PlacementView {
   studentName: string;
   programKey: ProgramKey | null;
@@ -16,6 +24,7 @@ export interface PlacementView {
   programs: { id: string; key: ProgramKey; nameAr: string }[];
   qaidah: { currentLessonId: string | null; lessons: { id: string; nameAr: string; chapterName: string | null }[] } | null;
   maraqi: { reachedSurah: number | null; reachedAyah: number | null; outOfOrder: OutOfOrderRange[] } | null;
+  history: ProgramHistoryRow[];
 }
 
 function parseOoo(raw: unknown): OutOfOrderRange[] {
@@ -32,6 +41,20 @@ export async function getPlacementView(actorId: string, studentId: string, db: P
   const student = await db.student.findUnique({ where: { id: studentId }, select: { user: { select: { nameAsInId: true } } } });
   const programs = await db.program.findMany({ select: { id: true, key: true, nameAr: true }, orderBy: { key: "asc" } });
 
+  // ق٦: تاريخ البرامج (قراءةٌ فقط) — دخل/خرج/السبب/الفاعل، الأحدث أوّلاً.
+  const hist = await db.programEnrollmentHistory.findMany({
+    where: { studentId }, orderBy: { enteredAt: "desc" },
+    select: { programId: true, enteredAt: true, exitedAt: true, reason: true, actorId: true },
+  });
+  const progIds = [...new Set(hist.map((h) => h.programId))];
+  const actorIds = [...new Set(hist.map((h) => h.actorId).filter((x): x is string => !!x))];
+  const [progRows, actorRows] = await Promise.all([
+    progIds.length ? db.program.findMany({ where: { id: { in: progIds } }, select: { id: true, nameAr: true } }) : Promise.resolve([]),
+    actorIds.length ? db.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, nameAsInId: true } }) : Promise.resolve([]),
+  ]);
+  const progName = new Map(progRows.map((p) => [p.id, p.nameAr]));
+  const actorName = new Map(actorRows.map((a) => [a.id, a.nameAsInId]));
+
   const base: PlacementView = {
     studentName: student?.user.nameAsInId ?? "",
     programKey: view.programKey,
@@ -39,6 +62,13 @@ export async function getPlacementView(actorId: string, studentId: string, db: P
     programs,
     qaidah: null,
     maraqi: null,
+    history: hist.map((h) => ({
+      program: progName.get(h.programId) ?? "—",
+      enteredAt: iso(h.enteredAt),
+      exitedAt: h.exitedAt ? iso(h.exitedAt) : null,
+      reason: h.reason,
+      actor: h.actorId ? actorName.get(h.actorId) ?? null : null,
+    })),
   };
 
   if (view.programKey === ProgramKey.QAIDAH_MADANIYYAH) {

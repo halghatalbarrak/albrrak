@@ -4,9 +4,11 @@ import { use, useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Card, Button, Input, Select, Field, Badge, ui, sp } from "@/components/ui";
+import { AppShell, Card, Button, Input, Select, Field, Badge, Table, ui, sp, type Column } from "@/components/ui";
+import { hijri } from "@/lib/format";
 
 interface Range { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }
+interface HistoryRow { program: string; enteredAt: string; exitedAt: string | null; reason: string; actor: string | null }
 interface View {
   studentName: string;
   programKey: "QAIDAH_MADANIYYAH" | "MARAQI" | "WEEKLY" | null;
@@ -14,7 +16,9 @@ interface View {
   programs: { id: string; key: string; nameAr: string }[];
   qaidah: { currentLessonId: string | null; lessons: { id: string; nameAr: string; chapterName: string | null }[] } | null;
   maraqi: { reachedSurah: number | null; reachedAyah: number | null; outOfOrder: Range[] } | null;
+  history: HistoryRow[];
 }
+const REASON_AR: Record<string, string> = { ASSIGNMENT: "إسناد أوّليّ", READING_TEST: "اختبار قراءة", GRADUATION: "تخرّج", CHANGE: "تغيير إداريّ" };
 
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
@@ -72,7 +76,27 @@ export default function StudentPlacementPage({ params }: { params: Promise<{ id:
       {v.programKey === "MARAQI" && v.maraqi && (
         <MaraqiPlacement m={v.maraqi} onSave={(p) => post({ action: "place-maraqi", ...p }, "سُكِّن على مراقي.")} />
       )}
+
+      {/* ق٦: تاريخ البرامج — قراءةٌ فقط */}
+      <ProgramHistory rows={v.history} />
     </Shell>
+  );
+}
+
+function ProgramHistory({ rows }: { rows: HistoryRow[] }) {
+  if (rows.length === 0) return null;
+  const cols: Column<HistoryRow>[] = [
+    { key: "program", header: "البرنامج", cell: (r) => <strong>{r.program}</strong> },
+    { key: "in", header: "دخل", cell: (r) => hijri(r.enteredAt) },
+    { key: "out", header: "خرج", cell: (r) => (r.exitedAt ? hijri(r.exitedAt) : "— (نشط)") },
+    { key: "reason", header: "السبب", cell: (r) => REASON_AR[r.reason] ?? r.reason },
+    { key: "actor", header: "الفاعل", cell: (r) => r.actor ?? "النظام" },
+  ];
+  return (
+    <div style={{ marginTop: sp(5) }}>
+      <h2 style={{ fontSize: ui.text.lg, fontWeight: 700 }}>تاريخ البرامج</h2>
+      <Table columns={cols} rows={rows} />
+    </div>
   );
 }
 
