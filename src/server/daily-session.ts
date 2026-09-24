@@ -12,7 +12,7 @@ import {
 import { prisma } from "@/lib/prisma";
 
 import { isActiveArifForCircle, autoDismissArifIfBelowThreshold } from "./arif";
-import { grantAuto } from "./economy";
+import { grantAuto, reverseConflictingAutoGrants, HIFZ_EVENT_GROUP, TARSEEKH_EVENT_GROUP, MURAJAAH_EVENT_GROUP } from "./economy";
 import { displayBoundary } from "./maraqi";
 import { getConsolidation, getWeeklyReview, type ConsolidationView, type WeeklyReview } from "./tarseekh";
 import { deferredStudentIdsForDate } from "./session-deferral";
@@ -283,8 +283,11 @@ export async function recordHifz(input: HifzInput, db: PrismaClient = prisma): P
       actorId: input.teacherId,
       payload: { attempts: input.attempts, mastered: input.mastered },
     });
-    // منح/خصم تلقائيّ للحفظ (م ب): أتقن ⟵ HIFZ_DONE، لم يُتقن ⟵ HIFZ_MISSED. مرّةً لليوم.
-    await grantAuto(tx, input.mastered ? AutoEventType.HIFZ_DONE : AutoEventType.HIFZ_MISSED, input.studentId, dayKey(date));
+    // منح/خصم تلقائيّ للحفظ (م ب): أتقن ⟵ HIFZ_DONE، لم يُتقن ⟵ HIFZ_MISSED. عكسُ السابق
+    // المتنافي في اليوم أوّلاً (م ج، ق٥): تبديل أتقن/لم يُتقن لا يُراكم النقاط.
+    const hifzEvt = input.mastered ? AutoEventType.HIFZ_DONE : AutoEventType.HIFZ_MISSED;
+    await reverseConflictingAutoGrants(tx, { studentId: input.studentId, dayKey: dayKey(date), group: HIFZ_EVENT_GROUP, keepEvent: hifzEvt, actorId: input.teacherId });
+    await grantAuto(tx, hifzEvt, input.studentId, dayKey(date));
   });
 }
 
@@ -336,8 +339,11 @@ export async function recordTarseekh(input: ConsolidationInput, db: PrismaClient
       actorId: input.actorId,
       payload: { done: input.done, listenerId: listener, delegated: listener !== input.actorId },
     });
-    // منح/خصم تلقائيّ للترسيخ (م ب): تمّ ⟵ TARSEEKH_DONE، لم يتمّ ⟵ TARSEEKH_MISSED. مرّةً لليوم.
-    await grantAuto(tx, input.done ? AutoEventType.TARSEEKH_DONE : AutoEventType.TARSEEKH_MISSED, input.studentId, dayKey(date));
+    // منح/خصم تلقائيّ للترسيخ (م ب): تمّ ⟵ TARSEEKH_DONE، لم يتمّ ⟵ TARSEEKH_MISSED. عكسُ
+    // السابق المتنافي في اليوم أوّلاً (م ج، ق٥): التبديل لا يُراكم.
+    const tarseekhEvt = input.done ? AutoEventType.TARSEEKH_DONE : AutoEventType.TARSEEKH_MISSED;
+    await reverseConflictingAutoGrants(tx, { studentId: input.studentId, dayKey: dayKey(date), group: TARSEEKH_EVENT_GROUP, keepEvent: tarseekhEvt, actorId: input.actorId });
+    await grantAuto(tx, tarseekhEvt, input.studentId, dayKey(date));
   });
 }
 
@@ -371,8 +377,11 @@ export async function recordMurajaah(input: MurajaahInput, db: PrismaClient = pr
       actorId: input.actorId,
       payload: { count: input.count, listenerId: listener, delegated: listener !== input.actorId },
     });
-    // منح/خصم تلقائيّ للمراجعة (م ب): مقدارٌ موجب ⟵ MURAJAAH_DONE، صفرٌ ⟵ MURAJAAH_MISSED. مرّةً لليوم.
-    await grantAuto(tx, input.count > 0 ? AutoEventType.MURAJAAH_DONE : AutoEventType.MURAJAAH_MISSED, input.studentId, dayKey(date));
+    // منح/خصم تلقائيّ للمراجعة (م ب): مقدارٌ موجب ⟵ MURAJAAH_DONE، صفرٌ ⟵ MURAJAAH_MISSED. عكسُ
+    // السابق المتنافي في اليوم أوّلاً (م ج، ق٥): التبديل لا يُراكم.
+    const murajaahEvt = input.count > 0 ? AutoEventType.MURAJAAH_DONE : AutoEventType.MURAJAAH_MISSED;
+    await reverseConflictingAutoGrants(tx, { studentId: input.studentId, dayKey: dayKey(date), group: MURAJAAH_EVENT_GROUP, keepEvent: murajaahEvt, actorId: input.actorId });
+    await grantAuto(tx, murajaahEvt, input.studentId, dayKey(date));
   });
 }
 

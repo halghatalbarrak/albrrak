@@ -355,18 +355,20 @@ export async function grantAuto(
   const item = await db.pointItem.findUnique({ where: { id: rule.pointItemId } });
   if (!item || !item.active) return null;
 
-  // منع الازدواج: هل مُنح هذا الحدث (بمرجعه) لهذا الطالب قبلُ؟
-  const already = await db.autoGrant.findUnique({
-    where: { eventType_sourceRef_studentId: { eventType, sourceRef, studentId } },
+  // منع الازدواج: هل يوجد منحٌ **غير معكوسٍ** لهذا الحدث (بمرجعه) لهذا الطالب؟ (المعكوس لا يمنع
+  // إعادة المنح — يطابق الفهرس الفريد الجزئيّ WHERE reversedAt IS NULL.)
+  const already = await db.autoGrant.findFirst({
+    where: { eventType, sourceRef, studentId, reversedAt: null },
     select: { id: true },
   });
   if (already) return null;
 
-  // حدّ البند في فترته (نافذةٌ منزلقة) — كالمنح اليدويّ.
+  // حدّ البند في فترته (نافذةٌ منزلقة): يُحسب بعدد المنح **النشط** (غير المعكوس) لهذا الحدث —
+  // فلا القيد التعويضيّ ولا المنح المعكوس يُحتسبان (لا عدٌّ مزدوج، والمعكوس لا يستهلك الحدّ).
   if (item.limitPeriod !== PointLimitPeriod.NONE && item.limitCount != null) {
     const start = limitWindowStart(item.limitPeriod, new Date())!;
-    const count = await db.pointTransaction.count({
-      where: { studentId, pointItemId: item.id, createdAt: { gte: start } },
+    const count = await db.autoGrant.count({
+      where: { studentId, eventType, reversedAt: null, createdAt: { gte: start } },
     });
     if (count >= item.limitCount) return null;
   }
@@ -393,6 +395,76 @@ export async function grantAuto(
     payload: { pointItemId: item.id, amount: item.value, eventType, sourceRef },
   });
   return txn;
+}
+
+// ═══════════════ عكس المنح المتنافية في اليوم (م ج — بقيدٍ تعويضيّ، لا حذف) ═══════════════
+//
+// ECONOMY_RULES.md الركن ١: «مرّة لكلّ حدثٍ قائم؛ والأحداث المتنافية في اليوم الواحد: الأحدث
+// يعكس ما قبله بقيدٍ تعويضيّ، ولا حذف.» المجموعة = أحداثٌ لا تجتمع لطالبٍ في يومٍ واحد (حالة
+// حضورٍ واحدة، تقييمُ درسٍ واحد، ونتيجةُ كلّ مهمّةٍ مراقيّة واحدة). تعريفها في مكانٍ واحد.
+
+export const ATTENDANCE_EVENT_GROUP = [
+  AutoEventType.ATTENDANCE_PRESENT, AutoEventType.ATTENDANCE_LATE,
+  AutoEventType.ATTENDANCE_ABSENT, AutoEventType.ATTENDANCE_LEFT_NO_PERMISSION,
+] as const;
+export const QAIDAH_LESSON_EVENT_GROUP = [
+  AutoEventType.QAIDAH_LESSON_MASTERED, AutoEventType.QAIDAH_LESSON_NOT_MASTERED,
+] as const;
+export const HIFZ_EVENT_GROUP = [AutoEventType.HIFZ_DONE, AutoEventType.HIFZ_MISSED] as const;
+export const TARSEEKH_EVENT_GROUP = [AutoEventType.TARSEEKH_DONE, AutoEventType.TARSEEKH_MISSED] as const;
+export const MURAJAAH_EVENT_GROUP = [AutoEventType.MURAJAAH_DONE, AutoEventType.MURAJAAH_MISSED] as const;
+
+/** كلّ مجموعات الأحداث المتنافية في اليوم (لا تجتمع لطالبٍ في يومٍ واحد). */
+export const CONFLICTING_AUTO_EVENT_GROUPS: readonly (readonly AutoEventType[])[] = [
+  ATTENDANCE_EVENT_GROUP, QAIDAH_LESSON_EVENT_GROUP,
+  HIFZ_EVENT_GROUP, TARSEEKH_EVENT_GROUP, MURAJAAH_EVENT_GROUP,
+];
+
+/**
+ * يعكس أثر المنح المتنافي الأقدم في اليوم نفسه (م ج، ق٥): لكلّ منحٍ **غير معكوس** في
+ * `group`، بمرجع اليوم نفسه، وحدثه ≠ `keepEvent` (فإن أُهمِل keepEvent عُكِست المجموعة كلّها —
+ * كتحوّل الحضور إلى حالةٍ بلا حدث كـ«مستأذن») — يُعلَّم معكوسًا (reversedAt) ويُنشَر **قيدٌ
+ * تعويضيّ** بالقيمة المعاكسة (لا حذف). فيبقى الدفتر append-only، والرصيد (SUM) صحيحًا بلا
+ * عدٍّ مزدوج، ويتحرّر الفهرس الفريد الجزئيّ فيُعاد المنح. تُستدعى **داخل المعاملة** قبل grantAuto.
+ */
+export async function reverseConflictingAutoGrants(
+  db: PrismaClient | Prisma.TransactionClient,
+  args: { studentId: string; dayKey: string; group: readonly AutoEventType[]; keepEvent?: AutoEventType | null; actorId?: string | null },
+): Promise<void> {
+  const others = args.group.filter((e) => e !== args.keepEvent);
+  const grants = await db.autoGrant.findMany({
+    where: { studentId: args.studentId, sourceRef: args.dayKey, eventType: { in: [...others] }, reversedAt: null },
+    select: { id: true, eventType: true, pointTransactionId: true },
+  });
+  for (const g of grants) {
+    // علّم المنح معكوسًا (يحرّر الفهرس الجزئيّ). ثمّ انشر القيد التعويضيّ إن كان له أثرٌ في الدفتر.
+    await db.autoGrant.update({
+      where: { id: g.id },
+      data: { reversedAt: new Date(), reversedById: args.actorId ?? null },
+    });
+    const orig = await db.pointTransaction.findUnique({
+      where: { id: g.pointTransactionId },
+      select: { amount: true, pointItemId: true },
+    });
+    if (!orig || orig.amount === 0) continue;
+    const comp = await db.pointTransaction.create({
+      data: {
+        studentId: args.studentId,
+        pointItemId: orig.pointItemId,
+        amount: -orig.amount, // قيدٌ معاكسٌ بالقيمة نفسها
+        grantSource: PointGrantSource.AUTO,
+        grantedByUserId: args.actorId ?? null,
+        note: `عكس تلقائيّ لتغيير حالة اليوم (${g.eventType})`,
+      },
+    });
+    await emitEvent(db, {
+      type: "POINTS_REVERSED_AUTO",
+      subjectType: "Student",
+      subjectId: args.studentId,
+      actorId: args.actorId ?? null,
+      payload: { reversedGrantId: g.id, eventType: g.eventType, amount: -orig.amount, compensationTxnId: comp.id },
+    });
+  }
 }
 
 // ═══════════════ الرصيد والدفتر (مشتقّان من الحركات) ═══════════════

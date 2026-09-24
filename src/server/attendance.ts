@@ -13,7 +13,7 @@ import { prisma } from "@/lib/prisma";
 
 import { assertCapability } from "./authz";
 import { decide } from "./approval";
-import { grantAuto } from "./economy";
+import { grantAuto, reverseConflictingAutoGrants, ATTENDANCE_EVENT_GROUP } from "./economy";
 import { emitEvent } from "./events";
 import { notifyAbsence } from "./guardian-messages";
 import { AuthorizationError, ValidationError } from "./errors";
@@ -333,10 +333,11 @@ export async function recordSession(
         ...(excuseAt !== undefined ? { excuseAcceptedAt: excuseAt } : {}),
       });
 
-      // منح/خصم تلقائيّ بحسب حالة الحضور (م ب): حدثٌ مفصّلٌ لكلّ حالة (حاضر/متأخّر/غائب/خرج
-      // بلا إذن)، مرّةً لكلّ طالبٍ في اليوم (المرجع = مفتاح اليوم dk). «مستأذن» ⟵ لا حدث.
-      // منع الازدواج الصارم لكلّ (حدث + يوم + طالب). لا أثر رجعيّ.
+      // منح/خصم تلقائيّ بحسب حالة الحضور (م ب): حدثٌ مفصّلٌ لكلّ حالة. عكسُ منح اليوم المتنافي
+      // أوّلاً (م ج، ق٥): تغيير الحالة في اليوم نفسه يعكس السابقة بقيدٍ تعويضيّ (بلا تراكم)،
+      // ثمّ يُمنح الجديد. «مستأذن» (evt=null) ⟵ لا منحَ جديد، لكن يُعكَس السابق (تحوّلٌ لغير مانح).
       const evt = attendanceEvent(status);
+      await reverseConflictingAutoGrants(tx, { studentId, dayKey: dk, group: ATTENDANCE_EVENT_GROUP, keepEvent: evt ?? undefined, actorId: args.recorderId });
       if (evt) await grantAuto(tx, evt, studentId, dk);
     }
 
@@ -387,7 +388,9 @@ export async function markStudentAttendance(
   const dk = dateKey(date);
   await db.$transaction(async (tx) => {
     await upsertAttendance(tx, { studentId: args.studentId, circleId: args.circleId, date, status: args.status, recordedBy: args.recorderId });
+    // م ج (ق٥): اعكس منح اليوم المتنافي أوّلاً (تغيير الحالة لا يُراكم)، ثمّ امنح الجديد.
     const evt = attendanceEvent(args.status);
+    await reverseConflictingAutoGrants(tx, { studentId: args.studentId, dayKey: dk, group: ATTENDANCE_EVENT_GROUP, keepEvent: evt ?? undefined, actorId: args.recorderId });
     if (evt) await grantAuto(tx, evt, args.studentId, dk);
   });
   return { status: args.status };
