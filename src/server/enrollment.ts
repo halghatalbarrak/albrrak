@@ -1,8 +1,9 @@
-import { type PrismaClient } from "@prisma/client";
+import { ProgramHistoryReason, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
 import { emitEvent } from "./events";
+import { recordProgramEntry, closeProgramHistory } from "./program-placement";
 import { ValidationError } from "./errors";
 
 /**
@@ -90,7 +91,7 @@ export async function enrollStudent(
   if (!student) throw new ValidationError("طالب غير موجود.");
   const circle = await db.circle.findUnique({
     where: { id: args.circleId },
-    select: { id: true, nameAr: true },
+    select: { id: true, nameAr: true, programId: true },
   });
   if (!circle) throw new ValidationError("حلقة غير موجودة.");
 
@@ -105,15 +106,17 @@ export async function enrollStudent(
     }
 
     if (active) {
-      // نقل: أنهِ القديم أولًا (وإلا رفض الفهرس وجود نشطَين).
+      // نقل: أنهِ القديم أولًا (وإلا رفض الفهرس وجود نشطَين)، وأغلِق تاريخ برنامجه المفتوح.
       await tx.enrollment.update({
         where: { id: active.id },
         data: { endedAt: new Date() },
       });
+      await closeProgramHistory(tx, args.studentId);
     }
 
+    // ق١: البرنامج يُسنَد من برنامج الحلقة الافتراضيّ (يغيّره المشرف لاحقًا بتغيير البرنامج).
     const created = await tx.enrollment.create({
-      data: { studentId: args.studentId, circleId: args.circleId },
+      data: { studentId: args.studentId, circleId: args.circleId, programId: circle.programId },
       select: {
         id: true,
         circleId: true,
@@ -121,6 +124,13 @@ export async function enrollStudent(
         endedAt: true,
         circle: { select: { nameAr: true } },
       },
+    });
+    // ق٦: تاريخ البرامج — دخولٌ ببرنامج الحلقة (إسنادٌ أوّل، أو تغييرٌ عند النقل).
+    await recordProgramEntry(tx, {
+      studentId: args.studentId,
+      programId: circle.programId,
+      reason: active ? ProgramHistoryReason.CHANGE : ProgramHistoryReason.ASSIGNMENT,
+      actorId: args.actorId,
     });
 
     await emitEvent(tx, {

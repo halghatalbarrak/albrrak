@@ -55,17 +55,26 @@ interface StudentCircle {
   programKey: ProgramKey;
 }
 
-/** الحلقة النشطة للطالب وبرنامجها (أو خطأ إن لم يكن منتسبًا). */
+/**
+ * الحلقة النشطة للطالب وبرنامجها (أو خطأ إن لم يكن منتسبًا). **البرنامج من القيد** (ق١،
+ * Enrollment.programId المصدر الوحيد)، مع ارتدادٍ دفاعيّ لبرنامج الحلقة الافتراضيّ إن لم
+ * يُبذَر بعد. المُوصِّل المركزيّ: تغييره هنا يُحدِّث كلّ من يشتقّ برنامج الطالب.
+ */
 async function activeCircle(
   studentId: string,
   db: PrismaClient | Prisma.TransactionClient,
 ): Promise<StudentCircle> {
   const enrollment = await db.enrollment.findFirst({
     where: { studentId, endedAt: null },
-    select: { circleId: true, circle: { select: { program: { select: { key: true } } } } },
+    select: {
+      circleId: true,
+      program: { select: { key: true } },
+      circle: { select: { program: { select: { key: true } } } },
+    },
   });
   if (!enrollment) throw new ValidationError("الطالب غير منتسبٍ لحلقة نشطة.");
-  return { studentId, circleId: enrollment.circleId, programKey: enrollment.circle.program.key };
+  const programKey = enrollment.program?.key ?? enrollment.circle.program.key;
+  return { studentId, circleId: enrollment.circleId, programKey };
 }
 
 /**
