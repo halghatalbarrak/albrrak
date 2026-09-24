@@ -94,6 +94,50 @@ export async function placeMaraqi(
   });
 }
 
+export interface ProgramSettingsView {
+  program: { id: string; key: ProgramKey; nameAr: string; nextProgramId: string | null; defaultTrackForIncomingId: string | null };
+  programs: { id: string; key: ProgramKey; nameAr: string }[];
+  tracks: { id: string; nameAr: string }[];
+}
+
+/** ق٤/ق٥: إعدادات البرنامج الحاليّة + خيارات البرامج ومسارات البرنامج التالي (لملء النموذج). */
+export async function getProgramSettings(actorId: string, programKey: ProgramKey, db: PrismaClient = prisma): Promise<ProgramSettingsView> {
+  await assertCanPlace(db, actorId);
+  const program = await db.program.findUnique({
+    where: { key: programKey },
+    select: { id: true, key: true, nameAr: true, nextProgramId: true, defaultTrackForIncomingId: true },
+  });
+  if (!program) throw new ValidationError("البرنامج غير مبذور.");
+  const programs = await db.program.findMany({ select: { id: true, key: true, nameAr: true }, orderBy: { key: "asc" } });
+  const tracks = program.nextProgramId
+    ? await db.track.findMany({ where: { programId: program.nextProgramId, isActive: true }, select: { id: true, nameAr: true }, orderBy: { ordinal: "asc" } })
+    : [];
+  return { program, programs, tracks };
+}
+
+/** ق٤/ق٥: إعدادات انتقال البرنامج (البرنامج التالي + المسار الافتراضيّ للمنتقلين). */
+export async function setProgramTransition(
+  args: { actorId: string; programKey: ProgramKey; nextProgramId?: string | null; defaultTrackForIncomingId?: string | null },
+  db: PrismaClient = prisma,
+): Promise<void> {
+  await assertCanPlace(db, args.actorId);
+  await db.program.update({
+    where: { key: args.programKey },
+    data: { nextProgramId: args.nextProgramId ?? null, defaultTrackForIncomingId: args.defaultTrackForIncomingId ?? null },
+  });
+}
+
+/** ق١: البرنامج الافتراضيّ للحلقة (للمنضمّ الجديد). لا يمسّ برامج القيود القائمة. */
+export async function setCircleDefaultProgram(
+  args: { actorId: string; circleId: string; programId: string },
+  db: PrismaClient = prisma,
+): Promise<void> {
+  await assertCanPlace(db, args.actorId);
+  const p = await db.program.findUnique({ where: { id: args.programId }, select: { id: true } });
+  if (!p) throw new ValidationError("برنامج غير موجود.");
+  await db.circle.update({ where: { id: args.circleId }, data: { programId: args.programId } });
+}
+
 /** ق٧: تغيير برنامج الطالب يدويًّا — يُلغي أيّ انتقالٍ معلّق (ضابط ٤) ويسجّل التاريخ. */
 export async function changeStudentProgram(
   args: { actorId: string; studentId: string; programId: string },
