@@ -1,0 +1,12 @@
+# ترحيلات Prisma ومخطّطها: نهايات أسطرٍ LF ثابتة — فتطابق بايتاتُ القرص checksum الإنتاج
+# (أدوات scripts/ops تُسجّل sha256 لبايتات الملف؛ CRLF كان يكسر التطابق).
+prisma/migrations/**/*.sql text eol=lf
+prisma/schema.prisma        text eol=lf
+
+# سائر المصادر: تطبيعٌ إلى LF في المستودع (يمنع اختلاف نهايات الأسطر بين الأجهزة).
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.mjs  text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.md   text eol=lf
