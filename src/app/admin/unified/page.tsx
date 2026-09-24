@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
+import { arNum } from "@/lib/format";
 import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
 
 // شاشة التشغيل الموحّدة (م ج): لوحة الحلقة كلها — لكل طالبٍ حضورُه ووجهةُ يومه بالأزرار، بلا
@@ -18,11 +19,19 @@ interface Target {
   tarseekh: Bound[];
   murajaah: { dayNo: number | null; totalStock: number; todaySlice: Bound[] } | null;
 }
+interface Qaidah {
+  started: boolean; graduated: boolean; deferred: boolean;
+  todayResult: "MASTERED" | "NOT_MASTERED" | "DEFERRED" | null;
+  consecutiveDeferrals: number; locked: boolean;
+  chapterName: string | null; lessonName: string | null;
+  lessonIndexInChapter: number | null; lessonsInChapter: number | null; percent: number;
+}
 interface Student {
   studentId: string; name: string;
   attendanceStatus: string | null;
   todayHifzDone: boolean; tarseekhDone: boolean | null;
   today: Target;
+  qaidah: Qaidah | null;
 }
 interface Circle { id: string; nameAr: string }
 interface GrantItem { id: string; nameAr: string; value: number; grantSource: string }
@@ -166,6 +175,9 @@ function StudentPanel({ s, circleId, date, items, post }: {
   const task = (kind: "tarseekh" | "murajaah", done: boolean) => post(`/api/students/${sid}/session`, kind === "tarseekh" ? { kind, date, done } : { kind, date, count: done ? 1 : 0 }, "سُجِّلت المهمّة.");
   const extra = (kind: string) => post(`/api/students/${sid}/extra`, { kind, date }, "سُجِّلت الزيادة.");
   const grant = (pointItemId: string) => post("/api/economy/grant", { studentId: sid, pointItemId }, "مُنح التقدير.");
+  // القاعدة المدنية (م ج): تقييم درس الطالب الحاليّ — يُعاد استعمال مسار جلسة القاعدة القائم.
+  const qaidahEval = (mastered: boolean) => post(`/api/students/${sid}/qaidah-session`, { mastered }, "سُجِّل التقييم.");
+  const qaidahDefer = () => post(`/api/students/${sid}/qaidah-session`, { defer: true }, "سُجِّل التأجيل.");
 
   const num: React.CSSProperties = { width: 60 };
   const H3: React.CSSProperties = { fontSize: ui.text.base, fontWeight: 700, margin: `0 0 ${sp(2)}` };
@@ -184,9 +196,11 @@ function StudentPanel({ s, circleId, date, items, post }: {
         </div>
       </div>
 
-      {/* ٢) وجهة اليوم */}
-      {s.today.status === "ON_LEAVE" ? <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: 0 }}>في إجازة اختبار المرحلة — لا وجهةَ حفظٍ اليوم.</p>
-        : s.today.status === "ACTIVE" && (
+      {/* ٢) القاعدة: الدرس الحاليّ (م ج) · أو وجهة اليوم (مراقي) · أو رسالةٌ لغيرهما */}
+      {s.qaidah ? <QaidahPanel q={s.qaidah} onEval={qaidahEval} onDefer={qaidahDefer} />
+        : s.today.status === "ON_LEAVE" ? <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: 0 }}>في إجازة اختبار المرحلة — لا وجهةَ حفظٍ اليوم.</p>
+        : s.today.status !== "ACTIVE" ? <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: 0 }}>لا مهامّ يوميّة لهذا الطالب (ليس في مراقي ولا القاعدة المدنية).</p>
+        : (
           <>
             <div>
               <h3 style={H3}>الحفظ الجديد</h3>
@@ -239,5 +253,44 @@ function StudentPanel({ s, circleId, date, items, post }: {
         </div>
       )}
     </Card>
+  );
+}
+
+// كتلة القاعدة المدنية داخل لوحة الطالب (م ج): الباب + الدرس الحاليّ + ترتيبه + النسبة + عدّاد
+// التأجيلات + تقييم اليوم، وأزرار متقن/غير متقن/مؤجَّل (متاحةٌ في كل حالات الحضور — ق٣).
+function QaidahPanel({ q, onEval, onDefer }: { q: Qaidah; onEval: (mastered: boolean) => void; onDefer: () => void }) {
+  const H3: React.CSSProperties = { fontSize: ui.text.base, fontWeight: 700, margin: `0 0 ${sp(2)}` };
+  const row: React.CSSProperties = { display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center" };
+
+  if (q.graduated || q.locked) {
+    return (
+      <div>
+        <h3 style={H3}>القاعدة المدنية</h3>
+        <Badge tone="success">{q.locked ? "تخرّج — التقييم مقفل" : "أتمّ القاعدة المدنية ✓"}</Badge>
+      </div>
+    );
+  }
+
+  const resultLabel = q.todayResult === "MASTERED" ? "متقن"
+    : q.todayResult === "NOT_MASTERED" ? "غير متقن"
+    : q.todayResult === "DEFERRED" ? "مؤجَّل" : null;
+
+  return (
+    <div>
+      <h3 style={H3}>القاعدة المدنية — الدرس الحاليّ</h3>
+      <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `0 0 ${sp(2)}` }}>
+        {q.chapterName ? <>الباب: <strong style={{ color: ui.color.text }}>{q.chapterName}</strong> · </> : null}
+        الدرس: <strong style={{ color: ui.color.text }}>{q.lessonName ?? "—"}</strong>
+        {q.lessonIndexInChapter && q.lessonsInChapter ? ` (${arNum(q.lessonIndexInChapter)}/${arNum(q.lessonsInChapter)})` : ""}
+        {" · "}{arNum(q.percent)}٪
+        {q.consecutiveDeferrals > 0 ? <> · <Badge tone="bronze">تأجيلات متتالية: {arNum(q.consecutiveDeferrals)}</Badge></> : null}
+        {resultLabel ? <> · اليوم: <strong style={{ color: ui.color.text }}>{resultLabel}</strong></> : null}
+      </p>
+      <div style={row}>
+        <Button size="sm" variant="primary" onClick={() => onEval(true)}>متقن</Button>
+        <Button size="sm" variant="danger" onClick={() => onEval(false)}>غير متقن</Button>
+        <Button size="sm" variant="ghost" onClick={onDefer} title="حاضرٌ لم يُقيَّم لضيق الوقت — لا ينقل الموضع">مؤجَّل</Button>
+      </div>
+    </div>
   );
 }

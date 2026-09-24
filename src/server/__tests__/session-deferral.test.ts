@@ -1,6 +1,7 @@
 import {
   AttendanceStatus,
   ProgramKey,
+  QaidahEvalResult,
   Role,
   StageKind,
 } from "@prisma/client";
@@ -42,18 +43,19 @@ async function markAttendance(studentId: string, circleId: string, recordedBy: s
 }
 
 describe("حالة الجلسة «مؤجَّل» — توثيقٌ محايد، لا ينقل الموضع", () => {
-  it("يوثّق التأجيل لطالبٍ حاضر ولا يحرّك الموضع", async () => {
+  it("يوثّق التأجيل (QaidahDailyEval) ولا يحرّك الموضع", async () => {
     const { teacher, circle, student } = await scaffold();
     await markAttendance(student.id, circle.id, teacher.id);
 
     const before = await getQaidahPosition(student.id, prisma);
-    await deferSession({ studentId: student.id, actorId: teacher.id, date: DATE }, prisma);
+    // تأجيل القاعدة يمرّ عبر recordQaidahSession(DEFERRED) ⟵ QaidahDailyEval (قرار أ).
+    await recordQaidahSession({ studentId: student.id, actorId: teacher.id, result: QaidahEvalResult.DEFERRED, date: DATE }, prisma);
     const after = await getQaidahPosition(student.id, prisma);
 
     expect(after.current?.lessonId).toBe(before.current?.lessonId); // الموضع ثابت
     expect(after.completedLessons).toBe(0);
     expect(after.deferredIsLatest).toBe(true); // آخر تقييمٍ مؤجَّل
-    const rows = await prisma.deferredSession.count({ where: { studentId: student.id } });
+    const rows = await prisma.qaidahDailyEval.count({ where: { studentId: student.id, result: QaidahEvalResult.DEFERRED } });
     expect(rows).toBe(1);
   });
 
@@ -98,12 +100,11 @@ describe("حالة الجلسة «مؤجَّل» — توثيقٌ محايد، �
   });
 
   it("التأجيل لا يمنع التقدّم اللاحق؛ و«متقن» يُلغي أسبقية «مؤجَّل» في العرض", async () => {
-    const { teacher, circle, student } = await scaffold();
-    await markAttendance(student.id, circle.id, teacher.id);
-    await deferSession({ studentId: student.id, actorId: teacher.id, date: DATE }, prisma);
+    const { teacher, student } = await scaffold();
+    await recordQaidahSession({ studentId: student.id, actorId: teacher.id, result: QaidahEvalResult.DEFERRED, date: "2026-05-10" }, prisma);
     expect((await getQaidahPosition(student.id, prisma)).deferredIsLatest).toBe(true);
 
-    const after = await recordQaidahSession({ studentId: student.id, actorId: teacher.id, mastered: true }, prisma);
+    const after = await recordQaidahSession({ studentId: student.id, actorId: teacher.id, mastered: true, date: "2026-05-11" }, prisma);
     expect(after.completedLessons).toBe(1); // تقدّم فعلاً
     expect(after.deferredIsLatest).toBe(false); // التقدّم بعد التأجيل ⟵ ليس آخرَ تقييم
   });
