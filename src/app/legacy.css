@@ -345,12 +345,9 @@ img{max-width:100%}
 /* ============================================================
    الجداول
    ============================================================ */
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{padding:12px 13px;text-align:center;border-bottom:1px solid var(--line)}
-th{background:linear-gradient(180deg,var(--olive-2),var(--olive));color:#fff;font-weight:700;font-size:12.5px;position:sticky;top:0}
-th:first-child{border-start-start-radius:0}
-tbody tr{transition:background var(--t-fast)}
-tr:hover td{background:var(--cream)}
+/* قواعد الجداول العامّة أُزيلت: كانت تفرض على كلّ <th> خلفيّةً زيتونيّةً داكنة (مع نصٍّ أبيض)،
+   فتخطف ترويسة مكوّن Table المشترك (الذي يلوّن النصّ فقط) ⟵ نصٌّ باهتٌ على داكن = غير مقروء.
+   الآن مكوّن Table (برموز DESIGN، ترويسةٌ مكتفيةٌ بذاتها) هو المصدر الوحيد لتنسيق الجداول. */
 tr:last-child td{border-bottom:none}
 td.s{text-align:start}
 .tag{font-size:11px;font-weight:800;padding:3px 11px;border-radius:20px;white-space:nowrap;display:inline-block}

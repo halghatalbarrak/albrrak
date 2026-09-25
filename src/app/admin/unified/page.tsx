@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { arNum } from "@/lib/format";
+import { arNum, formatAyah } from "@/lib/format";
 import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
 
 // شاشة التشغيل الموحّدة (م ج): لوحة الحلقة كلها — لكل طالبٍ حضورُه ووجهةُ يومه بالأزرار، بلا
@@ -48,7 +48,7 @@ const ATT_BUTTONS: { status: string; label: string; tone: "primary" | "bronze" |
   { status: "LEFT_NO_PERMISSION", label: "خرج بلا إذن", tone: "danger" },
 ];
 
-const boundStr = (b: Bound) => `${b.fromSurah}:${b.fromAyah} ← ${b.toSurah}:${b.toAyah}`;
+const boundStr = (b: Bound) => formatAyah(b.fromSurah, b.fromAyah, b.toSurah, b.toAyah);
 const todayISO = () => new Date().toISOString().slice(0, 10);
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();

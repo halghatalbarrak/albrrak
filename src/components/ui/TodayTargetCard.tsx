@@ -1,3 +1,5 @@
+import { formatAyah } from "@/lib/format";
+
 import { ui, sp } from "./tokens";
 import { Badge } from "./Badge";
 
@@ -13,7 +15,7 @@ export interface TTData {
   murajaah: { dayNo: number | null; totalStock: number; todaySlice: TTBound[] } | null;
 }
 
-const bound = (b: TTBound) => `${b.fromSurah}:${b.fromAyah} ← ${b.toSurah}:${b.toAyah}`;
+const bound = (b: TTBound) => formatAyah(b.fromSurah, b.fromAyah, b.toSurah, b.toAyah);
 
 const chip: React.CSSProperties = { display: "inline-block", padding: "2px 8px", borderRadius: ui.radius.full, border: `1px solid ${ui.color.goldLine}`, background: ui.color.surface, fontSize: ui.text.xs, margin: "2px" };
 const line: React.CSSProperties = { display: "flex", gap: sp(2), alignItems: "baseline", flexWrap: "wrap", marginBottom: sp(2) };

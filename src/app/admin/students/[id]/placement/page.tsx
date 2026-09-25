@@ -4,9 +4,15 @@ import { use, useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Card, Button, Input, Select, Field, Badge, ui, sp } from "@/components/ui";
+import { AppShell, Card, Button, Input, Select, Field, Badge, Table, ui, sp, type Column } from "@/components/ui";
+import { hijri, arNum, formatAyah } from "@/lib/format";
+import { SURAH_NAMES, surahName } from "@/lib/surah-names";
+import { MARAQI_SURAH_ORDER } from "@/lib/maraqi-order";
+import { JUZ_BOUNDS } from "@/lib/juz-bounds";
+import { gridToPlacement, currentJuzSurahs, type GridInput } from "@/lib/maraqi-grid";
 
 interface Range { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }
+interface HistoryRow { program: string; enteredAt: string; exitedAt: string | null; reason: string; actor: string | null }
 interface View {
   studentName: string;
   programKey: "QAIDAH_MADANIYYAH" | "MARAQI" | "WEEKLY" | null;
@@ -14,7 +20,9 @@ interface View {
   programs: { id: string; key: string; nameAr: string }[];
   qaidah: { currentLessonId: string | null; lessons: { id: string; nameAr: string; chapterName: string | null }[] } | null;
   maraqi: { reachedSurah: number | null; reachedAyah: number | null; outOfOrder: Range[] } | null;
+  history: HistoryRow[];
 }
+const REASON_AR: Record<string, string> = { ASSIGNMENT: "إسناد أوّليّ", READING_TEST: "اختبار قراءة", GRADUATION: "تخرّج", CHANGE: "تغيير إداريّ" };
 
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
@@ -72,7 +80,27 @@ export default function StudentPlacementPage({ params }: { params: Promise<{ id:
       {v.programKey === "MARAQI" && v.maraqi && (
         <MaraqiPlacement m={v.maraqi} onSave={(p) => post({ action: "place-maraqi", ...p }, "سُكِّن على مراقي.")} />
       )}
+
+      {/* ق٦: تاريخ البرامج — قراءةٌ فقط */}
+      <ProgramHistory rows={v.history} />
     </Shell>
+  );
+}
+
+function ProgramHistory({ rows }: { rows: HistoryRow[] }) {
+  if (rows.length === 0) return null;
+  const cols: Column<HistoryRow>[] = [
+    { key: "program", header: "البرنامج", cell: (r) => <strong>{r.program}</strong> },
+    { key: "in", header: "دخل", cell: (r) => hijri(r.enteredAt) },
+    { key: "out", header: "خرج", cell: (r) => (r.exitedAt ? hijri(r.exitedAt) : "— (نشط)") },
+    { key: "reason", header: "السبب", cell: (r) => REASON_AR[r.reason] ?? r.reason },
+    { key: "actor", header: "الفاعل", cell: (r) => r.actor ?? "النظام" },
+  ];
+  return (
+    <div style={{ marginTop: sp(5) }}>
+      <h2 style={{ fontSize: ui.text.lg, fontWeight: 700 }}>تاريخ البرامج</h2>
+      <Table columns={cols} rows={rows} />
+    </div>
   );
 }
 
@@ -117,58 +145,143 @@ function QaidahPlacement({ q, onSave }: { q: NonNullable<View["qaidah"]>; onSave
   );
 }
 
+// تسكين مراقي بالقرار (أ): شبكة الأجزاء الثلاثين للمحفوظ كاملاً + منتقي موضع الوصول
+// بأسماء السور + تأشير سورٍ مفردة بأسمائها (قابلة للبحث) + نطاقاتٌ دقيقة (متقدّم) + معاينةٌ
+// بالأسماء. تُترجَم كلّها عبر gridToPlacement إلى MaraqiPlacement القائم بلا تغييرٍ في الخادم.
 function MaraqiPlacement({ m, onSave }: { m: NonNullable<View["maraqi"]>; onSave: (p: { reachedSurah: number | null; reachedAyah: number | null; outOfOrder: Range[] }) => void }) {
+  const [juz, setJuz] = useState<Set<number>>(new Set());
   const [rs, setRs] = useState(m.reachedSurah?.toString() ?? "");
   const [ra, setRa] = useState(m.reachedAyah?.toString() ?? "");
-  const [ooo, setOoo] = useState<Range[]>(m.outOfOrder);
+  const [singles, setSingles] = useState<Set<number>>(new Set());
+  const [ranges, setRanges] = useState<Range[]>(m.outOfOrder);
+  const [q, setQ] = useState("");
+  const [adv, setAdv] = useState(false);
   const [nr, setNr] = useState({ fromSurah: "", fromAyah: "", toSurah: "", toAyah: "" });
 
+  const toggle = (set: Set<number>, n: number, upd: (s: Set<number>) => void) => {
+    const next = new Set(set);
+    if (next.has(n)) next.delete(n); else next.add(n);
+    upd(next);
+  };
   const addRange = () => {
     const r = { fromSurah: +nr.fromSurah, fromAyah: +nr.fromAyah, toSurah: +nr.toSurah, toAyah: +nr.toAyah };
     if ([r.fromSurah, r.fromAyah, r.toSurah, r.toAyah].every((n) => Number.isFinite(n) && n > 0)) {
-      setOoo([...ooo, r]); setNr({ fromSurah: "", fromAyah: "", toSurah: "", toAyah: "" });
+      setRanges([...ranges, r]); setNr({ fromSurah: "", fromAyah: "", toSurah: "", toAyah: "" });
     }
   };
+
+  const input: GridInput = {
+    fullyMemorizedJuz: [...juz],
+    reachedSurah: rs ? +rs : null,
+    reachedAyah: ra ? +ra : null,
+    singleSurahs: [...singles],
+    preciseRanges: ranges,
+  };
+  const preview = gridToPlacement(input);
+
+  const filtered = SURAH_NAMES.map((name, s) => ({ s, name })).slice(1).filter(({ name }) => !q || name.includes(q.trim()));
   const num: React.CSSProperties = { width: 64 };
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: sp(3) }}>
+    <Card style={{ display: "flex", flexDirection: "column", gap: sp(4) }}>
       <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, margin: 0 }}>تسكين مراقي — تأشير المحفوظ</h2>
 
-      <Field label="موضع الوصول بالترتيب (سورة:آية) — الجبهة المسكَّنة">
-        <div style={{ display: "flex", gap: sp(2), alignItems: "center" }}>
-          <Input style={num} type="number" placeholder="سورة" value={rs} onChange={(e) => setRs(e.target.value)} />:
+      {/* ١) شبكة الأجزاء الثلاثين — محفوظٌ كاملاً */}
+      <div>
+        <div style={{ fontSize: ui.text.base, fontWeight: 600, marginBottom: sp(2) }}>الأجزاء المحفوظة كاملةً</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))", gap: sp(2) }}>
+          {JUZ_BOUNDS.map((b) => {
+            const on = juz.has(b.juz);
+            return (
+              <button key={b.juz} type="button" onClick={() => toggle(juz, b.juz, setJuz)}
+                title={formatAyah(b.startSurah, b.startAyah, b.endSurah, b.endAyah)}
+                style={{
+                  padding: `${sp(2)} ${sp(1)}`, borderRadius: ui.radius.md, cursor: "pointer",
+                  border: `1px solid ${on ? ui.color.primary : ui.color.border}`,
+                  background: on ? ui.color.primary : ui.color.surface, color: on ? "#fff" : ui.color.text,
+                  fontSize: ui.text.xs, fontWeight: 600, textAlign: "center",
+                }}>
+                جزء {arNum(b.juz)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ٢) موضع الوصول في الجزء الجاري — منتقي السور بالأسماء ثمّ رقم الآية */}
+      <Field label="موضع الوصول في الجزء الجاري (اسم السورة ثمّ الآية)">
+        <div style={{ fontSize: ui.text.xs, color: ui.color.muted, marginBottom: sp(2) }}>
+          محفوظٌ من أوّل الجزء بترتيب مراقي (السور تنازليّاً) حتى هذا الموضع.
+        </div>
+        <div style={{ display: "flex", gap: sp(2), alignItems: "center", flexWrap: "wrap" }}>
+          <Select value={rs} onChange={(e) => setRs(e.target.value)} style={{ minWidth: 160 }}>
+            <option value="">— اختر السورة —</option>
+            {MARAQI_SURAH_ORDER.map((s) => <option key={s} value={s}>{surahName(s)}</option>)}
+          </Select>
           <Input style={num} type="number" placeholder="آية" value={ra} onChange={(e) => setRa(e.target.value)} />
+          {rs && <Button variant="ghost" size="sm" onClick={() => { setRs(""); setRa(""); }}>مسح</Button>}
         </div>
       </Field>
 
+      {/* ٣) سورٌ مفردة محفوظةٌ خارج الترتيب — بأسمائها، قائمةٌ قابلةٌ للبحث */}
       <div>
-        <div style={{ fontSize: ui.text.xs, fontWeight: 600, marginBottom: sp(1) }}>محفوظٌ خارج الترتيب (نطاقات)</div>
-        {ooo.map((r, i) => (
-          <div key={i} style={{ display: "flex", gap: sp(2), alignItems: "center", fontSize: ui.text.xs, marginBottom: 4 }}>
-            <span>{r.fromSurah}:{r.fromAyah} ← {r.toSurah}:{r.toAyah}</span>
-            <Button variant="ghost" size="sm" onClick={() => setOoo(ooo.filter((_, j) => j !== i))}>حذف</Button>
-          </div>
-        ))}
-        <div style={{ display: "flex", gap: sp(2), alignItems: "center", flexWrap: "wrap", marginTop: sp(1) }}>
-          <span style={{ fontSize: ui.text.xs }}>من</span>
-          <Input style={num} type="number" value={nr.fromSurah} onChange={(e) => setNr({ ...nr, fromSurah: e.target.value })} />:
-          <Input style={num} type="number" value={nr.fromAyah} onChange={(e) => setNr({ ...nr, fromAyah: e.target.value })} />
-          <span style={{ fontSize: ui.text.xs }}>إلى</span>
-          <Input style={num} type="number" value={nr.toSurah} onChange={(e) => setNr({ ...nr, toSurah: e.target.value })} />:
-          <Input style={num} type="number" value={nr.toAyah} onChange={(e) => setNr({ ...nr, toAyah: e.target.value })} />
-          <Button variant="ghost" size="sm" onClick={addRange}>+ نطاق</Button>
+        <div style={{ fontSize: ui.text.base, fontWeight: 600, marginBottom: sp(2) }}>سورٌ مفردة خارج الترتيب (بأسمائها)</div>
+        <Input placeholder="ابحث باسم السورة…" value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: sp(2) }} />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: sp(2), maxHeight: 168, overflowY: "auto", padding: sp(1) }}>
+          {filtered.map(({ s, name }) => {
+            const on = singles.has(s);
+            return (
+              <button key={s} type="button" onClick={() => toggle(singles, s, setSingles)}
+                style={{
+                  padding: `2px ${sp(2)}`, borderRadius: ui.radius.full, cursor: "pointer",
+                  border: `1px solid ${on ? ui.color.primary : ui.color.goldLine}`,
+                  background: on ? ui.color.primary : ui.color.surface, color: on ? "#fff" : ui.color.text, fontSize: ui.text.xs,
+                }}>
+                {name}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* معاينة فوريّة */}
-      <div style={{ background: ui.color.soft, borderRadius: ui.radius.md, padding: sp(3), fontSize: ui.text.xs }}>
-        <div>الحفظ الجديد يبدأ بعد <strong>{rs || "—"}:{ra || "—"}</strong> بالترتيب، ويتخطّى المحفوظ خارج الترتيب حين يبلغه.</div>
-        <div>المراجعة تشمل <strong>{ooo.length}</strong> نطاقًا خارج الترتيب (راسخةً فورًا) + ما رسخ بالترتيب.</div>
-        <div style={{ color: ui.color.muted }}>الحدود الدقيقة تُحسب عند الحفظ من وحدات المسار.</div>
+      {/* ٤) نطاقاتٌ دقيقة — خيارٌ متقدّم */}
+      <div>
+        <Button variant="ghost" size="sm" onClick={() => setAdv((a) => !a)}>{adv ? "▾" : "▸"} نطاقاتٌ دقيقة (متقدّم)</Button>
+        {adv && (
+          <div style={{ marginTop: sp(2) }}>
+            {ranges.map((r, i) => (
+              <div key={i} style={{ display: "flex", gap: sp(2), alignItems: "center", fontSize: ui.text.xs, marginBottom: 4 }}>
+                <span>{formatAyah(r.fromSurah, r.fromAyah, r.toSurah, r.toAyah)}</span>
+                <Button variant="ghost" size="sm" onClick={() => setRanges(ranges.filter((_, j) => j !== i))}>حذف</Button>
+              </div>
+            ))}
+            <div style={{ display: "flex", gap: sp(2), alignItems: "center", flexWrap: "wrap", marginTop: sp(1) }}>
+              <span style={{ fontSize: ui.text.xs }}>من</span>
+              <Input style={num} type="number" placeholder="سورة" value={nr.fromSurah} onChange={(e) => setNr({ ...nr, fromSurah: e.target.value })} />:
+              <Input style={num} type="number" placeholder="آية" value={nr.fromAyah} onChange={(e) => setNr({ ...nr, fromAyah: e.target.value })} />
+              <span style={{ fontSize: ui.text.xs }}>إلى</span>
+              <Input style={num} type="number" placeholder="سورة" value={nr.toSurah} onChange={(e) => setNr({ ...nr, toSurah: e.target.value })} />:
+              <Input style={num} type="number" placeholder="آية" value={nr.toAyah} onChange={(e) => setNr({ ...nr, toAyah: e.target.value })} />
+              <Button variant="ghost" size="sm" onClick={addRange}>+ نطاق</Button>
+            </div>
+          </div>
+        )}
       </div>
 
-      <Button onClick={() => onSave({ reachedSurah: rs ? +rs : null, reachedAyah: ra ? +ra : null, outOfOrder: ooo })}>حفظ التسكين</Button>
+      {/* معاينةٌ فوريّة بالأسماء */}
+      <div style={{ background: ui.color.soft, borderRadius: ui.radius.md, padding: sp(3), fontSize: ui.text.xs, display: "flex", flexDirection: "column", gap: sp(1) }}>
+        <div>الجبهة المسكَّنة (محفوظٌ بالترتيب حتى): <strong>{preview.reachedSurah ? formatAyah(preview.reachedSurah, preview.reachedAyah ?? 1) : "—"}</strong></div>
+        {preview.reachedSurah != null && currentJuzSurahs(preview.reachedSurah, preview.reachedAyah).length > 0 && (
+          <div>محفوظٌ من الجزء الجاري: <span style={{ color: ui.color.text }}>{currentJuzSurahs(preview.reachedSurah, preview.reachedAyah).map((s) => surahName(s)).join(" · ")}</span></div>
+        )}
+        <div>
+          خارج الترتيب: {preview.outOfOrder.length === 0 ? <span style={{ color: ui.color.muted }}>لا شيء</span>
+            : preview.outOfOrder.map((r, i) => <span key={i} style={{ display: "inline-block", padding: "2px 8px", borderRadius: ui.radius.full, border: `1px solid ${ui.color.goldLine}`, margin: "2px" }}>{formatAyah(r.fromSurah, r.fromAyah, r.toSurah, r.toAyah)}</span>)}
+        </div>
+        <div style={{ color: ui.color.muted }}>الحفظ الجديد يبدأ بعد الجبهة ويتخطّى المحفوظ خارج الترتيب. الحدود الدقيقة تُحسب عند الحفظ من وحدات المسار.</div>
+      </div>
+
+      <Button onClick={() => onSave(preview)}>حفظ التسكين</Button>
     </Card>
   );
 }

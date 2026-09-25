@@ -13,9 +13,11 @@ export function Table<T>({ columns, rows, empty = "لا بيانات." }: { colu
     <div className="dtable-wrap" style={{ border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.lg, background: ui.color.surface, overflow: "hidden" }}>
       <table className="dtable" style={{ width: "100%", borderCollapse: "collapse", fontFamily: ui.font, fontSize: ui.text.base, color: ui.color.text }}>
         <thead>
-          <tr style={{ background: ui.color.soft }}>
+          {/* الترويسة مكتفيةٌ بذاتها (خلفيّة + لون + محاذاة inline) — تتجاوز قاعدة th العامّة
+              المتبقّية (legacy). لون النصّ الأساسيّ على soft ⟵ تباينٌ ≥ ٧:١ في الوضعين. */}
+          <tr>
             {columns.map((c) => (
-              <th key={c.key} style={{ textAlign: "start", fontWeight: 600, color: ui.color.primary, padding: `${sp(2.5)} ${sp(3)}` }}>{c.header}</th>
+              <th key={c.key} style={{ textAlign: "start", fontWeight: 700, color: ui.color.text, background: ui.color.soft, padding: `${sp(2.5)} ${sp(3)}` }}>{c.header}</th>
             ))}
           </tr>
         </thead>
@@ -25,7 +27,7 @@ export function Table<T>({ columns, rows, empty = "لا بيانات." }: { colu
           ) : rows.map((row, i) => (
             <tr key={i} style={{ borderTop: `1px solid ${ui.color.border}` }}>
               {columns.map((c) => (
-                <td key={c.key} data-label={c.header} style={{ padding: `${sp(2.5)} ${sp(3)}` }}>{c.cell(row)}</td>
+                <td key={c.key} data-label={c.header} style={{ padding: `${sp(2.5)} ${sp(3)}`, textAlign: "start", background: ui.color.surface }}>{c.cell(row)}</td>
               ))}
             </tr>
           ))}

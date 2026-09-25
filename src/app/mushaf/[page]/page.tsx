@@ -7,6 +7,7 @@ import Link from "next/link";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
+import { formatAyah } from "@/lib/format";
 import { AppShell, Card, Button, Skeleton, ui, sp } from "@/components/ui";
 
 interface FaceView { page: number; fromSurah: number; fromAyah: number; toSurah: number; toAyah: number; imageUrl: string }
@@ -39,7 +40,7 @@ export default function MushafPage() {
       {face && (
         <>
           <Card style={{ marginBottom: sp(4), display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(3), flexWrap: "wrap" }}>
-            <span>من {face.fromSurah}:{face.fromAyah} إلى {face.toSurah}:{face.toAyah}</span>
+            <span>{formatAyah(face.fromSurah, face.fromAyah, face.toSurah, face.toAyah)}</span>
             <div style={{ display: "flex", gap: sp(2) }}>
               <Link href={`/mushaf/${Math.max(1, page - 1)}`}><Button variant="ghost" size="sm">الوجه السابق</Button></Link>
               <Link href={`/mushaf/${Math.min(604, page + 1)}`}><Button variant="ghost" size="sm">الوجه التالي</Button></Link>
