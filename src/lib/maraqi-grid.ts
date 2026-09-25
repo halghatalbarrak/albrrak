@@ -17,7 +17,9 @@ export interface OoORange { fromSurah: number; fromAyah: number; toSurah: number
 export interface GridInput {
   /** أرقام الأجزاء المحفوظة كاملةً (١..٣٠). */
   fullyMemorizedJuz: number[];
-  /** موضع الوصول بالترتيب (منتقي السور + الآية) — اختياريّ، يرفع الجبهة إن تجاوز الشبكة. */
+  // موضع الوصول في الجزء الجاري: محفوظٌ من أوّل الجزء بترتيب مراقي (السور تنازليّاً) حتى هذا
+  // الموضع؛ يرفع الجبهة المتّصلة إليه. مثال أحمد: الوصول = الحشر ٥٩:٢٤ ⟵ محفوظٌ من التحريم
+  // (٦٦، أوّل الجزء ٢٨ بترتيب مراقي) نزولاً حتى الحشر.
   reachedSurah?: number | null;
   reachedAyah?: number | null;
   /** سورٌ مفردة محفوظةٌ خارج الترتيب (بأسمائها). */
@@ -126,4 +128,20 @@ export function gridToPlacement(input: GridInput): Placement {
 
   const f = hasFrontier ? decode(frontierKey) : null;
   return { reachedSurah: f?.surah ?? null, reachedAyah: f?.ayah ?? null, outOfOrder: runs };
+}
+
+/**
+ * سور الجزء الجاري (الذي يقع فيه موضع الوصول) المحفوظةُ بترتيب مراقي — من أوّل الجزء (أكبر
+ * رقم سورة) نزولاً حتى سورة الوصول. للمعاينة فقط (سرد الأسماء). فارغةٌ إن لا موضع.
+ */
+export function currentJuzSurahs(reachedSurah: number | null, reachedAyah: number | null): number[] {
+  if (reachedSurah == null) return [];
+  const a = reachedAyah ?? last(reachedSurah);
+  const j = JUZ_BOUNDS.find((b) =>
+    (reachedSurah > b.startSurah || (reachedSurah === b.startSurah && a >= b.startAyah)) &&
+    (reachedSurah < b.endSurah || (reachedSurah === b.endSurah && a <= b.endAyah)));
+  if (!j) return [];
+  const out: number[] = [];
+  for (let s = j.endSurah; s >= reachedSurah && s >= j.startSurah; s--) out.push(s);
+  return out;
 }

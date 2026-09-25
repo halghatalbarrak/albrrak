@@ -1,38 +1,37 @@
 import { describe, expect, it } from "vitest";
 
-import { gridToPlacement } from "../maraqi-grid";
+import { gridToPlacement, currentJuzSurahs } from "../maraqi-grid";
 
-// البند ٧: ترجمة الشبكة البصريّة ⟵ MaraqiPlacement. المحور: مثال أحمد يعطي بيانات الإدخال
-// اليدويّ نفسها، وأنّ الشبكة والإدخال اليدويّ (منتقي الوصول + السور) مكافئان تمامًا.
+// البند ٧: ترجمة الشبكة البصريّة ⟵ MaraqiPlacement. مثال أحمد بالتفسير الصحيح: وصل في الجزء
+// ٢٨ إلى الحشر (٥٩) — أي محفوظٌ من التحريم (٦٦) نزولاً حتى الحشر — والبقرة خارج الترتيب.
+// القيمة المتوقَّعة مكتوبةٌ صراحةً (لا تكافؤ الشبكة والإدخال اليدويّ وحده)، وتطابق ما يرمّزه
+// اختبار المهمّة ٦ (program-placement-m2): reachedSurah=59، reachedAyah=24، outOfOrder=[البقرة].
 
 describe("gridToPlacement", () => {
-  it("مثال أحمد: الجزءان ٣٠ و٢٩ + الحشر + البقرة", () => {
-    const fromGrid = gridToPlacement({
+  it("مثال أحمد: الجزءان ٣٠ و٢٩ كاملان + الوصول إلى الحشر في الجزء ٢٨ + البقرة خارج الترتيب", () => {
+    const ahmad = gridToPlacement({
       fullyMemorizedJuz: [30, 29],
-      singleSurahs: [59, 2], // الحشر، البقرة
+      reachedSurah: 59, // الحشر — موضع الوصول في الجزء الجاري (٢٨)
+      reachedAyah: 24, // آخر الحشر
+      singleSurahs: [2], // البقرة، خارج الترتيب
       preciseRanges: [],
     });
-    // الجبهة تبلغ آخر الجزء ٢٩ (الملك ٦٧: آخر آيةٍ ٣٠)، والحشر والبقرة خارج الترتيب.
-    expect(fromGrid).toEqual({
-      reachedSurah: 67,
-      reachedAyah: 30,
-      outOfOrder: [
-        { fromSurah: 59, fromAyah: 1, toSurah: 59, toAyah: 24 },
-        { fromSurah: 2, fromAyah: 1, toSurah: 2, toAyah: 286 },
-      ],
+    expect(ahmad).toEqual({
+      reachedSurah: 59,
+      reachedAyah: 24,
+      outOfOrder: [{ fromSurah: 2, fromAyah: 1, toSurah: 2, toAyah: 286 }],
     });
   });
 
-  it("الشبكة والإدخال اليدويّ (منتقي الوصول ٦٧:٣٠) مكافئان تمامًا", () => {
-    const fromGrid = gridToPlacement({ fullyMemorizedJuz: [30, 29], singleSurahs: [59, 2], preciseRanges: [] });
-    const manual = gridToPlacement({
-      fullyMemorizedJuz: [],
-      reachedSurah: 67,
-      reachedAyah: 30,
-      singleSurahs: [59, 2],
-      preciseRanges: [],
-    });
-    expect(manual).toEqual(fromGrid);
+  it("سور الجزء الجاري المحفوظة عند الوصول إلى الحشر: التحريم نزولاً حتى الحشر", () => {
+    // الجزء ٢٨ = المجادلة(٥٨)‥التحريم(٦٦)؛ بترتيب مراقي من ٦٦ نزولاً حتى ٥٩.
+    expect(currentJuzSurahs(59, 24)).toEqual([66, 65, 64, 63, 62, 61, 60, 59]);
+  });
+
+  it("الشبكة والإدخال اليدويّ مكافئان (إضافةً): الأجزاء الكاملة لا تغيّر الجبهة ولا الخارج", () => {
+    const withGrid = gridToPlacement({ fullyMemorizedJuz: [30, 29], reachedSurah: 59, reachedAyah: 24, singleSurahs: [2], preciseRanges: [] });
+    const manualOnly = gridToPlacement({ fullyMemorizedJuz: [], reachedSurah: 59, reachedAyah: 24, singleSurahs: [2], preciseRanges: [] });
+    expect(manualOnly).toEqual(withGrid);
   });
 
   it("جزءٌ واحدٌ (٣٠) ⟵ الجبهة عند السورة ٧٨ آخر آية، بلا خارج ترتيب", () => {

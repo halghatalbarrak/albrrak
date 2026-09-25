@@ -9,7 +9,7 @@ import { hijri, arNum, formatAyah } from "@/lib/format";
 import { SURAH_NAMES, surahName } from "@/lib/surah-names";
 import { MARAQI_SURAH_ORDER } from "@/lib/maraqi-order";
 import { JUZ_BOUNDS } from "@/lib/juz-bounds";
-import { gridToPlacement, type GridInput } from "@/lib/maraqi-grid";
+import { gridToPlacement, currentJuzSurahs, type GridInput } from "@/lib/maraqi-grid";
 
 interface Range { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }
 interface HistoryRow { program: string; enteredAt: string; exitedAt: string | null; reason: string; actor: string | null }
@@ -208,8 +208,11 @@ function MaraqiPlacement({ m, onSave }: { m: NonNullable<View["maraqi"]>; onSave
         </div>
       </div>
 
-      {/* ٢) موضع الوصول بالترتيب — منتقي السور بالأسماء ثمّ رقم الآية */}
-      <Field label="موضع الوصول بالترتيب (اسم السورة ثمّ الآية) — الجبهة المسكَّنة">
+      {/* ٢) موضع الوصول في الجزء الجاري — منتقي السور بالأسماء ثمّ رقم الآية */}
+      <Field label="موضع الوصول في الجزء الجاري (اسم السورة ثمّ الآية)">
+        <div style={{ fontSize: ui.text.xs, color: ui.color.muted, marginBottom: sp(2) }}>
+          محفوظٌ من أوّل الجزء بترتيب مراقي (السور تنازليّاً) حتى هذا الموضع.
+        </div>
         <div style={{ display: "flex", gap: sp(2), alignItems: "center", flexWrap: "wrap" }}>
           <Select value={rs} onChange={(e) => setRs(e.target.value)} style={{ minWidth: 160 }}>
             <option value="">— اختر السورة —</option>
@@ -268,6 +271,9 @@ function MaraqiPlacement({ m, onSave }: { m: NonNullable<View["maraqi"]>; onSave
       {/* معاينةٌ فوريّة بالأسماء */}
       <div style={{ background: ui.color.soft, borderRadius: ui.radius.md, padding: sp(3), fontSize: ui.text.xs, display: "flex", flexDirection: "column", gap: sp(1) }}>
         <div>الجبهة المسكَّنة (محفوظٌ بالترتيب حتى): <strong>{preview.reachedSurah ? formatAyah(preview.reachedSurah, preview.reachedAyah ?? 1) : "—"}</strong></div>
+        {preview.reachedSurah != null && currentJuzSurahs(preview.reachedSurah, preview.reachedAyah).length > 0 && (
+          <div>محفوظٌ من الجزء الجاري: <span style={{ color: ui.color.text }}>{currentJuzSurahs(preview.reachedSurah, preview.reachedAyah).map((s) => surahName(s)).join(" · ")}</span></div>
+        )}
         <div>
           خارج الترتيب: {preview.outOfOrder.length === 0 ? <span style={{ color: ui.color.muted }}>لا شيء</span>
             : preview.outOfOrder.map((r, i) => <span key={i} style={{ display: "inline-block", padding: "2px 8px", borderRadius: ui.radius.full, border: `1px solid ${ui.color.goldLine}`, margin: "2px" }}>{formatAyah(r.fromSurah, r.fromAyah, r.toSurah, r.toAyah)}</span>)}
