@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { arNum, hijri } from "@/lib/format";
+import { arNum, hijri, formatAyah } from "@/lib/format";
 import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, TodayTargetView, type TTData, type TTBound, ui, sp } from "@/components/ui";
 
 // شاشة الجلسة اليومية (م٦ — التشغيل الذكيّ): كل طلاب الحلقة معروضون فوراً بلا اختيار
@@ -37,8 +37,7 @@ async function token(): Promise<string | null> {
   return session?.access_token ?? null;
 }
 
-const ayah = (s: number, a: number) => `${s}:${a}`;
-const range = (r: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }) => `${ayah(r.fromSurah, r.fromAyah)} ← ${ayah(r.toSurah, r.toAyah)}`;
+const range = (r: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }) => formatAyah(r.fromSurah, r.fromAyah, r.toSurah, r.toAyah);
 
 // المقترح لملء حقل الحفظ تلقائيًّا: الوحدة التالية أو إعادة أمس (مرن — المعلّم يعدّل).
 function suggestedBound(t: TTData): TTBound | null {

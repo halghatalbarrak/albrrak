@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { arNum, formatAyah, count, linesPerDay } from "@/lib/format";
 import { Button, Badge, Table, ui, sp, type Column } from "@/components/ui";
 
 // لوحة «المسارات المُجهَّزة» (البند ٢) — مكوّنٌ قابلٌ للإدماج بلا AppShell، لتُعرَض داخل
@@ -53,8 +54,8 @@ export function PreparedTracksPanel() {
 
   const trackCols: Column<Track>[] = [
     { key: "nameAr", header: "المسار", cell: (t) => <strong>{t.nameAr}</strong> },
-    { key: "linesPerDay", header: "المقدار (سطر/يوم)", cell: (t) => String(t.linesPerDay) },
-    { key: "unitCount", header: "عدد الوحدات", cell: (t) => String(t.unitCount) },
+    { key: "linesPerDay", header: "المقدار (سطر/يوم)", cell: (t) => arNum(t.linesPerDay) },
+    { key: "unitCount", header: "عدد الوحدات", cell: (t) => arNum(t.unitCount) },
     { key: "isActive", header: "الحالة", cell: (t) => <Badge tone={t.isActive ? "success" : "neutral"}>{t.isActive ? "مفعّل" : "معطّل"}</Badge> },
     {
       key: "id", header: "", cell: (t) => (
@@ -67,9 +68,9 @@ export function PreparedTracksPanel() {
   ];
 
   const unitCols: Column<Unit>[] = [
-    { key: "unitNo", header: "الوحدة", cell: (u) => String(u.unitNo) },
-    { key: "startSurah", header: "من", cell: (u) => `${u.startSurah}:${u.startAyah}` },
-    { key: "endSurah", header: "إلى", cell: (u) => `${u.endSurah}:${u.endAyah}` },
+    { key: "unitNo", header: "الوحدة", cell: (u) => arNum(u.unitNo) },
+    { key: "startSurah", header: "من", cell: (u) => formatAyah(u.startSurah, u.startAyah) },
+    { key: "endSurah", header: "إلى", cell: (u) => formatAyah(u.endSurah, u.endAyah) },
   ];
 
   return (
@@ -90,7 +91,7 @@ export function PreparedTracksPanel() {
           <div style={{ display: "flex", alignItems: "center", gap: sp(3), marginBottom: sp(3), flexWrap: "wrap" }}>
             <Button size="sm" variant="ghost" type="button" onClick={() => { setOpen(null); setUnits(null); }}>◀ المسارات</Button>
             <strong>{open.nameAr}</strong>
-            <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}>{open.linesPerDay} سطر/يوم · {open.unitCount} وحدة</span>
+            <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}>{linesPerDay(open.linesPerDay)} · {count(open.unitCount, "وحدة", "وحدتان", "وحدات", "وحدة")}</span>
           </div>
           {units ? <Table columns={unitCols} rows={units} /> : <p style={{ color: ui.color.muted }}>…جارٍ تحميل الوحدات</p>}
         </>
