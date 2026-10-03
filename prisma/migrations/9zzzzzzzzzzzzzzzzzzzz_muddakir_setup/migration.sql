@@ -7,7 +7,7 @@
 CREATE TYPE "MuddakirMode" AS ENUM ('ACTIVE', 'REVIEW_ONLY');
 CREATE TYPE "MuddakirDeliveryMode" AS ENUM ('IN_PERSON', 'REMOTE');
 CREATE TYPE "MuddakirFaceState" AS ENUM ('NEW', 'IN_RIBAT', 'HEARD', 'IN_REVIEW');
-CREATE TYPE "MuddakirDayStatus" AS ENUM ('COMPLETE', 'PENDING_MAKEUP', 'MADE_UP', 'SHORTFALL', 'EXCUSED');
+CREATE TYPE "MuddakirDayStatus" AS ENUM ('OPEN', 'COMPLETE', 'PENDING_MAKEUP', 'MADE_UP', 'SHORTFALL', 'EXCUSED');
 CREATE TYPE "MuddakirExcuseReason" AS ENUM ('ILLNESS', 'TRAVEL', 'EXAMS');
 CREATE TYPE "MuddakirErrorSource" AS ENUM ('RIBAT', 'REVIEW', 'SUPERVISOR');
 
@@ -46,11 +46,9 @@ CREATE TABLE "MuddakirDay" (
     "id" TEXT NOT NULL,
     "studentId" TEXT NOT NULL,
     "dayDate" DATE NOT NULL,
-    "status" "MuddakirDayStatus" NOT NULL DEFAULT 'PENDING_MAKEUP',
-    "newFromSurah" INTEGER,
-    "newFromAyah" INTEGER,
-    "newToSurah" INTEGER,
-    "newToAyah" INTEGER,
+    "status" "MuddakirDayStatus" NOT NULL DEFAULT 'OPEN',
+    "newFromPage" INTEGER,
+    "newToPage" INTEGER,
     "ribatDone" BOOLEAN,
     "reviewDone" BOOLEAN,
     "excuseReason" "MuddakirExcuseReason",

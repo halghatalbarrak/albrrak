@@ -1086,6 +1086,7 @@ enum MuddakirFaceState {
 }
 
 enum MuddakirDayStatus {
+  OPEN // اليوم جارٍ — الحالة الابتدائيّة قبل الإتمام/القضاء
   COMPLETE
   PENDING_MAKEUP
   MADE_UP
@@ -1140,11 +1141,9 @@ model MuddakirDay {
   id             String                @id @default(cuid())
   studentId      String
   dayDate        DateTime              @db.Date // بتوقيت مكّة (يُحسب في الخادم)
-  status         MuddakirDayStatus     @default(PENDING_MAKEUP)
-  newFromSurah   Int?
-  newFromAyah    Int?
-  newToSurah     Int?
-  newToAyah      Int?
+  status         MuddakirDayStatus     @default(OPEN)
+  newFromPage    Int? // الوحدة في المدّكر صفحة (وجه): نطاق الجديد بالصفحات
+  newToPage      Int?
   ribatDone      Boolean?
   reviewDone     Boolean?
   excuseReason   MuddakirExcuseReason?
