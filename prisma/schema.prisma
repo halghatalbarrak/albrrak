@@ -89,6 +89,7 @@ enum ProgramKey {
   QAIDAH_MADANIYYAH
   MARAQI
   WEEKLY
+  MUDDAKIR
 }
 
 model Program {
@@ -916,6 +917,11 @@ enum AutoEventType {
   // ── دروس القاعدة المدنية (م ج — الشاشة الموحّدة): متقن/غير متقن ──
   QAIDAH_LESSON_MASTERED
   QAIDAH_LESSON_NOT_MASTERED
+  // ── المُدَّكِر: تُطلَق عند تأكيد المشرف الانتظام الأسبوعيّ (نقاطٌ معلّقة — §٧) ──
+  MUDDAKIR_DAY_COMPLETE
+  MUDDAKIR_FACE_HEARD
+  MUDDAKIR_STAGE_COMPLETE
+  MUDDAKIR_SHORTFALL
 }
 
 // قاعدةٌ تربط بنداً (PointItem مصدره AUTO) بنوع حدث. الإدارة تنشئها من شاشة النقاط.
@@ -1055,4 +1061,167 @@ model Event {
   @@index([subjectType, subjectId])
   @@index([type, createdAt])
   @@index([impersonatorId])
+}
+
+// ═══════════════ المُدَّكِر — نموذج البيانات (المرحلة ١) ═══════════════
+// MUDDAKIR_RULES.md هو الحاكم. جداولٌ ملحقةٌ بلا FK (نمط الترحيلات المتأخّرة الآمن): المعرّفات
+// (studentId/supervisorId/…) نصّيّةٌ مرجعيّة، ولا تمسّ جداول الطلاب القائمة. يُشتقّ MuddakirDay
+// من MuddakirEvent (مزامنة PWA idempotent). قيم الإعدادات ⚙ في جدول Setting (programId=prog_muddakir).
+
+enum MuddakirMode {
+  ACTIVE // يحفظ ويربط ويراجع ويعالج
+  REVIEW_ONLY // واقفٌ عند مرحلة: ربط/مراجعة/علاج بلا جديد (§١)
+}
+
+enum MuddakirDeliveryMode {
+  IN_PERSON // اللقاء حضوريّ
+  REMOTE // اللقاء مرئيّ عن بُعد (§٦)
+}
+
+enum MuddakirFaceState {
+  NEW
+  IN_RIBAT
+  HEARD
+  IN_REVIEW
+}
+
+enum MuddakirDayStatus {
+  COMPLETE
+  PENDING_MAKEUP
+  MADE_UP
+  SHORTFALL
+  EXCUSED
+}
+
+enum MuddakirExcuseReason {
+  ILLNESS
+  TRAVEL
+  EXAMS
+}
+
+enum MuddakirErrorSource {
+  RIBAT
+  REVIEW
+  SUPERVISOR
+}
+
+// وضع الحافظ ومساره ودورة مراجعته (§١، §٤). صفٌّ لكلّ حافظ.
+model MuddakirProfile {
+  id              String               @id @default(cuid())
+  studentId       String               @unique
+  track           Int // ١ | ٢ | ٣ أوجه/يوم
+  pendingTrack    Int? // تغيير مسارٍ يُطبَّق من اليوم التالي
+  effectiveFrom   DateTime?            @db.Date
+  reviewCycleDays Int                  @default(7) // يعدّلها المشرف لكلّ حافظ
+  currentStageId  String?
+  mode            MuddakirMode         @default(ACTIVE)
+  deliveryMode    MuddakirDeliveryMode @default(IN_PERSON)
+}
+
+// حالة كلّ وجهٍ (صفحة) لكلّ حافظ (§٤٫٢). جوهر التقدّم.
+model MuddakirFace {
+  id               String            @id @default(cuid())
+  studentId        String
+  page             Int // ١..٦٠٤ (= وجه)
+  state            MuddakirFaceState @default(NEW)
+  weak             Boolean           @default(false)
+  repErrors        Int               @default(0) // تراكميّ طوال العمر — مؤشّر قوّةٍ للمشرف
+  firstMemorizedOn DateTime?         @db.Date
+  heardAt          DateTime?
+  heardById        String?
+  reviewEnteredOn  DateTime?         @db.Date
+
+  @@unique([studentId, page])
+  @@index([studentId, state])
+}
+
+// يوم الحافظ — مُشتقٌّ من MuddakirEvent (إسقاطٌ ماديّ، ليس مصدراً مستقلّاً). §٣، §٥.
+model MuddakirDay {
+  id             String                @id @default(cuid())
+  studentId      String
+  dayDate        DateTime              @db.Date // بتوقيت مكّة (يُحسب في الخادم)
+  status         MuddakirDayStatus     @default(PENDING_MAKEUP)
+  newFromSurah   Int?
+  newFromAyah    Int?
+  newToSurah     Int?
+  newToAyah      Int?
+  ribatDone      Boolean?
+  reviewDone     Boolean?
+  excuseReason   MuddakirExcuseReason?
+  completedAt    DateTime?
+  makeupForDayId String? // يربط يوم القضاء بيومه (§٥)
+
+  @@unique([studentId, dayDate])
+  @@index([studentId, status])
+}
+
+// عدّاد كلّ وجهٍ في يومٍ (يلزمه مسارا ٢/٣ أوجه) (§٤٫١).
+model MuddakirDayFace {
+  id            String @id @default(cuid())
+  dayId         String
+  page          Int
+  reps          Int    @default(0) // تكرار الجديد (افتراض ٣٠)
+  repErrors     Int    @default(0) // ضغطات «أخطأت» في هذا اليوم
+  yesterdayReps Int    @default(0) // تكرار الأمس (افتراض ١٠)
+
+  @@unique([dayId, page])
+  @@index([dayId])
+}
+
+// موضع خطأٍ مفتوحٍ للعلاج (§٤٫٤): صفحة + سطر (من MushafLine) + مصدر.
+model MuddakirError {
+  id                 String              @id @default(cuid())
+  studentId          String
+  page               Int
+  lineNo             Int // مرجع MushafLine (page, lineNo)
+  source             MuddakirErrorSource
+  openedOn           DateTime            @db.Date
+  cleanSessions      Int                 @default(0) // جلساتٌ سليمةٌ متتالية
+  lastCleanSessionOn DateTime?           @db.Date // لحساب التتابع
+  resolvedAt         DateTime?
+  recordedById       String?
+
+  @@index([studentId, resolvedAt])
+  @@index([studentId, page, lineNo])
+}
+
+// أسبوع الحافظ (§٦): تأكيد الانتظام يُطلق النقاط المعلّقة (§٧).
+model MuddakirWeek {
+  id                    String    @id @default(cuid())
+  studentId             String
+  weekStart             DateTime  @db.Date
+  heardCount            Int       @default(0)
+  regularityConfirmedAt DateTime?
+  confirmedById         String?
+
+  @@unique([studentId, weekStart])
+}
+
+// إسناد الحافظ↔المشرف (§٢): سقف ٤ حفّاظ نشطين للمشرف (يُفرَض في الخادم والواجهة).
+// المشرف = حافظٌ متقدّم بدور ARIF داخليّاً، يُعرض «المشرف». قيد «نشطٌ واحدٌ لكلّ حافظ» =
+// فهرسٌ فريدٌ جزئيّ WHERE "endedAt" IS NULL يُنشأ في الترحيل بـSQL خام (نمط AutoGrant).
+model MuddakirSupervision {
+  id           String    @id @default(cuid())
+  studentId    String
+  supervisorId String
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+
+  @@index([studentId, endedAt])
+  @@index([supervisorId, endedAt])
+}
+
+// سجلّ أحداث المزامنة (PWA) الملحق — مصدر الحقيقة؛ يُشتقّ منه MuddakirDay/DayFace.
+// clientEventId يولّده الجهاز فيكون الإرسال idempotent (بلا ازدواجٍ ولا ضياع). §٨.
+model MuddakirEvent {
+  id            String   @id @default(cuid())
+  clientEventId String   @unique
+  studentId     String
+  dayDate       DateTime @db.Date
+  type          String
+  payload       Json?
+  occurredAt    DateTime // وقت الجهاز
+  receivedAt    DateTime @default(now())
+
+  @@index([studentId, dayDate])
 }
