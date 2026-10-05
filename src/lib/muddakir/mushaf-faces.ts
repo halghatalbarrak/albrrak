@@ -1,8 +1,9 @@
 // اشتقاق الأوجه وحدود المراحل من بيانات المصحف (§١، §٤٫١). الحفظ تصاعديّ بترتيب المصحف من
 // الفاتحة (صفحة ١) إلى الناس (صفحة ٦٠٤). لا أرقام صفحاتٍ ولا حدود أجزاءٍ مكتوبةٌ يدويّاً:
-// الأوجه من MushafFace، وحدود المراحل من JUZ_BOUNDS (المصدر الموقَّع) مُسقَطةً على الأوجه.
+// الأوجه من MushafFace، وحدود المراحل من حدود الأجزاء المشتقّة من HizbBoundary (juzBoundsFromHizb)
+// مُسقَطةً على الأوجه — تُمرَّر كمُدخل، ولا ثابتَ مكتوبٌ هنا.
 
-import { JUZ_BOUNDS, type JuzBound } from "../juz-bounds";
+import type { JuzBound } from "./juz-from-hizb";
 
 /** وجهٌ من المصحف (MushafFace): الصفحة ومدى آياتها. */
 export interface MushafFaceData {
@@ -55,29 +56,50 @@ export function pageContaining(faces: readonly MushafFaceData[], surah: number, 
   return ordered[ordered.length - 1].page;
 }
 
+/** رقم الجزء الذي يقع فيه موضع (سورة، آية) من حدود الأجزاء. */
+function juzOfAyah(juzBounds: readonly JuzBound[], surah: number, ayah: number): number {
+  const hit = juzBounds.find(
+    (j) => cmp(surah, ayah, j.startSurah, j.startAyah) >= 0 && cmp(surah, ayah, j.endSurah, j.endAyah) <= 0,
+  );
+  if (!hit) throw new Error(`الموضع ${surah}:${ayah} خارج حدود الأجزاء`);
+  return hit.juz;
+}
+
 /**
- * حدود المراحل مشتقّةً من الأجزاء (§١): كل مرحلة `stageJuzCount` أجزاء (افتراضيّ ٥ ⟵ ٦ مراحل)،
- * على حدود الأجزاء كما هي. بداية/نهاية كل مرحلةٍ تُسقَط على صفحات الأوجه من بيانات المصحف.
- * `juzBounds` افتراضُه المصدر الموقَّع JUZ_BOUNDS، ويُمرَّر صراحةً في الاختبار.
+ * حدود المراحل **بالصفحات** (§١): كل مرحلة `stageJuzCount` أجزاء (افتراضيّ ٥ ⟵ ٦ مراحل). وبما أنّ
+ * المدّكر يحفظ بالأوجه (صفحاتٍ كاملة)، تُنسَب كلُّ صفحةٍ للمرحلة التي يقع فيها جزءُ **أوّل آيةٍ فيها**؛
+ * فالصفحة المقسومة بين جزأين تتبع المرحلة السابقة (قرار §١). حدود الأجزاء من HizbBoundary، والأوجه
+ * من MushafFace — كلاهما مُدخل، لا ثابتَ مكتوب.
  */
 export function deriveStages(
   faces: readonly MushafFaceData[],
   stageJuzCount: number,
-  juzBounds: readonly JuzBound[] = JUZ_BOUNDS,
+  juzBounds: readonly JuzBound[],
 ): StageBound[] {
   if (stageJuzCount < 1) throw new Error("stageJuzCount يجب أن يكون ١ فأكثر");
-  const sorted = [...juzBounds].sort((a, b) => a.juz - b.juz);
+  const totalJuz = juzBounds.length;
+  const stageCount = Math.ceil(totalJuz / stageJuzCount);
+  const stageOfJuz = (juz: number): number => Math.floor((juz - 1) / stageJuzCount) + 1;
+
+  // تُنسَب كل صفحةٍ لمرحلةٍ بجزء أوّل آيتها، فتتجمّع حدود الصفحات لكل مرحلة.
+  const ranges = new Map<number, { startPage: number; endPage: number }>();
+  for (const f of [...faces].sort((a, b) => a.page - b.page)) {
+    const stage = stageOfJuz(juzOfAyah(juzBounds, f.fromSurah, f.fromAyah));
+    const cur = ranges.get(stage);
+    if (!cur) ranges.set(stage, { startPage: f.page, endPage: f.page });
+    else { cur.startPage = Math.min(cur.startPage, f.page); cur.endPage = Math.max(cur.endPage, f.page); }
+  }
+
   const stages: StageBound[] = [];
-  for (let i = 0; i < sorted.length; i += stageJuzCount) {
-    const group = sorted.slice(i, i + stageJuzCount);
-    const first = group[0];
-    const last = group[group.length - 1];
+  for (let s = 1; s <= stageCount; s++) {
+    const r = ranges.get(s);
+    if (!r) throw new Error(`المرحلة ${s} بلا صفحات — بيانات المصحف لا تغطّي أجزاءها`);
     stages.push({
-      stage: stages.length + 1,
-      startJuz: first.juz,
-      endJuz: last.juz,
-      startPage: pageContaining(faces, first.startSurah, first.startAyah),
-      endPage: pageContaining(faces, last.endSurah, last.endAyah),
+      stage: s,
+      startJuz: (s - 1) * stageJuzCount + 1,
+      endJuz: Math.min(s * stageJuzCount, totalJuz),
+      startPage: r.startPage,
+      endPage: r.endPage,
     });
   }
   return stages;

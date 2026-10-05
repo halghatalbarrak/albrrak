@@ -1,15 +1,22 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { JUZ_BOUNDS } from "../../juz-bounds";
+import { juzBoundsFromHizb, type HizbRow } from "../juz-from-hizb";
 import { deriveStages, newFacesForDay, pageContaining, stageForPage, type MushafFaceData } from "../mushaf-faces";
+
+// حدود الأجزاء مشتقّةٌ من HizbBoundary الموقَّع (لا ثابتَ مكتوب).
+const HIZB: HizbRow[] = JSON.parse(readFileSync(join(process.cwd(), "hizb_boundaries.json"), "utf8"));
+const JUZ = juzBoundsFromHizb(HIZB);
 
 // أوجهٌ وهميّةٌ بصفحات ١..n (المدى غير مهمٍّ لاشتقاق الجديد/المسار).
 const makeFaces = (n: number): MushafFaceData[] =>
   Array.from({ length: n }, (_, i) => ({ page: i + 1, fromSurah: 1, fromAyah: 1, toSurah: 114, toAyah: 6 }));
 
-// أوجهٌ مشتقّةٌ من الأجزاء: وجهٌ (صفحة) لكل جزءٍ بمدى آياته من JUZ_BOUNDS. يُثبّت اختبار
-// اشتقاق المراحل على بيانات مصحفٍ موقَّعة بلا أرقام صفحاتٍ مكتوبةٍ يدويّاً.
-const juzFaces: MushafFaceData[] = JUZ_BOUNDS.map((j) => ({
+// أوجهٌ مشتقّةٌ من الأجزاء: وجهٌ (صفحة) لكل جزءٍ بمدى آياته. يُثبّت اختبار اشتقاق المراحل على
+// بيانات مصحفٍ موقَّعة بلا أرقام صفحاتٍ مكتوبةٍ يدويّاً.
+const juzFaces: MushafFaceData[] = JUZ.map((j) => ({
   page: j.juz,
   fromSurah: j.startSurah,
   fromAyah: j.startAyah,
@@ -46,7 +53,7 @@ describe("pageContaining — إسقاط موضع (سورة:آية) على صفح
 
 describe("deriveStages + stageForPage — حدود المراحل وانتقالها", () => {
   it("stageJuzCount الافتراضيّ ٥ ⟵ ٦ مراحل، بحدود الأجزاء على صفحات المصحف", () => {
-    const stages = deriveStages(juzFaces, 5, JUZ_BOUNDS);
+    const stages = deriveStages(juzFaces, 5, JUZ);
     expect(stages.length).toBe(6);
     expect(stages[0]).toMatchObject({ stage: 1, startJuz: 1, endJuz: 5, startPage: 1, endPage: 5 });
     expect(stages[1]).toMatchObject({ stage: 2, startJuz: 6, endJuz: 10, startPage: 6, endPage: 10 });
@@ -54,7 +61,7 @@ describe("deriveStages + stageForPage — حدود المراحل وانتقال
   });
 
   it("انتقال المرحلة عند حدّ الصفحة", () => {
-    const stages = deriveStages(juzFaces, 5, JUZ_BOUNDS);
+    const stages = deriveStages(juzFaces, 5, JUZ);
     expect(stageForPage(stages, 5)).toBe(1); // آخر صفحةٍ في المرحلة ١
     expect(stageForPage(stages, 6)).toBe(2); // أوّل صفحةٍ في المرحلة ٢
     expect(stageForPage(stages, 30)).toBe(6);
@@ -62,6 +69,6 @@ describe("deriveStages + stageForPage — حدود المراحل وانتقال
   });
 
   it("يرفض stageJuzCount أقلّ من ١", () => {
-    expect(() => deriveStages(juzFaces, 0, JUZ_BOUNDS)).toThrow();
+    expect(() => deriveStages(juzFaces, 0, JUZ)).toThrow();
   });
 });

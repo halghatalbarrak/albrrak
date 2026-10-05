@@ -22,7 +22,13 @@ afterAll(() => prisma.$disconnect());
 // سقّالة مراقي: برنامج + مرحلتان فرعيتان (حزب ٦٠ و٥٩ بحدودهما) + حلقة ومعلّمها +
 // طالبٌ منتسبٌ IN_MARAQI.
 async function maraqiScaffold() {
-  const program = await createProgram(prisma, ProgramKey.MARAQI);
+  // upsert (لا create) عزلاً: صفّ Program(MARAQI) قد يكون موجوداً من ملفٍّ آخر في القاعدة
+  // المشتركة؛ المفتاح key فريدٌ فلا يتكرّر. منطق الاختبار كما هو (يُستعمل program.id فقط).
+  const program = await prisma.program.upsert({
+    where: { key: ProgramKey.MARAQI },
+    update: {},
+    create: { key: ProgramKey.MARAQI, nameAr: "برنامج-مراقي" },
+  });
   const main = await prisma.stage.create({
     data: { programId: program.id, kind: StageKind.MAIN_STAGE, ordinal: 1, nameAr: "المرحلة الأصلية الأولى" },
   });

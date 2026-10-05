@@ -9,5 +9,6 @@ export {
   type MushafFaceData,
   type StageBound,
 } from "./mushaf-faces";
+export { juzBoundsFromHizb, type HizbRow, type JuzBound } from "./juz-from-hizb";
 export { ribatWindow } from "./ribat";
 export { reviewSliceForDay, type ReviewFaceInput } from "./review";
