@@ -1,0 +1,92 @@
+import { type Prisma, type PrismaClient } from "@prisma/client";
+
+import { prisma } from "@/lib/prisma";
+import { makkahDayDate } from "@/lib/muddakir";
+
+import { AuthorizationError, ValidationError } from "./errors";
+import { deriveDay } from "./muddakir-day";
+
+// ═══════════════ استقبال أحداث المُدَّكِر (المرحلة ٤، §٨) ═══════════════
+//
+// الجهاز يرسل دفعة أحداثٍ كلٌّ بـclientEventId يولّده الجهاز، فالإرسال **idempotent**: المكرّر
+// يُتجاهل بلا خطأ (قيد clientEventId الفريد). يومُ الحدث يُحسب في الخادم بتوقيت مكّة من occurredAt
+// (لا من الجهاز) — فإتمامٌ ضُغط قبل منتصف الليل يُحسب ليومه ولو وصل بعده. ثمّ يُعاد اشتقاق أيّامه.
+
+// مفردات الأحداث التي يشتقّها المحرّك (المرحلة ٤). علاج الأخطاء والتسميع في مراحل لاحقة.
+export const MUDDAKIR_EVENT_TYPES = [
+  "NEW_REP", "NEW_ERROR", "NEW_UNDO", // تكرار الجديد وأخطاؤه وتراجعه (§٤٫١)
+  "YESTERDAY_REP",                     // تكرار الأمس (§٤٫١)
+  "RIBAT_DONE", "REVIEW_DONE",         // إنجاز ركنَي الربط والمراجعة (§٤)
+  "EXCUSE",                            // عذرٌ (§٥) — يوقف الجديد وحده
+  "DAY_COMPLETE",                      // إتمام اليوم (§٥)
+  "MAKEUP_COMPLETE",                   // قضاء يومٍ سابقٍ في غده (§٥)
+] as const;
+export type MuddakirEventType = (typeof MUDDAKIR_EVENT_TYPES)[number];
+const KNOWN = new Set<string>(MUDDAKIR_EVENT_TYPES);
+
+export interface DeviceEvent {
+  clientEventId: string;
+  type: string;
+  occurredAt: string; // وقت الجهاز (ISO)
+  payload?: Record<string, unknown> | null;
+  studentId?: string; // اختياريّ — يُتحقَّق أنّه يخصّ الحافظ نفسه إن ورد
+}
+
+export interface IngestResult {
+  accepted: number;   // أحداثٌ جديدةٌ خُزّنت
+  duplicates: number; // مكرّرةٌ تُجوهلت بلا خطأ
+  days: string[];     // الأيّام التي أُعيد اشتقاقها
+}
+
+const dateVal = (iso: string): Date => new Date(`${iso}T00:00:00.000Z`);
+
+/**
+ * يستقبل دفعة أحداثٍ لحافظٍ واحد (الفاعل نفسه). idempotent على clientEventId. يتحقّق أنّ الأحداث
+ * تخصّ الحافظ نفسه (الفاعل = صاحب الطالب)، ثمّ يُعيد اشتقاق كلّ يومٍ تأثّر.
+ */
+export async function ingestEvents(
+  args: { actorUserId: string; events: DeviceEvent[]; studentId?: string },
+  db: PrismaClient = prisma,
+  now: Date = new Date(),
+): Promise<IngestResult> {
+  // ملكيّة: الفاعل هو الحافظ (الطالب صاحب هذا المستخدم) — §١.
+  const student = await db.student.findUnique({ where: { userId: args.actorUserId }, select: { id: true } });
+  if (!student) throw new AuthorizationError("لا حافظٌ مرتبطٌ بهذا المستخدم.");
+  const studentId = args.studentId ?? student.id;
+  if (studentId !== student.id) throw new AuthorizationError("الأحداث لا تخصّ الحافظ نفسه.");
+  const profile = await db.muddakirProfile.findUnique({ where: { studentId }, select: { studentId: true } });
+  if (!profile) throw new ValidationError("الحافظ غير ملتحقٍ بالمُدَّكِر.");
+
+  if (!Array.isArray(args.events) || args.events.length === 0) throw new ValidationError("لا أحداث.");
+
+  const rows: Prisma.MuddakirEventCreateManyInput[] = [];
+  const affected = new Set<string>();
+  for (const e of args.events) {
+    if (typeof e.clientEventId !== "string" || !e.clientEventId) throw new ValidationError("clientEventId مطلوب.");
+    if (!KNOWN.has(e.type)) throw new ValidationError(`نوع حدثٍ غير معروف: ${e.type}`);
+    const occurredAt = new Date(e.occurredAt);
+    if (isNaN(occurredAt.getTime())) throw new ValidationError("occurredAt غير صالح.");
+    if (e.studentId && e.studentId !== studentId) throw new AuthorizationError("حدثٌ لا يخصّ الحافظ نفسه.");
+    const dayStr = makkahDayDate(occurredAt); // يومُ مكّة في الخادم — المرجع
+    affected.add(dayStr);
+    if (e.type === "MAKEUP_COMPLETE") {
+      const d = e.payload?.makeupForDate;
+      if (typeof d === "string") affected.add(d); // أعِد تقييم اليوم المقضيّ
+    }
+    rows.push({
+      clientEventId: e.clientEventId, studentId, dayDate: dateVal(dayStr),
+      type: e.type, payload: (e.payload ?? undefined) as Prisma.InputJsonValue | undefined, occurredAt,
+    });
+  }
+
+  // إدراجٌ idempotent: المكرّر على clientEventId يُتجاهل بلا خطأ.
+  const res = await db.muddakirEvent.createMany({ data: rows, skipDuplicates: true });
+  const accepted = res.count;
+
+  // اشتقاق كلّ يومٍ تأثّر **تنازليًّا** (الغد قبل أمسِه): فيوجد سجلّ يوم القضاء قبل تقييم اليوم
+  // المقضيّ، فيُضبط makeupForDayId مع MADE_UP.
+  const days = [...affected].sort().reverse();
+  for (const d of days) await deriveDay(db, studentId, d, now);
+
+  return { accepted, duplicates: args.events.length - accepted, days };
+}
