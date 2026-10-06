@@ -56,6 +56,27 @@ export const muddakirAr = {
   meeting: "اللقاء الأسبوعيّ",
   deliveryInPerson: "حضوريّ",
   deliveryRemote: "عن بُعد",
+
+  // شاشة الإدارة (المرحلة ٣)
+  adminTitle: "إدارة المُدَّكِر",
+  colHafiz: "الحافظ",
+  colStage: "المرحلة",
+  colSupervisor: "المشرف",
+  colDelivery: "نمط اللقاء",
+  enroll: "إلحاق",
+  enrollHafiz: "إلحاق حافظ",
+  assign: "إسناد",
+  reassign: "إعادة إسناد",
+  selectHafiz: "اختر حافظًا",
+  selectSupervisor: "اختر مشرفًا",
+  noSupervisor: "بلا مشرف",
+  supervisorFull: "ممتلئ",
+  myHafiz: "حفّاظي",
+  readOnlyView: "عرضٌ للقراءة فقط",
+  noHafizYet: "لا حفّاظ بعد.",
+  noSupervisors: "لا مشرفون متاحون.",
+  noEnrollable: "لا حفّاظ متاحون للإلحاق.",
+  loadWord: "من", // لِـ«٢ من ٤»
 } as const;
 
 /** مفاتيح قاموس المُدَّكِر (للتحقّق الثابت عند الاستدعاء). */
@@ -69,4 +90,9 @@ export function tMuddakir(key: MuddakirKey): string {
 /** تسمية مرحلةٍ بالأرقام الهنديّة: stageLabel(1) → «المرحلة ١». */
 export function stageLabel(stage: number): string {
   return `${tMuddakir("stage")} ${arNum(stage)}`;
+}
+
+/** حِمل المشرف بالأرقام الهنديّة: supervisorLoadLabel(2, 4) → «٢ من ٤». */
+export function supervisorLoadLabel(load: number, max: number): string {
+  return `${arNum(load)} ${tMuddakir("loadWord")} ${arNum(max)}`;
 }

@@ -89,6 +89,18 @@ describe("navSections — اتّحاد أقسام كلّ أدوار المستخ
     expect(manage.items.map((i) => i.href)).toContain("/admin/market");
   });
 
+  it("المدير يرى «المُدَّكِر» ضمن قسم الإدارة", () => {
+    const manage = navSections(["CIRCLE_MANAGER"]).find((x) => x.key === "manage")!;
+    expect(manage.items.map((i) => i.href)).toContain("/admin/muddakir");
+  });
+
+  it("المشرف (ARIF) ⟵ قسم «المُدَّكِر» وحده بمدخل «حفّاظي» (لا إدارة)", () => {
+    const s = navSections(["ARIF"]);
+    expect(s.map((x) => x.key)).toEqual(["muddakir"]);
+    expect(s[0].items).toEqual([{ label: "حفّاظي", href: "/admin/muddakir" }]);
+    expect(s.map((x) => x.key)).not.toContain("manage");
+  });
+
   it("مدير + أمين بيدر ⟵ يرى «البيدر» في الإدارة وقسم «البيدر» للجَنْي كليهما", () => {
     const k = navSections(["CIRCLE_MANAGER", "SELLER"]).map((x) => x.key);
     expect(k).toContain("manage");
