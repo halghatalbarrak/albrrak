@@ -77,6 +77,39 @@ export const muddakirAr = {
   noSupervisors: "لا مشرفون متاحون.",
   noEnrollable: "لا حفّاظ متاحون للإلحاق.",
   loadWord: "من", // لِـ«٢ من ٤»
+
+  // شاشة الحافظ (المرحلة ٥)
+  juzRange: "الأجزاء",
+  face: "الوجه",
+  track: "المسار",
+  online: "متّصل",
+  offlineSaved: "بلا إنترنت — محفوظ على جهازك",
+  syncing: "جارٍ الإرسال…",
+  meetingReminder: "تذكير: لقاء الأربعاء",
+  facesToReadWord: "وجهًا ستقرؤها على مشرفك",
+  makeupTitle: "قضاء الأمس",
+  makeupDeadline: "مهلةٌ حتى منتصف الليل",
+  stepListen: "السماع (موصى به)",
+  stepMemorize: "الحفظ",
+  stepRecord: "التسجيل (اختياريّ)",
+  erred: "أخطأت",
+  undo: "تراجع",
+  repErrorsLabel: "أخطاء التكرار",
+  repsOf: "من", // «١٢ من ٣٠»
+  rangeLabel: "النطاق",
+  recordErrorPos: "سجّل موضع خطأ",
+  pageWord: "الصفحة",
+  lineWord: "السطر",
+  todaySlice: "شريحة اليوم",
+  done: "تمّ",
+  markDone: "إتمام",
+  completeDay: "إتمام اليوم",
+  dayCompleted: "اكتمل اليوم ✓",
+  excuseBtn: "تسجيل عذر",
+  noNewToday: "لا حفظ جديد اليوم",
+  reviewOnlyNote: "وضع المراجعة: لا حفظ جديد",
+  save: "حفظ",
+  cancel: "إلغاء",
 } as const;
 
 /** مفاتيح قاموس المُدَّكِر (للتحقّق الثابت عند الاستدعاء). */
