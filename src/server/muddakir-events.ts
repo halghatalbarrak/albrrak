@@ -1,4 +1,4 @@
-import { type Prisma, type PrismaClient } from "@prisma/client";
+import { MuddakirErrorSource, type Prisma, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { makkahDayDate } from "@/lib/muddakir";
@@ -17,6 +17,8 @@ export const MUDDAKIR_EVENT_TYPES = [
   "NEW_REP", "NEW_ERROR", "NEW_UNDO", // تكرار الجديد وأخطاؤه وتراجعه (§٤٫١)
   "YESTERDAY_REP",                     // تكرار الأمس (§٤٫١)
   "RIBAT_DONE", "REVIEW_DONE",         // إنجاز ركنَي الربط والمراجعة (§٤)
+  "ERROR_OPEN",                        // تسجيل موضع خطأ: الصفحة + السطر (§٤٫٤)
+  "TREATMENT_REP",                     // تكرار سطرَي العلاج (عدّادٌ محلّيّ؛ قيم §١٠ مفتوحة)
   "EXCUSE",                            // عذرٌ (§٥) — يوقف الجديد وحده
   "DAY_COMPLETE",                      // إتمام اليوم (§٥)
   "MAKEUP_COMPLETE",                   // قضاء يومٍ سابقٍ في غده (§٥)
@@ -61,6 +63,7 @@ export async function ingestEvents(
 
   const rows: Prisma.MuddakirEventCreateManyInput[] = [];
   const affected = new Set<string>();
+  const errorOpens: { page: number; lineNo: number; source: MuddakirErrorSource; dayStr: string }[] = [];
   for (const e of args.events) {
     if (typeof e.clientEventId !== "string" || !e.clientEventId) throw new ValidationError("clientEventId مطلوب.");
     if (!KNOWN.has(e.type)) throw new ValidationError(`نوع حدثٍ غير معروف: ${e.type}`);
@@ -73,6 +76,12 @@ export async function ingestEvents(
       const d = e.payload?.makeupForDate;
       if (typeof d === "string") affected.add(d); // أعِد تقييم اليوم المقضيّ
     }
+    if (e.type === "ERROR_OPEN") {
+      const page = e.payload?.page, lineNo = e.payload?.lineNo;
+      const srcRaw = e.payload?.source;
+      const source = typeof srcRaw === "string" && srcRaw in MuddakirErrorSource ? (srcRaw as MuddakirErrorSource) : MuddakirErrorSource.RIBAT;
+      if (typeof page === "number" && typeof lineNo === "number") errorOpens.push({ page, lineNo, source, dayStr });
+    }
     rows.push({
       clientEventId: e.clientEventId, studentId, dayDate: dateVal(dayStr),
       type: e.type, payload: (e.payload ?? undefined) as Prisma.InputJsonValue | undefined, occurredAt,
@@ -82,6 +91,14 @@ export async function ingestEvents(
   // إدراجٌ idempotent: المكرّر على clientEventId يُتجاهل بلا خطأ.
   const res = await db.muddakirEvent.createMany({ data: rows, skipDuplicates: true });
   const accepted = res.count;
+
+  // فتح مواضع الأخطاء (§٤٫٤) — idempotent: لا يُكرَّر موضعٌ مفتوحٌ في نفس (الصفحة، السطر).
+  for (const o of errorOpens) {
+    const exists = await db.muddakirError.findFirst({ where: { studentId, page: o.page, lineNo: o.lineNo, resolvedAt: null }, select: { id: true } });
+    if (!exists) {
+      await db.muddakirError.create({ data: { studentId, page: o.page, lineNo: o.lineNo, source: o.source, openedOn: dateVal(o.dayStr), recordedById: args.actorUserId } });
+    }
+  }
 
   // اشتقاق كلّ يومٍ تأثّر **تنازليًّا** (الغد قبل أمسِه): فيوجد سجلّ يوم القضاء قبل تقييم اليوم
   // المقضيّ، فيُضبط makeupForDayId مع MADE_UP.

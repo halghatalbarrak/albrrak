@@ -13,6 +13,7 @@ import {
   newFacesForDay,
   reviewSliceForDay,
   ribatWindow,
+  foldDay as foldEvents,
   type FaceStateInput,
   type MushafFaceData,
 } from "@/lib/muddakir";
@@ -73,35 +74,26 @@ interface DayFold {
   makeupForDate: string | null;
 }
 
+const payloadStr = (e: MuddakirEvent, key: string): string | null => {
+  const v = (e.payload as Record<string, unknown> | null)?.[key];
+  return typeof v === "string" ? v : null;
+};
 const pageOf = (e: MuddakirEvent): number | null => {
   const p = (e.payload as { page?: unknown } | null)?.page;
   return typeof p === "number" ? p : null;
 };
 
+/** يطوي أحداث Prisma عبر الدالّة النقيّة المشتركة (نفسها على الجهاز). */
 function foldDay(events: MuddakirEvent[], firstCleanReps: number): DayFold {
-  const faces = new Map<number, FaceCounters>();
-  const face = (p: number): FaceCounters => {
-    let f = faces.get(p);
-    if (!f) { f = { reps: 0, repErrors: 0, yesterdayReps: 0 }; faces.set(p, f); }
-    return f;
+  const r = foldEvents(
+    events.map((e) => ({ type: e.type, occurredAtMs: e.occurredAt.getTime(), page: pageOf(e), reason: payloadStr(e, "reason"), makeupForDate: payloadStr(e, "makeupForDate") })),
+    firstCleanReps,
+  );
+  const reason = r.excuseReason && r.excuseReason in MuddakirExcuseReason ? (r.excuseReason as MuddakirExcuseReason) : null;
+  return {
+    faces: r.faces, newPages: r.newPages, ribatDone: r.ribatDone, reviewDone: r.reviewDone,
+    excuseReason: reason, completedAt: r.completedAtMs != null ? new Date(r.completedAtMs) : null, makeupForDate: r.makeupForDate,
   };
-  const fold: DayFold = { faces, newPages: new Set(), ribatDone: false, reviewDone: false, excuseReason: null, completedAt: null, makeupForDate: null };
-  const ordered = [...events].sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
-  for (const e of ordered) {
-    const p = pageOf(e);
-    switch (e.type) {
-      case "NEW_REP": if (p != null) { face(p).reps += 1; fold.newPages.add(p); } break;
-      case "NEW_ERROR": if (p != null) { const f = face(p); f.repErrors += 1; fold.newPages.add(p); if (f.reps < firstCleanReps) f.reps = 0; } break; // قاعدة الثلاث الأولى (§٤٫١)
-      case "NEW_UNDO": if (p != null) { const f = face(p); f.reps = Math.max(0, f.reps - 1); fold.newPages.add(p); } break;
-      case "YESTERDAY_REP": if (p != null) face(p).yesterdayReps += 1; break;
-      case "RIBAT_DONE": fold.ribatDone = true; break;
-      case "REVIEW_DONE": fold.reviewDone = true; break;
-      case "EXCUSE": { const r = (e.payload as { reason?: unknown } | null)?.reason; if (typeof r === "string" && r in MuddakirExcuseReason) fold.excuseReason = r as MuddakirExcuseReason; break; }
-      case "DAY_COMPLETE": if (!fold.completedAt || e.occurredAt > fold.completedAt) fold.completedAt = e.occurredAt; break;
-      case "MAKEUP_COMPLETE": { const d = (e.payload as { makeupForDate?: unknown } | null)?.makeupForDate; if (typeof d === "string") fold.makeupForDate = d; break; }
-    }
-  }
-  return fold;
 }
 
 // ── حساب حالة اليوم (كسولٌ، بتوقيت مكّة) ──

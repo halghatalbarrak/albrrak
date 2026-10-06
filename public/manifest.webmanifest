@@ -1,0 +1,17 @@
+{
+  "name": "المُدَّكِر",
+  "short_name": "المُدَّكِر",
+  "description": "برنامج المُدَّكِر — حلقات الشيخ محمد البراك",
+  "start_url": "/muddakir",
+  "scope": "/muddakir",
+  "display": "standalone",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "ar",
+  "background_color": "#faf7f2",
+  "theme_color": "#8a6d3b",
+  "icons": [
+    { "src": "/png/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/png/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
