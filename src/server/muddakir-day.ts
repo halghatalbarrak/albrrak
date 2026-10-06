@@ -30,9 +30,9 @@ import { muddakirProgramId } from "./muddakir-profile";
 type Db = PrismaClient | Prisma.TransactionClient;
 
 const MS_DAY = 86_400_000;
-const dateVal = (iso: string): Date => new Date(`${iso}T00:00:00.000Z`);
-const isoOf = (d: Date): string => d.toISOString().slice(0, 10);
-const dayShift = (iso: string, n: number): string => isoOf(new Date(dateVal(iso).getTime() + n * MS_DAY));
+export const dateVal = (iso: string): Date => new Date(`${iso}T00:00:00.000Z`);
+export const isoOf = (d: Date): string => d.toISOString().slice(0, 10);
+export const dayShift = (iso: string, n: number): string => isoOf(new Date(dateVal(iso).getTime() + n * MS_DAY));
 
 // ── الإعدادات (§٩) من Setting، بقيمٍ افتراضيّة — لا رقمَ مكتوبٌ في المنطق ──
 export interface DayEngineSettings {
@@ -250,6 +250,96 @@ export async function markFaceHeard(db: Db, studentId: string, page: number, hea
   return r.count === 1;
 }
 
+// ═══════════════ تغيير المسار (§٤٫١، المرحلة ٦) ═══════════════
+
+/** آخر طلب تغيير مسارٍ أرسله الحافظ من صفحته (حدث TRACK_CHANGE_REQUEST) — null إن لا طلب. */
+export async function latestTrackRequest(db: Db, studentId: string): Promise<{ track: number; at: Date } | null> {
+  const ev = await db.muddakirEvent.findFirst({ where: { studentId, type: "TRACK_CHANGE_REQUEST" }, orderBy: { occurredAt: "desc" } });
+  const t = (ev?.payload as { track?: unknown } | null)?.track;
+  return ev && typeof t === "number" ? { track: t, at: ev.occurredAt } : null;
+}
+
+/**
+ * يطبّق تغيير المسار المُقرَّ حين يحلّ موعده (§٤٫١): إن ضبط المشرف pendingTrack بـeffectiveFrom
+ * (الغد بتوقيت مكّة)، وبلغ اليومُ ذلك التاريخ، نُرقّي track ونُفرّغ المعلّق. idempotent.
+ */
+export async function applyDueTrackChange(db: Db, studentId: string, today: string): Promise<void> {
+  const p = await db.muddakirProfile.findUnique({ where: { studentId }, select: { pendingTrack: true, effectiveFrom: true } });
+  if (p?.pendingTrack != null && p.effectiveFrom && isoOf(p.effectiveFrom) <= today) {
+    await db.muddakirProfile.update({ where: { studentId }, data: { track: p.pendingTrack, pendingTrack: null, effectiveFrom: null } });
+  }
+}
+
+// ═══════════════ علاج الأخطاء ووسم الأوجه الضعيفة (§٤٫٤، المرحلة ٦) ═══════════════
+
+export interface TreatmentSettings { treatmentLineReps: number; treatmentCleanSessions: number; weakFaceThreshold: number | null }
+
+/** إعدادات العلاج والوسم من Setting (§٩) — القيمتان مؤقّتتان (§١٠)، والعتبة قد تكون null (لا وسم). */
+export async function loadTreatmentSettings(db: Db, programId?: string): Promise<TreatmentSettings> {
+  const pid = programId ?? (await muddakirProgramId(db));
+  const get = (k: string) => getProgramSetting(pid, k, db as PrismaClient);
+  const [lineReps, cleanSessions, weak] = await Promise.all([get("treatmentLineReps"), get("treatmentCleanSessions"), get("weakFaceThreshold")]);
+  return {
+    treatmentLineReps: asNum(lineReps, 10),
+    treatmentCleanSessions: asNum(cleanSessions, 3),
+    weakFaceThreshold: typeof weak === "number" && weak > 0 ? weak : null,
+  };
+}
+
+/**
+ * يعيد حساب عدّادات علاج الأخطاء ووسم الأوجه الضعيفة من الأحداث (idempotent، إعادةُ حسابٍ نقيّة لا
+ * زيادةٌ تراكميّة — فيصحّ مع إعادة الاشتقاق بأيّ ترتيب) (§٤٫٤):
+ *   • الجلسة السليمة = يومٌ بلغ فيه تكرار سطرَي الموضع treatmentLineReps بلا خطأٍ جديدٍ في الموضع.
+ *   • cleanSessions = أطولُ تتابعٍ من الجلسات السليمة منذ فتح الموضع؛ خطأٌ جديدٌ (ERROR_OPEN بعد
+ *     يوم الفتح) يصفّره. يُغلق الموضع (resolvedAt) ببلوغ treatmentCleanSessions جلساتٍ متتالية.
+ *   • الوجه يُوسم weak إن بلغت أخطاء تكراره weakFaceThreshold (إن ضُبطت العتبة؛ وإلا لا وسم).
+ */
+export async function recomputeTreatmentAndWeak(db: Db, studentId: string): Promise<void> {
+  const s = await loadTreatmentSettings(db);
+
+  const open = await db.muddakirError.findMany({ where: { studentId, resolvedAt: null } });
+  if (open.length) {
+    const evs = await db.muddakirEvent.findMany({
+      where: { studentId, type: { in: ["TREATMENT_REP", "ERROR_OPEN"] } },
+      select: { type: true, dayDate: true, payload: true },
+    });
+    for (const e of open) {
+      const repsByDay = new Map<string, number>();
+      const errorDays = new Set<string>();
+      for (const v of evs) {
+        const pl = v.payload as { page?: unknown; lineNo?: unknown } | null;
+        if (pl?.page !== e.page || pl?.lineNo !== e.lineNo) continue;
+        const day = isoOf(v.dayDate);
+        if (v.type === "TREATMENT_REP") repsByDay.set(day, (repsByDay.get(day) ?? 0) + 1);
+        else errorDays.add(day);
+      }
+      const openedOn = isoOf(e.openedOn);
+      const days = [...new Set([...repsByDay.keys(), ...errorDays])].filter((d) => d >= openedOn).sort();
+      let streak = 0;
+      let lastClean: string | null = null;
+      let resolvedOn: string | null = null;
+      for (const d of days) {
+        if (errorDays.has(d) && d !== openedOn) { streak = 0; continue; } // خطأٌ جديدٌ في الموضع يصفّر
+        if ((repsByDay.get(d) ?? 0) >= s.treatmentLineReps) {
+          streak += 1;
+          lastClean = d;
+          if (streak >= s.treatmentCleanSessions) { resolvedOn = d; break; }
+        }
+      }
+      await db.muddakirError.update({
+        where: { id: e.id },
+        data: { cleanSessions: streak, lastCleanSessionOn: lastClean ? dateVal(lastClean) : null, resolvedAt: resolvedOn ? dateVal(resolvedOn) : null },
+      });
+    }
+  }
+
+  // وسم الأوجه الضعيفة — بإعادة حسابٍ نقيّةٍ من repErrors (لا يغيّر الحالة، §٤٫٢). بلا عتبةٍ لا وسم.
+  if (s.weakFaceThreshold != null) {
+    await db.muddakirFace.updateMany({ where: { studentId, repErrors: { gte: s.weakFaceThreshold } }, data: { weak: true } });
+    await db.muddakirFace.updateMany({ where: { studentId, repErrors: { lt: s.weakFaceThreshold } }, data: { weak: false } });
+  }
+}
+
 // ── خطّة اليوم (§٣ ترتيب الأركان) ──
 export interface TodayPlan {
   dayDate: string;
@@ -268,7 +358,9 @@ export interface TodayPlan {
  * المفتوحة، وقضاء الأمس إن وُجد. تُعيد اشتقاق اليوم أوّلًا، وتستعمل دوالّ src/lib/muddakir.
  */
 export async function todayPlan(studentId: string, today: string, db: PrismaClient = prisma, now: Date = new Date()): Promise<TodayPlan> {
+  await applyDueTrackChange(db, studentId, today); // المسار المُقرَّ يُطبَّق من يومه قبل اشتقاق الخطّة
   await deriveDay(db, studentId, today, now);
+  await recomputeTreatmentAndWeak(db, studentId); // عدّادات العلاج ووسم الضعيف (idempotent)
   const profile = await db.muddakirProfile.findUnique({ where: { studentId } });
   if (!profile) throw new Error("لا ملفّ مُدَّكِرٍ للحافظ.");
   const settings = await loadDayEngineSettings(db);

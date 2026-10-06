@@ -110,6 +110,40 @@ export const muddakirAr = {
   reviewOnlyNote: "وضع المراجعة: لا حفظ جديد",
   save: "حفظ",
   cancel: "إلغاء",
+
+  // تغيير المسار — طرف الحافظ (§٤٫١، المرحلة ٦)
+  trackChangeTitle: "تغيير المسار",
+  requestTrackChange: "اطلب تغيير المسار",
+  trackRequestSent: "أُرسل الطلب — بانتظار إقرار المشرف",
+  trackPendingNote: "مسارٌ مُقرٌّ يُطبَّق من",
+  facesPerDay: "أوجه/يوم",
+
+  // شاشة المشرف واللقاء الأسبوعيّ (المرحلة ٦)
+  supervisorTitle: "اللقاء الأسبوعيّ",
+  myHafizWord: "حفّاظي",
+  openHafiz: "فتح",
+  backToList: "رجوع للقائمة",
+  indShortfall: "أيّام التقصير",
+  indMakeup: "القضاء",
+  indExcusesMonth: "أعذار الشهر",
+  indRepErrors: "أخطاء التكرار",
+  indWeakFaces: "الأوجه الضعيفة",
+  indOpenTreatments: "مواضع العلاج",
+  excuseLimitExceeded: "تجاوز حدّ الأعذار",
+  weekOf: "أسبوع",
+  facesToHearTitle: "أوجه الأسبوع للتسميع",
+  noFacesToHear: "لا أوجه بانتظار التسميع",
+  heardBtn: "سُمِع",
+  heardLabel: "مسموعٌ هذا الأسبوع",
+  weakWord: "ضعيف",
+  confirmWeekBtn: "تأكيد انتظام الأسبوع",
+  weekConfirmed: "الأسبوع مؤكّد ✓",
+  reverseWeekBtn: "تراجع عن التأكيد",
+  approveTrackBtn: "إقرار تغيير المسار",
+  trackRequestPending: "طلبٌ من الحافظ: المسار",
+  reviewCycleTitle: "دورة المراجعة (أيّامًا)",
+  openTreatmentsTitle: "مواضع العلاج المفتوحة",
+  heardCountLabel: "عدد المسموع",
 } as const;
 
 /** مفاتيح قاموس المُدَّكِر (للتحقّق الثابت عند الاستدعاء). */

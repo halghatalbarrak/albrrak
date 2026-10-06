@@ -89,15 +89,19 @@ describe("navSections — اتّحاد أقسام كلّ أدوار المستخ
     expect(manage.items.map((i) => i.href)).toContain("/admin/market");
   });
 
-  it("المدير يرى «المُدَّكِر» ضمن قسم الإدارة", () => {
+  it("المدير يرى «المُدَّكِر» و«لقاء المُدَّكِر» ضمن قسم الإدارة", () => {
     const manage = navSections(["CIRCLE_MANAGER"]).find((x) => x.key === "manage")!;
     expect(manage.items.map((i) => i.href)).toContain("/admin/muddakir");
+    expect(manage.items.map((i) => i.href)).toContain("/muddakir/supervisor");
   });
 
-  it("المشرف (ARIF) ⟵ قسم «المُدَّكِر» وحده بمدخل «حفّاظي» (لا إدارة)", () => {
+  it("المشرف (ARIF) ⟵ قسم «المُدَّكِر» وحده بمدخلَي «حفّاظي» و«اللقاء الأسبوعيّ» (لا إدارة)", () => {
     const s = navSections(["ARIF"]);
     expect(s.map((x) => x.key)).toEqual(["muddakir"]);
-    expect(s[0].items).toEqual([{ label: "حفّاظي", href: "/admin/muddakir" }]);
+    expect(s[0].items).toEqual([
+      { label: "حفّاظي", href: "/admin/muddakir" },
+      { label: "اللقاء الأسبوعيّ", href: "/muddakir/supervisor" },
+    ]);
     expect(s.map((x) => x.key)).not.toContain("manage");
   });
 
