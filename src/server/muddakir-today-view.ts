@@ -13,6 +13,7 @@ import {
 import { getProgramSetting } from "./settings";
 import { muddakirProgramId } from "./muddakir-profile";
 import { applyDueTrackChange, getDayStatus, latestTrackRequest, loadDayEngineSettings, todayPlan, type TodayPlan } from "./muddakir-day";
+import { getStageProgress, type StageProgress } from "./muddakir-stages";
 import { AuthorizationError } from "./errors";
 
 // عرض يوم الحافظ الكامل (المرحلة ٥): رأسٌ (المرحلة/الأجزاء/موضع الوجه/المسار/التقدّم) + تذكير اللقاء
@@ -31,6 +32,7 @@ export interface HafizTodayView {
   plan: TodayPlan;
   settings: { newReps: number; firstCleanReps: number; yesterdayReps: number; treatmentLineReps: number };
   trackChange: { tracks: number[]; pendingTrack: number | null; effectiveFrom: string | null; requestedTrack: number | null };
+  stageProgress: StageProgress | null; // ختام المرحلة (§٧): جاهزيّة السرد (null إن لم تُبذر بيانات المصحف)
 }
 
 /** يبني عرض يوم الحافظ. `now` محقونٌ (توقيت مكّة)، و`today` يُشتقّ منه. */
@@ -82,10 +84,12 @@ export async function getHafizTodayView(studentId: string, db: PrismaClient = pr
   const req = await latestTrackRequest(db, studentId);
   const requestedTrack = req && req.track !== profile.track && req.track !== (profile.pendingTrack ?? undefined) ? req.track : null;
   const trackChange = { tracks, pendingTrack: profile.pendingTrack, effectiveFrom: profile.effectiveFrom ? isoOf(profile.effectiveFrom) : null, requestedTrack };
+  let stageProgress: StageProgress | null = null;
+  try { stageProgress = await getStageProgress(studentId, db); } catch { /* بيانات المصحف/الأحزاب غير مبذورة */ }
 
   return {
     dayDate: today, track: profile.track, reviewOnly: profile.mode === "REVIEW_ONLY",
-    stage, meeting: { day: meetingDay, facesToRead }, status, plan, settings, trackChange,
+    stage, meeting: { day: meetingDay, facesToRead }, status, plan, settings, trackChange, stageProgress,
   };
 }
 

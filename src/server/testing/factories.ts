@@ -21,6 +21,14 @@ export async function seedMushafFaces(db: PrismaClient) {
   await db.mushafFace.createMany({ data: faces });
 }
 
+/** يبذر حدود الأحزاب الستّين من hizb_boundaries.json (لاشتقاق مراحل المُدَّكِر) — يمسحها resetDb. */
+export async function seedHizbBoundaries(db: PrismaClient) {
+  const rows = JSON.parse(
+    readFileSync(path.join(process.cwd(), "hizb_boundaries.json"), "utf8"),
+  ) as { hizb: number; juz: number; startSurahNum: number; startSurah: string; startAyah: number; endSurahNum: number; endSurah: string; endAyah: number }[];
+  await db.hizbBoundary.createMany({ data: rows });
+}
+
 export async function createUser(
   db: PrismaClient,
   opts: {

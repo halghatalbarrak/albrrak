@@ -1,4 +1,4 @@
-import { Role } from "@prisma/client";
+import { MuddakirMode, Role } from "@prisma/client";
 
 import {
   approveTrackChange,
@@ -10,6 +10,7 @@ import {
   supervisorDashboard,
   supervisorHafizDetail,
 } from "@/server/muddakir-supervisor";
+import { setStageMode } from "@/server/muddakir-stages";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
 import { ValidationError } from "@/server/errors";
@@ -32,7 +33,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const actor = await requireRoles(req, ROLES);
-    const b = (await req.json()) as { action?: unknown; studentId?: unknown; page?: unknown; lineNo?: unknown; track?: unknown; days?: unknown };
+    const b = (await req.json()) as { action?: unknown; studentId?: unknown; page?: unknown; lineNo?: unknown; track?: unknown; days?: unknown; mode?: unknown };
     if (typeof b.studentId !== "string") throw new ValidationError("الحافظ مطلوب.");
     const studentId = b.studentId;
 
@@ -52,6 +53,10 @@ export async function POST(req: Request) {
       case "setReviewCycle":
         if (typeof b.days !== "number") throw new ValidationError("دورة المراجعة مطلوبة.");
         return Response.json(await setReviewCycleDays({ actorUserId: actor.id, studentId, days: b.days }));
+      case "setMode": {
+        const mode = b.mode === MuddakirMode.REVIEW_ONLY ? MuddakirMode.REVIEW_ONLY : MuddakirMode.ACTIVE;
+        return Response.json(await setStageMode({ actorUserId: actor.id, studentId, mode }));
+      }
       default:
         throw new ValidationError("إجراءٌ غير معروف.");
     }

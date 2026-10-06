@@ -32,6 +32,7 @@ interface TodayView {
   stage: Stage | null; meeting: { day: string; facesToRead: number };
   plan: Plan; settings: { newReps: number; firstCleanReps: number; yesterdayReps: number; treatmentLineReps: number };
   trackChange: TrackChange;
+  stageProgress: { stage: number; memorized: number; total: number; ready: boolean; awaitingFinal: boolean; graduated: boolean } | null;
 }
 
 async function token(): Promise<string | null> {
@@ -150,6 +151,11 @@ export default function MuddakirHafizPage() {
           <span style={{ width: 8, height: 8, borderRadius: 999, background: online ? ui.color.success : ui.color.muted, display: "inline-block" }} />
           {online ? t("online") : t("offlineSaved")}
         </div>
+        {view.stageProgress && (view.stageProgress.graduated || view.stageProgress.awaitingFinal || view.stageProgress.ready) && (
+          <div style={{ marginTop: sp(2), padding: sp(2), borderRadius: 8, background: ui.color.soft, fontSize: ui.text.xs, fontWeight: 700, textAlign: "center", color: ui.color.bronze }}>
+            {view.stageProgress.graduated ? t("graduatedLabel") : view.stageProgress.awaitingFinal ? t("awaitingFinal") : t("stageReady")}
+          </div>
+        )}
       </Card>
 
       {/* تذكير اللقاء */}
