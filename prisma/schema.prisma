@@ -713,6 +713,8 @@ enum CertificateTemplate {
   SUB_STAGE
   MAIN_STAGE
   KHATM
+  MUDDAKIR_STAGE // إتمام مرحلةٍ من المُدَّكِر (§١/§٧)
+  MUDDAKIR_KHATM // إتمام حفظ القرآن في المُدَّكِر — شهادة البرنامج (§١)
 }
 
 model Certificate {
@@ -1104,6 +1106,12 @@ enum MuddakirErrorSource {
   RIBAT
   REVIEW
   SUPERVISOR
+  EXAMINER // موضعٌ سجّله المختبِر في سرد المرحلة (§٤٫٤/§٧)
+}
+
+enum MuddakirRecitationKind {
+  STAGE // سرد مرحلةٍ (١..٦)
+  FINAL // السرد الختاميّ بعد المرحلة السادسة (§١ التخرّج)
 }
 
 // وضع الحافظ ومساره ودورة مراجعته (§١، §٤). صفٌّ لكلّ حافظ.
@@ -1223,4 +1231,22 @@ model MuddakirEvent {
   receivedAt    DateTime @default(now())
 
   @@index([studentId, dayDate])
+}
+
+// سرد المرحلة والسرد الختاميّ (§١/§٧): المختبِر (RECITER) يسجّل النتيجة، ومواضع الأخطاء تدخل
+// علاج الأخطاء بمصدر EXAMINER. الاجتياز يُصدِر شهادةً وينقل المرحلة، ونقاط MUDDAKIR_STAGE_COMPLETE
+// تُضاف لدفعة تأكيد الأسبوع (recitedOn ضمن النافذة). بلا FK (نمط الجداول المتأخّرة الآمن).
+model MuddakirRecitation {
+  id            String                 @id @default(cuid())
+  studentId     String
+  kind          MuddakirRecitationKind @default(STAGE)
+  stage         Int // رقم المرحلة ١..٦
+  passed        Boolean
+  examinerId    String // المختبِر (RECITER)
+  certificateId String? // الشهادة الصادرة عند الاجتياز
+  recitedOn     DateTime               @db.Date // يوم السرد بتوقيت مكّة (لدفعة الأسبوع)
+  createdAt     DateTime               @default(now())
+
+  @@index([studentId])
+  @@index([studentId, recitedOn])
 }

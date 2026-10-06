@@ -24,6 +24,7 @@ interface Detail {
   heardThisWeek: number[];
   openTreatments: { page: number; lineNo: number; source: string }[];
   trackRequest: { track: number } | null;
+  stageProgress: { stage: number; memorized: number; total: number; ready: boolean; mode: "ACTIVE" | "REVIEW_ONLY"; awaitingFinal: boolean; graduated: boolean } | null;
   indicators: Indicators;
 }
 
@@ -126,6 +127,26 @@ export default function MuddakirSupervisorPage() {
               {detail.pendingTrack != null && ` · ${t("trackPendingNote")} ${detail.effectiveFrom ? arNum(detail.effectiveFrom) : ""} (${arNum(detail.pendingTrack)})`}
             </div>
           </Card>
+
+          {/* ختام المرحلة والوضع (§٧) */}
+          {detail.stageProgress && (
+            <Card style={{ padding: sp(3) }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(2), flexWrap: "wrap" }}>
+                <span style={{ fontSize: ui.text.xs }}>
+                  {stageLabel(detail.stageProgress.stage)} — {t("memorizedOf")} {arNum(detail.stageProgress.memorized)}/{arNum(detail.stageProgress.total)}
+                </span>
+                {detail.stageProgress.graduated ? <Badge tone="success">{t("graduatedLabel")}</Badge>
+                  : detail.stageProgress.awaitingFinal ? <Badge tone="bronze">{t("awaitingFinal")}</Badge>
+                  : detail.stageProgress.ready ? <Badge tone="bronze">{t("stageReady")}</Badge> : null}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: sp(2), marginTop: sp(2), flexWrap: "wrap" }}>
+                <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{t("modeLabel")}: {t(detail.stageProgress.mode === "REVIEW_ONLY" ? "modeReviewOnly" : "modeActive")}</span>
+                {detail.stageProgress.mode === "REVIEW_ONLY"
+                  ? <Button variant="ghost" size="sm" onClick={() => void act({ action: "setMode", studentId: detail.studentId, mode: "ACTIVE" }, t("setActive"))}>{t("setActive")}</Button>
+                  : <Button variant="ghost" size="sm" onClick={() => void act({ action: "setMode", studentId: detail.studentId, mode: "REVIEW_ONLY" }, t("setReviewOnly"))}>{t("setReviewOnly")}</Button>}
+              </div>
+            </Card>
+          )}
 
           {/* طلب تغيير المسار من الحافظ */}
           {detail.trackRequest && detail.pendingTrack == null && (

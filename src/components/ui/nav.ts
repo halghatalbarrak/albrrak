@@ -45,6 +45,7 @@ export function navSections(roles: string[]): NavSection[] {
         { label: "القيد", href: "/admin/enrollment" },
         { label: "المُدَّكِر", href: "/admin/muddakir" },
         { label: "لقاء المُدَّكِر", href: "/muddakir/supervisor" },
+        { label: "سرد المُدَّكِر", href: "/muddakir/recitation" },
       ],
     });
   }
@@ -89,6 +90,15 @@ export function navSections(roles: string[]): NavSection[] {
       key: "harvest", label: "الحصاد", items: [
         { label: "الحصاد", href: "/admin/hasad" },
         { label: "اختبار المرحلة", href: "/admin/stage-exam" },
+      ],
+    });
+  }
+
+  // المُدَّكِر — المختبِر (RECITER) يسجّل سرد المرحلة والسرد الختاميّ (§٧). المدير يراه ضمن «الإدارة».
+  if (has("RECITER") && !supervises) {
+    sections.push({
+      key: "muddakirExam", label: "سرد المُدَّكِر", items: [
+        { label: "سرد المُدَّكِر", href: "/muddakir/recitation" },
       ],
     });
   }

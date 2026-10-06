@@ -144,6 +144,28 @@ export const muddakirAr = {
   reviewCycleTitle: "دورة المراجعة (أيّامًا)",
   openTreatmentsTitle: "مواضع العلاج المفتوحة",
   heardCountLabel: "عدد المسموع",
+
+  // ختام المرحلة والسرد والتخرّج (المرحلة ٧، §١/§٧)
+  stageReady: "جاهزٌ لسرد المرحلة",
+  awaitingFinal: "جاهزٌ للسرد الختاميّ",
+  graduatedLabel: "متخرّج ✓",
+  memorizedOf: "محفوظ",
+  modeLabel: "الوضع",
+  modeActive: "نشط",
+  modeReviewOnly: "وقوفٌ (مراجعةٌ بلا جديد)",
+  setReviewOnly: "إيقافٌ عند المرحلة",
+  setActive: "استئناف الحفظ",
+  examinerTitle: "سرد المُدَّكِر",
+  stageRecitationWord: "سرد المرحلة",
+  finalRecitation: "السرد الختاميّ",
+  noCandidates: "لا حفّاظ جاهزون للسرد",
+  recordRecitation: "تسجيل نتيجة السرد",
+  resultPassed: "اجتاز",
+  resultFailed: "لم يجتز",
+  errorsTitle: "مواضع الأخطاء",
+  addErrorPos: "إضافة موضع",
+  resultRecorded: "سُجّلت النتيجة",
+  openExaminer: "سرد",
 } as const;
 
 /** مفاتيح قاموس المُدَّكِر (للتحقّق الثابت عند الاستدعاء). */

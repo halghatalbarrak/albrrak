@@ -46,10 +46,12 @@ describe("navSections — اتّحاد أقسام كلّ أدوار المستخ
     expect(labels(["TEACHER"])).toEqual(["التشغيل", "الحصاد", "البرامج"]);
   });
 
-  it("المُسمِّع ⟵ الحصاد والبرامج", () => {
+  it("المُسمِّع ⟵ الحصاد وسرد المُدَّكِر والبرامج", () => {
     const s = navSections(["RECITER"]);
-    expect(s.map((x) => x.key)).toEqual(["harvest", "programs"]);
+    expect(s.map((x) => x.key)).toEqual(["harvest", "muddakirExam", "programs"]);
     expect(s[0].items.map((i) => i.href)).toEqual(["/admin/hasad", "/admin/stage-exam"]);
+    const exam = s.find((x) => x.key === "muddakirExam")!;
+    expect(exam.items).toEqual([{ label: "سرد المُدَّكِر", href: "/muddakir/recitation" }]);
   });
 
   it("الطالب ⟵ البرامج والتعلّم والرسائل", () => {
@@ -89,10 +91,11 @@ describe("navSections — اتّحاد أقسام كلّ أدوار المستخ
     expect(manage.items.map((i) => i.href)).toContain("/admin/market");
   });
 
-  it("المدير يرى «المُدَّكِر» و«لقاء المُدَّكِر» ضمن قسم الإدارة", () => {
+  it("المدير يرى «المُدَّكِر» و«لقاء المُدَّكِر» و«سرد المُدَّكِر» ضمن قسم الإدارة", () => {
     const manage = navSections(["CIRCLE_MANAGER"]).find((x) => x.key === "manage")!;
     expect(manage.items.map((i) => i.href)).toContain("/admin/muddakir");
     expect(manage.items.map((i) => i.href)).toContain("/muddakir/supervisor");
+    expect(manage.items.map((i) => i.href)).toContain("/muddakir/recitation");
   });
 
   it("المشرف (ARIF) ⟵ قسم «المُدَّكِر» وحده بمدخلَي «حفّاظي» و«اللقاء الأسبوعيّ» (لا إدارة)", () => {

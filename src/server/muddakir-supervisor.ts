@@ -28,6 +28,7 @@ import {
   markFaceHeard,
   transitionReviewStates,
 } from "./muddakir-day";
+import { getStageProgress, type StageProgress } from "./muddakir-stages";
 
 // ═══════════════ المُدَّكِر — المشرف واللقاء الأسبوعيّ (المرحلة ٦) ═══════════════
 //
@@ -183,6 +184,7 @@ export interface HafizDetail {
   heardThisWeek: number[];                            // أوجهٌ سُمِعت في نافذة الأسبوع
   openTreatments: { page: number; lineNo: number; source: string }[];
   trackRequest: { track: number } | null;            // طلبٌ معلّقٌ للإقرار
+  stageProgress: StageProgress | null;                // ختام المرحلة (§٧): جاهزيّة السرد والوضع (null إن لم تُبذر بيانات المصحف)
   indicators: HafizIndicators;
 }
 
@@ -211,6 +213,8 @@ export async function supervisorHafizDetail(actorUserId: string, studentId: stri
 
   const excuseLimit = typeof excuseLimitSetting === "number" && excuseLimitSetting > 0 ? excuseLimitSetting : null;
   const indicators = await indicatorsFor(db, studentId, name, now, excuseLimit);
+  let stageProgress: StageProgress | null = null;
+  try { stageProgress = await getStageProgress(studentId, db); } catch { /* بيانات المصحف/الأحزاب غير مبذورة */ }
   const pending = req != null && req.track !== profile.track && req.track !== (profile.pendingTrack ?? undefined);
 
   return {
@@ -226,6 +230,7 @@ export async function supervisorHafizDetail(actorUserId: string, studentId: stri
     heardThisWeek: heard.map((f) => f.page).sort((a, b) => a - b),
     openTreatments: treatments,
     trackRequest: pending ? { track: req!.track } : null,
+    stageProgress,
     indicators,
   };
 }
@@ -294,7 +299,7 @@ async function ensureWeek(db: Db, studentId: string, weekStart: string): Promise
   return w.id;
 }
 
-export interface ConfirmWeekResult { weekId: string; heardCount: number; grantedDays: number; shortfallDays: number }
+export interface ConfirmWeekResult { weekId: string; heardCount: number; grantedDays: number; shortfallDays: number; stageCompletions: number }
 
 /**
  * يؤكّد المشرف انتظام الأسبوع (§٦ بند ٣): يُصدِر النقاط المعلّقة (§٧) **دفعةً واحدة** عبر AutoGrant
@@ -333,9 +338,16 @@ export async function confirmWeekRegularity(args: { actorUserId: string; student
       }
     }
 
+    // اجتياز سرد المرحلة/الختاميّ في نافذة الأسبوع ⟵ نقاط MUDDAKIR_STAGE_COMPLETE (§٧) دفعةً، لا فوريّاً.
+    const recitations = await tx.muddakirRecitation.findMany({
+      where: { studentId: args.studentId, passed: true, recitedOn: { gte: dateVal(weekStart), lte: dateVal(dayShift(weekStart, 6)) } },
+      select: { id: true },
+    });
+    for (const r of recitations) await grantAuto(tx, AutoEventType.MUDDAKIR_STAGE_COMPLETE, args.studentId, `${weekId}:recite:${r.id}`);
+
     await tx.muddakirWeek.update({ where: { id: weekId }, data: { regularityConfirmedAt: now, confirmedById: args.actorUserId, heardCount: heard.length } });
     await emitEvent(tx, { type: "MUDDAKIR_WEEK_CONFIRMED", subjectType: "Student", subjectId: args.studentId, actorId: args.actorUserId, payload: { weekId, weekStart, heardCount: heard.length } });
-    return { weekId, heardCount: heard.length, grantedDays, shortfallDays };
+    return { weekId, heardCount: heard.length, grantedDays, shortfallDays, stageCompletions: recitations.length };
   });
 }
 
