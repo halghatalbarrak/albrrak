@@ -2,6 +2,7 @@ import { ProgramHistoryReason, ProgramKey, StudentState, type Prisma, type Prism
 
 import { emitEvent } from "./events";
 import { toDateOnly } from "./attendance";
+import { ensureMuddakirProfile } from "./muddakir-profile";
 
 // ═══════════════ البرنامج صفةٌ في القيد + انتقالٌ كسولٌ مؤرَّخ (PLACEMENT_RULES ق١/ق٥/ق٦) ═══════════════
 //
@@ -96,6 +97,10 @@ async function applyDueOn(tx: Prisma.TransactionClient, studentId: string, today
   const target = await tx.program.findUnique({ where: { id: programId }, select: { key: true } });
   if (target?.key === ProgramKey.MARAQI) {
     await tx.student.update({ where: { id: studentId }, data: { state: StudentState.IN_MARAQI } });
+  }
+  // الانتقال التلقائيّ إلى المُدَّكِر (nextProgramId ضبطه المدير) ⟵ ملفٌّ افتراضيّ (idempotent، §٢/م٣).
+  if (target?.key === ProgramKey.MUDDAKIR) {
+    await ensureMuddakirProfile(tx, studentId);
   }
   await recordProgramEntry(tx, { studentId, programId, reason: ProgramHistoryReason.GRADUATION, actorId: null });
   await emitEvent(tx, {

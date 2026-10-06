@@ -43,6 +43,16 @@ export function navSections(roles: string[]): NavSection[] {
         { label: "البيدر", href: "/admin/market" },
         { label: "العرفاء", href: "/admin/arifs" },
         { label: "القيد", href: "/admin/enrollment" },
+        { label: "المُدَّكِر", href: "/admin/muddakir" },
+      ],
+    });
+  }
+
+  // المُدَّكِر — المشرف (ARIF) يرى حفّاظه للقراءة فقط (المدير يراه ضمن «الإدارة»).
+  if (has("ARIF") && !supervises) {
+    sections.push({
+      key: "muddakir", label: "المُدَّكِر", items: [
+        { label: "حفّاظي", href: "/admin/muddakir" },
       ],
     });
   }
