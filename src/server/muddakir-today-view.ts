@@ -12,7 +12,7 @@ import {
 
 import { getProgramSetting } from "./settings";
 import { muddakirProgramId } from "./muddakir-profile";
-import { getDayStatus, loadDayEngineSettings, todayPlan, type TodayPlan } from "./muddakir-day";
+import { applyDueTrackChange, getDayStatus, latestTrackRequest, loadDayEngineSettings, todayPlan, type TodayPlan } from "./muddakir-day";
 import { AuthorizationError } from "./errors";
 
 // عرض يوم الحافظ الكامل (المرحلة ٥): رأسٌ (المرحلة/الأجزاء/موضع الوجه/المسار/التقدّم) + تذكير اللقاء
@@ -30,11 +30,13 @@ export interface HafizTodayView {
   status: string;
   plan: TodayPlan;
   settings: { newReps: number; firstCleanReps: number; yesterdayReps: number; treatmentLineReps: number };
+  trackChange: { tracks: number[]; pendingTrack: number | null; effectiveFrom: string | null; requestedTrack: number | null };
 }
 
 /** يبني عرض يوم الحافظ. `now` محقونٌ (توقيت مكّة)، و`today` يُشتقّ منه. */
 export async function getHafizTodayView(studentId: string, db: PrismaClient = prisma, now: Date = new Date()): Promise<HafizTodayView> {
   const today = makkahDayDate(now);
+  await applyDueTrackChange(db, studentId, today); // المسار المُقرَّ يُطبَّق من يومه
   const profile = await db.muddakirProfile.findUnique({ where: { studentId } });
   if (!profile) throw new Error("لا ملفّ مُدَّكِرٍ للحافظ.");
 
@@ -74,9 +76,16 @@ export async function getHafizTodayView(studentId: string, db: PrismaClient = pr
     treatmentLineReps: typeof treat === "number" && treat > 0 ? treat : 10,
   };
 
+  // تغيير المسار (§٤٫١): المسارات المتاحة، والمعلّق المُقرَّ، وآخر طلبٍ لم يُقرَّ بعد.
+  const tracksSetting = await getProgramSetting(programId, "tracks", db);
+  const tracks = Array.isArray(tracksSetting) ? tracksSetting.filter((x): x is number => typeof x === "number") : [1, 2, 3];
+  const req = await latestTrackRequest(db, studentId);
+  const requestedTrack = req && req.track !== profile.track && req.track !== (profile.pendingTrack ?? undefined) ? req.track : null;
+  const trackChange = { tracks, pendingTrack: profile.pendingTrack, effectiveFrom: profile.effectiveFrom ? isoOf(profile.effectiveFrom) : null, requestedTrack };
+
   return {
     dayDate: today, track: profile.track, reviewOnly: profile.mode === "REVIEW_ONLY",
-    stage, meeting: { day: meetingDay, facesToRead }, status, plan, settings,
+    stage, meeting: { day: meetingDay, facesToRead }, status, plan, settings, trackChange,
   };
 }
 

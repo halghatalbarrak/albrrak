@@ -44,15 +44,17 @@ export function navSections(roles: string[]): NavSection[] {
         { label: "العرفاء", href: "/admin/arifs" },
         { label: "القيد", href: "/admin/enrollment" },
         { label: "المُدَّكِر", href: "/admin/muddakir" },
+        { label: "لقاء المُدَّكِر", href: "/muddakir/supervisor" },
       ],
     });
   }
 
-  // المُدَّكِر — المشرف (ARIF) يرى حفّاظه للقراءة فقط (المدير يراه ضمن «الإدارة»).
+  // المُدَّكِر — المشرف (ARIF) يرى حفّاظه (قراءةً) ويُدير لقاءهم الأسبوعيّ (المدير يراه ضمن «الإدارة»).
   if (has("ARIF") && !supervises) {
     sections.push({
       key: "muddakir", label: "المُدَّكِر", items: [
         { label: "حفّاظي", href: "/admin/muddakir" },
+        { label: "اللقاء الأسبوعيّ", href: "/muddakir/supervisor" },
       ],
     });
   }

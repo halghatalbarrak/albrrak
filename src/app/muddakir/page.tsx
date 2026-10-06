@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { arNum } from "@/lib/format";
-import { ui, sp, Button, Card, Modal, Input } from "@/components/ui";
+import { ui, sp, Button, Card, Modal, Input, Select } from "@/components/ui";
 import { tMuddakir as t, stageLabel } from "@/i18n/ar/muddakir";
 import {
   EventQueue,
@@ -26,10 +26,12 @@ interface Plan {
   openTreatments: { page: number; lineNo: number; source: string }[];
   makeup: { forDate: string; newFromPage: number | null; newToPage: number | null } | null;
 }
+interface TrackChange { tracks: number[]; pendingTrack: number | null; effectiveFrom: string | null; requestedTrack: number | null }
 interface TodayView {
   dayDate: string; track: number; reviewOnly: boolean; status: string;
   stage: Stage | null; meeting: { day: string; facesToRead: number };
   plan: Plan; settings: { newReps: number; firstCleanReps: number; yesterdayReps: number; treatmentLineReps: number };
+  trackChange: TrackChange;
 }
 
 async function token(): Promise<string | null> {
@@ -47,6 +49,7 @@ export default function MuddakirHafizPage() {
   const [errModal, setErrModal] = useState<null | "RIBAT" | "REVIEW">(null);
   const [errPage, setErrPage] = useState(""); const [errLine, setErrLine] = useState("");
   const [excuseOpen, setExcuseOpen] = useState(false);
+  const [reqTrack, setReqTrack] = useState("");
   const queueRef = useRef<EventQueue | null>(null);
 
   // ── طابور الأحداث (IndexedDB) ──
@@ -153,6 +156,27 @@ export default function MuddakirHafizPage() {
       <Card style={{ padding: sp(3), fontSize: ui.text.xs }}>
         <strong>{t("meetingReminder")}</strong>
         <div style={{ color: ui.color.muted, marginTop: sp(1) }}>{arNum(view.meeting.facesToRead)} {t("facesToReadWord")}</div>
+      </Card>
+
+      {/* تغيير المسار (§٤٫١): طلبُ الحافظ يُقرّه المشرف */}
+      <Card style={{ padding: sp(3), fontSize: ui.text.xs }}>
+        <strong>{t("trackChangeTitle")}</strong>
+        <div style={{ color: ui.color.muted, marginTop: sp(1) }}>{t("track")}: {arNum(view.track)} {t("facesPerDay")}</div>
+        {view.trackChange.pendingTrack != null ? (
+          <div style={{ color: ui.color.bronze, marginTop: sp(2) }}>
+            {t("trackPendingNote")} {view.trackChange.effectiveFrom ? arNum(view.trackChange.effectiveFrom) : "—"} — {t("track")} {arNum(view.trackChange.pendingTrack)}
+          </div>
+        ) : view.trackChange.requestedTrack != null ? (
+          <div style={{ color: ui.color.muted, marginTop: sp(2) }}>{t("trackRequestSent")} ({t("track")} {arNum(view.trackChange.requestedTrack)})</div>
+        ) : (
+          <div style={{ display: "flex", gap: sp(2), alignItems: "center", marginTop: sp(2), flexWrap: "wrap" }}>
+            <Select value={reqTrack} onChange={(e) => setReqTrack(e.target.value)} style={{ width: "auto" }} aria-label={t("trackChangeTitle")}>
+              <option value="">— {t("track")} —</option>
+              {view.trackChange.tracks.filter((n) => n !== view.track).map((n) => <option key={n} value={n}>{arNum(n)} {t("facesPerDay")}</option>)}
+            </Select>
+            <Button size="sm" disabled={!reqTrack} onClick={() => { void emit("TRACK_CHANGE_REQUEST", { track: Number(reqTrack) }); setReqTrack(""); }}>{t("requestTrackChange")}</Button>
+          </div>
+        )}
       </Card>
 
       {/* قضاء الأمس */}

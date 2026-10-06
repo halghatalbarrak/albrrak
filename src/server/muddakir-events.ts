@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { makkahDayDate } from "@/lib/muddakir";
 
 import { AuthorizationError, ValidationError } from "./errors";
-import { deriveDay } from "./muddakir-day";
+import { deriveDay, recomputeTreatmentAndWeak } from "./muddakir-day";
 
 // ═══════════════ استقبال أحداث المُدَّكِر (المرحلة ٤، §٨) ═══════════════
 //
@@ -22,6 +22,7 @@ export const MUDDAKIR_EVENT_TYPES = [
   "EXCUSE",                            // عذرٌ (§٥) — يوقف الجديد وحده
   "DAY_COMPLETE",                      // إتمام اليوم (§٥)
   "MAKEUP_COMPLETE",                   // قضاء يومٍ سابقٍ في غده (§٥)
+  "TRACK_CHANGE_REQUEST",              // طلب الحافظ تغيير مساره (§٤٫١) — يُقرّه المشرف (المرحلة ٦)
 ] as const;
 export type MuddakirEventType = (typeof MUDDAKIR_EVENT_TYPES)[number];
 const KNOWN = new Set<string>(MUDDAKIR_EVENT_TYPES);
@@ -104,6 +105,9 @@ export async function ingestEvents(
   // المقضيّ، فيُضبط makeupForDayId مع MADE_UP.
   const days = [...affected].sort().reverse();
   for (const d of days) await deriveDay(db, studentId, d, now);
+
+  // علاج الأخطاء ووسم الأوجه الضعيفة: إعادةُ حسابٍ نقيّةٌ مرّةً بعد اشتقاق كلّ الأيّام المتأثّرة.
+  await recomputeTreatmentAndWeak(db, studentId);
 
   return { accepted, duplicates: args.events.length - accepted, days };
 }
