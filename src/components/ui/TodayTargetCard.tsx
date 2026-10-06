@@ -1,4 +1,5 @@
 import { formatAyah } from "@/lib/format";
+import { tMaraqi } from "@/i18n/ar/maraqi";
 
 import { ui, sp } from "./tokens";
 import { Badge } from "./Badge";
@@ -36,8 +37,8 @@ export function TodayTargetView({ t, forStudent = false }: { t: TTData; forStude
         <Badge tone="primary">احفظ</Badge>
         {t.newHifz?.kind === "NEW" && t.newHifz.bound && <strong style={{ color: ui.color.text }}>{bound(t.newHifz.bound)}</strong>}
         {t.newHifz?.kind === "REPEAT" && t.newHifz.bound && <span style={{ color: ui.color.danger }}>أعِد مقطع أمس (لم يُتقن): <strong>{bound(t.newHifz.bound)}</strong></span>}
-        {t.newHifz?.kind === "COMPLETED" && <span style={{ color: ui.color.success }}>{forStudent ? "أتممتَ محفوظ مسارك — بارك الله فيك 🎉" : "أتمّ محفوظ مساره"}</span>}
-        {t.newHifz?.kind === "NO_TRACK" && <span style={{ color: ui.color.muted }}>لم يُحدَّد المسار بعد (اختبار الوتيرة)</span>}
+        {t.newHifz?.kind === "COMPLETED" && <span style={{ color: ui.color.success }}>{tMaraqi(forStudent ? "trackCompletedStudent" : "trackCompletedTeacher")}</span>}
+        {t.newHifz?.kind === "NO_TRACK" && <span style={{ color: ui.color.muted }}>{tMaraqi("noTrackYet")}</span>}
       </div>
 
       {/* ٢) الترسيخ */}

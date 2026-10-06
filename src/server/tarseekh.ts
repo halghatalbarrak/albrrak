@@ -1,97 +1,96 @@
 import { type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { maraqiKey, type UnitRow } from "./track-units";
+import { memorizedFrontier, trackPolicyAndUnits } from "./maraqi-consolidation";
 import { getStudentErrorTally, orderSegmentsByWeakness } from "./weakness-map";
 
-// ═══════════════ الترسيخ والمراجعة (MARAQI_RULES الأحكام ٢، ٤، ٩) ═══════════════
+// ═══════════════ الترسيخ والمراجعة بالوحدات لكلّ مسار (مراقي ٢) ═══════════════
 //
-// الحكم ٩: «المقطع» = **جلسة حفظٍ واحدة** بمستوى الطالب المتدرّج (لا وجهٌ ثابت).
-// الحكم ٢: نافذة الترسيخ = **آخر ١٠ جلسات حفظ** (لا آخر ١٠ أوجه). المقطع يبقى فيها
-//          حتى تُحفظ ١٠ مقاطع بعده، يُراجَع يوميًّا، ثم يخرج **راسخًا**.
-// الحكم ٤: كامل الراسخ يُوزَّع على أيام الحلقة الخمسة بالتساوي (**خُمس/يوم**)، والطالب
-//          حرٌّ في التعجيل، والمهم إتمام الدورة أسبوعيًّا.
-//
-// هذه الدفعة: حساب النافذة والراسخ والخُمس (مشتقٌّ من الجلسات — بلا حقلٍ جديد). الرصد
-// عبر التسميع المرن القائم (الحكم ٦: recordTarseekh/recordMurajaah بالفاعل والمُسنَد).
-// مؤجَّل (يحتاج قرار محمد ⟵ مخطط): تتبّع **إتمام الدورة الأسبوعية بالمقدار** (التعجيل).
-
-/** الحكم ٢: عشرُ جلساتِ حفظٍ في نافذة الترسيخ. */
-export const TARSEEKH_WINDOW = 10;
-
-/** أيام الحلقة الخمسة — عليها يُوزَّع الراسخ (الحكم ٤ + ٣). */
-export const CIRCLE_DAYS_PER_WEEK = 5;
+// حسم محمد (مراقي ٢): المقطع = **وحدة المسار**، والمقادير **لكلّ مسار من الإدارة** لا ثوابت:
+//   • الترسيخ = `tarseekhUnits` وحدةً سابقةً لوحدة اليوم (بديلٌ عن «آخر ١٠ جلسات»).
+//   • المراجعة = كلّ المحفوظ الراسخ (ما قبل نافذة الترسيخ) مقسومًا على `reviewDaysPerWeek`،
+//     فيُختَم المحفوظ أسبوعيًّا بلا سقف. المراجعة فارغةٌ بأمان أوّل المسار (محفوظٌ صغير).
+// الرصد عبر التسميع المرن القائم (recordTarseekh/recordMurajaah)، وخطأ المراجعة (الحكم ٥)
+// يبقى على نافذة الجلسات في daily-session (REVIEW_ERROR_WINDOW) — لا يُمسّ.
 
 export interface Segment {
-  id: string; // معرّف جلسة الحفظ (لرصد خطأ المراجعة عليه — الحكم ٥)
-  date: string; // YYYY-MM-DD ليوم حفظه
+  id: string; // معرّفٌ عرضيّ (الوحدة) — لا يُستعمل في رصد خطأ المراجعة (ذاك بمعرّف الجلسة)
+  date: string; // غير مستعمَلٍ في النموذج الوحدويّ (يبقى للتوافق)
   fromSurah: number;
   fromAyah: number;
   toSurah: number;
   toAyah: number;
 }
 
-/**
- * مقاطع الطالب المحفوظة (جلسات حفظٍ مُتقَنة **ولم تُرمَّم**) مرتّبةً بالأقدم فالأحدث.
- * كل جلسةٍ = مقطع (الحكم ٩). المقطع الذي عاد حفظًا جديدًا (repairedAt، الحكم ٥) يخرج
- * من هذه المجموعة — فيغادر الترسيخ والراسخ معًا حتى يُعاد حفظه.
- */
-async function memorizedSegments(studentId: string, db: PrismaClient): Promise<Segment[]> {
-  const rows = await db.dailySession.findMany({
-    where: { studentId, hifzMastered: true, repairedAt: null, hifzFromSurah: { not: null } },
-    orderBy: { date: "asc" },
-    select: {
-      id: true, date: true,
-      hifzFromSurah: true, hifzFromAyah: true, hifzToSurah: true, hifzToAyah: true,
-    },
-  });
-  return rows
-    .filter((r) => r.hifzFromSurah != null && r.hifzFromAyah != null && r.hifzToSurah != null && r.hifzToAyah != null)
-    .map((r) => ({
-      id: r.id,
-      date: r.date.toISOString().slice(0, 10),
-      fromSurah: r.hifzFromSurah as number,
-      fromAyah: r.hifzFromAyah as number,
-      toSurah: r.hifzToSurah as number,
-      toAyah: r.hifzToAyah as number,
-    }));
+const unitSegment = (u: UnitRow): Segment => ({
+  id: `u${u.unitNo}`, date: "",
+  fromSurah: u.startSurah, fromAyah: u.startAyah, toSurah: u.endSurah, toAyah: u.endAyah,
+});
+
+/** نطاقات المحفوظ خارج الترتيب المسكَّن (JSON) — لإدخالها في الراسخ (مطابقٌ لـtoday-target). */
+function parseOutOfOrder(raw: unknown): { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }[] = [];
+  for (const r of raw) {
+    const o = r as Record<string, unknown>;
+    if ([o.fromSurah, o.fromAyah, o.toSurah, o.toAyah].every((n) => typeof n === "number")) {
+      out.push({ fromSurah: o.fromSurah as number, fromAyah: o.fromAyah as number, toSurah: o.toSurah as number, toAyah: o.toAyah as number });
+    }
+  }
+  return out;
 }
 
 export interface ConsolidationView {
-  /** آخر ١٠ مقاطع — تُراجَع يوميًّا (الحكم ٢). */
+  /** وحدات نافذة الترسيخ (`tarseekhUnits`) — تُراجَع يوميًّا. */
   tarseekh: { windowSize: number; segments: Segment[] };
-  /** الراسخ (ما خرج من النافذة) — يُوزَّع خُمسًا يوميًّا (الحكم ٤). */
+  /** الراسخ (ما قبل النافذة) — يُوزَّع على `reviewDaysPerWeek` (حصّةٌ/يوم). */
   review: { stockCount: number; khums: number; segments: Segment[] };
 }
 
 /**
- * يحسب الترسيخ والمراجعة للطالب (الأحكام ٢، ٤، ٩): آخر ١٠ جلسات حفظٍ في الترسيخ،
- * وما قبلها راسخٌ يُوزَّع خُمسًا يوميًّا (⌈الراسخ ÷ ٥⌉). فارغٌ بأمان قبل أول حفظ.
+ * الترسيخ والمراجعة للطالب بوحدات مساره (مراقي ٢): الوحدات التي بلغها موضعُه، آخر `tarseekhUnits`
+ * منها في الترسيخ، وما قبلها راسخٌ يُوزَّع على `reviewDaysPerWeek` (⌈الراسخ ÷ الأيّام⌉). فارغٌ
+ * بأمان قبل أوّل حفظٍ أو بلا مسار.
  */
 export async function getConsolidation(
   studentId: string,
   db: PrismaClient = prisma,
 ): Promise<ConsolidationView> {
-  const segs = await memorizedSegments(studentId, db);
-  const cut = Math.max(0, segs.length - TARSEEKH_WINDOW);
-  const inTarseekh = segs.slice(cut); // آخر ١٠ (أو أقلّ)
-  const rasikh = segs.slice(0, cut); // ما قبلها
+  const policy = await trackPolicyAndUnits(studentId, db);
+  if (!policy.trackId || policy.units.length === 0) {
+    return { tarseekh: { windowSize: policy.tarseekhUnits, segments: [] }, review: { stockCount: 0, khums: 0, segments: [] } };
+  }
+  const frontier = await memorizedFrontier(studentId, db);
+  const reached = frontier === null ? 0 : policy.units.filter((u) => maraqiKey(u.startSurah, u.startAyah) <= frontier).length;
 
-  // الفكرة ٣: **ترتيبٌ فقط** للمراجعة — الأضعف (ما فيه أخطاءٌ سابقة) أوّلاً. المقدار
-  // (الخُمس) والمجموعة (stockCount) لا يتغيّران — الحكم ٤ كما أقرّه محمد.
+  const placement = await db.maraqiPlacement.findUnique({ where: { studentId }, select: { outOfOrder: true } });
+  const oooRanges = parseOutOfOrder(placement?.outOfOrder);
+  const isOoo = (u: UnitRow) => oooRanges.some((r) =>
+    maraqiKey(u.startSurah, u.startAyah) >= maraqiKey(r.fromSurah, r.fromAyah) &&
+    maraqiKey(u.endSurah, u.endAyah) <= maraqiKey(r.toSurah, r.toAyah));
+
+  const inOrder = policy.units.slice(0, reached);
+  const cut = Math.max(0, reached - policy.tarseekhUnits);
+  const inTarseekh = inOrder.slice(cut);
+  const oooUnits = policy.units.slice(reached).filter(isOoo);
+  const rasikh = [...inOrder.slice(0, cut), ...oooUnits].sort((a, b) => a.unitNo - b.unitNo);
+
+  // الفكرة ٣: ترتيبٌ فقط للمراجعة — الأضعف أوّلاً (المقدار والمجموعة لا يتغيّران).
   const tally = await getStudentErrorTally(studentId, db);
-  const orderedRasikh = orderSegmentsByWeakness(rasikh, tally);
+  const orderedRasikh = orderSegmentsByWeakness(rasikh.map(unitSegment), tally);
 
   return {
-    tarseekh: { windowSize: TARSEEKH_WINDOW, segments: inTarseekh },
+    tarseekh: { windowSize: policy.tarseekhUnits, segments: inTarseekh.map(unitSegment) },
     review: {
       stockCount: rasikh.length,
-      khums: Math.ceil(rasikh.length / CIRCLE_DAYS_PER_WEEK),
+      khums: Math.ceil(rasikh.length / Math.max(1, policy.reviewDaysPerWeek)),
       segments: orderedRasikh,
     },
   };
 }
 
-// ═══════════════ تتبّع الدورة الأسبوعية بالمقدار (الحكم ٤ الموسّع) ═══════════════
+// ═══════════════ تتبّع الدورة الأسبوعية بالمقدار ═══════════════
 
 /** يوم بلا وقت (UTC) — يطابق @db.Date. */
 function toDateOnly(input: string | Date): Date {
@@ -99,34 +98,34 @@ function toDateOnly(input: string | Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
-/** بداية أسبوع الحلقة = الأحد السابق (الحكم ٣: الأحد → الخميس، والجمعة/السبت عطلة). */
+/** بداية أسبوع الحلقة = الأحد السابق (الأحد → الخميس، والجمعة/السبت عطلة). */
 function weekStartSunday(date: string | Date): Date {
   const d = toDateOnly(date);
   return new Date(d.getTime() - d.getUTCDay() * 86400000); // getUTCDay: 0 = الأحد
 }
 
 export interface WeeklyReview {
-  required: number; // المطلوب = كامل المحفوظ الراسخ (مقاطع)
+  required: number; // المطلوب = كامل المحفوظ الراسخ (وحدات)
   done: number; // المُنجَز = مجموع المُسمَّع هذا الأسبوع
   remaining: number; // المتبقّي = المطلوب − المُنجَز (لا يقلّ عن صفر)
   percent: number; // نسبة الإنجاز 0..100
-  complete: boolean; // اكتملت الدورة (المُنجَز بلغ المطلوب)؟
+  complete: boolean; // اكتملت الدورة؟
   weekStart: string; // الأحد (YYYY-MM-DD)
 }
 
 /**
- * دورة المراجعة الأسبوعية بالمقدار (الحكم ٤ الموسّع): المطلوب = كامل الراسخ؛ المُنجَز =
- * مجموع murajaahCount خلال أسبوع الحلقة (الأحد→الخميس)؛ المتبقّي والنسبة والاكتمال.
- * الطالب حرٌّ في التعجيل — المهم بلوغ المطلوب أسبوعيًّا. لا راسخ ⟵ الدورة مكتملةٌ حكمًا.
+ * دورة المراجعة الأسبوعية بالمقدار: المطلوب = كامل الراسخ (وحدات)؛ المُنجَز = مجموع murajaahCount
+ * خلال أيّام الحلقة (من الأحد بمقدار `reviewDaysPerWeek` يومًا). لا راسخ ⟵ مكتملةٌ حكمًا.
  */
 export async function getWeeklyReview(
   studentId: string,
   date: string | Date,
   db: PrismaClient = prisma,
 ): Promise<WeeklyReview> {
-  const required = (await getConsolidation(studentId, db)).review.stockCount;
+  const [{ review }, policy] = await Promise.all([getConsolidation(studentId, db), trackPolicyAndUnits(studentId, db)]);
+  const required = review.stockCount;
   const start = weekStartSunday(date);
-  const end = new Date(start.getTime() + 4 * 86400000); // الخميس
+  const end = new Date(start.getTime() + Math.max(0, policy.reviewDaysPerWeek - 1) * 86400000);
 
   const agg = await db.dailySession.aggregate({
     where: { studentId, date: { gte: start, lte: end } },

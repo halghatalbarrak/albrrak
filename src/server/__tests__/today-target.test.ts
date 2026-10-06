@@ -58,10 +58,10 @@ describe("todayTarget — وجهة اليوم (م٤)", () => {
     expect(t.tarseekh).toHaveLength(10);
     expect(t.tarseekh[0]).toEqual({ fromSurah: 112, fromAyah: 1, toSurah: 112, toAyah: 4 });
     expect(t.tarseekh[9]).toEqual({ fromSurah: 103, fromAyah: 1, toSurah: 103, toAyah: 3 });
-    // ٣) المراجعة: الراسخ ٣ (الوحدات ١..٣)، حصّة الأحد = الأحدث (الفلق ١١٣).
+    // ٣) المراجعة: الراسخ ٣ (الوحدات ١..٣)، حصص بترتيب المسار؛ حصّة الأحد (اليوم ١) = الوحدة ١ (الفاتحة).
     expect(t.murajaah?.dayNo).toBe(1);
     expect(t.murajaah?.totalStock).toBe(3);
-    expect(t.murajaah?.todaySlice).toEqual([{ fromSurah: 113, fromAyah: 1, toSurah: 113, toAyah: 5 }]);
+    expect(t.murajaah?.todaySlice).toEqual([{ fromSurah: 1, fromAyah: 1, toSurah: 1, toAyah: 7 }]);
   });
 
   it("طالبٌ جديد (لا حفظ) ← المقترح = الوحدة ١ (الفاتحة)", async () => {

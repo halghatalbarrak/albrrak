@@ -2,6 +2,7 @@ import { ProgramKey, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { MARAQI_SURAH_ORDER, maraqiKey } from "@/lib/maraqi-order";
+import { ValidationError } from "./errors";
 
 // ═══════════════ وحدات المسارات المُجهَّزة — القراءة (البند ٢، المرحلة ٣) ═══════════════
 //
@@ -29,16 +30,18 @@ export interface TrackAdminRow {
   ordinal: number;
   isActive: boolean;
   unitCount: number;
+  tarseekhUnits: number;
+  reviewDaysPerWeek: number;
 }
 
-/** المسارات الثمانية بمقدارها وعدد وحداتها المُجهَّزة — لشاشة الإدارة. */
+/** المسارات بمقدارها وعدد وحداتها ومنهج الترسيخ/المراجعة — لشاشة الإدارة. */
 export async function listTracksAdmin(db: PrismaClient = prisma): Promise<TrackAdminRow[]> {
   const program = await db.program.findUnique({ where: { key: ProgramKey.MARAQI }, select: { id: true } });
   if (!program) return [];
   const tracks = await db.track.findMany({
     where: { programId: program.id },
     orderBy: { ordinal: "asc" },
-    select: { id: true, nameAr: true, linesPerDay: true, ordinal: true, isActive: true },
+    select: { id: true, nameAr: true, linesPerDay: true, ordinal: true, isActive: true, tarseekhUnits: true, reviewDaysPerWeek: true },
   });
   const out: TrackAdminRow[] = [];
   for (const t of tracks) {
@@ -51,6 +54,25 @@ export async function listTracksAdmin(db: PrismaClient = prisma): Promise<TrackA
 /** تفعيل/تعطيل مسار (إدارةً). */
 export async function setTrackActive(trackId: string, isActive: boolean, db: PrismaClient = prisma): Promise<void> {
   await db.track.update({ where: { id: trackId }, data: { isActive } });
+}
+
+/** ضبط منهج الترسيخ والمراجعة لمسار (إدارةً، مراقي ٢): عددان موجبان. */
+export async function setTrackPolicy(
+  trackId: string,
+  policy: { tarseekhUnits?: number; reviewDaysPerWeek?: number },
+  db: PrismaClient = prisma,
+): Promise<void> {
+  const data: { tarseekhUnits?: number; reviewDaysPerWeek?: number } = {};
+  if (policy.tarseekhUnits != null) {
+    if (!Number.isInteger(policy.tarseekhUnits) || policy.tarseekhUnits < 1) throw new ValidationError("عدد وحدات الترسيخ عددٌ صحيحٌ موجب.");
+    data.tarseekhUnits = policy.tarseekhUnits;
+  }
+  if (policy.reviewDaysPerWeek != null) {
+    if (!Number.isInteger(policy.reviewDaysPerWeek) || policy.reviewDaysPerWeek < 1 || policy.reviewDaysPerWeek > 7) throw new ValidationError("أيّام المراجعة بين ١ و٧.");
+    data.reviewDaysPerWeek = policy.reviewDaysPerWeek;
+  }
+  if (Object.keys(data).length === 0) return;
+  await db.track.update({ where: { id: trackId }, data });
 }
 
 /** كل وحدات المسار مرتّبةً بترتيب الحفظ. */

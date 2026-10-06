@@ -6,7 +6,7 @@ import { getConsolidation } from "../tarseekh";
 import { assertTeachesStudent } from "../daily-session";
 import { AuthorizationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
-import { createProgram, createStudent, createUser, seedMushafFaces } from "../testing/factories";
+import { createProgram, createStudent, createUser, seedMushafFaces, seedMaraqiTrackForStudent } from "../testing/factories";
 
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
@@ -138,32 +138,30 @@ describe("orderSegmentsByWeakness — ترتيبٌ فقط، المجموعة و�
   });
 });
 
-describe("getConsolidation — المراجعة تُرتَّب بالأضعف، والخُمس ثابت (الحكم ٤)", () => {
+describe("getConsolidation — المراجعة تُرتَّب بالأضعف، والمقدار ثابت (مراقي ٢، وحدويّ)", () => {
   it("الراسخ الذي فيه أخطاءٌ سابقة يتقدّم، وstockCount/khums كما هما", async () => {
     await seedMushafFaces(prisma);
-    const { student, circle, sub, reciter } = await harvestScaffold();
-    // ١٢ جلسة حفظٍ متقنة (سور ١٠٠..١١١) ⟵ الراسخ = الأقدم اثنتان (١٠٠ ثمّ ١٠١).
-    for (let i = 0; i < 12; i++) {
-      await prisma.dailySession.create({
-        data: { studentId: student.id, circleId: circle.id, date: new Date(Date.UTC(2026, 4, i + 1)),
-          hifzFromSurah: 100 + i, hifzFromAyah: 1, hifzToSurah: 100 + i, hifzToAyah: 5, hifzAttempts: 1, hifzMastered: true },
-      });
-    }
-    // بلا أخطاء: المراجعة بالأقدم (سورة ١٠٠ أوّلاً).
+    const { student, sub, reciter } = await harvestScaffold();
+    // ١٢ وحدةً في البقرة (٥ آياتٍ لكلٍّ)، بلغها الطالبُ كلَّها ⟵ نافذة الترسيخ ١٠، فالراسخ = الوحدتان ١ و٢.
+    const units = Array.from({ length: 12 }, (_, i) => ({ unitNo: i + 1, startSurah: 2, startAyah: 5 * i + 1, endSurah: 2, endAyah: 5 * i + 5 }));
+    await seedMaraqiTrackForStudent(prisma, student.id, { units });
+    await prisma.maraqiPlacement.create({ data: { studentId: student.id, reachedSurah: 2, reachedAyah: 60 } });
+
+    // بلا أخطاء: المراجعة بالأقدم (الوحدة ١: ٢:١).
     const before = await getConsolidation(student.id, prisma);
     expect(before.review.stockCount).toBe(2);
     expect(before.review.khums).toBe(1);
-    expect(before.review.segments[0].fromSurah).toBe(100);
+    expect(before.review.segments[0].fromAyah).toBe(1);
 
-    // خطآن في الراسخ الثاني (سورة ١٠١) ⟵ يتقدّم.
-    const h = await prisma.hasad.create({ data: { studentId: student.id, stageId: sub.id, reciterId: reciter.id, fromSurah: 101, fromAyah: 1, toSurah: 101, toAyah: 5, result: HasadResult.PASS } });
-    await prisma.hasadPageError.create({ data: { hasadId: h.id, pageNo: 1, errorType: HasadErrorType.WORD, surah: 101, ayah: 2 } });
-    await prisma.hasadPageError.create({ data: { hasadId: h.id, pageNo: 1, errorType: HasadErrorType.WORD, surah: 101, ayah: 3 } });
+    // خطآن في الوحدة ٢ (البقرة ٧، ٨) ⟵ تتقدّم.
+    const h = await prisma.hasad.create({ data: { studentId: student.id, stageId: sub.id, reciterId: reciter.id, fromSurah: 2, fromAyah: 6, toSurah: 2, toAyah: 10, result: HasadResult.PASS } });
+    await prisma.hasadPageError.create({ data: { hasadId: h.id, pageNo: 1, errorType: HasadErrorType.WORD, surah: 2, ayah: 7 } });
+    await prisma.hasadPageError.create({ data: { hasadId: h.id, pageNo: 1, errorType: HasadErrorType.WORD, surah: 2, ayah: 8 } });
 
     const after = await getConsolidation(student.id, prisma);
-    expect(after.review.segments[0].fromSurah).toBe(101); // الأضعف أوّلاً — الترتيب تبدّل
-    expect(after.review.stockCount).toBe(2);              // المقدار لم يتغيّر
-    expect(after.review.khums).toBe(1);                   // الخُمس لم يُمسّ
-    expect(after.review.segments).toHaveLength(before.review.segments.length); // المجموعة نفسها
+    expect(after.review.segments[0].fromAyah).toBe(6); // الوحدة ٢ (الأضعف) أوّلاً
+    expect(after.review.stockCount).toBe(2);
+    expect(after.review.khums).toBe(1);
+    expect(after.review.segments).toHaveLength(before.review.segments.length);
   });
 });
