@@ -5,6 +5,7 @@ import { makkahDayDate } from "@/lib/muddakir";
 
 import { AuthorizationError, ValidationError } from "./errors";
 import { deriveDay, recomputeTreatmentAndWeak } from "./muddakir-day";
+import { deriveWard } from "./muddakir-ward";
 
 // ═══════════════ استقبال أحداث المُدَّكِر (المرحلة ٤، §٨) ═══════════════
 //
@@ -23,6 +24,7 @@ export const MUDDAKIR_EVENT_TYPES = [
   "DAY_COMPLETE",                      // إتمام اليوم (§٥)
   "MAKEUP_COMPLETE",                   // قضاء يومٍ سابقٍ في غده (§٥)
   "TRACK_CHANGE_REQUEST",              // طلب الحافظ تغيير مساره (§٤٫١) — يُقرّه المشرف (المرحلة ٦)
+  "WARD_COMPLETE",                     // إتمام وردٍ في التثبيت/الدائم (§١٢) — مؤشّر الورد
 ] as const;
 export type MuddakirEventType = (typeof MUDDAKIR_EVENT_TYPES)[number];
 const KNOWN = new Set<string>(MUDDAKIR_EVENT_TYPES);
@@ -103,11 +105,17 @@ export async function ingestEvents(
 
   // اشتقاق كلّ يومٍ تأثّر **تنازليًّا** (الغد قبل أمسِه): فيوجد سجلّ يوم القضاء قبل تقييم اليوم
   // المقضيّ، فيُضبط makeupForDayId مع MADE_UP.
-  const days = [...affected].sort().reverse();
-  for (const d of days) await deriveDay(db, studentId, d, now);
+  // طور الحافظ يحدّد المحرّك: الحفظ ⟵ محرّك اليوم (الأركان)؛ التثبيت/الدائم ⟵ محرّك الورد (§١٢).
+  const phaseRow = await db.muddakirProfile.findUnique({ where: { studentId }, select: { phase: true } });
+  if (phaseRow && phaseRow.phase !== "MEMORIZE") {
+    await deriveWard(db, studentId, now);
+  } else {
+    const days = [...affected].sort().reverse();
+    for (const d of days) await deriveDay(db, studentId, d, now);
+  }
 
-  // علاج الأخطاء ووسم الأوجه الضعيفة: إعادةُ حسابٍ نقيّةٌ مرّةً بعد اشتقاق كلّ الأيّام المتأثّرة.
+  // علاج الأخطاء ووسم الأوجه الضعيفة: إعادةُ حسابٍ نقيّةٌ (يعمل في الطورين — مواضع REVIEW في التثبيت).
   await recomputeTreatmentAndWeak(db, studentId);
 
-  return { accepted, duplicates: args.events.length - accepted, days };
+  return { accepted, duplicates: args.events.length - accepted, days: [...affected].sort().reverse() };
 }
