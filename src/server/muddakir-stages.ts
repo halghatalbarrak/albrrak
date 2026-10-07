@@ -5,6 +5,7 @@ import {
   MuddakirErrorSource,
   MuddakirFaceState,
   MuddakirMode,
+  MuddakirPhase,
   MuddakirRecitationKind,
   Role,
   type Prisma,
@@ -176,7 +177,14 @@ export async function recordStageRecitation(args: RecordRecitationArgs, db: Pris
         nextStage = progress.stage + 1;
         await tx.muddakirProfile.update({ where: { studentId: args.studentId }, data: { currentStageId: String(nextStage) } });
       }
-      if (kind === MuddakirRecitationKind.FINAL) graduated = true;
+      if (kind === MuddakirRecitationKind.FINAL) {
+        graduated = true;
+        // التخرّج من الحفظ ⟵ الدخول في طور التثبيت من الدرجة ١ (§١٢).
+        await tx.muddakirProfile.update({
+          where: { studentId: args.studentId },
+          data: { phase: MuddakirPhase.TATHBIT, tathbitDegree: 1, khatmaInDegree: 0, wardsCompleted: 0 },
+        });
+      }
     }
 
     const rec = await tx.muddakirRecitation.create({
