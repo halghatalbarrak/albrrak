@@ -1143,6 +1143,7 @@ model MuddakirProfile {
   tathbitDegree     Int? // درجة التثبيت الحاليّة (١..١٠)، أو null قبل التثبيت
   khatmaInDegree    Int           @default(0) // عدد ختمات الدرجة الحاليّة المُتمّة
   wardsCompleted    Int           @default(0) // مؤشّر الورد: عدد الأوراد المُتمّة (موضعه في الجدول)
+  wardsRaised       Int           @default(0) // إزاحةُ الرفع المبكّر (أوراد قفزها المشرف بلا إتمام، §١٢)
   cumulativeKhatmat Int           @default(0) // عدّاد الختمات التراكميّ (مدى الحياة)
 }
 

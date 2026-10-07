@@ -4,6 +4,7 @@ import {
   approveTrackChange,
   confirmWeekRegularity,
   markHeard,
+  raiseHafizDegree,
   recordSupervisorError,
   reverseWeekGrants,
   setReviewCycleDays,
@@ -57,6 +58,8 @@ export async function POST(req: Request) {
         const mode = b.mode === MuddakirMode.REVIEW_ONLY ? MuddakirMode.REVIEW_ONLY : MuddakirMode.ACTIVE;
         return Response.json(await setStageMode({ actorUserId: actor.id, studentId, mode }));
       }
+      case "raiseDegree":
+        return Response.json(await raiseHafizDegree({ actorUserId: actor.id, studentId }));
       default:
         throw new ValidationError("إجراءٌ غير معروف.");
     }

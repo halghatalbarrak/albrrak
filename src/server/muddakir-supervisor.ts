@@ -10,7 +10,7 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { makkahDayBounds, makkahDayDate } from "@/lib/muddakir";
+import { juzBoundsFromHizb, makkahDayBounds, makkahDayDate, type HizbRow } from "@/lib/muddakir";
 
 import { emitEvent } from "./events";
 import { grantAuto } from "./economy";
@@ -29,6 +29,7 @@ import {
   transitionReviewStates,
 } from "./muddakir-day";
 import { getStageProgress, type StageProgress } from "./muddakir-stages";
+import { getWardView, raiseDegree as wardRaiseDegree, type RaiseResult } from "./muddakir-ward";
 
 // ═══════════════ المُدَّكِر — المشرف واللقاء الأسبوعيّ (المرحلة ٦) ═══════════════
 //
@@ -185,7 +186,19 @@ export interface HafizDetail {
   openTreatments: { page: number; lineNo: number; source: string }[];
   trackRequest: { track: number } | null;            // طلبٌ معلّقٌ للإقرار
   stageProgress: StageProgress | null;                // ختام المرحلة (§٧): جاهزيّة السرد والوضع (null إن لم تُبذر بيانات المصحف)
+  tathbit: TathbitSupervisorView | null;              // التثبيت (§١٢): الدرجة والمواضع المفاجئة (للمشرف فقط، تعديل ٣)
   indicators: HafizIndicators;
+}
+
+/** عرض التثبيت للمشرف — يتضمّن المواضع المفاجئة (لا تصل الحافظ أبداً، تعديل ٣). */
+export interface TathbitSupervisorView {
+  phase: "TATHBIT" | "PERMANENT";
+  degreeNo: number;
+  dailyJuz: number;
+  khatmaInDegree: number;
+  cumulativeKhatmat: number;
+  finishedLadder: boolean;
+  surprisePositions: { juz: number; fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }[];
 }
 
 /** تفصيل حافظٍ للقاء الأسبوعيّ (§٦، بند ٢): أوجه أسبوعه، مواضع العلاج، حالة الأسبوع وطلب المسار. */
@@ -215,6 +228,7 @@ export async function supervisorHafizDetail(actorUserId: string, studentId: stri
   const indicators = await indicatorsFor(db, studentId, name, now, excuseLimit);
   let stageProgress: StageProgress | null = null;
   try { stageProgress = await getStageProgress(studentId, db); } catch { /* بيانات المصحف/الأحزاب غير مبذورة */ }
+  const tathbit = await tathbitSupervisorView(db, studentId, weekStart, now);
   const pending = req != null && req.track !== profile.track && req.track !== (profile.pendingTrack ?? undefined);
 
   return {
@@ -231,8 +245,52 @@ export async function supervisorHafizDetail(actorUserId: string, studentId: stri
     openTreatments: treatments,
     trackRequest: pending ? { track: req!.track } : null,
     stageProgress,
+    tathbit,
     indicators,
   };
+}
+
+// ── التثبيت: عرض المشرف ومواضعه المفاجئة (لا تصل الحافظ، تعديل ٣) ──
+
+/** تبعثرٌ حتميّ (مزيجُ معرّف الحافظ + الأسبوع) — ثابتٌ للأسبوع فلا تتغيّر المواضع عند كلّ فتح. */
+function seededOrder(seed: string, n: number): number[] {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  const idx = Array.from({ length: n }, (_, i) => i + 1);
+  for (let i = n - 1; i > 0; i--) { h = (Math.imul(h, 48271) + 1) >>> 0; const j = h % (i + 1); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+  return idx;
+}
+
+async function tathbitSupervisorView(db: Db, studentId: string, weekStart: string, now: Date): Promise<TathbitSupervisorView | null> {
+  const profile = await db.muddakirProfile.findUnique({ where: { studentId }, select: { phase: true } });
+  if (!profile || profile.phase === "MEMORIZE") return null;
+  const v = await getWardView(studentId, db as PrismaClient, now);
+  if (!v.active && !v.finishedLadder) return null;
+
+  // مواضع مفاجئة بقدر weeklySurpriseJuz جزءاً من ورد الأسبوع (عشوائيّةٌ ثابتةٌ للأسبوع، يغيّرها المشرف).
+  const programId = await muddakirProgramId(db);
+  const surpriseSetting = await getProgramSetting(programId, "weeklySurpriseJuz", db as PrismaClient);
+  const count = typeof surpriseSetting === "number" && surpriseSetting > 0 ? surpriseSetting : 1;
+  const hizb = (await db.hizbBoundary.findMany()) as unknown as HizbRow[];
+  const juz = hizb.length ? juzBoundsFromHizb(hizb) : [];
+  const order = seededOrder(`${studentId}:${weekStart}`, 30);
+  const picked = order.slice(0, Math.min(count, 30)).sort((a, b) => a - b);
+  const surprisePositions = picked
+    .map((j) => juz.find((x) => x.juz === j))
+    .filter((x): x is NonNullable<typeof x> => x != null)
+    .map((x) => ({ juz: x.juz, fromSurah: x.startSurah, fromAyah: x.startAyah, toSurah: x.endSurah, toAyah: x.endAyah }));
+
+  return {
+    phase: v.phase === "PERMANENT" ? "PERMANENT" : "TATHBIT",
+    degreeNo: v.degreeNo, dailyJuz: v.dailyJuz, khatmaInDegree: v.khatmaInDegree,
+    cumulativeKhatmat: v.cumulativeKhatmat, finishedLadder: v.finishedLadder, surprisePositions,
+  };
+}
+
+/** الرفع المبكّر: المشرف/المدير يرفع حافظه المُسنَد إلى الدرجة التالية (§١٢) — مع تسجيلٍ، لا نزول. */
+export async function raiseHafizDegree(args: { actorUserId: string; studentId: string }, db: PrismaClient = prisma, now: Date = new Date()): Promise<RaiseResult> {
+  await assertCanActOnHafiz(db, args.actorUserId, args.studentId);
+  return wardRaiseDegree(args.studentId, args.actorUserId, db, now);
 }
 
 // ═══════════════ الكتابات ═══════════════

@@ -2,6 +2,7 @@ import { MuddakirDayStatus, MuddakirPhase, type Prisma, type PrismaClient } from
 
 import { prisma } from "@/lib/prisma";
 import {
+  degreeWardCount,
   foldWardDays,
   juzBoundsFromHizb,
   locateInLadder,
@@ -107,7 +108,7 @@ export interface WardView {
 
 /** يحسب حالة الورد اليوم (قراءةً): أوراد اليوم بحدودها، الدرجة والختمة والعدّاد والحالة. */
 export async function getWardView(studentId: string, db: PrismaClient = prisma, now: Date = new Date()): Promise<WardView> {
-  const profile = await db.muddakirProfile.findUnique({ where: { studentId }, select: { phase: true } });
+  const profile = await db.muddakirProfile.findUnique({ where: { studentId }, select: { phase: true, wardsRaised: true } });
   const empty: WardView = { phase: profile?.phase ?? MuddakirPhase.MEMORIZE, active: false, degreeNo: 0, dailyJuz: 0, khatmaInDegree: 0, cumulativeKhatmat: 0, finishedLadder: false, status: MuddakirDayStatus.OPEN, wards: [] };
   if (!profile || profile.phase !== MuddakirPhase.TATHBIT) return empty;
   const start = await tathbitStart(db, studentId);
@@ -115,36 +116,38 @@ export async function getWardView(studentId: string, db: PrismaClient = prisma, 
   if (!start || today < start) return empty;
 
   const ladder = await loadLadder(db);
+  const base = profile.wardsRaised; // إزاحةُ الرفع المبكّر (§١٢)
   const entries = await wardEntries(db, studentId, start, today, now);
   const fold = foldWardDays(entries);
   const todayRes = fold.days[fold.days.length - 1];
   const pointerBeforeToday = todayRes.pointerAfter - todayRes.completed;
 
-  // أوراد اليوم المعروضة: المؤشّرات العالميّة [pointerBeforeToday .. +shown-1].
+  // أوراد اليوم المعروضة: المؤشّرات العالميّة الفعليّة (المُتمّ + إزاحة الرفع) [.. +shown-1].
   const juz = await loadJuzBounds(db);
   const wards: WardView["wards"] = [];
   for (let i = 0; i < todayRes.shown; i++) {
-    const loc = locateInLadder(pointerBeforeToday + i, ladder);
+    const loc = locateInLadder(pointerBeforeToday + base + i, ladder);
     if (loc.done) break;
     const slot = locateWardInDegree(loc.wardInDegree, loc.dailyJuz);
     wards.push({ fromJuz: slot.fromJuz, toJuz: slot.toJuz, bound: wardAyahBound(slot, juz) });
   }
-  const here = locateInLadder(fold.pointer, ladder);
+  const effective = fold.pointer + base;
+  const here = locateInLadder(effective, ladder);
   return {
     phase: MuddakirPhase.TATHBIT, active: true,
     degreeNo: here.done ? ladder[ladder.length - 1]?.degreeNo ?? 0 : here.degreeNo,
     dailyJuz: here.done ? 0 : here.dailyJuz,
     khatmaInDegree: here.khatmaInDegree,
-    cumulativeKhatmat: cumulativeKhatmat(fold.pointer, ladder),
+    cumulativeKhatmat: cumulativeKhatmat(effective, ladder),
     finishedLadder: here.done,
     status: toDayStatus(todayRes.status),
     wards,
   };
 }
 
-/** يعيد اشتقاق مؤشّر الورد والدرجة والعدّاد وإسقاط يوم اليوم (idempotent). */
+/** يعيد اشتقاق مؤشّر الورد والدرجة والعدّاد وإسقاط يوم اليوم (idempotent). المؤشّر الفعليّ = المُتمّ + إزاحة الرفع. */
 export async function deriveWard(db: Db, studentId: string, now: Date = new Date()): Promise<void> {
-  const profile = await db.muddakirProfile.findUnique({ where: { studentId }, select: { phase: true } });
+  const profile = await db.muddakirProfile.findUnique({ where: { studentId }, select: { phase: true, wardsRaised: true } });
   if (!profile || profile.phase !== MuddakirPhase.TATHBIT) return;
   const start = await tathbitStart(db, studentId);
   const today = makkahDayDate(now);
@@ -154,22 +157,48 @@ export async function deriveWard(db: Db, studentId: string, now: Date = new Date
   const entries = await wardEntries(db, studentId, start, today, now);
   const fold = foldWardDays(entries);
   const todayRes = fold.days[fold.days.length - 1];
-  const loc = locateInLadder(fold.pointer, ladder);
+  const effective = fold.pointer + profile.wardsRaised;
+  const loc = locateInLadder(effective, ladder);
+  const khatmaNo = cumulativeKhatmat(effective, ladder);
 
   await db.muddakirProfile.update({
     where: { studentId },
     data: {
-      wardsCompleted: fold.pointer,
+      wardsCompleted: effective,
       tathbitDegree: loc.done ? (ladder[ladder.length - 1]?.degreeNo ?? null) : loc.degreeNo,
       khatmaInDegree: loc.khatmaInDegree,
-      cumulativeKhatmat: cumulativeKhatmat(fold.pointer, ladder),
+      cumulativeKhatmat: khatmaNo,
     },
   });
   await db.muddakirWardDay.upsert({
     where: { studentId_dayDate: { studentId, dayDate: dateVal(today) } },
-    update: { status: toDayStatus(todayRes.status), wardsCompleted: todayRes.completed, degreeNo: loc.degreeNo, khatmaNo: cumulativeKhatmat(fold.pointer, ladder) },
-    create: { studentId, dayDate: dateVal(today), phase: MuddakirPhase.TATHBIT, degreeNo: loc.degreeNo, khatmaNo: cumulativeKhatmat(fold.pointer, ladder), status: toDayStatus(todayRes.status), wardsCompleted: todayRes.completed },
+    update: { status: toDayStatus(todayRes.status), wardsCompleted: todayRes.completed, degreeNo: loc.degreeNo, khatmaNo },
+    create: { studentId, dayDate: dateVal(today), phase: MuddakirPhase.TATHBIT, degreeNo: loc.degreeNo, khatmaNo, status: toDayStatus(todayRes.status), wardsCompleted: todayRes.completed },
   });
+}
+
+// ═══════════════ الرفع المبكّر إلى الدرجة التالية (§١٢) ═══════════════
+
+export interface RaiseResult { fromDegree: number; toDegree: number; atKhatma: number }
+
+/**
+ * يرفع المشرف الحافظ إلى الدرجة التالية قبل إتمام ختماتها (§١٢): تُقفَز أوراد ما بقي من درجته
+ * الحاليّة (إزاحة wardsRaised)، ويُسجَّل الرفع (من/إلى/الختمة) — لا نزول. ثمّ يُعاد الاشتقاق.
+ */
+export async function raiseDegree(studentId: string, bySupervisorId: string, db: PrismaClient = prisma, now: Date = new Date()): Promise<RaiseResult> {
+  const profile = await db.muddakirProfile.findUnique({ where: { studentId }, select: { phase: true, wardsCompleted: true, wardsRaised: true } });
+  if (!profile || profile.phase !== MuddakirPhase.TATHBIT) throw new Error("الرفع المبكّر في طور التثبيت فقط.");
+  const ladder = await loadLadder(db);
+  const effective = profile.wardsCompleted; // المؤشّر الفعليّ (محدَّثٌ بالاشتقاق)
+  const loc = locateInLadder(effective, ladder);
+  if (loc.done) throw new Error("أتمّ الحافظ درجات التثبيت.");
+  const degree = ladder.find((d) => d.degreeNo === loc.degreeNo)!;
+  const remaining = degreeWardCount(degree.dailyJuz, degree.khatmaCount) - loc.wardInDegree; // أوراد ما بقي من الدرجة
+  await db.muddakirProfile.update({ where: { studentId }, data: { wardsRaised: profile.wardsRaised + remaining } });
+  const toDegree = loc.degreeNo + 1;
+  await db.muddakirDegreeRaise.create({ data: { studentId, fromDegree: loc.degreeNo, toDegree, atKhatma: loc.khatmaInDegree + 1, bySupervisorId } });
+  await deriveWard(db, studentId, now);
+  return { fromDegree: loc.degreeNo, toDegree, atKhatma: loc.khatmaInDegree + 1 };
 }
 
 /** يسجّل إتمام وردٍ (حدثٌ idempotent بـclientEventId)، ثمّ يعيد الاشتقاق. */

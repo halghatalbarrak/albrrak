@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { arNum } from "@/lib/format";
+import { arNum, formatAyah } from "@/lib/format";
 import { ui, sp, Button, Card, Modal, Input, Badge } from "@/components/ui";
 import { tMuddakir as t, stageLabel } from "@/i18n/ar/muddakir";
 
@@ -25,6 +25,7 @@ interface Detail {
   openTreatments: { page: number; lineNo: number; source: string }[];
   trackRequest: { track: number } | null;
   stageProgress: { stage: number; memorized: number; total: number; ready: boolean; mode: "ACTIVE" | "REVIEW_ONLY"; awaitingFinal: boolean; graduated: boolean } | null;
+  tathbit: { phase: "TATHBIT" | "PERMANENT"; degreeNo: number; dailyJuz: number; khatmaInDegree: number; cumulativeKhatmat: number; finishedLadder: boolean; surprisePositions: { juz: number; fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }[] } | null;
   indicators: Indicators;
 }
 
@@ -145,6 +146,25 @@ export default function MuddakirSupervisorPage() {
                   ? <Button variant="ghost" size="sm" onClick={() => void act({ action: "setMode", studentId: detail.studentId, mode: "ACTIVE" }, t("setActive"))}>{t("setActive")}</Button>
                   : <Button variant="ghost" size="sm" onClick={() => void act({ action: "setMode", studentId: detail.studentId, mode: "REVIEW_ONLY" }, t("setReviewOnly"))}>{t("setReviewOnly")}</Button>}
               </div>
+            </Card>
+          )}
+
+          {/* التثبيت (§١٢): الدرجة، المواضع المفاجئة (للمشرف فقط)، والرفع المبكّر */}
+          {detail.tathbit && (
+            <Card style={{ padding: sp(3) }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(2), flexWrap: "wrap" }}>
+                <strong>{detail.tathbit.phase === "PERMANENT" ? t("permanentWardTitle") : `${t("wardDegree")} ${arNum(detail.tathbit.degreeNo)}`}</strong>
+                <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}>{t("wardCumulative")}: {arNum(detail.tathbit.cumulativeKhatmat)}{detail.tathbit.phase === "TATHBIT" ? ` · ${t("wardKhatma")} ${arNum(detail.tathbit.khatmaInDegree + 1)}` : ""}</span>
+              </div>
+              <div style={{ marginTop: sp(2) }}>
+                <strong style={{ fontSize: ui.text.xs }}>{t("surprisePositions")}</strong>
+                {detail.tathbit.surprisePositions.length === 0 ? <Muted>—</Muted> : detail.tathbit.surprisePositions.map((s) => (
+                  <div key={s.juz} style={{ fontSize: ui.text.xs, color: ui.color.muted, marginTop: sp(1) }}>{t("wardJuzRange")} {arNum(s.juz)}: {formatAyah(s.fromSurah, s.fromAyah, s.toSurah, s.toAyah)}</div>
+                ))}
+              </div>
+              {detail.tathbit.phase === "TATHBIT" && !detail.tathbit.finishedLadder && (
+                <Button variant="ghost" size="sm" style={{ marginTop: sp(2) }} onClick={() => void act({ action: "raiseDegree", studentId: detail.studentId }, t("raiseDegreeBtn"))}>{t("raiseDegreeBtn")}</Button>
+              )}
             </Card>
           )}
 
