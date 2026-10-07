@@ -177,6 +177,8 @@ describe("التخرّج: السرد الختاميّ بعد المرحلة ال
     const cert = await prisma.certificate.findUniqueOrThrow({ where: { id: rf.certificateId! } });
     expect(cert.template).toBe("MUDDAKIR_KHATM");
     expect((await getStageProgress(student.id, prisma)).graduated).toBe(true);
+    // الهوك: التخرّج من الحفظ ⟵ الدخول في طور التثبيت من الدرجة ١ (§١٢، ت٣).
+    expect(await prisma.muddakirProfile.findUniqueOrThrow({ where: { studentId: student.id } })).toMatchObject({ phase: "TATHBIT", tathbitDegree: 1 });
   });
 });
 

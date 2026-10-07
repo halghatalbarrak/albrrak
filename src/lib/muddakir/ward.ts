@@ -68,3 +68,31 @@ export function composeDayWards(done: number, due: number): number[] {
   const count = Math.min(2, pending); // سقف: ورد فائتٌ واحدٌ + ورد اليوم
   return Array.from({ length: count }, (_, i) => done + i);
 }
+
+export interface LadderDegree { degreeNo: number; dailyJuz: number; khatmaCount: number }
+export interface LadderLocation {
+  done: boolean; // تجاوز المؤشّرُ كلَّ درجات السلّم (جاهزٌ للختام/الدائم)
+  degreeNo: number;
+  dailyJuz: number;
+  wardInDegree: number; // مؤشّر الورد داخل الدرجة (٠..)
+  khatmaInDegree: number; // رقم الختمة داخل الدرجة (٠..)
+}
+
+/**
+ * موضع مؤشّرٍ عالميّ (عدد الأوراد المُتمّة عبر الدرجات) في سلّم التثبيت: الدرجة ومؤشّر الورد فيها
+ * وختمتها. `done=true` إن تجاوز المؤشّرُ مجموعَ أوراد السلّم (أنهى الدرجة العاشرة).
+ */
+export function locateInLadder(pointer: number, ladder: readonly LadderDegree[], total: number = TOTAL_JUZ): LadderLocation {
+  const sorted = [...ladder].sort((a, b) => a.degreeNo - b.degreeNo);
+  let acc = 0;
+  for (const d of sorted) {
+    const degTotal = degreeWardCount(d.dailyJuz, d.khatmaCount, total);
+    if (pointer < acc + degTotal) {
+      const wardInDegree = pointer - acc;
+      return { done: false, degreeNo: d.degreeNo, dailyJuz: d.dailyJuz, wardInDegree, khatmaInDegree: Math.floor(wardInDegree / wardsPerKhatma(d.dailyJuz, total)) };
+    }
+    acc += degTotal;
+  }
+  const last = sorted[sorted.length - 1];
+  return { done: true, degreeNo: last?.degreeNo ?? 0, dailyJuz: last?.dailyJuz ?? 0, wardInDegree: 0, khatmaInDegree: 0 };
+}

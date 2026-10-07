@@ -22,7 +22,11 @@ export {
   locateWardInDegree,
   wardAyahBound,
   composeDayWards,
+  locateInLadder,
   type AyahBound as WardAyahBound,
   type WardSlot,
   type WardLocation,
+  type LadderDegree,
+  type LadderLocation,
 } from "./ward";
+export { foldWardDays, type WardDayEntry, type WardDayResult, type WardFold, type WardDayStatus } from "./ward-fold";
