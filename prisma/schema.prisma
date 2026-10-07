@@ -381,6 +381,9 @@ model Track {
   linesPerDay Float // ٧٫٥ — للترتيب والحساب
   ordinal     Int
   isActive    Boolean           @default(true)
+  // منهج الترسيخ والمراجعة لكلّ مسار (يضبطه المدير) — لا ثوابت في الكود (مراقي ٢):
+  tarseekhUnits     Int @default(10) // الترسيخ = عدد الوحدات السابقة لوحدة اليوم في ترتيب المسار
+  reviewDaysPerWeek Int @default(5) // المراجعة = كلّ المحفوظ (قبل نافذة الترسيخ) مقسومًا على أيّام الأسبوع
   assignments TrackAssignment[]
   defaultForPrograms Program[]  @relation("ProgramDefaultTrack")
 

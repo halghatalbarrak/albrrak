@@ -110,3 +110,28 @@ export async function createStudent(db: PrismaClient) {
   const student = await db.student.create({ data: { userId: user.id } });
   return { user, student };
 }
+
+export interface SeedUnit { unitNo: number; startSurah: number; startAyah: number; endSurah: number; endAyah: number }
+
+/**
+ * يُنشئ مسار مراقي بوحداته ويُسنده لطالب (لاختبارات الترسيخ/المراجعة الوحدويّة، مراقي ٢).
+ * يضمن برنامج مراقي، ويضبط مقادير المنهج لكلّ مسار. يعيد المسار.
+ */
+export async function seedMaraqiTrackForStudent(
+  db: PrismaClient,
+  studentId: string,
+  opts: { units: SeedUnit[]; linesPerDay?: number; tarseekhUnits?: number; reviewDaysPerWeek?: number },
+) {
+  let program = await db.program.findUnique({ where: { key: ProgramKey.MARAQI }, select: { id: true } });
+  if (!program) program = await db.program.create({ data: { key: ProgramKey.MARAQI, nameAr: `مراقي-${uniq()}` }, select: { id: true } });
+  const count = await db.track.count({ where: { programId: program.id } });
+  const track = await db.track.create({
+    data: {
+      programId: program.id, nameAr: `مسار-${uniq()}`, linesPerDay: opts.linesPerDay ?? 5, ordinal: count + 1,
+      tarseekhUnits: opts.tarseekhUnits ?? 10, reviewDaysPerWeek: opts.reviewDaysPerWeek ?? 5,
+    },
+  });
+  if (opts.units.length) await db.trackUnit.createMany({ data: opts.units.map((u) => ({ trackId: track.id, ...u })) });
+  await db.trackAssignment.create({ data: { studentId, trackId: track.id, reason: "PACE_TEST" } });
+  return track;
+}

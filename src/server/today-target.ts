@@ -3,21 +3,18 @@ import { ProgramKey, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import { getCircleSessionBoard, getHifzGate, getStudentPosition, type BoardStudent } from "./daily-session";
-import { maraqiKey, unitsForTrack, type UnitRow } from "./track-units";
+import { maraqiKey, type UnitRow } from "./track-units";
+import { partitionByLines, trackPolicyAndUnits, unitLineWeights } from "./maraqi-consolidation";
 import { getStudentErrorTally, orderSegmentsByWeakness } from "./weakness-map";
 
 // ═══════════════ وجهة اليوم (م٤ — الثمرة النهائيّة) ═══════════════
 //
 // دالّةٌ واحدةٌ تحسب مهامّ اليوم الثلاث بحدودها (سورة:آية)، فوق الأساس القائم بلا مساسٍ به.
-// حسم محمد: **المقطع = وحدة المسار (TrackUnit)**، لا جلسة؛ و**المراجعة = الراسخ فقط** (ما خرج
-// من نافذة الترسيخ العشرة). فالمهامّ تُشتقّ من وحدات المسار التي بلغها الطالب (موضعه):
+// حسم محمد (مراقي ٢): **المقطع = وحدة المسار (TrackUnit)**؛ والمقادير **لكلّ مسار من الإدارة**:
 //   ١) الحفظ الجديد المقترح: الوحدة التالية لموضعه (الحكم ١: إن لم يُتقن أمسِ ⟵ إعادة).
-//   ٢) الترسيخ: آخر ١٠ وحداتٍ سابقة (لا تشمل وحدة اليوم).
-//   ٣) المراجعة: الراسخ (ما قبل العشر) مقسَّمٌ ٥ حصص، تنازليًّا من الأحدث للأقدم (جزء ٣٠)؛
-//      حصّة اليوم بحدودها، والأضعف أوّلاً (الفكرة ٣). اقتراحٌ وعرضٌ فقط.
-
-const TARSEEKH_WINDOW = 10; // الحكم ٢
-const CIRCLE_DAYS_PER_WEEK = 5; // الحكم ٤ (الأحد→الخميس)
+//   ٢) الترسيخ: `tarseekhUnits` وحدةً سابقةً (لا تشمل وحدة اليوم).
+//   ٣) المراجعة: الراسخ (ما قبل نافذة الترسيخ) مقسَّمٌ على `reviewDaysPerWeek`، حصصًا بحدود وحداتٍ
+//      كاملةٍ متقاربةَ الحجم بالأسطر؛ حصّة اليوم بحدودها، والأضعف أوّلاً (الفكرة ٣). عرضٌ فقط.
 
 export interface AyahBound {
   fromSurah: number;
@@ -101,9 +98,10 @@ export async function todayTarget(
   if (position.program !== ProgramKey.MARAQI) return { ...empty, status: "NOT_MARAQI" };
   if (await onStageExamLeave(studentId, today, db)) return { ...empty, status: "ON_LEAVE" };
 
-  // مسار الطالب ووحداته، وموضعه فيها (عدد الوحدات التي بلغها قبل اليوم).
-  const assignment = await db.trackAssignment.findFirst({ where: { studentId, endedAt: null }, orderBy: { startedAt: "desc" }, select: { trackId: true } });
-  const units = assignment ? await unitsForTrack(assignment.trackId, db) : [];
+  // مسار الطالب ووحداته وسياسته (المقادير لكلّ مسار)، وموضعه فيها (قبل اليوم).
+  const policy = await trackPolicyAndUnits(studentId, db);
+  const assignment = policy.trackId ? { trackId: policy.trackId } : null;
+  const units = policy.units;
 
   // التسكين (ق٣): موضع الوصول المسكَّن + المحفوظ خارج الترتيب يُدمجان مع الجلسات.
   const placement = await db.maraqiPlacement.findUnique({
@@ -123,10 +121,10 @@ export async function todayTarget(
     maraqiKey(u.endSurah, u.endAyah) <= maraqiKey(r.toSurah, r.toAyah));
 
   const inOrder = units.slice(0, reached); // المحفوظ بالترتيب (١..reached)
-  const rasikhCut = Math.max(0, reached - TARSEEKH_WINDOW);
-  const tarseekhUnits = inOrder.slice(rasikhCut); // آخر ١٠ بالترتيب
+  const rasikhCut = Math.max(0, reached - policy.tarseekhUnits); // نافذة الترسيخ لكلّ مسار
+  const tarseekhUnits = inOrder.slice(rasikhCut); // الوحدات السابقة في نافذة الترسيخ
   const oooUnits = units.slice(reached).filter(isOutOfOrder); // محفوظٌ خارج الترتيب (راسخٌ فورًا)
-  const rasikhUnits = [...inOrder.slice(0, rasikhCut), ...oooUnits]; // الراسخ: قديم الترتيب + خارج الترتيب
+  const rasikhUnits = [...inOrder.slice(0, rasikhCut), ...oooUnits].sort((a, b) => a.unitNo - b.unitNo); // الراسخ بترتيب المسار
 
   // ── الحفظ الجديد: أوّل وحدةٍ غير محفوظةٍ بالترتيب، تتخطّى المحفوظ خارج الترتيب ──
   const gate = await getHifzGate(studentId, today, db);
@@ -138,15 +136,16 @@ export async function todayTarget(
   else if (nextIdx < units.length) newHifz = { kind: "NEW", bound: unitBound(units[nextIdx]) };
   else newHifz = { kind: "COMPLETED" };
 
-  // ── المراجعة: الراسخ ٥ حصص، تنازليًّا من الأحدث للأقدم؛ حصّة اليوم، الأضعف أوّلاً ──
+  // ── المراجعة: الراسخ يُقسَّم على أيّام الأسبوع، حصصًا بحدود وحداتٍ كاملةٍ متقاربةً بالأسطر؛
+  //    حصّة اليوم بحدودها، والأضعف أوّلاً (الفكرة ٣). الجمعة/السبت (تجاوز أيّام الحلقة) لا حصّة ──
+  const days = policy.reviewDaysPerWeek;
   const weekday = today.getUTCDay(); // ٠=الأحد … ٦=السبت
-  const sliceIndex = weekday <= CIRCLE_DAYS_PER_WEEK - 1 ? weekday : null; // الجمعة/السبت لا حصّة
+  const sliceIndex = weekday <= days - 1 ? weekday : null;
   let todaySlice: AyahBound[] = [];
   if (sliceIndex !== null && rasikhUnits.length > 0) {
-    const newestFirst = rasikhUnits.slice().reverse(); // الأحدث (موضع الطالب) أوّلاً
-    const daySegs = newestFirst
-      .filter((_, i) => Math.floor((i * CIRCLE_DAYS_PER_WEEK) / newestFirst.length) === sliceIndex)
-      .map(unitBound);
+    const weights = await unitLineWeights(rasikhUnits, db);
+    const chunks = partitionByLines(rasikhUnits, weights, days);
+    const daySegs = (chunks[sliceIndex] ?? []).map(unitBound);
     const tally = await getStudentErrorTally(studentId, db); // الفكرة ٣: الأضعف أوّلاً
     todaySlice = orderSegmentsByWeakness(daySegs, tally);
   }
