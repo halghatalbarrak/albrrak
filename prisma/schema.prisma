@@ -718,6 +718,7 @@ enum CertificateTemplate {
   KHATM
   MUDDAKIR_STAGE // إتمام مرحلةٍ من المُدَّكِر (§١/§٧)
   MUDDAKIR_KHATM // إتمام حفظ القرآن في المُدَّكِر — شهادة البرنامج (§١)
+  MUDDAKIR_TATHBIT // إتمام مرحلة التثبيت (§١٢) — بعد اعتماد المشرف
 }
 
 model Certificate {
@@ -1115,6 +1116,14 @@ enum MuddakirErrorSource {
 enum MuddakirRecitationKind {
   STAGE // سرد مرحلةٍ (١..٦)
   FINAL // السرد الختاميّ بعد المرحلة السادسة (§١ التخرّج)
+  TATHBIT_FINAL // السرد الختاميّ لمرحلة التثبيت بعد الدرجة العاشرة (§١٢)
+}
+
+// طور الحافظ (§١/§١٢): الحفظ (المراحل الستّ) ثمّ التثبيت (درجاته) ثمّ الورد الدائم مدى الحياة.
+enum MuddakirPhase {
+  MEMORIZE // في مراحل الحفظ الستّ
+  TATHBIT // في درجات التثبيت
+  PERMANENT // الورد الدائم بعد شهادة التثبيت
 }
 
 // وضع الحافظ ومساره ودورة مراجعته (§١، §٤). صفٌّ لكلّ حافظ.
@@ -1128,6 +1137,13 @@ model MuddakirProfile {
   currentStageId  String?
   mode            MuddakirMode         @default(ACTIVE)
   deliveryMode    MuddakirDeliveryMode @default(IN_PERSON)
+  // مرحلة التثبيت (§١٢): الطور، والدرجة الحاليّة، وترتيب الختمة داخلها، ومؤشّر الورد (عدد الأوراد
+  // المُتمّة = موضعه في الجدول)، وعدّاد الختمات التراكميّ مدى الحياة.
+  phase             MuddakirPhase @default(MEMORIZE)
+  tathbitDegree     Int? // درجة التثبيت الحاليّة (١..١٠)، أو null قبل التثبيت
+  khatmaInDegree    Int           @default(0) // عدد ختمات الدرجة الحاليّة المُتمّة
+  wardsCompleted    Int           @default(0) // مؤشّر الورد: عدد الأوراد المُتمّة (موضعه في الجدول)
+  cumulativeKhatmat Int           @default(0) // عدّاد الختمات التراكميّ (مدى الحياة)
 }
 
 // حالة كلّ وجهٍ (صفحة) لكلّ حافظ (§٤٫٢). جوهر التقدّم.
@@ -1252,4 +1268,44 @@ model MuddakirRecitation {
 
   @@index([studentId])
   @@index([studentId, recitedOn])
+}
+
+// سلّم التثبيت (§١٢): درجاتٌ يحرّرها المدير (بياناتٌ لا ثوابت). عدد ختمات الدرجة = عدد أجزائها
+// اليوميّة (من الثانية فصاعداً)، والأولى ٣. يُبذَر بالعشر درجات من جدول §١٢ ويُعدَّل من الإدارة.
+model MuddakirTathbitDegree {
+  degreeNo   Int     @id // ١..١٠ (ترتيب الدرجة)
+  dailyJuz   Int // أجزاء الورد اليوميّ
+  khatmaDays Int // أيّام الختمة (⌈٣٠ ÷ dailyJuz⌉)
+  khatmaCount Int // عدد ختمات الدرجة
+  active     Boolean @default(true)
+}
+
+// إسقاطُ يوم الورد في التثبيت/الدائم (نظير MuddakirDay، §٣/§٥/§١٢). يُعاد اشتقاقه من الأحداث.
+// الحالة من MuddakirDayStatus نفسها. بلا FK (نمط الجداول المتأخّرة الآمن).
+model MuddakirWardDay {
+  id             String            @id @default(cuid())
+  studentId      String
+  dayDate        DateTime          @db.Date // بتوقيت مكّة
+  phase          MuddakirPhase // TATHBIT | PERMANENT
+  degreeNo       Int // درجة التثبيت وقتها (أو قيمة الورد الدائم)
+  khatmaNo       Int // ترتيب الختمة التراكميّ وقتها
+  status         MuddakirDayStatus @default(OPEN)
+  wardsCompleted Int               @default(0) // أوراد أُتمّت في هذا اليوم (٠..٢: الفائت + ورد اليوم)
+  makeupForDate  DateTime?         @db.Date // اليوم الفائت الذي عُوِّض فيه
+
+  @@unique([studentId, dayDate])
+  @@index([studentId, status])
+}
+
+// سجلّ الرفع المبكّر لدرجةٍ (§١٢): append-only، يراه المدير. لا نزول آليّ ولا حذف.
+model MuddakirDegreeRaise {
+  id           String   @id @default(cuid())
+  studentId    String
+  fromDegree   Int
+  toDegree     Int
+  atKhatma     Int // ترتيب الختمة التي رُفع عندها
+  bySupervisorId String
+  createdAt    DateTime @default(now())
+
+  @@index([studentId])
 }
