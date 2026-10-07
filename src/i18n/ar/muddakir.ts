@@ -166,6 +166,20 @@ export const muddakirAr = {
   addErrorPos: "إضافة موضع",
   resultRecorded: "سُجّلت النتيجة",
   openExaminer: "سرد",
+
+  // مرحلة التثبيت — شاشة الورد (§١٢)
+  wardTitle: "ورد اليوم",
+  permanentWardTitle: "الورد الدائم",
+  wardDegree: "الدرجة",
+  wardKhatma: "الختمة",
+  wardJuzPerDay: "جزء/يوم",
+  wardJuzRange: "الأجزاء",
+  wardCumulative: "ختماتك",
+  completeWard: "إتمام الورد",
+  wardDone: "تمّ ✓",
+  wardMissed: "فائتُ الأمس",
+  wardNone: "لا ورد اليوم",
+  finishedLadderNote: "أتممتَ درجات التثبيت — بانتظار السرد الختاميّ",
 } as const;
 
 /** مفاتيح قاموس المُدَّكِر (للتحقّق الثابت عند الاستدعاء). */

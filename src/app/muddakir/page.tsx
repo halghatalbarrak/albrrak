@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { arNum } from "@/lib/format";
-import { ui, sp, Button, Card, Modal, Input, Select } from "@/components/ui";
+import { arNum, formatAyah } from "@/lib/format";
+import { ui, sp, Button, Card, Modal, Input, Select, Badge } from "@/components/ui";
 import { tMuddakir as t, stageLabel } from "@/i18n/ar/muddakir";
 import {
   EventQueue,
@@ -27,7 +27,15 @@ interface Plan {
   makeup: { forDate: string; newFromPage: number | null; newToPage: number | null } | null;
 }
 interface TrackChange { tracks: number[]; pendingTrack: number | null; effectiveFrom: string | null; requestedTrack: number | null }
+interface WardBound { fromJuz: number; toJuz: number; fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }
+interface WardView {
+  dayDate: string; phase: "TATHBIT" | "PERMANENT"; degreeNo: number; dailyJuz: number;
+  khatmaInDegree: number; cumulativeKhatmat: number; finishedLadder: boolean; status: string;
+  wards: WardBound[]; reminderDay: string;
+}
 interface TodayView {
+  phase?: "MEMORIZE" | "TATHBIT" | "PERMANENT";
+  ward?: WardView | null;
   dayDate: string; track: number; reviewOnly: boolean; status: string;
   stage: Stage | null; meeting: { day: string; facesToRead: number };
   plan: Plan; settings: { newReps: number; firstCleanReps: number; yesterdayReps: number; treatmentLineReps: number };
@@ -130,6 +138,12 @@ export default function MuddakirHafizPage() {
     return <Center><p>هذه الشاشة للحافظ الملتحق بالمُدَّكِر.</p><a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a></Center>;
   if (status === "loading") return <Center><p style={{ color: ui.color.muted }}>…جارٍ التحميل</p></Center>;
   if (status === "error" || !view) return <Center><p style={{ color: ui.color.danger }}>تعذّر التحميل.</p><Button size="sm" onClick={() => void loadView()}>إعادة</Button></Center>;
+
+  // طور التثبيت/الدائم (§١٢): شاشة الورد بدل خطّة الحفظ.
+  if (view.phase && view.phase !== "MEMORIZE" && view.ward) {
+    const wardDoneToday = events.filter((e) => e.type === "WARD_COMPLETE" && makkahDayDate(new Date(e.occurredAt)) === view.ward!.dayDate).length;
+    return <WardHome ward={view.ward} doneToday={wardDoneToday} online={online} onComplete={() => void emit("WARD_COMPLETE")} />;
+  }
 
   const { stage, plan, settings } = view;
   const completed = counters.completedAtMs != null || view.status === "COMPLETE" || view.status === "MADE_UP";
@@ -306,6 +320,51 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 function Muted({ children }: { children: React.ReactNode }) {
   return <p style={{ color: ui.color.muted, fontSize: ui.text.xs }}>{children}</p>;
 }
+// ───────────────── شاشة الورد (التثبيت/الدائم، §١٢) ─────────────────
+function WardHome({ ward, doneToday, online, onComplete }: { ward: WardView; doneToday: number; online: boolean; onComplete: () => void }) {
+  const title = ward.phase === "PERMANENT" ? t("permanentWardTitle") : t("wardTitle");
+  return (
+    <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, maxWidth: 480, margin: "0 auto", padding: sp(3), display: "flex", flexDirection: "column", gap: sp(3) }}>
+      <Card style={{ padding: sp(3) }}>
+        <div style={{ fontWeight: 700, fontSize: ui.text.base }}>
+          {title}
+          {ward.phase === "TATHBIT" && <span style={{ color: ui.color.muted, fontSize: ui.text.xs, marginRight: sp(2) }}>· {t("wardDegree")} {arNum(ward.degreeNo)} ({arNum(ward.dailyJuz)} {t("wardJuzPerDay")})</span>}
+        </div>
+        <div style={{ color: ui.color.muted, fontSize: ui.text.xs, marginTop: sp(1) }}>
+          {t("wardCumulative")}: {arNum(ward.cumulativeKhatmat)}{ward.phase === "TATHBIT" ? ` · ${t("wardKhatma")} ${arNum(ward.khatmaInDegree + 1)}` : ""}
+        </div>
+        <div style={{ marginTop: sp(2), fontSize: ui.text.xs, display: "flex", alignItems: "center", gap: sp(1) }}>
+          <span style={{ width: 8, height: 8, borderRadius: 999, background: online ? ui.color.success : ui.color.muted, display: "inline-block" }} />
+          {online ? t("online") : t("offlineSaved")}
+        </div>
+      </Card>
+
+      {ward.finishedLadder && <Card style={{ padding: sp(3), border: `1px solid ${ui.color.bronze}` }}><strong>{t("finishedLadderNote")}</strong></Card>}
+
+      <Card style={{ padding: sp(3), fontSize: ui.text.xs }}>
+        <strong>{t("meetingReminder")}</strong>
+      </Card>
+
+      {ward.wards.length === 0 ? (
+        <Muted>{t("wardNone")}</Muted>
+      ) : ward.wards.map((w, i) => {
+        const done = doneToday > i;
+        const missed = ward.wards.length > 1 && i === 0; // الفائت يُعرض أوّلاً (تعويض)
+        return (
+          <Card key={i} style={{ padding: sp(3) }}>
+            <div style={{ display: "flex", alignItems: "center", gap: sp(2) }}>
+              {missed && <Badge tone="danger">{t("wardMissed")}</Badge>}
+              <span style={{ fontWeight: 700 }}>{t("wardJuzRange")} {arNum(w.fromJuz)}{w.toJuz !== w.fromJuz ? `–${arNum(w.toJuz)}` : ""}</span>
+            </div>
+            <div style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: `${sp(1)} 0 ${sp(2)}` }}>{formatAyah(w.fromSurah, w.fromAyah, w.toSurah, w.toAyah)}</div>
+            <Button size="sm" variant={done ? "ghost" : "primary"} disabled={done} onClick={onComplete}>{done ? t("wardDone") : t("completeWard")}</Button>
+          </Card>
+        );
+      })}
+    </main>
+  );
+}
+
 function BigCount({ value, total, onTap, large }: { value: number; total: number; onTap: () => void; large?: boolean }) {
   const size = large ? 96 : 64;
   return (

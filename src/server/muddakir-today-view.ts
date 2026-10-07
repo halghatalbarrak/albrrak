@@ -14,6 +14,7 @@ import { getProgramSetting } from "./settings";
 import { muddakirProgramId } from "./muddakir-profile";
 import { applyDueTrackChange, getDayStatus, latestTrackRequest, loadDayEngineSettings, todayPlan, type TodayPlan } from "./muddakir-day";
 import { getStageProgress, type StageProgress } from "./muddakir-stages";
+import { deriveWard, getWardView } from "./muddakir-ward";
 import { AuthorizationError } from "./errors";
 
 // عرض يوم الحافظ الكامل (المرحلة ٥): رأسٌ (المرحلة/الأجزاء/موضع الوجه/المسار/التقدّم) + تذكير اللقاء
@@ -102,4 +103,49 @@ export async function hafizViewForUser(actorUserId: string, db: PrismaClient = p
   const profile = await db.muddakirProfile.findUnique({ where: { studentId: student.id }, select: { studentId: true } });
   if (!profile) throw new AuthorizationError("لستَ ملتحقًا بالمُدَّكِر.");
   return getHafizTodayView(student.id, db);
+}
+
+// ───────────── بيت الحافظ: يتفرّع على الطور (حفظ ⟵ الخطّة؛ تثبيت/دائم ⟵ الورد) §١٢ ─────────────
+
+export interface WardTodayView {
+  dayDate: string;
+  phase: "TATHBIT" | "PERMANENT";
+  degreeNo: number;
+  dailyJuz: number;
+  khatmaInDegree: number;
+  cumulativeKhatmat: number;
+  finishedLadder: boolean; // أنهى الدرجة العاشرة ⟵ جاهزٌ للختام (ت٦)
+  status: string;
+  wards: { fromJuz: number; toJuz: number; fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }[];
+  reminderDay: string; // يوم اللقاء (تذكير)
+}
+
+/** بيت الحافظ: المرحلة الحفظيّة بحقولها المسطّحة (كما كانت) + طورٌ وورد؛ أو التثبيت بورده فقط. */
+export type MuddakirHome =
+  | (HafizTodayView & { phase: "MEMORIZE"; ward: null })
+  | { phase: "TATHBIT" | "PERMANENT"; ward: WardTodayView; dayDate: string; status: string };
+
+/** بيت الحافظ بحسب طوره. لا يُرسَل أيُّ شيءٍ خاصٍّ بالمشرف (المواضع المفاجئة) هنا (تعديل ٣). */
+export async function hafizHomeForUser(actorUserId: string, db: PrismaClient = prisma, now: Date = new Date()): Promise<MuddakirHome> {
+  const student = await db.student.findUnique({ where: { userId: actorUserId }, select: { id: true } });
+  if (!student) throw new AuthorizationError("هذه الشاشة للحافظ.");
+  const profile = await db.muddakirProfile.findUnique({ where: { studentId: student.id }, select: { phase: true } });
+  if (!profile) throw new AuthorizationError("لستَ ملتحقًا بالمُدَّكِر.");
+
+  if (profile.phase === "MEMORIZE") {
+    return { ...(await getHafizTodayView(student.id, db, now)), phase: "MEMORIZE", ward: null };
+  }
+  await deriveWard(db, student.id, now);
+  const v = await getWardView(student.id, db, now);
+  const programId = await muddakirProgramId(db);
+  const meetingSetting = await getProgramSetting(programId, "meetingDay", db);
+  const ward: WardTodayView = {
+    dayDate: makkahDayDate(now),
+    phase: v.phase === "PERMANENT" ? "PERMANENT" : "TATHBIT",
+    degreeNo: v.degreeNo, dailyJuz: v.dailyJuz, khatmaInDegree: v.khatmaInDegree,
+    cumulativeKhatmat: v.cumulativeKhatmat, finishedLadder: v.finishedLadder, status: v.status,
+    wards: v.wards.map((w) => ({ fromJuz: w.fromJuz, toJuz: w.toJuz, fromSurah: w.bound.fromSurah, fromAyah: w.bound.fromAyah, toSurah: w.bound.toSurah, toAyah: w.bound.toAyah })),
+    reminderDay: typeof meetingSetting === "string" ? meetingSetting : "WEDNESDAY",
+  };
+  return { phase: ward.phase, ward, dayDate: ward.dayDate, status: ward.status };
 }
