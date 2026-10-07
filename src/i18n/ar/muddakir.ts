@@ -180,6 +180,8 @@ export const muddakirAr = {
   wardMissed: "فائتُ الأمس",
   wardNone: "لا ورد اليوم",
   finishedLadderNote: "أتممتَ درجات التثبيت — بانتظار السرد الختاميّ",
+  surprisePositions: "مواضع مفاجئة (للمشرف)",
+  raiseDegreeBtn: "رفعٌ مبكّرٌ للدرجة التالية",
 } as const;
 
 /** مفاتيح قاموس المُدَّكِر (للتحقّق الثابت عند الاستدعاء). */
