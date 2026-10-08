@@ -109,7 +109,7 @@ export default function MuddakirAdminPage() {
   ];
 
   return (
-    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/muddakir"
+    <AppShell roles={me?.roles ?? []} muddakirStaff={me?.muddakirStaff ?? []} userName={me?.name} activeHref="/admin/muddakir"
       title={tMuddakir("adminTitle")}
       crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: tMuddakir("adminTitle") }]}>
 

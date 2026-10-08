@@ -1,15 +1,18 @@
 import { requireMuddakir } from "@/server/muddakir-staff";
 import { cancelRequest, decideRequest, listMyRequests, listPendingRequests } from "@/server/muddakir-requests";
 import { errorResponse } from "@/server/http";
-import { AuthorizationError, ValidationError } from "@/server/errors";
+import { ValidationError } from "@/server/errors";
 
-// GET /api/muddakir/requests — ?mine=1 طلباتي (إداريّ)؛ وإلّا الطلبات المعلّقة (صندوق المدير).
+// GET /api/muddakir/requests — صندوق المدير (المعلّقة) إن كان مديراً، وطلبات الفاعل نفسه دائماً.
+// (الإداريّ يرى طلباته فقط؛ المدير يرى الصندوق وطلباته.)
 export async function GET(req: Request) {
   try {
     const actor = await requireMuddakir(req, "view");
-    if (new URL(req.url).searchParams.get("mine")) return Response.json({ requests: await listMyRequests(actor.id) });
-    if (!actor.caps.manage) throw new AuthorizationError("صندوق الطلبات لمدير البرنامج.");
-    return Response.json({ requests: await listPendingRequests() });
+    const [pending, mine] = await Promise.all([
+      actor.caps.manage ? listPendingRequests() : Promise.resolve([]),
+      listMyRequests(actor.id),
+    ]);
+    return Response.json({ canManage: actor.caps.manage, pending, mine });
   } catch (e) {
     return errorResponse(e);
   }
