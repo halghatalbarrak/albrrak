@@ -110,6 +110,10 @@ export const muddakirAr = {
   reviewOnlyNote: "وضع المراجعة: لا حفظ جديد",
   save: "حفظ",
   cancel: "إلغاء",
+  // الآية الرابطة (§٤٫١)
+  hifzPortion: "حصّة الحفظ",
+  linkingAyah: "الآية الرابطة",
+  linkingAyahNote: "تُحفظ كاملةً ذيلاً للوجه، ويُكرَّر معها العدّاد.",
 
   // تغيير المسار — طرف الحافظ (§٤٫١، المرحلة ٦)
   trackChangeTitle: "تغيير المسار",

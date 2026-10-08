@@ -20,6 +20,7 @@ import {
 
 import { getProgramSetting } from "./settings";
 import { muddakirProgramId } from "./muddakir-profile";
+import { linkingAyahForLastPage } from "./mushaf-lines";
 
 // ═══════════════ محرّك اليوم (المرحلة ٤) ═══════════════
 //
@@ -341,12 +342,21 @@ export async function recomputeTreatmentAndWeak(db: Db, studentId: string): Prom
 }
 
 // ── خطّة اليوم (§٣ ترتيب الأركان) ──
+/** الآية الرابطة (§٤٫١): أوّل آيةٍ من الصفحة التالية، تُحفظ كاملةً. ليست وجهاً. */
+export interface LinkingAyah { surah: number; ayah: number }
+
 export interface TodayPlan {
   dayDate: string;
   reviewOnly: boolean;
   excused: boolean;
   yesterday: number[];
   newFaces: number[];
+  /** حدود حصّة الحفظ الجديدة شاملةً الآية الرابطة (من أوّل وجهٍ إلى آخر الآية الرابطة). */
+  newRange: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number } | null;
+  /** الآية الرابطة لحصّة اليوم (بعد آخر وجهٍ جديد) — null بعد الصفحة ٦٠٤ أو بلا جديد. */
+  linkingAyah: LinkingAyah | null;
+  /** الآية الرابطة لحصّة الأمس (تُكرَّر مع الأمس) — للعرض فقط. */
+  yesterdayLinkingAyah: LinkingAyah | null;
   ribat: number[];
   reviewSlice: number[];
   openTreatments: { page: number; lineNo: number; source: string }[];
@@ -377,11 +387,29 @@ export async function todayPlan(studentId: string, today: string, db: PrismaClie
 
   // الجديد بحسب المسار (يتوقّف بالعذر أو وضع المراجعة فقط).
   let newFaces: number[] = [];
+  // الآية الرابطة (§٤٫١): حصّة الحفظ = الأوجه + أوّل آيةٍ من الصفحة التالية لآخر وجهٍ فيها،
+  // كاملةً. ليست وجهاً (لا تمسّ عدّ الأوجه ولا حالاتها ولا الربط/المراجعة/التسميع). الحدود من
+  // `MushafLine`. العدّاد (٣٠) يركبها لأنّها ذيل آخر وجهٍ يُكرَّر معه (لا عدّاد مستقلّ).
+  let linkingAyah: LinkingAyah | null = null;
+  let newRange: TodayPlan["newRange"] = null;
   if (!excused && !reviewOnly) {
     const mushaf = (await db.mushafFace.findMany({ select: { page: true, fromSurah: true, fromAyah: true, toSurah: true, toAyah: true } })) as MushafFaceData[];
     const lastMemorized = faces.filter((f) => f.state !== MuddakirFaceState.NEW).reduce((m, f) => Math.max(m, f.page), 0);
     newFaces = newFacesForDay(lastMemorized, profile.track, mushaf);
+    if (newFaces.length) {
+      const lastNew = Math.max(...newFaces);
+      linkingAyah = await linkingAyahForLastPage(lastNew, db);
+      const first = mushaf.find((f) => f.page === Math.min(...newFaces));
+      const last = mushaf.find((f) => f.page === lastNew);
+      if (first) {
+        newRange = linkingAyah
+          ? { fromSurah: first.fromSurah, fromAyah: first.fromAyah, toSurah: linkingAyah.surah, toAyah: linkingAyah.ayah }
+          : { fromSurah: first.fromSurah, fromAyah: first.fromAyah, toSurah: last?.toSurah ?? first.toSurah, toAyah: last?.toAyah ?? first.toAyah };
+      }
+    }
   }
+  // رابطة الأمس (تُكرَّر مع حصّة الأمس) — للعرض فقط.
+  const yesterdayLinkingAyah = yesterday.length ? await linkingAyahForLastPage(Math.max(...yesterday), db) : null;
 
   // الربط (بترتيب المصحف) — دالّة المرحلة ٢.
   const faceInputs: FaceStateInput[] = faces.map((f) => ({
@@ -408,7 +436,7 @@ export async function todayPlan(studentId: string, today: string, db: PrismaClie
     makeup = { forDate: yDay, newFromPage: yRow?.newFromPage ?? null, newToPage: yRow?.newToPage ?? null, ribatDone: yRow?.ribatDone ?? false, reviewDone: yRow?.reviewDone ?? false };
   }
 
-  return { dayDate: today, reviewOnly, excused, yesterday, newFaces, ribat, reviewSlice, openTreatments, makeup };
+  return { dayDate: today, reviewOnly, excused, yesterday, newFaces, newRange, linkingAyah, yesterdayLinkingAyah, ribat, reviewSlice, openTreatments, makeup };
 }
 
 export const _test = { dateVal, isoOf, dayShift, foldDay };

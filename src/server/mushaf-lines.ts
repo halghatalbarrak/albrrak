@@ -45,6 +45,23 @@ function expandAyahs(b: AyahBounds): { surah: number; ayah: number }[] {
   return out;
 }
 
+/** أوّل آيةٍ في صفحةٍ (سورة:آية) = بداية سطرها الأوّل. null إن لم تُبذر الصفحة أو خارج ١..٦٠٤. */
+export async function firstAyahOfPage(page: number, db: PrismaClient = prisma): Promise<{ surah: number; ayah: number } | null> {
+  if (!Number.isInteger(page) || page < 1 || page > 604) return null;
+  const line = await db.mushafLine.findFirst({ where: { page }, orderBy: { lineNo: "asc" }, select: { startSurah: true, startAyah: true } });
+  return line ? { surah: line.startSurah, ayah: line.startAyah } : null;
+}
+
+/**
+ * الآية الرابطة (§٤٫١): أوّل آيةٍ من الصفحة التالية لآخر وجهٍ في الحصّة، تُحفظ كاملةً (الآية
+ * نفسها هي حدّ النهاية، ولو امتدّ نصّها لصفحةٍ بعدها). تُطبَّق كذلك عند بداية سورةٍ وحدّ المرحلة.
+ * **لا رابطة بعد الصفحة ٦٠٤** (لا صفحة ٦٠٥). الحدود من `MushafLine` لا من الذاكرة.
+ */
+export async function linkingAyahForLastPage(lastPage: number, db: PrismaClient = prisma): Promise<{ surah: number; ayah: number } | null> {
+  if (!Number.isInteger(lastPage) || lastPage < 1 || lastPage >= 604) return null;
+  return firstAyahOfPage(lastPage + 1, db);
+}
+
 /** أسطر الصفحة بحدود آياتها، مرتّبةً بالسطر. */
 export async function linesForPage(page: number, db: PrismaClient = prisma): Promise<LineSpan[]> {
   return db.mushafLine.findMany({
