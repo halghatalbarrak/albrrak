@@ -1,0 +1,34 @@
+import { requireMuddakir } from "@/server/muddakir-staff";
+import { cancelRequest, decideRequest, listMyRequests, listPendingRequests } from "@/server/muddakir-requests";
+import { errorResponse } from "@/server/http";
+import { AuthorizationError, ValidationError } from "@/server/errors";
+
+// GET /api/muddakir/requests — ?mine=1 طلباتي (إداريّ)؛ وإلّا الطلبات المعلّقة (صندوق المدير).
+export async function GET(req: Request) {
+  try {
+    const actor = await requireMuddakir(req, "view");
+    if (new URL(req.url).searchParams.get("mine")) return Response.json({ requests: await listMyRequests(actor.id) });
+    if (!actor.caps.manage) throw new AuthorizationError("صندوق الطلبات لمدير البرنامج.");
+    return Response.json({ requests: await listPendingRequests() });
+  } catch (e) {
+    return errorResponse(e);
+  }
+}
+
+// POST /api/muddakir/requests — المدير يبتّ { action:"decide", requestId, decision, reason? }؛
+// الإداريّ يلغي { action:"cancel", requestId }.
+export async function POST(req: Request) {
+  try {
+    const actor = await requireMuddakir(req, "view");
+    const b = (await req.json()) as { action?: unknown; requestId?: unknown; decision?: unknown; reason?: unknown };
+    if (typeof b.requestId !== "string") throw new ValidationError("الطلب مطلوب.");
+    if (b.action === "cancel") return Response.json(await cancelRequest({ actorUserId: actor.id, requestId: b.requestId }));
+    if (b.action === "decide") {
+      if (b.decision !== "APPROVED" && b.decision !== "REJECTED") throw new ValidationError("القرار مطلوب.");
+      return Response.json(await decideRequest({ actorUserId: actor.id, requestId: b.requestId, decision: b.decision, reason: typeof b.reason === "string" ? b.reason : undefined }));
+    }
+    throw new ValidationError("الإجراء مطلوب (decide/cancel).");
+  } catch (e) {
+    return errorResponse(e);
+  }
+}

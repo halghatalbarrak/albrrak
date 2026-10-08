@@ -8,9 +8,12 @@ import {
   listMuddakirHafiz,
   listSupervisorsWithLoad,
 } from "@/server/muddakir-enrollment";
+import { MuddakirRequestType } from "@prisma/client";
+
 import { requireMuddakir } from "@/server/muddakir-staff";
+import { performOrRequest } from "@/server/muddakir-requests";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { AuthorizationError, ValidationError } from "@/server/errors";
 
 // GET /api/muddakir — المدير (منصّةٌ أو برنامجٌ): الحفّاظ + المشرفون + المتاحون للإلحاق. المشرف:
 // حفّاظه فقط للقراءة. (يقبل أدوار المدّكر المُحصَّرة كما الأدوار العامّة.)
@@ -32,29 +35,26 @@ export async function GET(req: Request) {
   }
 }
 
-// POST /api/muddakir — مديرُ البرنامج/المنصّة فقط (التنفيذ المباشر). طلبات الإداريّ في و٢.
+// POST /api/muddakir — مدير البرنامج/المنصّة ينفّذ مباشرة؛ الإداريّ يُنشئ طلباً معلّقاً (§٢).
 // { action:"enroll", studentId, deliveryMode? } أو { action:"assign", studentId, supervisorId }.
 export async function POST(req: Request) {
   try {
-    const actor = await requireMuddakir(req, "manage");
-    const b = (await req.json()) as {
-      action?: unknown;
-      studentId?: unknown;
-      supervisorId?: unknown;
-      deliveryMode?: unknown;
-    };
+    const actor = await requireMuddakir(req, "view");
+    if (!actor.caps.manage && !actor.caps.admin) throw new AuthorizationError("هذا الإجراء لمدير البرنامج أو الإداريّ.");
+    const b = (await req.json()) as { action?: unknown; studentId?: unknown; supervisorId?: unknown; deliveryMode?: unknown };
     if (typeof b.studentId !== "string") throw new ValidationError("الحافظ مطلوب.");
+    const studentId = b.studentId;
 
     if (b.action === "enroll") {
-      const deliveryMode =
-        b.deliveryMode === MuddakirDeliveryMode.REMOTE ? MuddakirDeliveryMode.REMOTE : MuddakirDeliveryMode.IN_PERSON;
-      const res = await enrollInMuddakir({ studentId: b.studentId, actorId: actor.id, deliveryMode });
-      return Response.json(res, { status: res.alreadyEnrolled ? 200 : 201 });
+      const deliveryMode = b.deliveryMode === MuddakirDeliveryMode.REMOTE ? MuddakirDeliveryMode.REMOTE : MuddakirDeliveryMode.IN_PERSON;
+      const r = await performOrRequest(actor, { type: MuddakirRequestType.ENROLL, payload: { studentId, deliveryMode }, studentId, direct: () => enrollInMuddakir({ studentId, actorId: actor.id, deliveryMode }) });
+      return Response.json(r, { status: r.executed ? 201 : 202 });
     }
     if (b.action === "assign") {
       if (typeof b.supervisorId !== "string") throw new ValidationError("المشرف مطلوب.");
-      const res = await assignSupervisor({ studentId: b.studentId, supervisorId: b.supervisorId, actorId: actor.id });
-      return Response.json(res, { status: 201 });
+      const supervisorId = b.supervisorId;
+      const r = await performOrRequest(actor, { type: MuddakirRequestType.ASSIGN_SUPERVISOR, payload: { studentId, supervisorId }, studentId, direct: () => assignSupervisor({ studentId, supervisorId, actorId: actor.id }) });
+      return Response.json(r, { status: r.executed ? 201 : 202 });
     }
     throw new ValidationError("الإجراء مطلوب (enroll/assign).");
   } catch (e) {
