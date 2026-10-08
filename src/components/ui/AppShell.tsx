@@ -17,6 +17,8 @@ export interface Crumb { label: string; href?: string }
 
 export interface AppShellProps {
   roles: string[];
+  /** أدوار المدّكر المُحصَّرة (§٢) — لإظهار شريط مدير/إداريّ البرنامج ولو بلا دورٍ عامّ. */
+  muddakirStaff?: string[];
   userName?: string;
   /** مسار الصفحة الحاليّة — لإبراز العنوان النشط وفتح قسمه. */
   activeHref?: string;
@@ -32,9 +34,9 @@ export interface AppShellProps {
  * للطيّ محكومةٌ بالدور، القسم الحاليّ مفتوح، العنوان النشط برونزيّ)، والمحتوى
  * على اليسار بعنوانه ومساره. على الجوّال يُطوى الشريط ويُفتح بزرّ. عرضٌ فقط.
  */
-export function AppShell({ roles, userName, activeHref, title, crumbs, children }: AppShellProps) {
-  const sections = navSections(roles);
-  const isStaff = roles.some((r) => STAFF_ROLES.includes(r));
+export function AppShell({ roles, muddakirStaff, userName, activeHref, title, crumbs, children }: AppShellProps) {
+  const sections = navSections(roles, muddakirStaff ?? []);
+  const isStaff = roles.some((r) => STAFF_ROLES.includes(r)) || (muddakirStaff?.length ?? 0) > 0;
   const [drawer, setDrawer] = useState(false); // درج الجوّال
   // القسم الذي فيه الصفحة الحاليّة يبدأ مفتوحاً؛ إن لم يُعرف فالأوّل.
   const activeKey = sections.find((s) => s.items.some((it) => it.href === activeHref))?.key ?? sections[0]?.key;

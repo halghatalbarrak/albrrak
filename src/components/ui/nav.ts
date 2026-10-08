@@ -19,8 +19,10 @@ export interface NavSection { key: string; label: string; items: NavItem[] }
  * والمعلّم والمُسمِّع والطالب — لأنّه سلالم القاعدة المدنية ومراقي المشتركة. أمّا
  * «صفحتي» فتبقى في «التعلّم» للطالب وحده — فهي شاشته عن نفسه، لا معنى لها للمشرف.
  */
-export function navSections(roles: string[]): NavSection[] {
-  if (roles.length === 0) return [];
+export function navSections(roles: string[], muddakirStaff: string[] = []): NavSection[] {
+  const hasStaff = (r: string) => muddakirStaff.includes(r);
+  // مدير/إداريّ المدّكر إسنادٌ مُحصَّر بلا دورٍ عامّ (§٢): يلزم إظهار شريطه ولو كان roles فارغاً.
+  if (roles.length === 0 && muddakirStaff.length === 0) return [];
   const has = (r: string) => roles.includes(r);
   const supervises = has("SUPER_ADMIN") || has("CIRCLE_MANAGER");
   // إدارة المستخدمين (ROLES.md): للمشرف العام والمدير التقنيّ فقط — لا مدير الحلقات.
@@ -44,14 +46,33 @@ export function navSections(roles: string[]): NavSection[] {
         { label: "العرفاء", href: "/admin/arifs" },
         { label: "القيد", href: "/admin/enrollment" },
         { label: "المُدَّكِر", href: "/admin/muddakir" },
+        { label: "طلبات المُدَّكِر", href: "/admin/muddakir/requests" },
+        { label: "طاقم المُدَّكِر", href: "/admin/muddakir/staff" },
+        { label: "إعدادات التثبيت", href: "/admin/muddakir/tathbit" },
         { label: "لقاء المُدَّكِر", href: "/muddakir/supervisor" },
         { label: "سرد المُدَّكِر", href: "/muddakir/recitation" },
       ],
     });
   }
 
-  // المُدَّكِر — المشرف (ARIF) يرى حفّاظه (قراءةً) ويُدير لقاءهم الأسبوعيّ (المدير يراه ضمن «الإدارة»).
-  if (has("ARIF") && !supervises) {
+  // إدارة المُدَّكِر — مدير البرنامج/الإداريّ المُحصَّران (§٢، بلا دورٍ عامّ). مدير المنصّة يراها
+  // ضمن «الإدارة». المدير يرى الطاقم والسرد؛ والإداريّ يطّلع وإجراؤه بطلب (لا طاقم).
+  if ((hasStaff("MANAGER") || hasStaff("ADMIN")) && !supervises) {
+    const items: NavItem[] = [
+      { label: "الحفّاظ", href: "/admin/muddakir" },
+      { label: hasStaff("MANAGER") ? "طلبات المُدَّكِر" : "طلباتي", href: "/admin/muddakir/requests" },
+    ];
+    if (hasStaff("MANAGER")) items.push({ label: "طاقم المُدَّكِر", href: "/admin/muddakir/staff" });
+    items.push({ label: "إعدادات التثبيت", href: "/admin/muddakir/tathbit" });
+    if (hasStaff("MANAGER")) {
+      items.push({ label: "لقاء المُدَّكِر", href: "/muddakir/supervisor" });
+      items.push({ label: "سرد المُدَّكِر", href: "/muddakir/recitation" });
+    }
+    sections.push({ key: "muddakirAdmin", label: "إدارة المُدَّكِر", items });
+  }
+
+  // المُدَّكِر — المشرف (ARIF أو مشرف المدّكر الخاصّ §٢) يرى حفّاظه ويُدير لقاءهم (المدير ضمن «الإدارة»).
+  if ((has("ARIF") || hasStaff("SUPERVISOR")) && !supervises) {
     sections.push({
       key: "muddakir", label: "المُدَّكِر", items: [
         { label: "حفّاظي", href: "/admin/muddakir" },
@@ -94,8 +115,8 @@ export function navSections(roles: string[]): NavSection[] {
     });
   }
 
-  // المُدَّكِر — المختبِر (RECITER) يسجّل سرد المرحلة والسرد الختاميّ (§٧). المدير يراه ضمن «الإدارة».
-  if (has("RECITER") && !supervises) {
+  // المُدَّكِر — المختبِر (RECITER أو مختبِر المدّكر الخاصّ §٢) يسجّل السرد (§٧). المدير ضمن «الإدارة».
+  if ((has("RECITER") || hasStaff("EXAMINER")) && !supervises) {
     sections.push({
       key: "muddakirExam", label: "سرد المُدَّكِر", items: [
         { label: "سرد المُدَّكِر", href: "/muddakir/recitation" },

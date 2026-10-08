@@ -115,6 +115,54 @@ describe("navSections — اتّحاد أقسام كلّ أدوار المستخ
   });
 });
 
+// ── أدوار المدّكر المُحصَّرة (§٢): شريطٌ بلا دورٍ عامّ ──
+describe("navSections — أدوار المدّكر المُحصَّرة تُظهر شريطها ولو بلا دورٍ عامّ", () => {
+  it("مدير برنامجٍ صرفٌ (بلا roles) ⟵ قسم «إدارة المُدَّكِر» بكامل مداخله", () => {
+    const s = navSections([], ["MANAGER"]);
+    expect(s.map((x) => x.key)).toEqual(["muddakirAdmin"]);
+    const hrefs = s[0].items.map((i) => i.href);
+    expect(hrefs).toContain("/admin/muddakir");
+    expect(hrefs).toContain("/admin/muddakir/requests");
+    expect(hrefs).toContain("/admin/muddakir/staff");
+    expect(hrefs).toContain("/admin/muddakir/tathbit");
+    expect(hrefs).toContain("/muddakir/supervisor");
+    expect(hrefs).toContain("/muddakir/recitation");
+  });
+
+  it("إداريٌّ صرفٌ ⟵ «إدارة المُدَّكِر» بلا طاقمٍ ولا لقاءٍ/سرد، وطلباته باسم «طلباتي»", () => {
+    const s = navSections([], ["ADMIN"]);
+    expect(s.map((x) => x.key)).toEqual(["muddakirAdmin"]);
+    const items = s[0].items;
+    expect(items.map((i) => i.href)).toContain("/admin/muddakir/requests");
+    expect(items.find((i) => i.href === "/admin/muddakir/requests")!.label).toBe("طلباتي");
+    expect(items.map((i) => i.href)).not.toContain("/admin/muddakir/staff");
+    expect(items.map((i) => i.href)).not.toContain("/muddakir/supervisor");
+  });
+
+  it("مشرفٌ خاصٌّ (SUPERVISOR بلا roles) ⟵ قسم «المُدَّكِر» (حفّاظي واللقاء)", () => {
+    const s = navSections([], ["SUPERVISOR"]);
+    expect(s.map((x) => x.key)).toEqual(["muddakir"]);
+    expect(s[0].items.map((i) => i.href)).toEqual(["/admin/muddakir", "/muddakir/supervisor"]);
+  });
+
+  it("مختبِرٌ خاصٌّ (EXAMINER بلا roles) ⟵ قسم «سرد المُدَّكِر»", () => {
+    const s = navSections([], ["EXAMINER"]);
+    expect(s.map((x) => x.key)).toEqual(["muddakirExam"]);
+    expect(s[0].items).toEqual([{ label: "سرد المُدَّكِر", href: "/muddakir/recitation" }]);
+  });
+
+  it("بلا roles وبلا أدوار مدّكر ⟵ [] (لا وميض)", () => {
+    expect(navSections([], [])).toEqual([]);
+  });
+
+  it("المدير المنصّيّ يرى مداخل المُدَّكِر الجديدة ضمن «الإدارة»", () => {
+    const manage = navSections(["CIRCLE_MANAGER"]).find((x) => x.key === "manage")!;
+    expect(manage.items.map((i) => i.href)).toContain("/admin/muddakir/requests");
+    expect(manage.items.map((i) => i.href)).toContain("/admin/muddakir/staff");
+    expect(manage.items.map((i) => i.href)).toContain("/admin/muddakir/tathbit");
+  });
+});
+
 // ── قسم «البرامج» المستقلّ (المنهج لا بيانات شخص) ──
 describe("navSections — «البرامج» قسمٌ مستقلٌّ يراه الجميع", () => {
   const programsOf = (roles: string[]) => navSections(roles).find((s) => s.key === "programs");

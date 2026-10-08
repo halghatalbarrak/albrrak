@@ -1,4 +1,4 @@
-import { MuddakirStaffRole, Role, type Prisma, type PrismaClient } from "@prisma/client";
+import { MuddakirFaceState, MuddakirStaffRole, Role, type Prisma, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { requireAuth, type Actor } from "./auth";
@@ -108,6 +108,39 @@ export async function listStaff(db: PrismaClient = prisma): Promise<StaffRow[]> 
   const nameBy = new Map(users.map((u) => [u.id, u.nameAsInId]));
   return rows.map((r) => ({ userId: r.userId, name: nameBy.get(r.userId) ?? "—", role: r.role })).sort((a, b) => a.name.localeCompare(b.name, "ar"));
 }
+
+// ── مقترحو الإشراف (§٢): من أتمّ نصف القرآن فأكثر ──
+
+/** نصف المصحف (٦٠٤ وجهاً ÷ ٢). الوجه محفوظٌ إن لم يكن state = NEW (كـgetStageProgress). */
+export const HALF_QURAN_FACES = 302;
+
+export interface SupervisorCandidate { userId: string; name: string; memorizedFaces: number }
+
+/**
+ * مقترحون لإسناد الإشراف: كلّ من أتمّ نصف القرآن فأكثر (§٢)، بصرف النظر عن طوره (فمن أنهى الحفظ
+ * أولى). يُحسب المحفوظ بعدّ الأوجه التي ليست NEW. مرتّبون تنازليّاً بالمحفوظ.
+ */
+export async function listSupervisorCandidates(db: PrismaClient = prisma): Promise<SupervisorCandidate[]> {
+  const grouped = await db.muddakirFace.groupBy({ by: ["studentId"], where: { state: { not: MuddakirFaceState.NEW } }, _count: { _all: true } });
+  const qualified = grouped.filter((g) => g._count._all >= HALF_QURAN_FACES);
+  if (!qualified.length) return [];
+  const faceBy = new Map(qualified.map((g) => [g.studentId, g._count._all]));
+  const students = await db.student.findMany({ where: { id: { in: qualified.map((g) => g.studentId) } }, select: { id: true, userId: true, user: { select: { nameAsInId: true } } } });
+  return students
+    .map((s) => ({ userId: s.userId, name: s.user.nameAsInId, memorizedFaces: faceBy.get(s.id) ?? 0 }))
+    .sort((a, b) => b.memorizedFaces - a.memorizedFaces);
+}
+
+export interface AssignableUser { id: string; name: string }
+
+/** مستخدمون نشطون لإسناد أدوار المدّكر (لغير الإشراف يختار المدير أيّ مستخدم). */
+export async function listAssignableUsers(db: PrismaClient = prisma): Promise<AssignableUser[]> {
+  const users = await db.user.findMany({ where: { isActive: true }, select: { id: true, nameAsInId: true } });
+  return users.map((u) => ({ id: u.id, name: u.nameAsInId })).sort((a, b) => a.name.localeCompare(b.name, "ar"));
+}
+
+/** هل الفاعل مدير منصّة (يحقّ له تعيين «مدير البرنامج»)؟ */
+export const isPlatformManagerRoles = (roles: readonly Role[]): boolean => isPlatformManager(roles);
 
 // ── حارس المسارات: يسمح لمدير المنصّة أو ذوي أدوار المدّكر بحسب الحاجة ──
 

@@ -1,6 +1,7 @@
-import { ProgramKey, type PrismaClient } from "@prisma/client";
+import { ProgramKey, type MuddakirStaffRole, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
+import { activeStaffRoles } from "./muddakir-staff";
 import { getStudentPosition, getHifzGate } from "./daily-session";
 import { getConsolidation, getWeeklyReview } from "./tarseekh";
 import { todayTarget, type TodayTarget } from "./today-target";
@@ -10,6 +11,8 @@ export interface MyPage {
   userId: string;
   name: string;
   roles: string[];
+  /** أدوار المدّكر المُحصَّرة النشطة (§٢) — ليراها الشريط الجانبيّ لمن لا دورَ عامّ له. */
+  muddakirStaff: MuddakirStaffRole[];
   student: { id: string; state: string } | null;
 }
 
@@ -30,6 +33,7 @@ export async function getMyPage(
     userId: user.id,
     name: user.nameAsInId,
     roles: user.roles,
+    muddakirStaff: await activeStaffRoles(db, user.id),
     student: user.student
       ? { id: user.student.id, state: user.student.state }
       : null,
