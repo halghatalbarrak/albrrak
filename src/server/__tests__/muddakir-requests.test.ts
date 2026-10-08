@@ -43,6 +43,23 @@ describe("طلب الإلحاق — لا تغيير قبل الموافقة، و
     // الموافقة ثانيةً مرفوضة (لا تنفيذ مرّتين).
     await expect(decideRequest({ actorUserId: mgr.id, requestId: r.id, decision: "APPROVED" }, prisma)).rejects.toThrow();
   });
+
+  it("موافقتان متزامنتان: تنجح واحدةٌ فقط ويُنفَّذ مرّةً واحدة", async () => {
+    const { student, mgr, admin } = await setup();
+    const r = await createRequest({ actorUserId: admin.id, type: MuddakirRequestType.ENROLL, payload: { studentId: student.id }, studentId: student.id }, prisma);
+    const results = await Promise.allSettled([
+      decideRequest({ actorUserId: mgr.id, requestId: r.id, decision: "APPROVED" }, prisma),
+      decideRequest({ actorUserId: mgr.id, requestId: r.id, decision: "APPROVED" }, prisma),
+    ]);
+    // الحجز الذرّيّ: واحدةٌ تنجح وواحدةٌ تُرفَض.
+    expect(results.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((x) => x.status === "rejected")).toHaveLength(1);
+    // أُلحق الحافظ مرّةً واحدة، والطلب مُنفَّذٌ (APPROVED + executedAt).
+    expect(await prisma.muddakirProfile.count({ where: { studentId: student.id } })).toBe(1);
+    const row = await prisma.muddakirAdminRequest.findUniqueOrThrow({ where: { id: r.id } });
+    expect(row.status).toBe("APPROVED");
+    expect(row.executedAt).not.toBeNull();
+  });
 });
 
 describe("الرفض والإلغاء والصلاحيّة", () => {

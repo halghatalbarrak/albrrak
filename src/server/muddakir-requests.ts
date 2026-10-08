@@ -6,14 +6,14 @@ import { AuthorizationError, ValidationError } from "./errors";
 import { muddakirCaps, type MuddakirActor } from "./muddakir-staff";
 import { enrollInMuddakir, assignSupervisor } from "./muddakir-enrollment";
 import { setStageMode } from "./muddakir-stages";
+import { setMuddakirPointItem, setMuddakirSetting, setTathbitDegree } from "./muddakir-config";
+import { AutoEventType } from "@prisma/client";
 
 // ═══════════════ طلبات الإداريّ (§٢، و٢) ═══════════════
 //
 // الإداريّ يطّلع بلا موافقة، وكلّ إجراءٍ يغيّر شيئاً يُنشئ طلباً معلّقاً. مدير البرنامج يوافق
 // (فيُنفَّذ **بالدالّة نفسها** التي ينفّذها مباشرةً، داخل معاملة، مرّةً واحدة) أو يرفض بسبب. ويلغي
 // الإداريّ طلبه المعلّق. append-only (لا حذف، لا تعديل بعد الإرسال).
-
-type Tx = Prisma.TransactionClient;
 
 export interface CreateRequestArgs { actorUserId: string; type: MuddakirRequestType; payload: Prisma.InputJsonValue; studentId?: string }
 
@@ -27,34 +27,56 @@ export async function createRequest(args: CreateRequestArgs, db: PrismaClient = 
   return r;
 }
 
-/** ينفّذ طلباً موافَقاً عليه بالدالّة نفسها التي ينفّذها المدير مباشرة (داخل المعاملة). */
-async function executeRequest(tx: Tx, type: MuddakirRequestType, payload: Record<string, unknown>, executorId: string): Promise<void> {
+/**
+ * ينفّذ طلباً موافَقاً عليه بالدالّة المباشرة نفسها التي ينفّذها المدير. تُفتَح هذه الدوالّ معاملاتها
+ * الخاصّة، فيُمرَّر إليها العميل الكامل لا معاملةً متداخلة (لا تداخل معاملات). الحجز الذرّيّ في
+ * decideRequest هو ما يمنع التنفيذ مرّتين.
+ */
+async function executeRequest(db: PrismaClient, type: MuddakirRequestType, payload: Record<string, unknown>, executorId: string): Promise<void> {
   switch (type) {
     case MuddakirRequestType.ENROLL: {
       if (typeof payload.studentId !== "string") throw new ValidationError("الحافظ مطلوب.");
       const deliveryMode = payload.deliveryMode === MuddakirDeliveryMode.REMOTE ? MuddakirDeliveryMode.REMOTE : MuddakirDeliveryMode.IN_PERSON;
-      await enrollInMuddakir({ studentId: payload.studentId, actorId: executorId, deliveryMode }, tx as unknown as PrismaClient);
+      await enrollInMuddakir({ studentId: payload.studentId, actorId: executorId, deliveryMode }, db);
       return;
     }
     case MuddakirRequestType.ASSIGN_SUPERVISOR: {
       if (typeof payload.studentId !== "string" || typeof payload.supervisorId !== "string") throw new ValidationError("الحافظ والمشرف مطلوبان.");
-      await assignSupervisor({ studentId: payload.studentId, supervisorId: payload.supervisorId, actorId: executorId }, tx as unknown as PrismaClient);
+      await assignSupervisor({ studentId: payload.studentId, supervisorId: payload.supervisorId, actorId: executorId }, db);
       return;
     }
     case MuddakirRequestType.SET_MODE: {
       if (typeof payload.studentId !== "string" || (payload.mode !== "ACTIVE" && payload.mode !== "REVIEW_ONLY")) throw new ValidationError("الحافظ والوضع مطلوبان.");
-      await setStageMode({ actorUserId: executorId, studentId: payload.studentId, mode: payload.mode }, tx as unknown as PrismaClient);
+      await setStageMode({ actorUserId: executorId, studentId: payload.studentId, mode: payload.mode }, db);
       return;
     }
-    // SET_SETTING / SET_TATHBIT_LADDER / SET_POINT_ITEM تُنفَّذ في و٣.
+    case MuddakirRequestType.SET_SETTING: {
+      if (typeof payload.key !== "string" || payload.value === undefined) throw new ValidationError("المفتاح والقيمة مطلوبان.");
+      await setMuddakirSetting(payload.key, payload.value as Prisma.InputJsonValue, executorId, db);
+      return;
+    }
+    case MuddakirRequestType.SET_TATHBIT_LADDER: {
+      if (typeof payload.degreeNo !== "number" || typeof payload.patch !== "object" || payload.patch == null) throw new ValidationError("الدرجة والتعديل مطلوبان.");
+      await setTathbitDegree(payload.degreeNo, payload.patch as { dailyJuz?: number; khatmaDays?: number; khatmaCount?: number; active?: boolean }, executorId, db);
+      return;
+    }
+    case MuddakirRequestType.SET_POINT_ITEM: {
+      if (typeof payload.nameAr !== "string" || typeof payload.value !== "number" || typeof payload.eventType !== "string") throw new ValidationError("بيانات البند مطلوبة.");
+      await setMuddakirPointItem({ id: typeof payload.id === "string" ? payload.id : undefined, nameAr: payload.nameAr, value: payload.value, eventType: payload.eventType as AutoEventType, active: payload.active as boolean | undefined }, executorId, db);
+      return;
+    }
     default:
       throw new ValidationError("نوع طلبٍ غير منفَّذٍ بعد.");
   }
 }
 
 /**
- * يبتّ طلباً (مدير البرنامج): موافقةٌ (تنفيذٌ مرّةً واحدة بالدالّة نفسها) أو رفضٌ بسبب. المطالبة
- * الذرّيّة (PENDING→قرار) تمنع التنفيذ مرّتين، والتنفيذ داخل المعاملة نفسها.
+ * يبتّ طلباً (مدير البرنامج): موافقةٌ (تنفيذٌ مرّةً واحدة بالدالّة المباشرة نفسها) أو رفضٌ بسبب.
+ *
+ * الحجز الذرّيّ: `UPDATE … WHERE status='PENDING'` ينقل صفّاً واحداً فقط؛ فإن كان العدد صفراً فقد بُتّ
+ * الطلب (أو أُلغي) فيُرفَض. وبذلك لا يُبتّ/يُنفَّذ الطلب مرّتين حتى مع موافقتين متزامنتين. ثمّ يُنفَّذ
+ * **خارج أيّ معاملةٍ متداخلة** (الدوالّ المباشرة تفتح معاملاتها). وإن فشل التنفيذ أُعيد الطلب إلى
+ * PENDING وسُجِّل الخطأ، فلا يبقى موافَقاً بلا تنفيذ.
  */
 export async function decideRequest(args: { actorUserId: string; requestId: string; decision: "APPROVED" | "REJECTED"; reason?: string }, db: PrismaClient = prisma): Promise<{ status: MuddakirRequestStatus }> {
   const actor = await db.user.findUnique({ where: { id: args.actorUserId }, select: { roles: true } });
@@ -63,22 +85,31 @@ export async function decideRequest(args: { actorUserId: string; requestId: stri
   if (args.decision === "REJECTED" && !args.reason?.trim()) throw new ValidationError("سبب الرفض مطلوب.");
 
   const now = new Date();
-  return db.$transaction(async (tx) => {
-    const nextStatus = args.decision === "APPROVED" ? MuddakirRequestStatus.APPROVED : MuddakirRequestStatus.REJECTED;
-    // مطالبةٌ ذرّيّة: ينجح واحدٌ فقط على طلبٍ معلّق — فلا يُبتّ/يُنفَّذ مرّتين.
-    const claim = await tx.muddakirAdminRequest.updateMany({
-      where: { id: args.requestId, status: MuddakirRequestStatus.PENDING },
-      data: { status: nextStatus, decidedBy: args.actorUserId, decidedAt: now, decisionReason: args.decision === "REJECTED" ? args.reason!.trim() : null },
-    });
-    if (claim.count !== 1) throw new ValidationError("الطلب ليس معلّقاً (بُتّ أو أُلغي).");
-    if (args.decision === "APPROVED") {
-      const req = await tx.muddakirAdminRequest.findUniqueOrThrow({ where: { id: args.requestId }, select: { type: true, payload: true } });
-      await executeRequest(tx, req.type, (req.payload ?? {}) as Record<string, unknown>, args.actorUserId);
-      await tx.muddakirAdminRequest.update({ where: { id: args.requestId }, data: { executedAt: now } });
-    }
-    await emitEvent(tx, { type: "MUDDAKIR_REQUEST_DECIDED", subjectType: "MuddakirAdminRequest", subjectId: args.requestId, actorId: args.actorUserId, payload: { decision: args.decision } });
-    return { status: nextStatus };
+  const nextStatus = args.decision === "APPROVED" ? MuddakirRequestStatus.APPROVED : MuddakirRequestStatus.REJECTED;
+  // حجزٌ ذرّيّ: صفٌّ واحدٌ معلّقٌ فقط ينتقل — فلا يُبتّ/يُنفَّذ مرّتين (حتى مع موافقتين متزامنتين).
+  const claim = await db.muddakirAdminRequest.updateMany({
+    where: { id: args.requestId, status: MuddakirRequestStatus.PENDING },
+    data: { status: nextStatus, decidedBy: args.actorUserId, decidedAt: now, decisionReason: args.decision === "REJECTED" ? args.reason!.trim() : null },
   });
+  if (claim.count !== 1) throw new ValidationError("الطلب ليس معلّقاً (بُتّ أو أُلغي).");
+
+  if (args.decision === "APPROVED") {
+    try {
+      const req = await db.muddakirAdminRequest.findUniqueOrThrow({ where: { id: args.requestId }, select: { type: true, payload: true } });
+      await executeRequest(db, req.type, (req.payload ?? {}) as Record<string, unknown>, args.actorUserId);
+      await db.muddakirAdminRequest.update({ where: { id: args.requestId }, data: { executedAt: now } });
+    } catch (e) {
+      // فشل التنفيذ: أعِد الطلب معلّقاً (لم يُنفَّذ بعد) وسجّل الخطأ.
+      await db.muddakirAdminRequest.updateMany({
+        where: { id: args.requestId, status: MuddakirRequestStatus.APPROVED, executedAt: null },
+        data: { status: MuddakirRequestStatus.PENDING, decidedBy: null, decidedAt: null },
+      });
+      await emitEvent(db, { type: "MUDDAKIR_REQUEST_EXEC_FAILED", subjectType: "MuddakirAdminRequest", subjectId: args.requestId, actorId: args.actorUserId, payload: { message: e instanceof Error ? e.message : String(e) } });
+      throw e;
+    }
+  }
+  await emitEvent(db, { type: "MUDDAKIR_REQUEST_DECIDED", subjectType: "MuddakirAdminRequest", subjectId: args.requestId, actorId: args.actorUserId, payload: { decision: args.decision } });
+  return { status: nextStatus };
 }
 
 /** يلغي الإداريّ طلبه المعلّق (قبل البتّ). لصاحبه وحده. */
