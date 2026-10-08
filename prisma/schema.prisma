@@ -1126,6 +1126,15 @@ enum MuddakirPhase {
   PERMANENT // الورد الدائم بعد شهادة التثبيت
 }
 
+// أدوار المدّكر المُحصَّرة (§٢): إسنادٌ خاصٌّ بالبرنامج، لا دورٌ عامٌّ في Role (لا يفتح شيئاً في
+// مراقي). مدير المنصّة يُسند MANAGER؛ ومدير البرنامج يُسند الباقي (والإداريّ بطلب).
+enum MuddakirStaffRole {
+  MANAGER // مدير البرنامج
+  ADMIN // الإداريّ (إجراءاته بطلبٍ يعتمده المدير)
+  SUPERVISOR // مشرفٌ في المدّكر (نظير ARIF، محصورٌ بالبرنامج)
+  EXAMINER // مختبِرٌ في المدّكر (نظير RECITER، محصورٌ بالبرنامج)
+}
+
 // وضع الحافظ ومساره ودورة مراجعته (§١، §٤). صفٌّ لكلّ حافظ.
 model MuddakirProfile {
   id              String               @id @default(cuid())
@@ -1236,6 +1245,20 @@ model MuddakirSupervision {
 
   @@index([studentId, endedAt])
   @@index([supervisorId, endedAt])
+}
+
+// إسناد أدوار المدّكر (§٢): مَن عُيّن بأيّ دورٍ ومَن عيّنه ومتى. append-only، والإنهاء بـendedAt
+// (لا حذف). المستخدم قد يحمل أكثر من دور. بلا FK (نمط الجداول المتأخّرة الآمن).
+model MuddakirStaff {
+  id         String           @id @default(cuid())
+  userId     String
+  role       MuddakirStaffRole
+  assignedBy String // مَن عيّنه (مدير المنصّة للـMANAGER، ومدير البرنامج للباقي)
+  startedAt  DateTime         @default(now())
+  endedAt    DateTime? // الإنهاء (لا حذف) — النشط = null
+
+  @@index([userId, endedAt])
+  @@index([role, endedAt])
 }
 
 // سجلّ أحداث المزامنة (PWA) الملحق — مصدر الحقيقة؛ يُشتقّ منه MuddakirDay/DayFace.

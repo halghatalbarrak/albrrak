@@ -1,4 +1,4 @@
-import { MuddakirDayStatus, MuddakirErrorSource, MuddakirPhase, MuddakirRecitationKind, Role, type Prisma, type PrismaClient } from "@prisma/client";
+import { MuddakirDayStatus, MuddakirErrorSource, MuddakirPhase, MuddakirRecitationKind, type Prisma, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import {
@@ -22,6 +22,7 @@ import { muddakirProgramId } from "./muddakir-profile";
 import { getProgramSetting } from "./settings";
 import { emitEvent } from "./events";
 import { canExamine } from "./examiner-eligibility";
+import { isExaminerCapable } from "./muddakir-staff";
 import { AuthorizationError, ValidationError } from "./errors";
 
 // ═══════════════ محرّك يوم الورد في التثبيت (ت٣، §١٢ + تعديل ١) ═══════════════
@@ -278,10 +279,9 @@ export async function recordTathbitFinal(
   db: PrismaClient = prisma,
   now: Date = new Date(),
 ): Promise<RecordTathbitFinalResult> {
-  const user = await db.user.findUnique({ where: { id: args.examinerUserId }, select: { roles: true } });
+  const user = await db.user.findUnique({ where: { id: args.examinerUserId }, select: { id: true } });
   if (!user) throw new AuthorizationError("مستخدم غير موجود.");
-  const isManager = user.roles.some((r) => r === Role.SUPER_ADMIN || r === Role.CIRCLE_MANAGER);
-  if (!user.roles.includes(Role.RECITER) && !isManager) throw new AuthorizationError("السرد يسجّله المختبِر.");
+  if (!(await isExaminerCapable(db, args.examinerUserId))) throw new AuthorizationError("السرد يسجّله المختبِر.");
   if (!(await canExamine({ examinerUserId: args.examinerUserId, studentId: args.studentId }, db))) throw new AuthorizationError("لا يجوز أن يختبر معلّمُ الحافظ ولا عريفُ حلقته.");
 
   const v = await getWardView(args.studentId, db, now);
