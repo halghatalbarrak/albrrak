@@ -29,7 +29,7 @@ import { uploadCertificatePng } from "./storage";
  * الإحداثيات ينزاح في RTL فتُلتقط منطقة فارغة. نضبط نافذة العرض ونلتقطها كاملةً.
  */
 
-export type CertTemplate = "KHATM" | "MAIN_STAGE" | "SUB_STAGE" | "QAIDAH" | "MUDDAKIR_STAGE" | "MUDDAKIR_KHATM";
+export type CertTemplate = "KHATM" | "MAIN_STAGE" | "SUB_STAGE" | "QAIDAH" | "MUDDAKIR_STAGE" | "MUDDAKIR_KHATM" | "MUDDAKIR_TATHBIT";
 
 export interface CertificateData {
   /** اسم صاحب الشهادة — «محمد عبدالله القحطاني» */
@@ -100,6 +100,7 @@ const HEADLINE: Record<CertTemplate, string> = {
   QAIDAH: "إتمام القاعدة المدنية في القراءة والتجويد",
   MUDDAKIR_STAGE: "إتمام مرحلةٍ من برنامج المُدَّكِر — برواية حفصٍ عن عاصم",
   MUDDAKIR_KHATM: "إتمام حفظ القرآن الكريم في برنامج المُدَّكِر — برواية حفصٍ عن عاصم",
+  MUDDAKIR_TATHBIT: "إتمام مرحلة التثبيت في برنامج المُدَّكِر — برواية حفصٍ عن عاصم",
 };
 const ACHIEVE: Record<CertTemplate, [string, string]> = {
   KHATM: ["بإتمامه حفظ كتاب الله كاملاً وفق منهج مراقي،", "واجتيازه تسميعه بحمدٍ من الله وتوفيقه."],
@@ -108,11 +109,12 @@ const ACHIEVE: Record<CertTemplate, [string, string]> = {
   QAIDAH: ["بإتمامه القاعدة المدنية في القراءة والتجويد،", "واجتيازه اختبارها بنجاحٍ وحمدٍ لله."],
   MUDDAKIR_STAGE: ["بإتمامه هذه المرحلة من برنامج المُدَّكِر وفق منهجه،", "واجتيازه سردها كاملةً بحمد الله."],
   MUDDAKIR_KHATM: ["بإتمامه حفظ كتاب الله كاملاً في برنامج المُدَّكِر،", "واجتيازه سرده الختاميّ بحمدٍ من الله وتوفيقه."],
+  MUDDAKIR_TATHBIT: ["بإتمامه مرحلة التثبيت في برنامج المُدَّكِر وفق منهجها،", "واجتيازه سردها الختاميّ بحمدٍ من الله وتوفيقه."],
 };
 /** لفظ المُخاطَب في نصّ الشهادة: «الحافظ» في المُدَّكِر (§٠٫٥: لا «طالب»)، و«الطالب» لغيره. */
 const ATTEST_WHO: Record<CertTemplate, string> = {
   KHATM: "الطالب", MAIN_STAGE: "الطالب", SUB_STAGE: "الطالب", QAIDAH: "الطالب",
-  MUDDAKIR_STAGE: "الحافظ", MUDDAKIR_KHATM: "الحافظ",
+  MUDDAKIR_STAGE: "الحافظ", MUDDAKIR_KHATM: "الحافظ", MUDDAKIR_TATHBIT: "الحافظ",
 };
 const DUA: [string, string] = [
   "نسأل الله أن يجعله من أهل القرآن وخاصّته،",

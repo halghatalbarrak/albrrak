@@ -9,6 +9,8 @@ import {
   type PrismaClient,
 } from "@prisma/client";
 
+import { randomUUID } from "node:crypto";
+
 import { prisma } from "@/lib/prisma";
 import { juzBoundsFromHizb, makkahDayBounds, makkahDayDate, type HizbRow } from "@/lib/muddakir";
 
@@ -198,6 +200,7 @@ export interface TathbitSupervisorView {
   khatmaInDegree: number;
   cumulativeKhatmat: number;
   finishedLadder: boolean;
+  awaitingApproval: boolean; // اجتاز السرد الختاميّ وينتظر اعتماد المشرف (§١٢)
   surprisePositions: { juz: number; fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }[];
 }
 
@@ -280,11 +283,35 @@ async function tathbitSupervisorView(db: Db, studentId: string, weekStart: strin
     .filter((x): x is NonNullable<typeof x> => x != null)
     .map((x) => ({ juz: x.juz, fromSurah: x.startSurah, fromAyah: x.startAyah, toSurah: x.endSurah, toAyah: x.endAyah }));
 
+  const passedFinal = v.finishedLadder && v.phase === "TATHBIT"
+    && (await db.muddakirRecitation.findFirst({ where: { studentId, kind: "TATHBIT_FINAL", passed: true }, select: { id: true } })) != null;
+
   return {
     phase: v.phase === "PERMANENT" ? "PERMANENT" : "TATHBIT",
     degreeNo: v.degreeNo, dailyJuz: v.dailyJuz, khatmaInDegree: v.khatmaInDegree,
-    cumulativeKhatmat: v.cumulativeKhatmat, finishedLadder: v.finishedLadder, surprisePositions,
+    cumulativeKhatmat: v.cumulativeKhatmat, finishedLadder: v.finishedLadder, awaitingApproval: passedFinal, surprisePositions,
   };
+}
+
+/**
+ * يعتمد المشرف ختام التثبيت (§١٢): لا تصدر الشهادة إلا بعد اجتياز السرد الختاميّ + اعتماده. تُصدَر
+ * شهادة MUDDAKIR_TATHBIT ويُنقل الحافظ إلى الورد الدائم (PERMANENT). idempotent (لا تُكرَّر الشهادة).
+ */
+export async function approveTathbit(args: { actorUserId: string; studentId: string }, db: PrismaClient = prisma): Promise<{ certificateId: string; alreadyApproved: boolean }> {
+  await assertCanActOnHafiz(db, args.actorUserId, args.studentId);
+  const profile = await db.muddakirProfile.findUnique({ where: { studentId: args.studentId }, select: { phase: true } });
+  if (!profile || profile.phase !== "TATHBIT") throw new ValidationError("الحافظ ليس في طور التثبيت.");
+  const passed = await db.muddakirRecitation.findFirst({ where: { studentId: args.studentId, kind: "TATHBIT_FINAL", passed: true }, select: { id: true } });
+  if (!passed) throw new ValidationError("لا سردَ ختاميّ مُجتازٌ لاعتماده.");
+  const existing = await db.certificate.findFirst({ where: { studentId: args.studentId, template: "MUDDAKIR_TATHBIT" }, select: { id: true } });
+  if (existing) return { certificateId: existing.id, alreadyApproved: true };
+
+  return db.$transaction(async (tx) => {
+    const cert = await tx.certificate.create({ data: { studentId: args.studentId, template: "MUDDAKIR_TATHBIT", verifyToken: randomUUID() }, select: { id: true } });
+    await tx.muddakirProfile.update({ where: { studentId: args.studentId }, data: { phase: "PERMANENT", tathbitDegree: null } });
+    await emitEvent(tx, { type: "MUDDAKIR_TATHBIT_CERTIFIED", subjectType: "Student", subjectId: args.studentId, actorId: args.actorUserId, payload: { certificateId: cert.id } });
+    return { certificateId: cert.id, alreadyApproved: false };
+  });
 }
 
 /** الرفع المبكّر: المشرف/المدير يرفع حافظه المُسنَد إلى الدرجة التالية (§١٢) — مع تسجيلٍ، لا نزول. */

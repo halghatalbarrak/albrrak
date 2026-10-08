@@ -1,6 +1,7 @@
 import { MuddakirMode, Role } from "@prisma/client";
 
 import {
+  approveTathbit,
   approveTrackChange,
   confirmWeekRegularity,
   markHeard,
@@ -60,6 +61,8 @@ export async function POST(req: Request) {
       }
       case "raiseDegree":
         return Response.json(await raiseHafizDegree({ actorUserId: actor.id, studentId }));
+      case "approveTathbit":
+        return Response.json(await approveTathbit({ actorUserId: actor.id, studentId }));
       default:
         throw new ValidationError("إجراءٌ غير معروف.");
     }

@@ -182,6 +182,9 @@ export const muddakirAr = {
   finishedLadderNote: "أتممتَ درجات التثبيت — بانتظار السرد الختاميّ",
   surprisePositions: "مواضع مفاجئة (للمشرف)",
   raiseDegreeBtn: "رفعٌ مبكّرٌ للدرجة التالية",
+  tathbitFinalRecitation: "السرد الختاميّ للتثبيت",
+  tathbitAwaitingApproval: "بانتظار اعتماد المشرف",
+  approveTathbitBtn: "اعتماد وإصدار شهادة التثبيت",
 } as const;
 
 /** مفاتيح قاموس المُدَّكِر (للتحقّق الثابت عند الاستدعاء). */

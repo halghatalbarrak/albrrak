@@ -23,6 +23,7 @@ import {
 } from "@/lib/muddakir";
 
 import { emitEvent } from "./events";
+import { getWardView, recordTathbitFinal } from "./muddakir-ward";
 import { assertCanExamine, canExamine } from "./examiner-eligibility";
 import { AuthorizationError, ValidationError } from "./errors";
 import { getProgramSetting } from "./settings";
@@ -225,23 +226,51 @@ export async function setStageMode(args: { actorUserId: string; studentId: strin
 
 export interface RecitationCandidate { studentId: string; name: string; stage: number; kind: MuddakirRecitationKind }
 
-/** الحفّاظ الجاهزون لسردٍ (مرحلةٍ أو ختاميّ) ممّن يجوز لهذا المختبِر اختبارهم (مؤهّلٌ، ليس معلّمهم). */
+/** الحفّاظ الجاهزون لسردٍ (مرحلةٍ، أو ختاميّ للحفظ، أو ختاميّ للتثبيت) ممّن يجوز لهذا المختبِر اختبارهم. */
 export async function listRecitationCandidates(examinerUserId: string, db: PrismaClient = prisma): Promise<RecitationCandidate[]> {
   const examiner = await db.user.findUnique({ where: { id: examinerUserId }, select: { roles: true } });
   if (!examiner || (!examiner.roles.includes(Role.RECITER) && !isManager(examiner.roles))) throw new AuthorizationError("هذه الشاشة للمختبِر.");
-  const profiles = await db.muddakirProfile.findMany({ select: { studentId: true } });
+  const profiles = await db.muddakirProfile.findMany({ select: { studentId: true, phase: true } });
   const out: Omit<RecitationCandidate, "name">[] = [];
   for (const p of profiles) {
-    let progress: StageProgress;
-    try { progress = await getStageProgress(p.studentId, db); } catch { continue; }
-    if (progress.graduated) continue;
-    const kind = progress.awaitingFinal ? MuddakirRecitationKind.FINAL : (progress.ready ? MuddakirRecitationKind.STAGE : null);
+    let kind: MuddakirRecitationKind | null = null;
+    let stage = 0;
+    if (p.phase === "TATHBIT") {
+      // جاهزٌ للسرد الختاميّ للتثبيت = أتمّ الدرجة العاشرة ولم يُجتَز سردُه الختاميّ بعد.
+      const v = await getWardView(p.studentId, db, new Date());
+      if (!v.finishedLadder) continue;
+      if (await db.muddakirRecitation.findFirst({ where: { studentId: p.studentId, kind: MuddakirRecitationKind.TATHBIT_FINAL, passed: true }, select: { id: true } })) continue;
+      kind = MuddakirRecitationKind.TATHBIT_FINAL; stage = 10;
+    } else {
+      let progress: StageProgress;
+      try { progress = await getStageProgress(p.studentId, db); } catch { continue; }
+      if (progress.graduated) continue;
+      kind = progress.awaitingFinal ? MuddakirRecitationKind.FINAL : (progress.ready ? MuddakirRecitationKind.STAGE : null);
+      stage = progress.stage;
+    }
     if (!kind) continue;
-    // الأهليّة (ليس معلّمه ولا عريف حلقته) — قيد §٨/الحكم ٨.
     if (!(await canExamine({ examinerUserId, studentId: p.studentId }, db))) continue;
-    out.push({ studentId: p.studentId, kind, stage: progress.stage });
+    out.push({ studentId: p.studentId, kind, stage });
   }
   const names = await db.student.findMany({ where: { id: { in: out.map((o) => o.studentId) } }, select: { id: true, user: { select: { nameAsInId: true } } } });
   const nameBy = new Map(names.map((n) => [n.id, n.user.nameAsInId]));
   return out.map((o) => ({ ...o, name: nameBy.get(o.studentId) ?? "—" })).sort((a, b) => a.name.localeCompare(b.name, "ar"));
+}
+
+/** يوزّع تسجيل السرد بحسب طور الحافظ: التثبيت المنتهي ⟵ السرد الختاميّ للتثبيت؛ وإلّا سرد الحفظ. */
+export async function recordRecitation(
+  args: { examinerUserId: string; studentId: string; passed: boolean; errors?: RecitationErrorInput[] },
+  db: PrismaClient = prisma,
+  now: Date = new Date(),
+): Promise<{ tathbitFinal: boolean; passed: boolean; recitationId: string }> {
+  const prof = await db.muddakirProfile.findUnique({ where: { studentId: args.studentId }, select: { phase: true } });
+  if (prof?.phase === "TATHBIT") {
+    const v = await getWardView(args.studentId, db, now);
+    if (v.finishedLadder) {
+      const r = await recordTathbitFinal(args, db, now);
+      return { tathbitFinal: true, passed: r.passed, recitationId: r.recitationId };
+    }
+  }
+  const r = await recordStageRecitation(args, db, now);
+  return { tathbitFinal: false, passed: r.passed, recitationId: r.recitationId };
 }
