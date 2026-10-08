@@ -1135,6 +1135,23 @@ enum MuddakirStaffRole {
   EXAMINER // مختبِرٌ في المدّكر (نظير RECITER، محصورٌ بالبرنامج)
 }
 
+// طلبات الإداريّ (§٢): كلّ إجراءٍ يغيّر شيئاً يُنشئه الإداريّ طلباً معلّقاً يعتمده مدير البرنامج.
+enum MuddakirRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED // ألغاه صاحبه قبل البتّ
+}
+
+enum MuddakirRequestType {
+  ENROLL // إلحاق حافظ
+  ASSIGN_SUPERVISOR // إسناد مشرف
+  SET_MODE // الوقوف عند مرحلة / استئناف
+  SET_SETTING // ضبط إعدادٍ (§٩)
+  SET_TATHBIT_LADDER // سلّم التثبيت
+  SET_POINT_ITEM // بند نقاطٍ خاصٌّ بالمدّكر (AUTO لأحداث MUDDAKIR_*)
+}
+
 // وضع الحافظ ومساره ودورة مراجعته (§١، §٤). صفٌّ لكلّ حافظ.
 model MuddakirProfile {
   id              String               @id @default(cuid())
@@ -1259,6 +1276,25 @@ model MuddakirStaff {
 
   @@index([userId, endedAt])
   @@index([role, endedAt])
+}
+
+// طلبات الإداريّ (§٢): append-only. عند الموافقة يُنفَّذ بالدالّة نفسها التي ينفّذها المدير مباشرة
+// (executeRequest) داخل معاملة، مرّةً واحدة (executedAt). الرفض بسبب. الإلغاء لصاحبه قبل البتّ.
+model MuddakirAdminRequest {
+  id             String                @id @default(cuid())
+  type           MuddakirRequestType
+  payload        Json // بيان الإجراء (نفس وسائط دالّة المدير)
+  studentId      String? // الحافظ المعنيّ إن وُجد (للعرض/الفهرسة)
+  requestedBy    String
+  requestedAt    DateTime              @default(now())
+  status         MuddakirRequestStatus @default(PENDING)
+  decisionReason String? // إلزاميٌّ عند الرفض
+  decidedBy      String?
+  decidedAt      DateTime?
+  executedAt     DateTime? // لحظة التنفيذ عند الموافقة (ضمانُ ألا يُنفَّذ مرّتين)
+
+  @@index([status])
+  @@index([requestedBy, status])
 }
 
 // سجلّ أحداث المزامنة (PWA) الملحق — مصدر الحقيقة؛ يُشتقّ منه MuddakirDay/DayFace.
