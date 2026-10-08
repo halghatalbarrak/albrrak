@@ -20,9 +20,13 @@ import { IdbQueueStore } from "./idb-store";
 
 // ───────────────── أنواع العرض (مرآة HafizTodayView في الخادم) ─────────────────
 interface Stage { number: number; startJuz: number; endJuz: number; faceInStage: number; stageTotal: number; currentPage: number }
+interface AyahPos { surah: number; ayah: number }
 interface Plan {
   dayDate: string; reviewOnly: boolean; excused: boolean;
   yesterday: number[]; newFaces: number[]; ribat: number[]; reviewSlice: number[];
+  newRange: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number } | null;
+  linkingAyah: AyahPos | null;
+  yesterdayLinkingAyah: AyahPos | null;
   openTreatments: { page: number; lineNo: number; source: string }[];
   makeup: { forDate: string; newFromPage: number | null; newToPage: number | null } | null;
 }
@@ -208,7 +212,7 @@ export default function MuddakirHafizPage() {
         </Card>
       )}
 
-      {/* ١ تكرار الأمس */}
+      {/* ١ تكرار الأمس (مع آيته الرابطة — §٤٫١) */}
       {plan.yesterday.length > 0 && (
         <Section title={`${arNum(1)}. ${t("pillarYesterday")}`}>
           {plan.yesterday.map((page) => (
@@ -216,31 +220,42 @@ export default function MuddakirHafizPage() {
               <BigCount value={counters.faces.get(page)?.yesterdayReps ?? 0} total={settings.yesterdayReps} onTap={() => void emit("YESTERDAY_REP", { page })} />
             </Row>
           ))}
+          {plan.yesterdayLinkingAyah && <LinkMark pos={plan.yesterdayLinkingAyah} />}
         </Section>
       )}
 
-      {/* ٢ الجديد */}
+      {/* ٢ الجديد (الحصّة = الأوجه + الآية الرابطة — §٤٫١) */}
       <Section title={`${arNum(2)}. ${t("pillarNew")}`}>
         {view.reviewOnly ? <Muted>{t("reviewOnlyNote")}</Muted>
           : excused ? <Muted>{t("noNewToday")}</Muted>
           : plan.newFaces.length === 0 ? <Muted>{t("noNewToday")}</Muted>
-          : plan.newFaces.map((page) => {
-            const c = counters.faces.get(page) ?? { reps: 0, repErrors: 0, yesterdayReps: 0 };
-            return (
-              <Card key={page} style={{ padding: sp(3), marginBottom: sp(2) }}>
-                <div style={{ fontWeight: 700 }}>{t("face")} {arNum(page)}</div>
-                <div style={{ display: "flex", gap: sp(1), flexWrap: "wrap", margin: `${sp(2)} 0`, fontSize: ui.text.xs, color: ui.color.muted }}>
-                  <span>{t("stepListen")}</span><span>·</span><span>{t("stepMemorize")}</span><span>·</span><span>{t("stepRecord")}</span>
+          : (
+            <>
+              {plan.newRange && (
+                <div style={{ fontSize: ui.text.xs, color: ui.color.muted, marginBottom: sp(2) }}>
+                  {t("hifzPortion")}: {formatAyah(plan.newRange.fromSurah, plan.newRange.fromAyah, plan.newRange.toSurah, plan.newRange.toAyah)}
                 </div>
-                <BigCount value={c.reps} total={settings.newReps} onTap={() => void emit("NEW_REP", { page })} large />
-                <div style={{ display: "flex", gap: sp(2), marginTop: sp(2) }}>
-                  <Button variant="danger" size="sm" onClick={() => void emit("NEW_ERROR", { page })}>{t("erred")}</Button>
-                  <Button variant="ghost" size="sm" onClick={() => void emit("NEW_UNDO", { page })}>{t("undo")}</Button>
-                  <span style={{ marginRight: "auto", fontSize: ui.text.xs, color: ui.color.muted }}>{t("repErrorsLabel")}: {arNum(c.repErrors)}</span>
-                </div>
-              </Card>
-            );
-          })}
+              )}
+              {plan.newFaces.map((page) => {
+                const c = counters.faces.get(page) ?? { reps: 0, repErrors: 0, yesterdayReps: 0 };
+                return (
+                  <Card key={page} style={{ padding: sp(3), marginBottom: sp(2) }}>
+                    <div style={{ fontWeight: 700 }}>{t("face")} {arNum(page)}</div>
+                    <div style={{ display: "flex", gap: sp(1), flexWrap: "wrap", margin: `${sp(2)} 0`, fontSize: ui.text.xs, color: ui.color.muted }}>
+                      <span>{t("stepListen")}</span><span>·</span><span>{t("stepMemorize")}</span><span>·</span><span>{t("stepRecord")}</span>
+                    </div>
+                    <BigCount value={c.reps} total={settings.newReps} onTap={() => void emit("NEW_REP", { page })} large />
+                    <div style={{ display: "flex", gap: sp(2), marginTop: sp(2) }}>
+                      <Button variant="danger" size="sm" onClick={() => void emit("NEW_ERROR", { page })}>{t("erred")}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => void emit("NEW_UNDO", { page })}>{t("undo")}</Button>
+                      <span style={{ marginRight: "auto", fontSize: ui.text.xs, color: ui.color.muted }}>{t("repErrorsLabel")}: {arNum(c.repErrors)}</span>
+                    </div>
+                  </Card>
+                );
+              })}
+              {plan.linkingAyah && <LinkMark pos={plan.linkingAyah} note />}
+            </>
+          )}
       </Section>
 
       {/* ٣ الربط */}
@@ -319,6 +334,16 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 function Muted({ children }: { children: React.ReactNode }) {
   return <p style={{ color: ui.color.muted, fontSize: ui.text.xs }}>{children}</p>;
+}
+// علامة الآية الرابطة (§٤٫١): ذيلٌ صغيرٌ للحصّة، لا وجهٌ ولا عدّادٌ مستقلّ.
+function LinkMark({ pos, note }: { pos: { surah: number; ayah: number }; note?: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: sp(2), padding: sp(2), border: `1px dashed ${ui.color.bronze}`, borderRadius: 8, fontSize: ui.text.xs, marginBottom: sp(2), flexWrap: "wrap" }}>
+      <Badge tone="bronze">{t("linkingAyah")}</Badge>
+      <span>{formatAyah(pos.surah, pos.ayah)}</span>
+      {note && <span style={{ color: ui.color.muted }}>— {t("linkingAyahNote")}</span>}
+    </div>
+  );
 }
 // ───────────────── شاشة الورد (التثبيت/الدائم، §١٢) ─────────────────
 function WardHome({ ward, doneToday, online, onComplete }: { ward: WardView; doneToday: number; online: boolean; onComplete: () => void }) {
