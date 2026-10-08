@@ -1,4 +1,4 @@
-import { MuddakirMode, Role } from "@prisma/client";
+import { MuddakirMode } from "@prisma/client";
 
 import {
   approveTathbit,
@@ -13,16 +13,14 @@ import {
   supervisorHafizDetail,
 } from "@/server/muddakir-supervisor";
 import { setStageMode } from "@/server/muddakir-stages";
-import { requireRoles } from "@/server/auth";
+import { requireMuddakir } from "@/server/muddakir-staff";
 import { errorResponse } from "@/server/http";
 import { ValidationError } from "@/server/errors";
-
-const ROLES = [Role.ARIF, Role.SUPER_ADMIN, Role.CIRCLE_MANAGER];
 
 // GET /api/muddakir/supervisor — لوحة المشرف (حفّاظه ومؤشّراتهم). ?studentId=… ⟵ تفصيل حافظٍ للقاء.
 export async function GET(req: Request) {
   try {
-    const actor = await requireRoles(req, ROLES);
+    const actor = await requireMuddakir(req, "supervise");
     const studentId = new URL(req.url).searchParams.get("studentId");
     if (studentId) return Response.json(await supervisorHafizDetail(actor.id, studentId));
     return Response.json(await supervisorDashboard(actor.id));
@@ -34,7 +32,7 @@ export async function GET(req: Request) {
 // POST /api/muddakir/supervisor — أفعال المشرف. { action, studentId, … }.
 export async function POST(req: Request) {
   try {
-    const actor = await requireRoles(req, ROLES);
+    const actor = await requireMuddakir(req, "supervise");
     const b = (await req.json()) as { action?: unknown; studentId?: unknown; page?: unknown; lineNo?: unknown; track?: unknown; days?: unknown; mode?: unknown };
     if (typeof b.studentId !== "string") throw new ValidationError("الحافظ مطلوب.");
     const studentId = b.studentId;

@@ -1,5 +1,6 @@
 import {
   MuddakirDeliveryMode,
+  MuddakirStaffRole,
   ProgramHistoryReason,
   Role,
   Prisma,
@@ -9,6 +10,7 @@ import {
 import { prisma } from "@/lib/prisma";
 
 import { emitEvent } from "./events";
+import { isSupervisorCapable } from "./muddakir-staff";
 import { AuthorizationError, ValidationError } from "./errors";
 import { closeProgramHistory, recordProgramEntry } from "./program-placement";
 import { ensureMuddakirProfile, muddakirProgramId } from "./muddakir-profile";
@@ -134,9 +136,9 @@ export async function assignSupervisor(
   args: { studentId: string; supervisorId: string; actorId: string },
   db: PrismaClient = prisma,
 ): Promise<{ supervisionId: string }> {
-  const supervisor = await db.user.findUnique({ where: { id: args.supervisorId }, select: { id: true, roles: true } });
-  if (!supervisor || !supervisor.roles.includes(Role.ARIF)) {
-    throw new ValidationError("المشرف يجب أن يكون مستخدمًا بدور المشرف.");
+  const supervisor = await db.user.findUnique({ where: { id: args.supervisorId }, select: { id: true } });
+  if (!supervisor || !(await isSupervisorCapable(db, args.supervisorId))) {
+    throw new ValidationError("المشرف يجب أن يكون مشرفًا (ARIF) أو مشرفَ مدّكرٍ مُسنَداً.");
   }
   const profile = await db.muddakirProfile.findUnique({ where: { studentId: args.studentId }, select: { studentId: true } });
   if (!profile) throw new ValidationError("الحافظ غير ملتحقٍ بالمُدَّكِر.");
@@ -231,14 +233,16 @@ export interface SupervisorRow {
   full: boolean;
 }
 
-/** المشرفون (ARIF) مع حِمل كلٍّ (إسناداته النشطة) والسقف — لاختيار المشرف في الشاشة. */
+/** المشرفون (ARIF أو مشرفو المدّكر المُسنَدون) مع حِمل كلٍّ والسقف — لاختيار المشرف في الشاشة. */
 export async function listSupervisorsWithLoad(db: PrismaClient = prisma): Promise<SupervisorRow[]> {
   const programId = await muddakirProgramId(db);
   const max = await maxHafizPerSupervisor(programId, db);
-  const supervisors = await db.user.findMany({
-    where: { roles: { has: Role.ARIF }, isActive: true },
-    select: { id: true, nameAsInId: true },
-  });
+  const arifs = await db.user.findMany({ where: { roles: { has: Role.ARIF }, isActive: true }, select: { id: true, nameAsInId: true } });
+  // مشرفو المدّكر الخاصّون (SUPERVISOR) — نشطون، ممّن ليسوا ARIF أصلاً.
+  const staff = await db.muddakirStaff.findMany({ where: { role: MuddakirStaffRole.SUPERVISOR, endedAt: null }, select: { userId: true } });
+  const staffIds = [...new Set(staff.map((s) => s.userId))].filter((id) => !arifs.some((a) => a.id === id));
+  const staffUsers = staffIds.length ? await db.user.findMany({ where: { id: { in: staffIds }, isActive: true }, select: { id: true, nameAsInId: true } }) : [];
+  const supervisors = [...arifs, ...staffUsers];
   const counts = await db.muddakirSupervision.groupBy({
     by: ["supervisorId"],
     where: { endedAt: null, supervisorId: { in: supervisors.map((s) => s.id) } },

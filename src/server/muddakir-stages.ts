@@ -24,6 +24,7 @@ import {
 
 import { emitEvent } from "./events";
 import { getWardView, recordTathbitFinal } from "./muddakir-ward";
+import { isExaminerCapable } from "./muddakir-staff";
 import { assertCanExamine, canExamine } from "./examiner-eligibility";
 import { AuthorizationError, ValidationError } from "./errors";
 import { getProgramSetting } from "./settings";
@@ -121,11 +122,11 @@ export interface RecordRecitationResult {
   graduated: boolean;
 }
 
-/** يتحقّق أنّ الفاعل مختبِرٌ مؤهّل (RECITER، أو مديرٌ) وليس معلّمَ الحافظ ولا عريفَ حلقته. */
+/** يتحقّق أنّ الفاعل مختبِرٌ مؤهّل (RECITER، أو مختبِرُ مدّكرٍ مُسنَد، أو مديرٌ) وليس معلّمَ الحافظ ولا عريفَ حلقته. */
 async function assertExaminer(db: Db, examinerUserId: string, studentId: string): Promise<void> {
-  const user = await db.user.findUnique({ where: { id: examinerUserId }, select: { roles: true } });
+  const user = await db.user.findUnique({ where: { id: examinerUserId }, select: { id: true } });
   if (!user) throw new AuthorizationError("مستخدم غير موجود.");
-  if (!user.roles.includes(Role.RECITER) && !isManager(user.roles)) throw new AuthorizationError("السرد يسجّله المختبِر (المُسمِّع).");
+  if (!(await isExaminerCapable(db, examinerUserId))) throw new AuthorizationError("السرد يسجّله المختبِر (المُسمِّع).");
   await assertCanExamine({ examinerUserId, studentId }, db as PrismaClient);
 }
 
@@ -228,8 +229,8 @@ export interface RecitationCandidate { studentId: string; name: string; stage: n
 
 /** الحفّاظ الجاهزون لسردٍ (مرحلةٍ، أو ختاميّ للحفظ، أو ختاميّ للتثبيت) ممّن يجوز لهذا المختبِر اختبارهم. */
 export async function listRecitationCandidates(examinerUserId: string, db: PrismaClient = prisma): Promise<RecitationCandidate[]> {
-  const examiner = await db.user.findUnique({ where: { id: examinerUserId }, select: { roles: true } });
-  if (!examiner || (!examiner.roles.includes(Role.RECITER) && !isManager(examiner.roles))) throw new AuthorizationError("هذه الشاشة للمختبِر.");
+  const examiner = await db.user.findUnique({ where: { id: examinerUserId }, select: { id: true } });
+  if (!examiner || !(await isExaminerCapable(db, examinerUserId))) throw new AuthorizationError("هذه الشاشة للمختبِر.");
   const profiles = await db.muddakirProfile.findMany({ select: { studentId: true, phase: true } });
   const out: Omit<RecitationCandidate, "name">[] = [];
   for (const p of profiles) {

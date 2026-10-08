@@ -1,27 +1,23 @@
-import { MuddakirDeliveryMode, Role } from "@prisma/client";
+import { MuddakirDeliveryMode } from "@prisma/client";
 
 import {
   assignSupervisor,
-  canManageMuddakir,
   enrollInMuddakir,
   listEnrollableStudents,
   listHafizForSupervisor,
   listMuddakirHafiz,
   listSupervisorsWithLoad,
 } from "@/server/muddakir-enrollment";
-import { requireRoles } from "@/server/auth";
+import { requireMuddakir } from "@/server/muddakir-staff";
 import { errorResponse } from "@/server/http";
 import { ValidationError } from "@/server/errors";
 
-const VIEW_ROLES = [Role.SUPER_ADMIN, Role.CIRCLE_MANAGER, Role.ARIF];
-const MANAGE_ROLES = [Role.SUPER_ADMIN, Role.CIRCLE_MANAGER];
-
-// GET /api/muddakir — المدير: الحفّاظ + المشرفون بأحمالهم + المتاحون للإلحاق. المشرف (ARIF):
-// حفّاظه فقط للقراءة.
+// GET /api/muddakir — المدير (منصّةٌ أو برنامجٌ): الحفّاظ + المشرفون + المتاحون للإلحاق. المشرف:
+// حفّاظه فقط للقراءة. (يقبل أدوار المدّكر المُحصَّرة كما الأدوار العامّة.)
 export async function GET(req: Request) {
   try {
-    const actor = await requireRoles(req, VIEW_ROLES);
-    if (canManageMuddakir(actor.roles)) {
+    const actor = await requireMuddakir(req, "view");
+    if (actor.caps.manage) {
       const [hafiz, supervisors, enrollable] = await Promise.all([
         listMuddakirHafiz(),
         listSupervisorsWithLoad(),
@@ -36,11 +32,11 @@ export async function GET(req: Request) {
   }
 }
 
-// POST /api/muddakir — المدير فقط. { action:"enroll", studentId, deliveryMode? } أو
-// { action:"assign", studentId, supervisorId }.
+// POST /api/muddakir — مديرُ البرنامج/المنصّة فقط (التنفيذ المباشر). طلبات الإداريّ في و٢.
+// { action:"enroll", studentId, deliveryMode? } أو { action:"assign", studentId, supervisorId }.
 export async function POST(req: Request) {
   try {
-    const actor = await requireRoles(req, MANAGE_ROLES);
+    const actor = await requireMuddakir(req, "manage");
     const b = (await req.json()) as {
       action?: unknown;
       studentId?: unknown;

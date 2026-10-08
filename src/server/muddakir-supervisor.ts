@@ -32,6 +32,7 @@ import {
 } from "./muddakir-day";
 import { getStageProgress, type StageProgress } from "./muddakir-stages";
 import { getWardView, raiseDegree as wardRaiseDegree, type RaiseResult } from "./muddakir-ward";
+import { muddakirCaps } from "./muddakir-staff";
 
 // ═══════════════ المُدَّكِر — المشرف واللقاء الأسبوعيّ (المرحلة ٦) ═══════════════
 //
@@ -60,12 +61,13 @@ export function canViewSupervisor(roles: readonly Role[]): boolean {
   return isManager(roles) || roles.includes(Role.ARIF);
 }
 
-/** المدير يكتب للجميع؛ المشرف لحفّاظه المُسندين فقط (قيد MuddakirSupervision النشط). وإلّا يُرفض. */
+/** المدير يكتب للجميع؛ المشرف (ARIF أو مشرف المدّكر) لحفّاظه المُسندين فقط (قيد MuddakirSupervision النشط). */
 async function assertCanActOnHafiz(db: Db, actorUserId: string, studentId: string): Promise<void> {
   const actor = await db.user.findUnique({ where: { id: actorUserId }, select: { roles: true } });
   if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
-  if (isManager(actor.roles)) return;
-  if (!actor.roles.includes(Role.ARIF)) throw new AuthorizationError("هذه الشاشة للمشرف.");
+  const caps = await muddakirCaps(db, { id: actorUserId, roles: actor.roles });
+  if (caps.manage) return;
+  if (!caps.supervise) throw new AuthorizationError("هذه الشاشة للمشرف.");
   const link = await db.muddakirSupervision.findFirst({
     where: { supervisorId: actorUserId, studentId, endedAt: null },
     select: { id: true },
