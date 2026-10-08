@@ -25,7 +25,7 @@ interface Detail {
   openTreatments: { page: number; lineNo: number; source: string }[];
   trackRequest: { track: number } | null;
   stageProgress: { stage: number; memorized: number; total: number; ready: boolean; mode: "ACTIVE" | "REVIEW_ONLY"; awaitingFinal: boolean; graduated: boolean } | null;
-  tathbit: { phase: "TATHBIT" | "PERMANENT"; degreeNo: number; dailyJuz: number; khatmaInDegree: number; cumulativeKhatmat: number; finishedLadder: boolean; surprisePositions: { juz: number; fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }[] } | null;
+  tathbit: { phase: "TATHBIT" | "PERMANENT"; degreeNo: number; dailyJuz: number; khatmaInDegree: number; cumulativeKhatmat: number; finishedLadder: boolean; awaitingApproval: boolean; surprisePositions: { juz: number; fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }[] } | null;
   indicators: Indicators;
 }
 
@@ -164,6 +164,12 @@ export default function MuddakirSupervisorPage() {
               </div>
               {detail.tathbit.phase === "TATHBIT" && !detail.tathbit.finishedLadder && (
                 <Button variant="ghost" size="sm" style={{ marginTop: sp(2) }} onClick={() => void act({ action: "raiseDegree", studentId: detail.studentId }, t("raiseDegreeBtn"))}>{t("raiseDegreeBtn")}</Button>
+              )}
+              {detail.tathbit.awaitingApproval && (
+                <div style={{ marginTop: sp(2) }}>
+                  <Badge tone="bronze">{t("tathbitAwaitingApproval")}</Badge>
+                  <Button size="sm" style={{ marginRight: sp(2) }} onClick={() => void act({ action: "approveTathbit", studentId: detail.studentId }, t("approveTathbitBtn"))}>{t("approveTathbitBtn")}</Button>
+                </div>
               )}
             </Card>
           )}

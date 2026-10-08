@@ -1,6 +1,6 @@
 import { Role } from "@prisma/client";
 
-import { listRecitationCandidates, recordStageRecitation, type RecitationErrorInput } from "@/server/muddakir-stages";
+import { listRecitationCandidates, recordRecitation, type RecitationErrorInput } from "@/server/muddakir-stages";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
 import { ValidationError } from "@/server/errors";
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     const errors: RecitationErrorInput[] = Array.isArray(b.errors)
       ? b.errors.filter((e): e is RecitationErrorInput => !!e && typeof (e as RecitationErrorInput).page === "number" && typeof (e as RecitationErrorInput).lineNo === "number")
       : [];
-    return Response.json(await recordStageRecitation({ examinerUserId: actor.id, studentId: b.studentId, passed: b.passed, errors }));
+    return Response.json(await recordRecitation({ examinerUserId: actor.id, studentId: b.studentId, passed: b.passed, errors }));
   } catch (e) {
     return errorResponse(e);
   }

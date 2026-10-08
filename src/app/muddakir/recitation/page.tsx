@@ -9,7 +9,7 @@ import { tMuddakir as t, stageLabel } from "@/i18n/ar/muddakir";
 // شاشة المختبِر (المرحلة ٧، §٧) — للجوّال أوّلاً. المختبِر (RECITER) يرى الحفّاظ الجاهزين للسرد،
 // يسجّل النتيجة (اجتاز/لم يجتز) ومواضع الأخطاء (الصفحة+السطر) فتدخل علاج الأخطاء. محميٌّ في الخادم.
 
-interface Candidate { studentId: string; name: string; stage: number; kind: "STAGE" | "FINAL" }
+interface Candidate { studentId: string; name: string; stage: number; kind: "STAGE" | "FINAL" | "TATHBIT_FINAL" }
 interface ErrPos { page: string; lineNo: string }
 
 async function token(): Promise<string | null> {
@@ -72,7 +72,7 @@ export default function MuddakirRecitationPage() {
               <div>
                 <strong>{c.name}</strong>
                 <span style={{ color: ui.color.muted, fontSize: ui.text.xs, marginRight: sp(2) }}>
-                  {c.kind === "FINAL" ? t("finalRecitation") : `${stageLabel(c.stage)} · ${t("stageRecitationWord")}`}
+                  {c.kind === "TATHBIT_FINAL" ? t("tathbitFinalRecitation") : c.kind === "FINAL" ? t("finalRecitation") : `${stageLabel(c.stage)} · ${t("stageRecitationWord")}`}
                 </span>
               </div>
               <Button size="sm" onClick={() => { setSel(c); setErrs([]); }}>{t("openExaminer")}</Button>
@@ -84,7 +84,7 @@ export default function MuddakirRecitationPage() {
           <Card style={{ padding: sp(3) }}>
             <strong style={{ fontSize: ui.text.base }}>{sel.name}</strong>
             <div style={{ marginTop: sp(1) }}>
-              <Badge tone="bronze">{sel.kind === "FINAL" ? t("finalRecitation") : `${stageLabel(sel.stage)} · ${t("stageRecitationWord")}`}</Badge>
+              <Badge tone="bronze">{sel.kind === "TATHBIT_FINAL" ? t("tathbitFinalRecitation") : sel.kind === "FINAL" ? t("finalRecitation") : `${stageLabel(sel.stage)} · ${t("stageRecitationWord")}`}</Badge>
             </div>
           </Card>
 
