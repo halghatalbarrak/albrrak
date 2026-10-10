@@ -1369,3 +1369,58 @@ model MuddakirDegreeRaise {
 
   @@index([studentId])
 }
+
+// ═══════════════ التلعيب (GAMIFICATION_RULES.md) ═══════════════
+// الأوسمة: تعريفاتٌ يحرّرها المدير من قائمة شروطٍ معرَّفة (BadgeConditionKind)، ومنحٌ append-only
+// يُمنح مرّةً واحدة لكلّ (طالب، تعريف) — بلا سحبٍ بعد المنح (§٥). النقاط والسلسلة مشتركتان: النقاط
+// من الحصاد القائم (PointTransaction)، والسلسلة محسوبةٌ من حالات الأيّام القائمة لا مخزّنة.
+
+enum BadgeConditionKind {
+  STREAK_DAYS // الانتظام: threshold = عدد الأيّام
+  STAGE_COMPLETE // إتمام مرحلة
+  TRACK_OR_DEGREE_COMPLETE // إتمام مسار/درجة
+  HIFZ_KHATM // ختم الحفظ
+  TATHBIT_CERTIFICATE // شهادة التثبيت
+  WEEK_NO_ERROR // أسبوع بلا خطأ
+  STAGE_RECITATION_NO_ERROR // سرد مرحلة بلا خطأ
+  FACES_HEARD_NO_ERROR // threshold = عدد الأوجه المسموعة بلا خطأ
+  FIRST_DAY // أوّل يوم
+  FIRST_WEEK_COMPLETE // أوّل أسبوعٍ مكتمل
+}
+
+enum BadgeCategory {
+  REGULARITY // الانتظام 🔥
+  ACHIEVEMENT // الإنجاز 🏅
+  MASTERY // الإتقان ✨
+  ONBOARDING // البداية 🌱
+}
+
+// تعريف الوسام — يحرّره المدير (الاسم/الوصف/التفعيل/العتبة) من القائمة المعرَّفة، لا شرطٌ حرّ.
+model BadgeDefinition {
+  id        String             @id @default(cuid())
+  code      String             @unique // مُعرّفٌ ثابتٌ للبذر (STREAK_7, STAGE_COMPLETE, …)
+  kind      BadgeConditionKind
+  threshold Int? // لِـSTREAK_DAYS و FACES_HEARD_NO_ERROR
+  category  BadgeCategory
+  nameAr    String
+  descAr    String
+  emoji     String?
+  active    Boolean            @default(true)
+  sortOrder Int                @default(0)
+  createdAt DateTime           @default(now())
+
+  @@index([kind, active])
+}
+
+// منح الوسام — append-only، مرّةً واحدة لكلّ (طالب، تعريف). لا سحب (§٥)؛ التصحيح بقيدٍ لا بحذف.
+model BadgeGrant {
+  id          String   @id @default(cuid())
+  studentId   String
+  badgeDefId  String
+  earnedAt    DateTime @default(now())
+  sourceEvent String // الحدث الذي منحه (للتوثيق)
+  sourceRef   String?
+
+  @@unique([studentId, badgeDefId])
+  @@index([studentId])
+}
