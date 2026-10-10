@@ -145,6 +145,7 @@ export function navSections(roles: string[], muddakirStaff: string[] = []): NavS
     sections.push({
       key: "learn", label: "التعلّم", items: [
         { label: "صفحتي", href: "/me" },
+        { label: "رحلتي", href: "/me/journey" },
       ],
     });
   }

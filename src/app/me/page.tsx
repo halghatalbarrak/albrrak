@@ -69,6 +69,15 @@ export default function MePage() {
 
       <CodeSection hasOwnStudent={me.student != null} />
 
+      {me.student && (
+        <a href="/me/journey" style={{ textDecoration: "none" }}>
+          <Card style={{ marginBottom: sp(6), borderInlineStart: `4px solid ${ui.color.bronze}`, cursor: "pointer" }}>
+            <div style={{ fontWeight: 700, color: ui.color.text }}>رحلتي والأوسمة 🔥🏅</div>
+            <p style={{ margin: `${sp(1)} 0 0`, color: ui.color.muted }}>خريطة تقدّمك في برامجك، وسلسلتك، وأوسمتك.</p>
+          </Card>
+        </a>
+      )}
+
       {me.roles.includes("GUARDIAN") && (
         <a href="/bidder" style={{ textDecoration: "none" }}>
           <Card style={{ marginBottom: sp(6), borderInlineStart: `4px solid ${ui.color.bronze}`, cursor: "pointer" }}>
