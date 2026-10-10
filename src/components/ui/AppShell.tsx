@@ -13,6 +13,17 @@ import { ThemeToggle } from "./ThemeToggle";
 const BRAND = "حلقات الشيخ محمد البراك";
 const STAFF_ROLES = ["TEACHER", "CIRCLE_MANAGER", "SUPER_ADMIN", "RECITER", "REGISTRAR"];
 
+/** أيقونة القائمة داخل إطارٍ مثمّنٍ رفيع (م١) — ذهبيٌّ للنشط، باهتٌ لغيره. */
+function NavOcta({ active }: { active: boolean }) {
+  const c = active ? ui.color.sidebarAccent : ui.color.sidebarMuted;
+  return (
+    <svg width={18} height={18} viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <polygon points="8,2 16,2 22,8 22,16 16,22 8,22 2,16 2,8" fill="none" stroke={c} strokeWidth={1.4} />
+      <circle cx={12} cy={12} r={2.4} fill={c} />
+    </svg>
+  );
+}
+
 export interface Crumb { label: string; href?: string }
 
 export interface AppShellProps {
@@ -47,15 +58,15 @@ export function AppShell({ roles, muddakirStaff, userName, activeHref, title, cr
   const toggle = (key: string) => setOverrides((p) => ({ ...p, [key]: !isOpen(key) }));
 
   const aside = (
-    <aside className={`appshell-aside${drawer ? " open" : ""}`} style={{ background: ui.color.surface, borderInlineStart: `1px solid ${ui.color.border}` }}>
-      <div style={{ padding: sp(4), borderBottom: `1px solid ${ui.color.border}`, display: "flex", alignItems: "center", gap: sp(2) }}>
+    <aside className={`appshell-aside${drawer ? " open" : ""}`} style={{ background: ui.color.sidebar, color: ui.color.sidebarText }}>
+      <div style={{ padding: sp(4), borderBottom: `1px solid rgba(255,255,255,.12)`, display: "flex", alignItems: "center", gap: sp(2) }}>
         <Link href="/" aria-label={BRAND} onClick={() => setDrawer(false)} style={{ display: "flex", alignItems: "center", gap: sp(2), textDecoration: "none" }}>
           <img src="/png/logo.png" alt={BRAND} style={{ height: 44, width: "auto" }} />
-          <span style={{ fontWeight: 700, fontSize: ui.text.base, color: ui.color.primary, lineHeight: 1.2 }}>حلقات الشيخ<br />محمد البراك</span>
+          <span style={{ fontWeight: 700, fontSize: ui.text.base, color: ui.color.sidebarText, lineHeight: 1.2 }}>حلقات الشيخ<br />محمد البراك</span>
         </Link>
       </div>
 
-      <nav style={{ padding: sp(2) }}>
+      <nav style={{ padding: sp(2), flex: 1 }}>
         {/* الدور لم يصل بعد ⟵ هيكلٌ نابض، لا قائمةٌ مفترضة (إصلاح وميض شريط الطالب). */}
         {sections.length === 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: sp(2), padding: sp(2) }}>
@@ -73,11 +84,11 @@ export function AppShell({ roles, muddakirStaff, userName, activeHref, title, cr
                   width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
                   background: "transparent", border: "none", cursor: "pointer",
                   padding: `${sp(2.5)} ${sp(3)}`, borderRadius: ui.radius.md,
-                  fontFamily: ui.font, fontSize: ui.text.xs, fontWeight: 700, color: ui.color.primary,
+                  fontFamily: ui.font, fontSize: ui.text.xs, fontWeight: 700, color: ui.color.sidebarAccent,
                 }}
               >
                 <span>{s.label}</span>
-                <span style={{ color: ui.color.muted, fontSize: ui.text.xs, transform: open ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform .15s" }}>▾</span>
+                <span style={{ color: ui.color.sidebarMuted, fontSize: ui.text.xs, transform: open ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform .15s" }}>▾</span>
               </button>
               {open && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: `${sp(1)} 0` }}>
@@ -89,14 +100,17 @@ export function AppShell({ roles, muddakirStaff, userName, activeHref, title, cr
                         href={it.href}
                         onClick={() => setDrawer(false)}
                         style={{
+                          display: "flex", alignItems: "center", gap: sp(2),
                           textDecoration: "none", fontSize: ui.text.base, fontWeight: active ? 700 : 600,
-                          color: active ? "#fff" : ui.color.text,
-                          background: active ? ui.color.bronze : "transparent",
+                          color: ui.color.sidebarText,
+                          background: active ? ui.color.sidebarActiveBg : "transparent",
                           padding: `${sp(2)} ${sp(3)}`, marginInlineStart: sp(2),
-                          borderRadius: ui.radius.md,
+                          borderInlineStart: `3px solid ${active ? ui.color.sidebarAccent : "transparent"}`,
+                          borderRadius: `0 ${ui.radius.md} ${ui.radius.md} 0`,
                         }}
                       >
-                        {it.label}
+                        <NavOcta active={active} />
+                        <span>{it.label}</span>
                       </Link>
                     );
                   })}
@@ -106,6 +120,11 @@ export function AppShell({ roles, muddakirStaff, userName, activeHref, title, cr
           );
         })}
       </nav>
+
+      {/* قبّة المسجد أسفل الشريط (زخرفيّ، كسولٌ، يتلاشى إن تعذّر التحميل) */}
+      <div style={{ padding: sp(3), display: "flex", justifyContent: "center", opacity: 0.55 }}>
+        <img src="/brand/sidebar-mosque.webp" alt="" aria-hidden="true" loading="lazy" style={{ width: "72%", maxWidth: 170, height: "auto" }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+      </div>
     </aside>
   );
 

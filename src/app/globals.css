@@ -10,20 +10,23 @@
 
 :root {
   --font-sans: 'IBM Plex Sans Arabic', system-ui, sans-serif;
-  /* ألوان حلقات البراك (قرار محمد) */
-  --color-primary:#574F47;  --color-primary-hover:#443d37;
-  --color-bronze:#A9834F;   --color-bronze-hover:#7a5a30;
-  --color-bg:#F5F0E8;       --color-surface:#FFFFFF;
-  --color-text:#2b2620;     --color-muted:#625a4e;   --color-border:#d3c7b1;
-  --color-ghost-text:#574F47;   /* نصّ الزرّ الثانويّ (ghost) — يساوي لون الهوية في الفاتح (لا تغيير مرئيّ) */
+  /* هوية البراك البصريّة (قرار محمد): بنفسجيّ داكن + ذهبيّ عتيق + كريميّ. تباين النصوص ≥ AA. */
+  --color-primary:#5B3E96;  --color-primary-hover:#4a2f80;   /* بنفسجيّ ثانويّ — لون الأفعال (نصّ أبيض ٨:١) */
+  --color-bronze:#B8924A;   --color-bronze-hover:#9a7636;    /* ذهبيّ عتيق مميِّز — للإطارات والزخارف لا خلفيّةً لنصٍّ فاتح */
+  --color-bg:#F7F0E1;       --color-surface:#FCF8EF;         /* كريميّ، والبطاقات أفتح قليلاً */
+  --color-text:#1E1238;     --color-muted:#6E6280;   --color-border:#E6D6B4;  /* الخافت مُغمَّقٌ قليلاً عن #7A6E8A لحفظ AA */
+  --color-ghost-text:#5B3E96;   /* نصّ الزرّ الثانويّ (ghost) = لون الهوية */
   --color-success:#1F5C3D;  --color-danger:#a1231d;
-  --color-soft:#efe9e2;     --color-warn-bg:#fdf0d5;  --color-ok-bg:#e8f0ea;
-  /* الذهب النبويّ (منقولٌ من الشهادة certificate.ts) — قابلٌ لإعادة الاستعمال */
-  --gold:linear-gradient(135deg,#E3C68B,#B08D57,#8C6A3D);
-  --gold-line:#C9A063;      /* خطٌّ ذهبيّ للإطارات والزخارف */
+  --color-soft:#F0E7D3;     --color-warn-bg:#fdf0d5;  --color-ok-bg:#e8f0ea;
+  /* الذهب العتيق — تدرّجٌ للإطارات والزخارف (خلفيّةٌ فقط) */
+  --gold:linear-gradient(135deg,#D9B877,#B8924A,#8C6A3D);
+  --gold-line:#B8924A;      /* خطٌّ ذهبيّ للإطارات والزخارف */
   --color-teal:#2E8B8B;     /* فيروزيٌّ نبويٌّ هادئ — لمسةٌ صغيرة */
+  /* الشريط الجانبيّ بنفسجيٌّ داكن في الوضعين (زخرفيٌّ داكنٌ بطبعه) */
+  --color-sidebar:#2B1A4F;  --color-sidebar-text:#EFE7D6;  --color-sidebar-muted:#B9A9C9;
+  --color-sidebar-accent:#B8924A;  --color-sidebar-active-bg:rgba(255,255,255,.07);
   /* خلفيّة الدخول (كريميّ دافئ) — متغيّرةٌ بالوضع ليعمل الداكن */
-  --login-bg-from:#FBF8F2;  --login-bg-to:#F5F0E8;
+  --login-bg-from:#FBF6EC;  --login-bg-to:#F7F0E1;
   /* تباعد (أساس ٤px) */
   --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px; --space-12:48px; --space-16:64px;
   /* نصف قطر */
@@ -59,8 +62,12 @@
 
 /* ═══════════════ هيكل اللوحة AppShell (المرحلة ٤) ═══════════════ */
 .appshell { display:flex; min-height:100dvh; align-items:stretch; }
-.appshell-aside { width:264px; flex-shrink:0; position:sticky; top:0; height:100dvh; overflow-y:auto; }
-.appshell-main { flex:1; min-width:0; }
+.appshell-aside { width:264px; flex-shrink:0; position:sticky; top:0; height:100dvh; overflow-y:auto; display:flex; flex-direction:column; }
+.appshell-main { flex:1; min-width:0; position:relative; }
+/* نقشٌ هندسيٌّ خافتٌ خلف المحتوى (م١) — زخرفيّ، يتلاشى إن تعذّر تحميل الصورة. */
+.appshell-main::before { content:""; position:fixed; inset:0; background-image:url('/brand/pattern-tile.webp'); background-size:360px; background-repeat:repeat; opacity:.035; pointer-events:none; z-index:0; }
+:root[data-theme="dark"] .appshell-main::before { opacity:.05; }
+.appshell-main > * { position:relative; z-index:1; }
 .appshell-menubtn { display:none; }
 .appshell-backdrop { display:none; }
 

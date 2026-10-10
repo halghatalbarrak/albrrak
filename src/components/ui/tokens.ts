@@ -13,6 +13,10 @@ export const ui = {
     gold: "var(--gold)",       // تدرّجٌ ذهبيّ (خلفيّةٌ فقط — منقولٌ من الشهادة)
     goldLine: "var(--gold-line)", // خطٌّ ذهبيّ للإطارات والزخارف
     teal: "var(--color-teal)", // فيروزيٌّ نبويٌّ هادئ
+    // الشريط الجانبيّ (بنفسجيٌّ داكن في الوضعين)
+    sidebar: "var(--color-sidebar)", sidebarText: "var(--color-sidebar-text)",
+    sidebarMuted: "var(--color-sidebar-muted)", sidebarAccent: "var(--color-sidebar-accent)",
+    sidebarActiveBg: "var(--color-sidebar-active-bg)",
   },
   radius: { sm: "4px", md: "8px", lg: "16px", full: "999px" },
   text: { xs: "14px", base: "16px", lg: "20px", xl: "24px", xxl: "32px", xxxl: "40px" },
