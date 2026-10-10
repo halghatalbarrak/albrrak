@@ -10,6 +10,7 @@ import { roadmapsForStudent, type Roadmap } from "./roadmap";
 import { studentDayMarks } from "./day-marks";
 import { computeStreak } from "./streak";
 import { buildMotivations, type Motivation } from "./motivation";
+import { activeTemplatesMap } from "./admin";
 
 // ═══════════════ تجميع صفحة رحلة الطالب (ل٥، §٦) ═══════════════
 //
@@ -24,6 +25,16 @@ export interface JourneyView {
   badges: { earned: EarnedBadge[]; upcoming: UpcomingBadge[] };
   motivations: Motivation[];
   justAwarded: string[]; // رموز الأوسمة الممنوحة في هذا العرض (لحظة الاحتفاء)
+}
+
+/** ملخّصٌ خفيفٌ للتلعيب (للـPWA في المدّكر): يدخل ردّ /today فيُخزَّن ويظهر بلا إنترنت. */
+export interface GamiSummary { streakCurrent: number; streakLongest: number; badgeCount: number; latestBadge: { nameAr: string; emoji: string | null } | null }
+export async function gamiSummary(studentId: string, db: PrismaClient = prisma, now: Date = new Date()): Promise<GamiSummary> {
+  const [streak, earned] = await Promise.all([
+    computeStreak(await studentDayMarks(studentId, db, now)),
+    listStudentBadges(studentId, db),
+  ]);
+  return { streakCurrent: streak.current, streakLongest: streak.longest, badgeCount: earned.length, latestBadge: earned[0] ? { nameAr: earned[0].nameAr, emoji: earned[0].emoji } : null };
 }
 
 export async function getMyJourney(userId: string, db: PrismaClient = prisma, now: Date = new Date()): Promise<JourneyView | null> {
@@ -72,7 +83,8 @@ export async function getMyJourney(userId: string, db: PrismaClient = prisma, no
   const nearestBadge = streakDefs.length ? { remaining: streakDefs[0].threshold! - streak.current, nameAr: streakDefs[0].nameAr } : null;
   const curStation = roadmaps.flatMap((r) => r.stations).find((s) => s.state === "CURRENT" && s.progress);
   const currentStation = curStation?.progress ? { done: curStation.progress.done, total: curStation.progress.total, label: curStation.label } : null;
-  const motivations = buildMotivations({ streakCurrent: streak.current, doneToday, nearestBadge, currentStation });
+  const templates = await activeTemplatesMap(db);
+  const motivations = buildMotivations({ streakCurrent: streak.current, doneToday, nearestBadge, currentStation }, templates);
 
   return { streak, points, roadmaps, badges: { earned, upcoming }, motivations, justAwarded };
 }

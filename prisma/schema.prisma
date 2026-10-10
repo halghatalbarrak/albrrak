@@ -1424,3 +1424,19 @@ model BadgeGrant {
   @@unique([studentId, badgeDefId])
   @@index([studentId])
 }
+
+// قوالب رسائل التحفيز (GAMIFICATION_RULES §٦): نوعٌ معرَّف ونصٌّ عربيٌّ يحرّره المدير بمتغيّرات {…}.
+enum MotivationKind {
+  STREAK_AT_RISK // {days}
+  FIRST_STEP
+  BADGE_NEAR // {remaining} {badge}
+  STATION_PROGRESS // {done} {total} {station}
+}
+
+model MotivationTemplate {
+  id        String         @id @default(cuid())
+  kind      MotivationKind @unique
+  textAr    String // قالبٌ بمتغيّراته {…}
+  active    Boolean        @default(true)
+  updatedAt DateTime       @updatedAt
+}

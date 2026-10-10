@@ -43,6 +43,21 @@ export const gamificationAr = {
   motiveBadgeNear: "بقي {remaining} لوسام «{badge}» 🏅",
   motiveStationProgress: "أنجزتَ {done} من {total} في {station} — واصِل ✨",
   motiveFirstStep: "أتمّ يومك الأوّل لتبدأ سلسلتك 🌱",
+
+  // شاشة المدير (ل٦)
+  adminTitle: "التلعيب",
+  adminBadges: "الأوسمة",
+  adminTemplates: "رسائل التحفيز",
+  colBadge: "الوسام",
+  colCondition: "الشرط",
+  colThreshold: "العتبة",
+  colActive: "مفعّل",
+  colText: "النصّ",
+  saveBtn: "حفظ",
+  savedMsg: "حُفِظ",
+  enableBtn: "تفعيل",
+  disableBtn: "تعطيل",
+  varsHint: "المتغيّرات المتاحة",
 } as const;
 
 export type GamificationKey = keyof typeof gamificationAr;
