@@ -1440,3 +1440,80 @@ model MotivationTemplate {
   active    Boolean        @default(true)
   updatedAt DateTime       @updatedAt
 }
+
+// ═══════════════ الشاشة التحفيزيّة (DISPLAY_SCREEN_RULES.md) ═══════════════
+// شاشة عرضٍ عامّة بلا دخول، تُفتح برمزٍ سرّيّ لكل شاشة (يُخزَّن hash فقط). للعرض فقط؛ لا تكشف
+// معرّفاتٍ داخليّة. النقاط = الرصيد الإجماليّ من الحصاد. لا حذف (الرموز append-only بالإلغاء).
+
+enum DisplayScreenKind {
+  MOSQUE // تلفاز المسجد — ترتيب كل المشاركين لكل برنامج
+  HOME // شاشة البيت — الابن + العشرة الأوائل في حلقته/برنامجه
+}
+
+enum DisplaySlideKind {
+  PROGRAM // شريحة ترتيب برنامج
+  IMAGE // صورةٌ مُدرَجة (تصميم/إعلان)
+}
+
+enum DisplayAssetType {
+  IMAGE
+  VIDEO
+}
+
+model DisplayScreen {
+  id         String            @id @default(cuid())
+  kind       DisplayScreenKind
+  nameAr     String
+  studentId  String? // لشاشة البيت: الابن المرتبط (null للمسجد)
+  refreshSec Int               @default(180) // ⚙ دورة التحديث الآليّ
+  active     Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+
+  @@index([kind, active])
+}
+
+// رمز الشاشة — append-only: يُلغى (revokedAt) ويُجدَّد بإنشاء رمزٍ جديد. يُخزَّن sha256 فقط.
+model DisplayScreenToken {
+  id        String    @id @default(cuid())
+  screenId  String
+  tokenHash String    @unique // sha256(token) — لا نصّ صريح إطلاقاً
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  @@index([screenId, revokedAt])
+}
+
+model DisplaySlide {
+  id          String           @id @default(cuid())
+  screenId    String
+  ordinal     Int // ترتيب الشريحة في الشاشة
+  kind        DisplaySlideKind
+  durationSec Int              @default(20) // ⚙ مدّة الشريحة
+  programId   String? // لشريحة PROGRAM
+  imageUrl    String? // لشريحة IMAGE
+  active      Boolean          @default(true)
+
+  @@index([screenId, ordinal])
+}
+
+// خلفيّةٌ لكل نوع شاشة (§٦) — append-only + active؛ الأحدث المفعّل هو المستعمَل.
+model DisplayBackground {
+  id         String            @id @default(cuid())
+  screenKind DisplayScreenKind
+  assetUrl   String
+  assetType  DisplayAssetType
+  active     Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+
+  @@index([screenKind, active])
+}
+
+// حدّ المعدّل للقراءة العامّة (نافذةٌ ثابتة) — جدولٌ أضبط من الذاكرة على serverless.
+model DisplayRateHit {
+  id          String   @id @default(cuid())
+  rkey        String // token-hash + ip
+  windowStart DateTime
+  count       Int      @default(0)
+
+  @@unique([rkey, windowStart])
+}
