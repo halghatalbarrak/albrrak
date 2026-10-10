@@ -57,9 +57,9 @@ describe("navSections — اتّحاد أقسام كلّ أدوار المستخ
   it("الطالب ⟵ البرامج والتعلّم والرسائل", () => {
     const s = navSections(["STUDENT"]);
     expect(s.map((x) => x.key)).toEqual(["programs", "learn", "messages"]);
-    // قسم التعلّم أصبح «صفحتي» وحدها (خرجت البرامج لقسمها المستقلّ).
+    // قسم التعلّم: «صفحتي» و«رحلتي» (التلعيب) — خرجت البرامج لقسمها المستقلّ.
     const learn = s.find((x) => x.key === "learn")!;
-    expect(learn.items.map((i) => i.href)).toEqual(["/me"]);
+    expect(learn.items.map((i) => i.href)).toEqual(["/me", "/me/journey"]);
     // «الرسائل» يراها الطالب والوليّ كلاهما.
     expect(keys(["STUDENT"])).toContain("messages");
     expect(keys(["GUARDIAN"])).toContain("messages");
