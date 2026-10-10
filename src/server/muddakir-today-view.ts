@@ -14,6 +14,7 @@ import { getProgramSetting } from "./settings";
 import { muddakirProgramId } from "./muddakir-profile";
 import { applyDueTrackChange, getDayStatus, latestTrackRequest, loadDayEngineSettings, todayPlan, type TodayPlan } from "./muddakir-day";
 import { getStageProgress, type StageProgress } from "./muddakir-stages";
+import { gamiSummary, type GamiSummary } from "./gamification/journey";
 import { deriveWard, getWardView } from "./muddakir-ward";
 import { AuthorizationError } from "./errors";
 
@@ -34,6 +35,7 @@ export interface HafizTodayView {
   settings: { newReps: number; firstCleanReps: number; yesterdayReps: number; treatmentLineReps: number };
   trackChange: { tracks: number[]; pendingTrack: number | null; effectiveFrom: string | null; requestedTrack: number | null };
   stageProgress: StageProgress | null; // ختام المرحلة (§٧): جاهزيّة السرد (null إن لم تُبذر بيانات المصحف)
+  gami: GamiSummary | null; // ملخّص التلعيب (للعمل بلا إنترنت) — null إن تعذّر
 }
 
 /** يبني عرض يوم الحافظ. `now` محقونٌ (توقيت مكّة)، و`today` يُشتقّ منه. */
@@ -88,9 +90,12 @@ export async function getHafizTodayView(studentId: string, db: PrismaClient = pr
   let stageProgress: StageProgress | null = null;
   try { stageProgress = await getStageProgress(studentId, db); } catch { /* بيانات المصحف/الأحزاب غير مبذورة */ }
 
+  let gami: GamiSummary | null = null;
+  try { gami = await gamiSummary(studentId, db, now); } catch { /* التلعيب اختياريّ — لا يُعطّل اليوم */ }
+
   return {
     dayDate: today, track: profile.track, reviewOnly: profile.mode === "REVIEW_ONLY",
-    stage, meeting: { day: meetingDay, facesToRead }, status, plan, settings, trackChange, stageProgress,
+    stage, meeting: { day: meetingDay, facesToRead }, status, plan, settings, trackChange, stageProgress, gami,
   };
 }
 

@@ -6,6 +6,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { arNum, formatAyah } from "@/lib/format";
 import { ui, sp, Button, Card, Modal, Input, Select, Badge } from "@/components/ui";
 import { tMuddakir as t, stageLabel } from "@/i18n/ar/muddakir";
+import { tGami } from "@/i18n/ar/gamification";
 import {
   EventQueue,
   buildEvent,
@@ -45,6 +46,7 @@ interface TodayView {
   plan: Plan; settings: { newReps: number; firstCleanReps: number; yesterdayReps: number; treatmentLineReps: number };
   trackChange: TrackChange;
   stageProgress: { stage: number; memorized: number; total: number; ready: boolean; awaitingFinal: boolean; graduated: boolean } | null;
+  gami?: { streakCurrent: number; streakLongest: number; badgeCount: number; latestBadge: { nameAr: string; emoji: string | null } | null } | null;
 }
 
 async function token(): Promise<string | null> {
@@ -181,6 +183,18 @@ export default function MuddakirHafizPage() {
         <strong>{t("meetingReminder")}</strong>
         <div style={{ color: ui.color.muted, marginTop: sp(1) }}>{arNum(view.meeting.facesToRead)} {t("facesToReadWord")}</div>
       </Card>
+
+      {/* ملخّص التلعيب (§٦) — يظهر بلا إنترنت من آخر بياناتٍ مُنزَّلة */}
+      {view.gami && (
+        <a href="/me/journey" style={{ textDecoration: "none" }}>
+          <Card style={{ padding: sp(3), fontSize: ui.text.xs, display: "flex", alignItems: "center", gap: sp(3), cursor: "pointer" }}>
+            <span style={{ fontWeight: 700 }}>🔥 {arNum(view.gami.streakCurrent)}</span>
+            <span style={{ color: ui.color.muted }}>🏅 {arNum(view.gami.badgeCount)}</span>
+            {view.gami.latestBadge && <span style={{ color: ui.color.bronze }}>{view.gami.latestBadge.emoji ?? "🏅"} {view.gami.latestBadge.nameAr}</span>}
+            <span style={{ marginInlineStart: "auto", color: ui.color.primary, fontWeight: 600 }}>{tGami("journeySummary")} ›</span>
+          </Card>
+        </a>
+      )}
 
       {/* تغيير المسار (§٤٫١): طلبُ الحافظ يُقرّه المشرف */}
       <Card style={{ padding: sp(3), fontSize: ui.text.xs }}>
