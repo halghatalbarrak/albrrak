@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { AppShell, Button, Card, NabawiBackdrop, Stat, Skeleton, ui, sp } from "@/components/ui";
+import { AppShell, Button, Card, NabawiBackdrop, Stat, Skeleton, BrandStar, ui, sp } from "@/components/ui";
 
 // الصفحة الرئيسة: للزائر واجهةٌ ترحيبيّة، وللداخل ملخّصٌ حسب دوره داخل اللوحة (الشريط الجانبيّ).
 // المنطق (جلب الجلسة و/api/me و/api/summary) بلا مساسٍ بأي قاعدة عمل — قراءةٌ فقط.
@@ -78,6 +78,9 @@ export default function Home() {
         </div>
       ) : (
         <>
+          {/* بطاقة الترحيب بالهوية الجديدة (hero كسولٌ، يتلاشى إن تعذّر تحميله) */}
+          <WelcomeCard name={me.name} greeting={summary.greeting} />
+
           {/* الخطوة التالية — يقترحها النظام، لا مجرّد أرقام */}
           <NextStepBanner step={summary.nextStep} />
 
@@ -91,6 +94,24 @@ export default function Home() {
         </>
       )}
     </AppShell>
+  );
+}
+
+// بطاقة الترحيب — hero «رحل» مع تحيّةٍ وخطوةٍ بصريّة بالهوية الجديدة. الصورة كسولةٌ وتتلاشى إن غابت.
+function WelcomeCard({ name, greeting }: { name: string; greeting: string }) {
+  return (
+    <Card style={{ overflow: "hidden", padding: 0, display: "flex", alignItems: "stretch", border: `1px solid ${ui.color.goldLine}`, marginBottom: sp(4) }}>
+      <div style={{ flex: 1, padding: sp(5), display: "flex", flexDirection: "column", justifyContent: "center", gap: sp(2), minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: sp(2) }}>
+          <BrandStar size={22} />
+          <h2 style={{ margin: 0, fontSize: ui.text.xl, fontWeight: 700, color: ui.color.text }}>مرحبًا، {name}</h2>
+        </div>
+        <p style={{ margin: 0, color: ui.color.muted, fontSize: ui.text.base }}>{greeting}</p>
+      </div>
+      <img src="/brand/hero-rehal.webp" alt="" aria-hidden="true" loading="lazy"
+        style={{ width: "36%", maxWidth: 300, objectFit: "cover", borderInlineStart: `1px solid ${ui.color.border}` }}
+        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+    </Card>
   );
 }
 

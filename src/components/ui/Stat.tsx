@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { ui, sp } from "./tokens";
+import { BrandStar } from "./SectionTitle";
 
 /** بطاقةُ رقمٍ للملخّص (المرحلة ٥): تسمية + قيمةٌ كبيرة + تلميحٌ اختياريّ. */
 export function Stat({ label, value, hint, tone = "primary" }: {
@@ -20,7 +21,7 @@ export function Stat({ label, value, hint, tone = "primary" }: {
       padding: sp(5), display: "flex", flexDirection: "column", gap: sp(1),
       borderTop: `3px solid ${accent}`,
     }}>
-      <span style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted }}>{label}</span>
+      <span style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, display: "flex", alignItems: "center", gap: sp(1) }}><BrandStar size={13} />{label}</span>
       <span style={{ fontSize: ui.text.xxl, fontWeight: 700, color: ui.color.text, lineHeight: 1.1 }}>{value}</span>
       {hint && <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{hint}</span>}
     </div>
