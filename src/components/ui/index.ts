@@ -13,6 +13,7 @@ export { Skeleton } from "./Skeleton";
 export { Modal } from "./Modal";
 export { AppShell, type AppShellProps, type Crumb } from "./AppShell";
 export { SectionTitle, BrandStar } from "./SectionTitle";
+export { BadgeMedallion } from "./BadgeMedallion";
 export { FaceHeatmap } from "./FaceHeatmap";
 export { NabawiBackdrop } from "./NabawiBackdrop";
 export { TodayTargetView, type TTData, type TTBound } from "./TodayTargetCard";

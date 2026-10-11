@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Card, Button, Stat, ui, sp } from "@/components/ui";
+import { AppShell, Card, Button, Stat, BadgeMedallion, ui, sp } from "@/components/ui";
 import { arNum } from "@/lib/format";
 import { tGami as t, programName } from "@/i18n/ar/gamification";
 
@@ -102,23 +102,24 @@ export default function JourneyPage() {
         {/* الأوسمة */}
         <h2 style={sectionTitle}>{t("badgesEarned")}</h2>
         {data.badges.earned.length === 0 ? <p style={{ color: ui.color.muted, fontSize: ui.text.xs }}>{t("noBadgesYet")}</p> : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: sp(2) }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: sp(3) }}>
             {data.badges.earned.map((b) => (
-              <Card key={b.code} style={{ padding: sp(2), minWidth: 120, textAlign: "center" }}>
-                <div style={{ fontSize: ui.text.lg }}>{b.emoji ?? "🏅"}</div>
+              <div key={b.code} style={{ width: 92, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: sp(1) }}>
+                <BadgeMedallion emoji={b.emoji} category={b.category} size={72} />
                 <div style={{ fontWeight: 700, fontSize: ui.text.xs }}>{b.nameAr}</div>
-              </Card>
+              </div>
             ))}
           </div>
         )}
 
         <h2 style={sectionTitle}>{t("badgesUpcoming")}</h2>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: sp(2) }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: sp(3) }}>
           {data.badges.upcoming.map((b) => (
-            <Card key={b.code} style={{ padding: sp(2), minWidth: 160, opacity: 0.55 }}>
-              <div style={{ fontSize: ui.text.base }}>{b.emoji ?? "🏅"} <strong style={{ fontSize: ui.text.xs }}>{b.nameAr}</strong></div>
-              <div style={{ color: ui.color.muted, fontSize: ui.text.xs, marginTop: 2 }}>{b.descAr}</div>
-            </Card>
+            <div key={b.code} style={{ width: 150, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: sp(1) }}>
+              <BadgeMedallion emoji={b.emoji} category={b.category} size={60} dim />
+              <strong style={{ fontSize: ui.text.xs }}>{b.nameAr}</strong>
+              <div style={{ color: ui.color.muted, fontSize: ui.text.xs }}>{b.descAr}</div>
+            </div>
           ))}
         </div>
       </>
@@ -141,8 +142,9 @@ export default function JourneyPage() {
 }
 
 function StationPill({ s }: { s: Station }) {
-  const bg = s.state === "DONE" ? ui.color.success : s.state === "CURRENT" ? ui.color.bronze : ui.color.soft;
-  const fg = s.state === "LOCKED" ? ui.color.muted : "#fff";
+  // الهوية: المُنجَزة بنفسجيّة (نصّ أبيض)، الحاليّة ذهبيّة (نصّ داكنٌ لحفظ AA)، المقفلة هادئة.
+  const bg = s.state === "DONE" ? ui.color.primary : s.state === "CURRENT" ? ui.color.bronze : ui.color.soft;
+  const fg = s.state === "DONE" ? "#fff" : s.state === "CURRENT" ? "#241633" : ui.color.muted;
   const icon = s.state === "DONE" ? "✓" : s.state === "LOCKED" ? "🔒" : "●";
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, minWidth: 84 }}>
