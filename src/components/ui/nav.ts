@@ -46,6 +46,7 @@ export function navSections(roles: string[], muddakirStaff: string[] = []): NavS
         { label: "العرفاء", href: "/admin/arifs" },
         { label: "القيد", href: "/admin/enrollment" },
         { label: "التلعيب", href: "/admin/gamification" },
+        { label: "الشاشة التحفيزيّة", href: "/admin/display" },
         { label: "المُدَّكِر", href: "/admin/muddakir" },
         { label: "طلبات المُدَّكِر", href: "/admin/muddakir/requests" },
         { label: "طاقم المُدَّكِر", href: "/admin/muddakir/staff" },
