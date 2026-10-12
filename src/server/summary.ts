@@ -7,8 +7,8 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { makkahDayStart } from "@/lib/makkah-day";
 import { type Actor } from "./auth";
-import { toDateOnly } from "./attendance";
 import { listReadyForHasad } from "./hasad";
 
 // ملخّص الصفحة الرئيسة (المرحلة ٥): أرقامٌ قليلةٌ حسب الدور، وكلٌّ منها بابٌ لإجراء،
@@ -74,7 +74,7 @@ const ACTIVE_STUDENT_STATES: StudentState[] = [
 /** الملخّص حسب الدور (الأعلى صلاحيّةً يُقدَّم — كترتيب القوائم). يكفيه الهويّة والأدوار. */
 export async function getSummary(actor: Pick<Actor, "id" | "roles">, db: PrismaClient = prisma): Promise<Summary> {
   const has = (r: Role) => actor.roles.includes(r);
-  const today = toDateOnly(new Date());
+  const today = makkahDayStart(new Date()); // يوم مكّة (مفتاح DailySession.date وعدّ حضور اليوم)
 
   if (has(Role.CIRCLE_MANAGER) || has(Role.SUPER_ADMIN)) return managerSummary(db, today);
   if (has(Role.TEACHER)) return teacherSummary(db, actor.id, today);

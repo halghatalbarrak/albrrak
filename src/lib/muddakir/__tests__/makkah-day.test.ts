@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dayDiff, epochDay, makkahDayBounds, makkahDayDate } from "../makkah-day";
+import { dayDiff, epochDay, makkahDayBounds, makkahDayDate, makkahDayStart } from "../makkah-day";
 
 // §٣: يوم البرنامج من منتصف الليل إلى منتصف الليل بتوقيت مكّة (Asia/Riyadh = UTC+3 ثابتاً).
 
@@ -29,6 +29,18 @@ describe("makkahDayDate — اليوم القرآنيّ للحظة", () => {
   it("لحظةٌ قبل منتصف الليل بمكّة تبقى في يومها، وبعده تنتقل للغد", () => {
     expect(makkahDayDate(new Date("2026-10-04T20:59:59Z"))).toBe("2026-10-04"); // ٢٣:٥٩:٥٩ بمكّة
     expect(makkahDayDate(new Date("2026-10-04T21:00:00Z"))).toBe("2026-10-05"); // ٠٠:٠٠:٠٠ بمكّة
+  });
+});
+
+describe("makkahDayStart — مفتاح @db.Date لليوم المكّيّ", () => {
+  it("لحظة ٢٢:٣٠ UTC (٠١:٣٠ بمكّة) ⟵ منتصف ليل UTC لليوم المكّيّ التالي", () => {
+    expect(makkahDayStart(new Date("2026-05-10T22:30:00Z")).toISOString()).toBe("2026-05-11T00:00:00.000Z");
+  });
+  it("لحظة ٢٠:٥٩ UTC (٢٣:٥٩ بمكّة) ⟵ تبقى في يومها", () => {
+    expect(makkahDayStart(new Date("2026-05-10T20:59:00Z")).toISOString()).toBe("2026-05-10T00:00:00.000Z");
+  });
+  it("سلسلةٌ مدنيّةٌ (منتصف ليل UTC) ⟵ عينُها بلا إزاحة", () => {
+    expect(makkahDayStart(new Date("2026-05-10")).toISOString()).toBe("2026-05-10T00:00:00.000Z");
   });
 });
 

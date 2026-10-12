@@ -1,6 +1,7 @@
 import { ProgramKey, StageKind, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { makkahDayDate } from "@/lib/makkah-day";
 import { ayahOrdinal } from "./quran-ordinal";
 
 // التنبّؤ بالمواعيد (الفكرة ٤): على وتيرة الطالب — متى يُتمّ حزبه وحصاده وتخرّجه.
@@ -41,7 +42,7 @@ export function addCircleDays(startISO: string, n: number): string {
 
 /** تنبؤٌ لطالبٍ من وتيرة حفظه (آياتٌ متمايزة ÷ أيام الحلقة المنقضية). */
 export async function getStudentForecast(
-  studentId: string, db: PrismaClient = prisma, today: string = new Date().toISOString().slice(0, 10),
+  studentId: string, db: PrismaClient = prisma, today: string = makkahDayDate(new Date()),
 ): Promise<Forecast> {
   const note = "تقديرٌ إرشاديّ على وتيرتك — لا موعد يُحاسَب عليه.";
   const none: Forecast = { hasPace: false, pacePerDay: null, hizbDoneDate: null, graduationDate: null, note };

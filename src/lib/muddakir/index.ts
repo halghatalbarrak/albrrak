@@ -1,6 +1,6 @@
 // منطق المُدَّكِر النقيّ (المرحلة ٢): دوالّ بلا قاعدةٍ ولا شاشات، كل أرقامها من Setting/المصحف.
 export * from "./types";
-export { makkahDayDate, makkahDayBounds, dayDiff, epochDay } from "./makkah-day";
+export { makkahDayDate, makkahDayStart, makkahDayBounds, dayDiff, epochDay } from "./makkah-day";
 export {
   newFacesForDay,
   pageContaining,

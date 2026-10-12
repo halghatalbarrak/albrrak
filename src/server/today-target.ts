@@ -1,6 +1,7 @@
 import { ProgramKey, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { makkahDayStart } from "@/lib/makkah-day";
 
 import { getCircleSessionBoard, getHifzGate, getStudentPosition, type BoardStudent } from "./daily-session";
 import { maraqiKey, type UnitRow } from "./track-units";
@@ -38,7 +39,7 @@ export interface TodayTarget {
 
 function toDateOnly(input: string | Date): Date {
   const d = typeof input === "string" ? new Date(input) : input;
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  return makkahDayStart(d); // مفتاح يوم مكّة (يطابق تخزين DailySession.date)
 }
 
 const unitBound = (u: UnitRow): AyahBound => ({ fromSurah: u.startSurah, fromAyah: u.startAyah, toSurah: u.endSurah, toAyah: u.endAyah });

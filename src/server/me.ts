@@ -1,5 +1,6 @@
 import { ProgramKey, type MuddakirStaffRole, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { makkahDayDate } from "@/lib/makkah-day";
 
 import { activeStaffRoles } from "./muddakir-staff";
 import { getStudentPosition, getHifzGate } from "./daily-session";
@@ -66,7 +67,7 @@ const rangeStr = (r: { fromSurah: number; fromAyah: number; toSurah: number; toA
 export async function getMyStudentSession(
   userId: string,
   db: PrismaClient = prisma,
-  today: string = new Date().toISOString().slice(0, 10),
+  today: string = makkahDayDate(new Date()),
 ): Promise<MyStudentSession> {
   const empty: MyStudentSession = {
     hasStudent: false, program: null, state: null, started: false,

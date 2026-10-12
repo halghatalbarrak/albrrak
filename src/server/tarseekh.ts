@@ -1,6 +1,7 @@
 import { type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { makkahDayStart } from "@/lib/makkah-day";
 import { maraqiKey, type UnitRow } from "./track-units";
 import { memorizedFrontier, trackPolicyAndUnits } from "./maraqi-consolidation";
 import { getStudentErrorTally, orderSegmentsByWeakness } from "./weakness-map";
@@ -92,10 +93,10 @@ export async function getConsolidation(
 
 // ═══════════════ تتبّع الدورة الأسبوعية بالمقدار ═══════════════
 
-/** يوم بلا وقت (UTC) — يطابق @db.Date. */
+/** مفتاح يوم مكّة (منتصف ليل UTC لليوم المكّيّ) — يطابق تخزين DailySession.date. */
 function toDateOnly(input: string | Date): Date {
   const d = typeof input === "string" ? new Date(input) : input;
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  return makkahDayStart(d);
 }
 
 /** بداية أسبوع الحلقة = الأحد السابق (الأحد → الخميس، والجمعة/السبت عطلة). */
