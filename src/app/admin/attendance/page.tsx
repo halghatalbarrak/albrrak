@@ -6,6 +6,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { makkahDayDate } from "@/lib/makkah-day";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Button, Select, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
+import { attendanceLockAr as tLock } from "@/i18n/ar/attendance-lock";
 
 // شاشة الرصد (م٢ — DESIGN §١٠٫١): تفترض الجميع حاضرين، والمعلم يؤشّر الغائب فقط.
 // تعمل بلا إنترنت: إن تعذّر الإرسال، يُحفظ الرصد محليًّا (localStorage) ويُزامن لاحقًا.
@@ -80,6 +81,12 @@ export default function AttendancePage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, setPending] = useState(0);
   const [ready, setReady] = useState(false);
+  // أيّامٌ مقفلةٌ رُفض رصدها (بلا إنترنت أو مباشرةً) — تبقى في الطابور بعلامةٍ وزرّ «طلب فتح» (§٨).
+  const [lockedDays, setLockedDays] = useState<{ circleId: string; date: string }[]>([]);
+  const markLocked = useCallback((cid: string, d: string) => {
+    setLockedDays((prev) => (prev.some((x) => x.circleId === cid && x.date === d) ? prev : [...prev, { circleId: cid, date: d }]));
+  }, []);
+  const isLockError = (e?: string) => !!e && e.includes("مقفل");
 
   const refreshPending = useCallback(() => setPending(readQueue().length), []);
 
@@ -97,7 +104,11 @@ export default function AttendancePage() {
           headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
           body: JSON.stringify({ date: s.date, exceptions: s.exceptions }),
         });
-        if (!res.ok) remain.push(s); // خطأ خادمٍ (لا شبكة): يبقى للمراجعة.
+        if (!res.ok) {
+          remain.push(s); // لا يُفقد — يبقى للمزامنة اللاحقة.
+          const j = (await res.json().catch(() => ({}))) as { error?: string };
+          if (isLockError(j.error)) markLocked(s.circleId, s.date); // §٨: اليوم مقفل ⟵ علامةٌ وزرّ فتح.
+        }
       } catch {
         remain.push(s); // ما زال بلا اتصال.
       }
@@ -105,7 +116,7 @@ export default function AttendancePage() {
     writeQueue(remain);
     refreshPending();
     if (remain.length === 0 && q.length > 0) setMsg("تمّت مزامنة الرصد المؤجَّل.");
-  }, [refreshPending]);
+  }, [refreshPending, markLocked]);
 
   // تحميل الحلقات القابلة للرصد.
   useEffect(() => {
@@ -206,6 +217,11 @@ export default function AttendancePage() {
       } else {
         const j = (await res.json()) as { error?: string };
         setErr(j.error ?? "تعذّر الحفظ.");
+        if (isLockError(j.error)) {
+          // §٨: يومٌ مقفل ⟵ لا يُفقد الرصد؛ يُحفظ محليّاً بعلامةٍ وزرّ «طلب فتح».
+          const q = readQueue(); q.push({ circleId, date, exceptions }); writeQueue(q); refreshPending();
+          markLocked(circleId, date);
+        }
       }
     } catch {
       // لا اتصال ⟵ احفظ محليًّا وزامن لاحقًا (§١٠٫١).
@@ -218,6 +234,19 @@ export default function AttendancePage() {
   }
 
   const isExcused = (s: string) => s === "ABSENT_EXCUSED" || s === "PRE_EXCUSED";
+
+  // §٨/§٥: طلب فتح يومٍ مقفلٍ من المعلّم (بسبب). بعد اعتماده، تُعاد المزامنة تلقائيّاً.
+  async function requestUnlock(cid: string, d: string) {
+    const reason = window.prompt(tLock.unlockReasonPrompt);
+    if (!reason?.trim()) return;
+    const t = await token(); if (!t) { setErr("تحتاج دخولًا."); return; }
+    const res = await fetch(`/api/circles/${cid}/attendance/unlock-request`, {
+      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      body: JSON.stringify({ date: d, reason }),
+    });
+    if (res.ok) setMsg(tLock.unlockRequested);
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّر الطلب."); }
+  }
 
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/attendance"
@@ -243,6 +272,17 @@ export default function AttendancePage() {
 
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
       {err && <p style={{ color: ui.color.danger, fontSize: ui.text.xs }}>{err}</p>}
+
+      {/* §٨: رصدٌ محفوظٌ لم يُقبل لأنّ يومه مقفل — بعلامةٍ وزرّ «طلب فتح». */}
+      {lockedDays.map((l) => (
+        <Card key={`${l.circleId}:${l.date}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(3), padding: `${sp(2)} ${sp(4)}`, marginBottom: sp(2), borderColor: ui.color.danger }}>
+          <span style={{ display: "flex", gap: sp(2), alignItems: "center", flexWrap: "wrap" }}>
+            <Badge tone="danger">{tLock.offlineLockedBadge}</Badge>
+            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tLock.offlineLockedHint} ({l.date.replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)])})</span>
+          </span>
+          <Button size="sm" variant="bronze" type="button" onClick={() => void requestUnlock(l.circleId, l.date)}>{tLock.requestUnlock}</Button>
+        </Card>
+      ))}
 
       {/* حالات صريحة: تحميل / فارغ / قائمة */}
       {loading && (

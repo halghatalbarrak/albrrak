@@ -7,6 +7,7 @@ import { makkahDayDate } from "@/lib/makkah-day";
 import { useMe } from "@/lib/useMe";
 import { arNum, formatAyah } from "@/lib/format";
 import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
+import { attendanceLockAr as tLock } from "@/i18n/ar/attendance-lock";
 
 // شاشة التشغيل الموحّدة (م ج): لوحة الحلقة كلها — لكل طالبٍ حضورُه ووجهةُ يومه بالأزرار، بلا
 // مغادرة. طبقة عرضٍ وتسجيلٍ فوق المحرّكات القائمة (getUnifiedBoard/markAttendance/session/extra/
@@ -36,6 +37,15 @@ interface Student {
 }
 interface Circle { id: string; nameAr: string }
 interface GrantItem { id: string; nameAr: string; value: number; grantSource: string }
+type LockState = "OPEN" | "APPROVED" | "AUTO_LOCKED" | "TEMP_OPEN";
+interface DayLock { state: LockState; locked: boolean; date: string }
+
+const LOCK_LABEL: Record<LockState, string> = {
+  OPEN: tLock.stateOpen, APPROVED: tLock.stateApproved, AUTO_LOCKED: tLock.stateAutoLocked, TEMP_OPEN: tLock.stateTempOpen,
+};
+const LOCK_TONE: Record<LockState, "success" | "danger" | "bronze" | "neutral"> = {
+  OPEN: "success", APPROVED: "bronze", AUTO_LOCKED: "danger", TEMP_OPEN: "bronze",
+};
 
 const ATT_LABEL: Record<string, string> = {
   PRESENT: "حاضر", LATE: "متأخّر", ABSENT_UNEXCUSED: "غائب", LEFT_NO_PERMISSION: "خرج بلا إذن",
@@ -64,6 +74,7 @@ export default function UnifiedPage() {
   const [circleId, setCircleId] = useState("");
   const [students, setStudents] = useState<Student[] | null>(null);
   const [absentDefault, setAbsentDefault] = useState(false);
+  const [dayLock, setDayLock] = useState<DayLock | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [items, setItems] = useState<GrantItem[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
@@ -74,8 +85,8 @@ export default function UnifiedPage() {
     const res = await fetch(`/api/circles/${cid}/unified?date=${date}`, { headers: { authorization: `Bearer ${t}` } });
     if (res.status === 401 || res.status === 403) { setStatus("unauth"); return; }
     if (!res.ok) { setStatus("error"); return; }
-    const b = (await res.json()) as { students: Student[]; absentDefault?: boolean };
-    setStudents(b.students); setAbsentDefault(Boolean(b.absentDefault));
+    const b = (await res.json()) as { students: Student[]; absentDefault?: boolean; dayLock?: DayLock };
+    setStudents(b.students); setAbsentDefault(Boolean(b.absentDefault)); setDayLock(b.dayLock ?? null);
     setStatus("ready");
   }, [date]);
 
@@ -122,6 +133,7 @@ export default function UnifiedPage() {
           {circles.map((c) => <Button key={c.id} size="sm" variant={c.id === circleId ? "bronze" : "ghost"} onClick={() => { setCircleId(c.id); setSelected(null); }}>{c.nameAr}</Button>)}
         </div>
       )}
+      {dayLock && <DayLockBar lock={dayLock} circleId={circleId} date={date} post={post} />}
       {absentDefault && <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginBottom: sp(2) }}>الأصل اليوم «غياب»: من لم تَرفعه حاضرًا يُحسب غائبًا. أشِّر الحاضرين من اللوحة.</p>}
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs, marginBottom: sp(2) }}>{msg}</p>}
 
@@ -152,6 +164,28 @@ export default function UnifiedPage() {
         </div>
       </div>
     </Shell>
+  );
+}
+
+// شارة حالة اليوم + أزرار الاعتماد/طلب الفتح (المهمّة ٩).
+function DayLockBar({ lock, circleId, date, post }: {
+  lock: DayLock; circleId: string; date: string;
+  post: (url: string, body: Record<string, unknown>, okMsg: string) => Promise<void>;
+}) {
+  const approve = () => { if (window.confirm(tLock.approveConfirm)) void post(`/api/circles/${circleId}/attendance/approve`, { date }, tLock.approved); };
+  const requestUnlock = () => {
+    const reason = window.prompt(tLock.unlockReasonPrompt);
+    if (reason?.trim()) void post(`/api/circles/${circleId}/attendance/unlock-request`, { date, reason }, tLock.unlockRequested);
+  };
+  return (
+    <div style={{ display: "flex", gap: sp(2), alignItems: "center", flexWrap: "wrap", marginBottom: sp(3) }}>
+      <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tLock.dayStatus}:</span>
+      <Badge tone={LOCK_TONE[lock.state]}>{LOCK_LABEL[lock.state]}</Badge>
+      {!lock.locked
+        ? <Button size="sm" variant="primary" onClick={approve}>{tLock.approveDay}</Button>
+        : <><span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tLock.lockedHint}</span>
+            <Button size="sm" variant="ghost" onClick={requestUnlock}>{tLock.requestUnlock}</Button></>}
+    </div>
   );
 }
 
