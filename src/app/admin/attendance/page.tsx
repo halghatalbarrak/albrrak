@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { makkahDayDate } from "@/lib/makkah-day";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Button, Select, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
 
@@ -46,7 +47,7 @@ const STATUS_LABEL: Record<string, string> = {
 const QUEUE_KEY = "albrrak.attendance.queue";
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return makkahDayDate(new Date()); // يوم مكّة لا UTC
 }
 
 async function token(): Promise<string | null> {

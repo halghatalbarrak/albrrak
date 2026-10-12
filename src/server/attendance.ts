@@ -10,6 +10,7 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { makkahDayDate, makkahDayStart } from "@/lib/makkah-day";
 
 import { assertCapability } from "./authz";
 import { decide } from "./approval";
@@ -58,16 +59,16 @@ function attendanceEvent(s: AttendanceStatus): AutoEventType | null {
   }
 }
 
-/** يحوّل مدخلًا (نص ISO أو Date) إلى تاريخٍ بلا وقت (منتصف ليل UTC) — يطابق @db.Date. */
+/** مفتاح يوم الحضور (منتصف ليل UTC لليوم المكّيّ) — يطابق @db.Date ويوم بقيّة المنصّة (يوم مكّة). */
 export function toDateOnly(input: string | Date): Date {
   const d = typeof input === "string" ? new Date(input) : input;
   if (Number.isNaN(d.getTime())) throw new ValidationError("تاريخ غير صالح.");
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  return makkahDayStart(d);
 }
 
-/** يمثّل التاريخ نصًّا YYYY-MM-DD (لمقارنة حمولات الاعتماد). */
+/** يمثّل مفتاح اليوم نصًّا YYYY-MM-DD بتوقيت مكّة (لمقارنة حمولات الاعتماد ومرجع المنح). */
 function dateKey(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return makkahDayDate(d);
 }
 
 // ═══════════════ قلب الأصل إلى «غياب» (م ج) — بلا أثر رجعيّ ═══════════════

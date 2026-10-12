@@ -2,9 +2,18 @@ import { Role, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
-import { COUNTED_STATUSES, toDateOnly } from "./attendance";
+import { COUNTED_STATUSES } from "./attendance";
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
+
+/**
+ * يومٌ بلا وقت (منتصف ليل UTC) — مفتاح «مؤجَّل». محلّيٌّ UTC (سلوكٌ غير متغيّر: كلّ مدخلاته
+ * سلاسل مدنيّة من الواجهة) كيلا يتبع تحويل مفتاح الحضور إلى يوم مكّة خارج نطاق هذه المهمّة.
+ */
+function toDateOnly(input: string | Date): Date {
+  const d = typeof input === "string" ? new Date(input) : input;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
 
 // ═══════════════ حالة الجلسة «مؤجَّل» (مشترَكة بين البرنامجين) ═══════════════
 //
