@@ -1,6 +1,7 @@
 import { AttendanceStatus, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { makkahDayDate, makkahDayStart } from "@/lib/makkah-day";
 import { getConsolidation, getWeeklyReview } from "./tarseekh";
 import { arNum } from "@/lib/format";
 
@@ -13,16 +14,17 @@ export const KIND_ABSENCE = "ABSENCE_UNEXCUSED";
 const SIGN = "حلقات الشيخ محمد البراك";
 const PRESENT_STATUSES: AttendanceStatus[] = [AttendanceStatus.PRESENT, AttendanceStatus.LATE, AttendanceStatus.LEFT_EARLY];
 
+/** مفتاح يوم مكّة (منتصف ليل UTC لليوم المكّيّ) — يطابق تخزين Attendance.date وDailySession.date. */
 function toDateOnly(input: string | Date): Date {
   const d = typeof input === "string" ? new Date(input) : input;
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  return makkahDayStart(d);
 }
-/** بداية أسبوع الحلقة = الأحد (الحكم ٣: الأحد→الخميس). */
+/** بداية أسبوع الحلقة = الأحد (الحكم ٣: الأحد→الخميس). اليوم المدنيّ ثابتٌ، فـgetUTCDay يعطي يومه. */
 export function weekStartSunday(date: string | Date): Date {
   const d = toDateOnly(date);
   return new Date(d.getTime() - d.getUTCDay() * 86400000);
 }
-const iso = (d: Date) => d.toISOString().slice(0, 10);
+const iso = (d: Date) => makkahDayDate(d);
 const ref = (s: number, a: number) => `${arNum(s)}:${arNum(a)}`;
 
 export interface RenderedReport { subject: string; body: string; present: number }

@@ -225,6 +225,46 @@ describe("مستأذن مسبقًا (§١٠٫٢) — يتحوّل حالةً ع�
   });
 });
 
+describe("مفتاح يوم الحضور = يوم مكّة لا UTC", () => {
+  it("رصدٌ الساعة ٢٢:٣٠ UTC (٠١:٣٠ بمكّة) يُنسب إلى يوم مكّة التالي", async () => {
+    const { circle, teacher, student } = await scaffold();
+    await recordSession(
+      { circleId: circle.id, date: new Date("2026-05-10T22:30:00Z"), exceptions: [], recorderId: teacher.id },
+      prisma,
+    );
+    const row = await prisma.attendance.findFirstOrThrow({ where: { studentId: student.id } });
+    expect(row.date.toISOString().slice(0, 10)).toBe("2026-05-11"); // يوم مكّة، لا ٠٥-١٠ (UTC)
+  });
+
+  it("رصدٌ الساعة ٢٠:٥٩ UTC (٢٣:٥٩ بمكّة) يبقى في يومه", async () => {
+    const { circle, teacher, student } = await scaffold();
+    await recordSession(
+      { circleId: circle.id, date: new Date("2026-05-10T20:59:00Z"), exceptions: [], recorderId: teacher.id },
+      prisma,
+    );
+    const row = await prisma.attendance.findFirstOrThrow({ where: { studentId: student.id } });
+    expect(row.date.toISOString().slice(0, 10)).toBe("2026-05-10");
+  });
+
+  it("الاستئذان المسبق المعتمَد يتحوّل عند الرصد في يوم مكّة الصحيح", async () => {
+    const { circle, teacher, student } = await scaffold();
+    const manager = await createUser(prisma, { roles: [Role.CIRCLE_MANAGER] });
+    // الاستئذان ليوم مكّة ٠٥-١١ (= لحظة ٢٢:٣٠ UTC من ٠٥-١٠).
+    const approval = await requestPreExcuse(
+      { studentId: student.id, date: "2026-05-11", reason: "موعد", requestedBy: student.userId },
+      prisma,
+    );
+    await decideExcuse({ approvalId: approval.id, decidedBy: manager.id, decision: "APPROVED" }, prisma);
+    await recordSession(
+      { circleId: circle.id, date: new Date("2026-05-10T22:30:00Z"), exceptions: [], recorderId: teacher.id },
+      prisma,
+    );
+    const row = await prisma.attendance.findFirstOrThrow({ where: { studentId: student.id } });
+    expect(row.date.toISOString().slice(0, 10)).toBe("2026-05-11");
+    expect(row.status).toBe(AttendanceStatus.PRE_EXCUSED); // طابق يوم مكّة فتحوّل
+  });
+});
+
 describe("منهجية القياس (§١١) — وسيطٌ بلا حكم، ولا عتبات قبل ٢٠", () => {
   it("الوسيط لا المتوسط (§١١٫٣)", () => {
     expect(computeMedian([])).toBeNull();

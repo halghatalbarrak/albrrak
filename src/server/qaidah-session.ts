@@ -14,7 +14,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 
-import { assertCanRecordCircle, toDateOnly } from "./attendance";
+import { assertCanRecordCircle } from "./attendance";
 import { assertTeachesStudent, listCircleStudents } from "./daily-session";
 import { grantAuto, reverseConflictingAutoGrants, QAIDAH_LESSON_EVENT_GROUP } from "./economy";
 import { scheduleTransition, nextDay } from "./program-placement";
@@ -39,6 +39,15 @@ import { ValidationError } from "./errors";
 //   • ق٧: إن سبّب «متقن» على الدرس الأخير التخرّج، يُقفَل تقييم ذلك اليوم (عكس التخرّج إداريّ منفصل).
 
 const dayKey = (d: Date) => d.toISOString().slice(0, 10);
+
+/**
+ * يومٌ بلا وقت (منتصف ليل UTC) — مفتاح تقييم القاعدة (QaidahDailyEval). محلّيٌّ UTC (سلوكٌ غير
+ * متغيّر) كيلا يتبع تحويل مفتاح الحضور إلى يوم مكّة خارج نطاق هذه المهمّة (القاعدة منفصلة).
+ */
+function toDateOnly(input: string | Date): Date {
+  const d = typeof input === "string" ? new Date(input) : input;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
 
 interface OrderedLesson {
   id: string;

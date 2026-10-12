@@ -1,7 +1,6 @@
 import { ProgramHistoryReason, ProgramKey, StudentState, type Prisma, type PrismaClient } from "@prisma/client";
 
 import { emitEvent } from "./events";
-import { toDateOnly } from "./attendance";
 import { ensureMuddakirProfile } from "./muddakir-profile";
 
 // ═══════════════ البرنامج صفةٌ في القيد + انتقالٌ كسولٌ مؤرَّخ (PLACEMENT_RULES ق١/ق٥/ق٦) ═══════════════
@@ -13,6 +12,16 @@ import { ensureMuddakirProfile } from "./muddakir-profile";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 const isClient = (db: Db): db is PrismaClient => "$transaction" in db;
+
+/**
+ * يومٌ بلا وقت (منتصف ليل UTC) — مفتاح انتقال البرامج (ق٥). UTC عمداً اتّساقًا مع
+ * PLACEMENT_RULES (حدّه منتصف الليل UTC)؛ تحويله إلى توقيت المدينة تغييرٌ شاملٌ منفصل.
+ * محلّيٌّ هنا كيلا يتبع تحويل مفتاح الحضور إلى يوم مكّة.
+ */
+function toDateOnly(input: string | Date): Date {
+  const d = typeof input === "string" ? new Date(input) : input;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
 
 /** «الغد» بمفتاح اليوم المعتمد في المشروع (toDateOnly = منتصف ليل، اتّساقًا مع الحضور والجلسات). */
 export function nextDay(from: string | Date = new Date()): Date {
