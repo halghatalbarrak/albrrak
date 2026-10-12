@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { makkahDayDate } from "@/lib/makkah-day";
 import { useMe } from "@/lib/useMe";
 import { arNum, hijri, formatAyah } from "@/lib/format";
 import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, TodayTargetView, type TTData, type TTBound, ui, sp } from "@/components/ui";
@@ -31,7 +32,7 @@ interface WeeklyReview { required: number; done: number; remaining: number; perc
 interface HifzGate { mustRepeat: boolean; range: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number } | null }
 interface SessionView { student: { id: string; name: string }; program: string; position: Position; session: SessionToday | null; consolidation: Consolidation | null; weeklyReview: WeeklyReview | null; hifzGate: HifzGate | null }
 
-function todayISO(): string { return new Date().toISOString().slice(0, 10); }
+function todayISO(): string { return makkahDayDate(new Date()); } // يوم مكّة لا UTC
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
   return session?.access_token ?? null;

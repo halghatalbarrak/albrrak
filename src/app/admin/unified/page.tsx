@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { makkahDayDate } from "@/lib/makkah-day";
 import { useMe } from "@/lib/useMe";
 import { arNum, formatAyah } from "@/lib/format";
 import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
@@ -49,7 +50,7 @@ const ATT_BUTTONS: { status: string; label: string; tone: "primary" | "bronze" |
 ];
 
 const boundStr = (b: Bound) => formatAyah(b.fromSurah, b.fromAyah, b.toSurah, b.toAyah);
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => makkahDayDate(new Date()); // يوم مكّة لا UTC
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
   return session?.access_token ?? null;

@@ -321,3 +321,33 @@ describe("لوحة الجلسة للحلقة (م٦) — كل الطلاب بحا
     expect(board.students[0].todayHifzDone).toBe(false); // لا حفظ في 05-11 بعد
   });
 });
+
+describe("مفتاح يوم الجلسة = يوم مكّة لا UTC (إصلاح مفتاح مراقي)", () => {
+  it("جلسةٌ تُسجَّل ٢٢:٣٠ UTC (٠١:٣٠ بمكّة) تُنسب إلى يوم مكّة التالي", async () => {
+    const { student, teacher } = await maraqiScaffold();
+    // لحظةٌ حقيقيّة: ٢٢:٣٠ من ٥-١٠ بتوقيت UTC = ٠١:٣٠ من ٥-١١ بتوقيت مكّة.
+    await recordHifz({ ...hifzArgs(student.id, teacher.id), date: new Date("2026-05-10T22:30:00Z") }, prisma);
+    const row = await prisma.dailySession.findFirstOrThrow({ where: { studentId: student.id } });
+    expect(row.date.toISOString().slice(0, 10)).toBe("2026-05-11"); // يوم مكّة، لا ٠٥-١٠ (UTC)
+
+    // القراءة متّسقةٌ مع المفتاح نفسه: تُرى في ٠٥-١١، ولا تُرى في ٠٥-١٠.
+    const seen = await getSessionView(teacher.id, student.id, "2026-05-11", prisma);
+    expect(seen.session?.hifzAttempts).toBe(2);
+    const unseen = await getSessionView(teacher.id, student.id, "2026-05-10", prisma);
+    expect(unseen.session).toBeNull();
+  });
+
+  it("جلسةٌ تُسجَّل ٢٠:٥٩ UTC (٢٣:٥٩ بمكّة) تبقى في يومها", async () => {
+    const { student, teacher } = await maraqiScaffold();
+    await recordHifz({ ...hifzArgs(student.id, teacher.id), date: new Date("2026-05-10T20:59:00Z") }, prisma);
+    const row = await prisma.dailySession.findFirstOrThrow({ where: { studentId: student.id } });
+    expect(row.date.toISOString().slice(0, 10)).toBe("2026-05-10");
+  });
+
+  it("سلسلةٌ مدنيّةٌ (YYYY-MM-DD) تبقى عينَها — لا إزاحةٍ زمنيّة (توافقٌ مع الاختبارات القائمة)", async () => {
+    const { student, teacher } = await maraqiScaffold();
+    await recordHifz({ ...hifzArgs(student.id, teacher.id), date: "2026-05-10" }, prisma);
+    const row = await prisma.dailySession.findFirstOrThrow({ where: { studentId: student.id } });
+    expect(row.date.toISOString().slice(0, 10)).toBe("2026-05-10");
+  });
+});

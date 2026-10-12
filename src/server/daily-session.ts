@@ -10,6 +10,7 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { makkahDayDate, makkahDayStart } from "@/lib/makkah-day";
 
 import { isActiveArifForCircle, autoDismissArifIfBelowThreshold } from "./arif";
 import { grantAuto, reverseConflictingAutoGrants, HIFZ_EVENT_GROUP, TARSEEKH_EVENT_GROUP, MURAJAAH_EVENT_GROUP } from "./economy";
@@ -20,8 +21,8 @@ import { deferredStudentIdsForDate } from "./session-deferral";
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
 
-/** مفتاح اليوم (YYYY-MM-DD) — مرجع منع ازدواج المنح التلقائيّ للمهمّة (مرّةً لليوم). */
-const dayKey = (d: Date) => d.toISOString().slice(0, 10);
+/** مفتاح اليوم (YYYY-MM-DD) بتوقيت مكّة — مرجع منع ازدواج المنح التلقائيّ للمهمّة (مرّةً لليوم). */
+const dayKey = (d: Date) => makkahDayDate(d);
 
 // ═══════════════ الجلسة اليومية (م٤ب — DESIGN §٨٫٣) ═══════════════
 //
@@ -30,11 +31,11 @@ const dayKey = (d: Date) => d.toISOString().slice(0, 10);
 // والترسيخ/المراجعة «تمّ/لم يتم». نافذة الترسيخ الآلية (٩ أيام) والخُمس وتوكيل العريف
 // مؤجَّلة لدفعةٍ تالية (وقاعدة النافذة حينها: **بالمقاطع** — آخر ٩ مقاطع محفوظة).
 
-/** يحوّل مدخلًا إلى تاريخٍ بلا وقت (منتصف ليل UTC) — يطابق @db.Date. */
+/** يحوّل مدخلًا إلى مفتاح يوم الجلسة (منتصف ليل UTC لليوم المكّيّ) — يطابق @db.Date (ق: يوم مكّة). */
 function toDateOnly(input: string | Date): Date {
   const d = typeof input === "string" ? new Date(input) : input;
   if (Number.isNaN(d.getTime())) throw new ValidationError("تاريخ غير صالح.");
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  return makkahDayStart(d);
 }
 
 /** ترتيب موضعٍ قرآنيّ: (سورة، آية) ≤ (سورة، آية). */
