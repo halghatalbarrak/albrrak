@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { makkahDayDate, makkahDayStart } from "@/lib/makkah-day";
 
 import { assertCapability } from "./authz";
+import { assertAttendanceDayOpen } from "./attendance-lock";
 import { decide } from "./approval";
 import { grantAuto, reverseConflictingAutoGrants, ATTENDANCE_EVENT_GROUP } from "./economy";
 import { emitEvent } from "./events";
@@ -230,6 +231,8 @@ export interface RecordSessionArgs {
   /** الاستثناءات فقط (الغائب/المتأخر…). البقية تُشتقّ حضورًا. */
   exceptions: AttendanceMark[];
   recorderId: string;
+  /** اللحظة المرجعيّة لحساب قفل اليوم (اختبارات) — افتراضها الآن. */
+  now?: Date;
 }
 
 export interface RecordSessionResult {
@@ -255,6 +258,8 @@ export async function recordSession(
 ): Promise<RecordSessionResult> {
   const date = toDateOnly(args.date);
   await assertCanRecordCircle(args.recorderId, args.circleId, db);
+  // §٣ (قفل الحضور): الرصد اللحظيّ يُرفض في يومٍ مقفل — في الخادم لا الواجهة.
+  await assertAttendanceDayOpen(args.circleId, args.date, db, args.now);
 
   // قائمة الحلقة = المنتسبون نشطًا (endedAt = null).
   const enrollments = await db.enrollment.findMany({
@@ -367,6 +372,8 @@ export interface MarkAttendanceArgs {
   status: AttendanceStatus;
   date: string | Date;
   recorderId: string;
+  /** اللحظة المرجعيّة لحساب قفل اليوم (اختبارات) — افتراضها الآن. */
+  now?: Date;
 }
 
 /**
@@ -386,6 +393,8 @@ export async function markStudentAttendance(
     select: { id: true },
   });
   if (!enr) throw new ValidationError("الطالب ليس من هذه الحلقة.");
+  // §٣ (قفل الحضور): التأشير اللحظيّ يُرفض في يومٍ مقفل — في الخادم.
+  await assertAttendanceDayOpen(args.circleId, args.date, db, args.now);
   const dk = dateKey(date);
   await db.$transaction(async (tx) => {
     await upsertAttendance(tx, { studentId: args.studentId, circleId: args.circleId, date, status: args.status, recordedBy: args.recorderId });

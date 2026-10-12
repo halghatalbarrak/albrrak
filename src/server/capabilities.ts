@@ -8,6 +8,7 @@ export const CAPABILITIES = [
   "TRACK_PROMOTION", // اقتراح ترقية المسار
   "TRACK_DEMOTION", // اقتراح خفض المسار
   "READY_DECLARATION", // إعلان الجاهزية للحصاد
+  "ATTENDANCE_UNLOCK", // فتح قفل يوم الحضور (المهمّة ٩) — أصلها للمدير، تُفوَّض كقبول العذر
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];

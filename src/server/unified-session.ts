@@ -3,6 +3,7 @@ import { AttendanceStatus, AutoEventType, ProgramKey, type PrismaClient } from "
 import { prisma } from "@/lib/prisma";
 
 import { defaultStatusFor, toDateOnly } from "./attendance";
+import { getAttendanceDayLock, type DayLock } from "./attendance-lock";
 import { assertCanRecordListening } from "./daily-session";
 import { grantAuto } from "./economy";
 import { getQaidahPosition, qaidahBoardRow, type QaidahBoardStudent } from "./qaidah-session";
@@ -38,6 +39,8 @@ export interface UnifiedBoard {
   students: UnifiedStudent[];
   /** هل الأصل «غياب» لهذا اليوم؟ (§ م ج: من العتبة فصاعدًا) — تُبيّنه الواجهة لمن لم يُرفَع. */
   absentDefault: boolean;
+  /** حالة قفل يوم الحلقة (المهمّة ٩) — للشارة والأزرار. */
+  dayLock: DayLock;
 }
 
 /**
@@ -68,12 +71,14 @@ export async function getUnifiedBoard(
 
   // ترويسة اللوحة: برنامج الحلقة الافتراضيّ (الواجهة تعتمد student.program لكلّ صفّ).
   const circle = await db.circle.findUnique({ where: { id: circleId }, select: { program: { select: { key: true } } } });
+  const dayLock = await getAttendanceDayLock(circleId, date, db);
 
   return {
     circle: board.circle,
     program: circle?.program.key ?? null,
     students,
     absentDefault: defaultStatusFor(date) === AttendanceStatus.ABSENT_UNEXCUSED,
+    dayLock,
   };
 }
 

@@ -236,6 +236,7 @@ enum ApprovalKind {
   TRACK_PROMOTION
   TRACK_DEMOTION
   GUARDIAN_UNLINK
+  ATTENDANCE_UNLOCK // فتح قفل يوم حضورٍ لحلقةٍ (المهمّة ٩ — ATTENDANCE_LOCK_RULES)
 }
 
 enum ApprovalStatus {
