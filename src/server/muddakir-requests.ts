@@ -3,7 +3,8 @@ import { MuddakirDeliveryMode, MuddakirRequestStatus, MuddakirRequestType, type 
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
-import { muddakirCaps, type MuddakirActor } from "./muddakir-staff";
+import { muddakirCaps, assignStaff, endStaff, activeStaffRoles, type MuddakirActor } from "./muddakir-staff";
+import { MuddakirStaffRole } from "@prisma/client";
 import { enrollInMuddakir, assignSupervisor } from "./muddakir-enrollment";
 import { setStageMode } from "./muddakir-stages";
 import { setMuddakirPointItem, setMuddakirSetting, setTathbitDegree } from "./muddakir-config";
@@ -63,6 +64,15 @@ async function executeRequest(db: PrismaClient, type: MuddakirRequestType, paylo
     case MuddakirRequestType.SET_POINT_ITEM: {
       if (typeof payload.nameAr !== "string" || typeof payload.value !== "number" || typeof payload.eventType !== "string") throw new ValidationError("بيانات البند مطلوبة.");
       await setMuddakirPointItem({ id: typeof payload.id === "string" ? payload.id : undefined, nameAr: payload.nameAr, value: payload.value, eventType: payload.eventType as AutoEventType, active: payload.active as boolean | undefined }, executorId, db);
+      return;
+    }
+    case MuddakirRequestType.SET_STAFF: {
+      if (typeof payload.targetUserId !== "string" || typeof payload.role !== "string" || (payload.action !== "assign" && payload.action !== "end")) {
+        throw new ValidationError("بيانات تعيين الطاقم ناقصة.");
+      }
+      const role = payload.role as MuddakirStaffRole;
+      if (payload.action === "assign") await assignStaff({ actorUserId: executorId, targetUserId: payload.targetUserId, role }, db);
+      else await endStaff({ actorUserId: executorId, targetUserId: payload.targetUserId, role }, db);
       return;
     }
     default:
@@ -150,4 +160,39 @@ export async function performOrRequest<T>(
   if (actor.caps.manage) return { executed: true, result: await spec.direct() };
   if (actor.caps.admin) { const r = await createRequest({ actorUserId: actor.id, type: spec.type, payload: spec.payload, studentId: spec.studentId }, db); return { executed: false, requestId: r.id }; }
   throw new AuthorizationError("هذا الإجراء لمدير البرنامج أو الإداريّ.");
+}
+
+export interface SetStaffResult { applied: MuddakirStaffRole[]; requested: MuddakirStaffRole[] }
+
+/**
+ * واجهةٌ موحّدةٌ لتعيين طاقم المدّكر من نافذة الأدوار (و١): تُوازن أدوار المستخدم الحاليّة مع
+ * المطلوبة، فتُعيّن الناقص وتُنهي الزائد. **التخزين في MuddakirStaff** كما هو (لا دور Role عامّ).
+ * مدير المنصّة/البرنامج ⟵ تنفيذٌ مباشر (assignStaff/endStaff بحارسها: MANAGER لمدير المنصّة وحده)؛
+ * والإداريّ ⟵ طلبٌ معلّقٌ لكلّ تغيير (SET_STAFF) يعتمده المدير. الإنهاء إلغاءٌ (endedAt) لا حذف.
+ */
+export async function setMuddakirStaffRoles(
+  args: { actorUserId: string; targetUserId: string; desired: MuddakirStaffRole[] },
+  db: PrismaClient = prisma,
+): Promise<SetStaffResult> {
+  const actorUser = await db.user.findUnique({ where: { id: args.actorUserId }, select: { roles: true } });
+  if (!actorUser) throw new AuthorizationError("مستخدم غير موجود.");
+  const caps = await muddakirCaps(db, { id: args.actorUserId, roles: actorUser.roles });
+  const current = await activeStaffRoles(db, args.targetUserId);
+  const desired = [...new Set(args.desired)];
+  const toAssign = desired.filter((r) => !current.includes(r));
+  const toEnd = current.filter((r) => !desired.includes(r));
+  if (toAssign.length === 0 && toEnd.length === 0) return { applied: [], requested: [] };
+  if (!caps.manage && !caps.admin) {
+    throw new AuthorizationError("تعيين طاقم المدّكر لمدير المنصّة/البرنامج، وإجراء الإداريّ بطلبٍ يُعتمد.");
+  }
+  const actor: MuddakirActor = { id: args.actorUserId, realActorId: args.actorUserId, roles: actorUser.roles, impersonating: false, caps };
+  const applied: MuddakirStaffRole[] = [];
+  const requested: MuddakirStaffRole[] = [];
+  const change = async (role: MuddakirStaffRole, action: "assign" | "end", direct: () => Promise<unknown>) => {
+    const res = await performOrRequest(actor, { type: MuddakirRequestType.SET_STAFF, payload: { targetUserId: args.targetUserId, role, action }, direct }, db);
+    (res.executed ? applied : requested).push(role);
+  };
+  for (const role of toAssign) await change(role, "assign", () => assignStaff({ actorUserId: args.actorUserId, targetUserId: args.targetUserId, role }, db));
+  for (const role of toEnd) await change(role, "end", () => endStaff({ actorUserId: args.actorUserId, targetUserId: args.targetUserId, role }, db));
+  return { applied, requested };
 }

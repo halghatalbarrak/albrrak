@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Button, Input, Field, ui, sp } from "@/components/ui";
-import { type Role, STAFF_ROLES, ROLE_AR, toggleIn, LinkBox, linkBoxCard } from "../shared";
+import {
+  type Role, type MuddakirStaffRole, STAFF_ROLES, ROLE_AR, toggleIn,
+  MUDDAKIR_STAFF, MUDDAKIR_STAFF_AR, MUDDAKIR_SECTION, MUDDAKIR_NO_PERM,
+  toggleStaff, muddakirStaffCaps, LinkBox, linkBoxCard,
+} from "../shared";
 
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
@@ -22,6 +26,8 @@ export default function NewStaffPage() {
   const [fName, setFName] = useState("");
   const [fPhone, setFPhone] = useState("");
   const [fRoles, setFRoles] = useState<Role[]>(["TEACHER"]);
+  const [fStaff, setFStaff] = useState<MuddakirStaffRole[]>([]);
+  const caps = muddakirStaffCaps(me?.roles ?? [], me?.muddakirStaff ?? []);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [link, setLink] = useState<string | null>(null);
@@ -33,10 +39,11 @@ export default function NewStaffPage() {
     setSaving(true);
     const res = await fetch("/api/admin/users", {
       method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
-      body: JSON.stringify({ name: fName.trim(), phone: fPhone.trim(), roles: fRoles }),
+      body: JSON.stringify({ name: fName.trim(), phone: fPhone.trim(), roles: fRoles, ...(caps.canEdit ? { muddakirRoles: fStaff } : {}) }),
     });
     if (res.ok) {
-      const j = (await res.json()) as { activationUrl: string };
+      const j = (await res.json()) as { activationUrl: string; muddakirError?: string };
+      if (j.muddakirError) setErr(`أُنشئ الحساب، وتعذّر تعيين أدوار المدّكر: ${j.muddakirError}`);
       setLink(j.activationUrl);
     } else {
       const j = (await res.json().catch(() => ({}))) as { error?: string };
@@ -69,6 +76,21 @@ export default function NewStaffPage() {
                 </label>
               ))}
             </div>
+          </Field>
+          <Field label={MUDDAKIR_SECTION}>
+            <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
+              {MUDDAKIR_STAFF.map((r) => {
+                const allowed = caps.can(r);
+                return (
+                  <label key={r} title={allowed ? undefined : MUDDAKIR_NO_PERM}
+                    style={{ display: "flex", gap: sp(1), alignItems: "center", cursor: allowed ? "pointer" : "not-allowed", opacity: allowed ? 1 : 0.5 }}>
+                    <input type="checkbox" disabled={!allowed} checked={fStaff.includes(r)} onChange={() => setFStaff((l) => toggleStaff(l, r))} />
+                    {MUDDAKIR_STAFF_AR[r]}
+                  </label>
+                );
+              })}
+            </div>
+            {!caps.canEdit && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `${sp(1)} 0 0` }}>{MUDDAKIR_NO_PERM}</p>}
           </Field>
           {err && <p style={{ color: ui.color.danger }}>{err}</p>}
           <div style={{ display: "flex", gap: sp(2), marginTop: sp(2) }}>

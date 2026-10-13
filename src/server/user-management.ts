@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 
 import {
   ActivationPurpose,
+  MuddakirStaffRole,
   Role,
   type Prisma,
   type PrismaClient,
@@ -85,6 +86,8 @@ export interface UserRow {
   roles: Role[];
   isActive: boolean;
   isStudent: boolean;
+  /** أدوار طاقم المدّكر النشطة (MuddakirStaff) — تُعرض شاراتٍ بجانب الأدوار العامّة. */
+  muddakirStaff: MuddakirStaffRole[];
 }
 
 export async function listUsers(actorId: string, db: PrismaClient = prisma): Promise<UserRow[]> {
@@ -96,6 +99,10 @@ export async function listUsers(actorId: string, db: PrismaClient = prisma): Pro
     },
     orderBy: { createdAt: "asc" },
   });
+  // أدوار المدّكر النشطة لكلّ المستخدمين دفعةً واحدة (لا استعلامٌ لكلّ صفّ).
+  const staff = await db.muddakirStaff.findMany({ where: { endedAt: null }, select: { userId: true, role: true } });
+  const staffBy = new Map<string, MuddakirStaffRole[]>();
+  for (const s of staff) staffBy.set(s.userId, [...new Set([...(staffBy.get(s.userId) ?? []), s.role])]);
   return rows.map((r) => ({
     id: r.id,
     name: r.nameAsInId,
@@ -104,6 +111,7 @@ export async function listUsers(actorId: string, db: PrismaClient = prisma): Pro
     roles: r.roles,
     isActive: r.isActive,
     isStudent: r.student !== null,
+    muddakirStaff: staffBy.get(r.id) ?? [],
   }));
 }
 
