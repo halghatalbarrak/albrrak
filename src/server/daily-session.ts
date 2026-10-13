@@ -17,6 +17,7 @@ import { grantAuto, reverseConflictingAutoGrants, HIFZ_EVENT_GROUP, TARSEEKH_EVE
 import { applyDueTransition } from "./program-placement";
 import { displayBoundary } from "./maraqi";
 import { getConsolidation, getWeeklyReview, type ConsolidationView, type WeeklyReview } from "./tarseekh";
+import { maybeStartStageExamLeave } from "./stage-exam-leave";
 import { deferredStudentIdsForDate } from "./session-deferral";
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
@@ -301,6 +302,8 @@ export async function recordHifz(input: HifzInput, db: PrismaClient = prisma): P
     const hifzEvt = input.mastered ? AutoEventType.HIFZ_DONE : AutoEventType.HIFZ_MISSED;
     await reverseConflictingAutoGrants(tx, { studentId: input.studentId, dayKey: dayKey(date), group: HIFZ_EVENT_GROUP, keepEvent: hifzEvt, actorId: input.teacherId });
     await grantAuto(tx, hifzEvt, input.studentId, dayKey(date));
+    // مراقي ٢ (القرار أ): إن بلغت الجبهة حدَّ سورة مرحلةٍ ببلوغ هذا الحفظ ⟵ تبدأ إجازةُ اختبارها.
+    await maybeStartStageExamLeave(tx, { studentId: input.studentId, actorId: input.teacherId });
   });
 }
 

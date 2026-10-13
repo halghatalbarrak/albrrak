@@ -11,7 +11,7 @@ import {
   listReadyForStageExam,
   toUtcDateOnly,
 } from "../stage-exam-leave";
-import { declareHasadReadiness, recordHasad } from "../hasad";
+import { recordHifz } from "../daily-session";
 import { AuthorizationError, ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
 import { createProgram, createStudent, createUser } from "../testing/factories";
@@ -44,19 +44,13 @@ describe("حساب مهلة الإجازة (دوالٌّ نقيّة)", () => {
 
 // ═══════════════ البدء التلقائيّ (تكامل عبر recordHasad) ═══════════════
 
-// حلقة مراقي بمعلّمها ومُسمِّعٍ محايد، وطالبٌ أُعلنت جاهزيته، ومرحلةٌ أصليّة بحزبين.
+// حلقة مراقي بمعلّمها، وطالبٌ IN_MARAQI، ومرحلةٌ أصليّة بحدود سورٍ تنتهي بالنبأ (٧٨:٤٠).
+// الاستحقاق ببلوغ الجبهة الحدّ (القرار أ)، لا باكتمال الأحزاب — فنُسجّل الحفظ بـrecordHifz.
 async function scaffold() {
   const program = await createProgram(prisma, ProgramKey.MARAQI);
   const main = await prisma.stage.create({
-    data: { programId: program.id, kind: StageKind.MAIN_STAGE, ordinal: 1, nameAr: "الأصلية الأولى" },
+    data: { programId: program.id, kind: StageKind.MAIN_STAGE, ordinal: 1, nameAr: "الأصلية الأولى", fromSurah: 114, fromAyah: 1, toSurah: 78, toAyah: 40 },
   });
-  const mk = (ordinal: number, hizb: number, fs: number, fa: number, ts: number, ta: number) =>
-    prisma.stage.create({
-      data: { programId: program.id, kind: StageKind.SUB_STAGE, ordinal, nameAr: `ح${hizb}`, parentId: main.id, hizbNumber: hizb, fromSurah: fs, fromAyah: fa, toSurah: ts, toAyah: ta },
-    });
-  const h60 = await mk(1, 60, 87, 1, 114, 6);
-  const h59 = await mk(2, 59, 78, 1, 86, 17);
-
   const circle = await prisma.circle.create({
     data: { nameAr: "حلقة", timeSlot: "MAGHRIB", gender: "MALE", programId: program.id },
   });
@@ -66,44 +60,37 @@ async function scaffold() {
   await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
   await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.IN_MARAQI } });
   const reciter = await createUser(prisma, { roles: [Role.RECITER] });
-  return { program, main, h60, h59, circle, teacher, student, reciter };
+  return { program, main, circle, teacher, student, reciter };
 }
 
-async function passHizb(studentId: string, stageId: string, teacherId: string, reciterId: string) {
-  await declareHasadReadiness({ studentId, stageId, teacherId }, prisma);
-  await recordHasad({ studentId, stageId, reciterId, errors: [] }, prisma);
-}
+// يسجّل حفظ مقطعٍ (يحرّك الجبهة) — المقطع من سورةٍ واحدة لتبسيط الحدود.
+const hifz = (studentId: string, teacherId: string, surah: number, fromAyah: number, toAyah: number) =>
+  recordHifz({ studentId, teacherId, date: "2026-05-10", fromSurah: surah, fromAyah, toSurah: surah, toAyah, attempts: 1, mastered: true }, prisma);
 
-describe("بدء إجازة اختبار المرحلة تلقائيًّا (البند ١)", () => {
-  it("إتمام بعض الأحزاب لا يبدأ الإجازة", async () => {
-    const { main, h60, teacher, student, reciter } = await scaffold();
-    await passHizb(student.id, h60.id, teacher.id, reciter.id); // بقي ح٥٩
+describe("بدء إجازة اختبار المرحلة ببلوغ الجبهة حدَّ السورة (القرار أ)", () => {
+  it("حفظٌ دون بلوغ حدّ المرحلة لا يبدأ الإجازة", async () => {
+    const { main, teacher, student } = await scaffold();
+    await hifz(student.id, teacher.id, 114, 1, 6); // الجبهة عند الناس — قبل حدّ النبأ
     const count = await prisma.stageExamLeave.count({ where: { studentId: student.id, mainStageId: main.id } });
     expect(count).toBe(0);
   });
 
-  it("إتمام آخر حزبٍ في المرحلة يبدأ إجازةً ٧ أيّام", async () => {
-    const { main, h60, h59, teacher, student, reciter } = await scaffold();
-    await passHizb(student.id, h60.id, teacher.id, reciter.id);
-    await passHizb(student.id, h59.id, teacher.id, reciter.id); // اكتملت المرحلة
+  it("بلوغ الجبهة نهايةَ سورة الحدّ (النبأ ٧٨:٤٠) يبدأ إجازةً ٧ أيّام", async () => {
+    const { main, teacher, student } = await scaffold();
+    await hifz(student.id, teacher.id, 78, 1, 40); // الجبهة بلغت نهاية النبأ = حدّ المرحلة
     const leave = await prisma.stageExamLeave.findUniqueOrThrow({
       where: { studentId_mainStageId: { studentId: student.id, mainStageId: main.id } },
     });
     const days = (leave.baseEndsOn.getTime() - leave.startedOn.getTime()) / 86_400_000;
     expect(days).toBe(7);
     expect(leave.effectiveEndsOn.getTime()).toBe(leave.baseEndsOn.getTime());
-    expect(leave.teacherDeferredOnce).toBe(false);
-    expect(leave.adminDeferrals).toBe(0);
-    // حدثٌ يُعلِم المعلّم بدخول الطالب الإجازة.
     expect(await prisma.event.count({ where: { type: "STAGE_EXAM_LEAVE_STARTED", subjectId: student.id } })).toBe(1);
   });
 
   it("لا تُنشأ إجازةٌ ثانية لنفس المرحلة (idempotent)", async () => {
-    const { main, h60, h59, teacher, student, reciter } = await scaffold();
-    await passHizb(student.id, h60.id, teacher.id, reciter.id);
-    await passHizb(student.id, h59.id, teacher.id, reciter.id);
-    // إعادة تسجيل حصادٍ ناجحٍ لنفس الحزب (بإعلان جاهزيةٍ جديد) لا تُنشئ إجازةً ثانية.
-    await passHizb(student.id, h59.id, teacher.id, reciter.id);
+    const { main, teacher, student } = await scaffold();
+    await hifz(student.id, teacher.id, 78, 1, 40);
+    await hifz(student.id, teacher.id, 78, 1, 40); // إعادة تسجيلٍ لا تُنشئ إجازةً ثانية
     const count = await prisma.stageExamLeave.count({ where: { studentId: student.id, mainStageId: main.id } });
     expect(count).toBe(1);
   });

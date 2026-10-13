@@ -3,8 +3,7 @@ import { MuddakirPhase, ProgramKey, StageKind, type PrismaClient } from "@prisma
 import { prisma } from "@/lib/prisma";
 import { getStageProgress } from "@/server/muddakir-stages";
 import { listTathbitLadder } from "@/server/muddakir-config";
-import { getMaraqiLadder } from "@/server/maraqi";
-import { getStudentPosition } from "@/server/daily-session";
+import { loadMaraqiPhases, maraqiFrontierKey, phaseForFrontier } from "@/server/maraqi-phase";
 import { getQaidahPosition } from "@/server/qaidah-session";
 import { tMuddakir, stageLabel } from "@/i18n/ar/muddakir";
 import { arNum } from "@/lib/format";
@@ -68,26 +67,16 @@ export async function muddakirRoadmap(studentId: string, db: PrismaClient = pris
   return asRoadmap(ProgramKey.MUDDAKIR, entries, currentIndex);
 }
 
-// ── مراقي: المراحل الرئيسة محطّاتٌ، وتقدّم الحاليّة = مراحلها الفرعيّة المنجَزة (فرونتير) ──
+// ── مراقي: المراحل الستّ بحدود السور محطّاتٌ، والحاليّة = التي تقع فيها جبهة الطالب (مراقي ٢، أ) ──
 export async function maraqiRoadmap(studentId: string, db: PrismaClient = prisma): Promise<Roadmap | null> {
-  const ladder = await getMaraqiLadder({ roles: [] }, db);
-  if (!ladder.mainStages.length) return null;
-  const entries: Entry[] = ladder.mainStages.map((m) => ({ key: `main-${m.ordinal}`, label: m.nameAr }));
+  const phases = await loadMaraqiPhases(db);
+  if (!phases.length) return null;
+  const entries: Entry[] = phases.map((p) => ({ key: `main-${p.ordinal}`, label: p.nameAr }));
 
-  let pos: Awaited<ReturnType<typeof getStudentPosition>> | null = null;
-  try { pos = await getStudentPosition(studentId, db); } catch { pos = null; }
-
-  let currentIndex = 0;
-  const curStageId = pos?.current?.stageId ?? null;
-  if (curStageId) {
-    const mi = ladder.mainStages.findIndex((m) => m.subStages.some((s) => s.stageId === curStageId));
-    if (mi >= 0) {
-      currentIndex = mi;
-      const subs = ladder.mainStages[mi].subStages;
-      const cur = subs.find((s) => s.stageId === curStageId)!;
-      entries[mi].progress = { done: subs.filter((s) => s.ordinal < cur.ordinal).length, total: subs.length };
-    }
-  }
+  let frontier: number | null = null;
+  try { frontier = await maraqiFrontierKey(db, studentId); } catch { frontier = null; }
+  const cur = phaseForFrontier(frontier, phases);
+  const currentIndex = cur ? phases.findIndex((p) => p.id === cur.id) : 0;
   return asRoadmap(ProgramKey.MARAQI, entries, currentIndex);
 }
 
