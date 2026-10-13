@@ -12,4 +12,5 @@
 ## الدفع والدمج
 
 - الدفع وفتح الـ PR بحساب `halghatalbarrak` (`gh auth switch --user halghatalbarrak`)، وهويّة git للـ commits `alameen5509`.
+- `GH_CONFIG_DIR` معزولٌ لهذا المشروع عبر `.claude/settings.local.json` (قيمته `C:\Users\mmosa\.gh-albrrak`) — إعدادات gh منفصلةٌ عن الافتراضيّة. ومع ذلك يبقى حارس `gh auth switch --user halghatalbarrak` ثمّ `gh auth status` قبل كلّ push أو دمج كما هو.
 - لا دمج بلا إذنٍ صريح.
