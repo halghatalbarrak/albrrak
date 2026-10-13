@@ -12,6 +12,7 @@ import {
 import { prisma } from "@/lib/prisma";
 
 import { grantAuto } from "./economy";
+import { advanceTrackAfterPhaseExam } from "./maraqi-track-ladder";
 import { emitEvent } from "./events";
 import { ValidationError } from "./errors";
 
@@ -112,6 +113,8 @@ export async function decideStageTransition(
       });
       // منح تلقائيّ للترقية/الانتقال (م٦أ-٢) — المرجع = المرحلة، فلكلّ ترقيةٍ منحٌ واحد.
       await grantAuto(tx, AutoEventType.PROMOTION, payload.studentId, payload.mainStageId);
+      // مراقي ٢ (القرار ب): الانتقال المبوَّب في السلّم عند اعتماد مرحلةٍ تنتهي عند حدّ مسار (الأحقاف/العنكبوت).
+      await advanceTrackAfterPhaseExam(tx, { studentId: payload.studentId, mainStageId: payload.mainStageId, actorId: args.decidedBy });
       transitioned = true;
     }
 
