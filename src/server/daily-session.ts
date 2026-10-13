@@ -18,6 +18,7 @@ import { applyDueTransition } from "./program-placement";
 import { displayBoundary } from "./maraqi";
 import { getConsolidation, getWeeklyReview, type ConsolidationView, type WeeklyReview } from "./tarseekh";
 import { maybeStartStageExamLeave } from "./stage-exam-leave";
+import { maybeAutoAdvanceTrack } from "./maraqi-track-ladder";
 import { deferredStudentIdsForDate } from "./session-deferral";
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
@@ -304,6 +305,8 @@ export async function recordHifz(input: HifzInput, db: PrismaClient = prisma): P
     await grantAuto(tx, hifzEvt, input.studentId, dayKey(date));
     // مراقي ٢ (القرار أ): إن بلغت الجبهة حدَّ سورة مرحلةٍ ببلوغ هذا الحفظ ⟵ تبدأ إجازةُ اختبارها.
     await maybeStartStageExamLeave(tx, { studentId: input.studentId, actorId: input.teacherId });
+    // مراقي ٢ (القرار ب): الانتقال الآليّ في السلّم عند النبأ/المجادلة (الحدود غير المبوَّبة).
+    await maybeAutoAdvanceTrack(tx, { studentId: input.studentId, actorId: input.teacherId });
   });
 }
 
