@@ -1470,6 +1470,12 @@ model DisplayScreen {
   refreshSec Int               @default(180) // ⚙ دورة التحديث الآليّ
   active     Boolean           @default(true)
   createdAt  DateTime          @default(now())
+  // §١٠: تعديلٌ يدويّ بالدقائق لكل صلاة فوق حساب أمّ القرى (افتراضيّه ٠)
+  adjFajr    Int               @default(0)
+  adjDhuhr   Int               @default(0)
+  adjAsr     Int               @default(0)
+  adjMaghrib Int               @default(0)
+  adjIsha    Int               @default(0)
 
   @@index([kind, active])
 }

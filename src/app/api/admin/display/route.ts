@@ -2,7 +2,8 @@ import { DisplayScreenKind, Role } from "@prisma/client";
 
 import { requireRoles } from "@/server/auth";
 import { createScreen, issueToken, listScreens, revokeToken } from "@/server/display/screens";
-import { addProgramSlide, getScreenDetail, listProgramsForSlides, reorderSlides, revealScreenToken, searchStudents, setSlide } from "@/server/display/admin";
+import { addProgramSlide, getScreenDetail, listProgramsForSlides, reorderSlides, revealScreenToken, searchStudents, setPrayerAdjust, setSlide } from "@/server/display/admin";
+import { type PrayerAdjust } from "@/lib/display-schedule";
 import { addSchedule, reorderSchedules, setSchedule, type ScheduleInput } from "@/server/display/schedules";
 import { errorResponse } from "@/server/http";
 import { ValidationError } from "@/server/errors";
@@ -59,6 +60,11 @@ export async function POST(req: Request) {
       case "reorderSchedules": {
         if (typeof b.screenId !== "string" || !Array.isArray(b.orderedIds)) throw new ValidationError("الترتيب مطلوب.");
         await reorderSchedules(actor.id, b.screenId, b.orderedIds.filter((x): x is string => typeof x === "string"));
+        return Response.json({ ok: true });
+      }
+      case "setPrayerAdjust": {
+        if (typeof b.screenId !== "string" || typeof b.adjust !== "object" || b.adjust === null) throw new ValidationError("تعديل المواقيت مطلوب.");
+        await setPrayerAdjust(actor.id, b.screenId, b.adjust as PrayerAdjust);
         return Response.json({ ok: true });
       }
       case "addProgramSlide": {

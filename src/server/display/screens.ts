@@ -5,6 +5,7 @@ import { DisplayScreenKind, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "@/server/events";
 import { ValidationError } from "@/server/errors";
+import { type PrayerAdjust } from "@/lib/display-schedule";
 import { decryptDisplayToken, displayTokenKeyAvailable, encryptDisplayToken } from "./token-crypto";
 
 // ═══════════════ الشاشات ورموزها (ش١) ═══════════════
@@ -65,7 +66,7 @@ export async function revokeToken(screenId: string, db: PrismaClient = prisma): 
   return { revoked: r.count };
 }
 
-export interface ResolvedScreen { id: string; kind: DisplayScreenKind; nameAr: string; studentId: string | null; refreshSec: number }
+export interface ResolvedScreen { id: string; kind: DisplayScreenKind; nameAr: string; studentId: string | null; refreshSec: number; adjust: PrayerAdjust }
 
 /** يحلّ الشاشة من رمزها الصريح (بمقارنة sha256). null إن لم يوجد رمزٌ فعّالٌ مطابق أو الشاشة معطّلة. */
 export async function resolveScreenByToken(token: string, db: PrismaClient = prisma): Promise<ResolvedScreen | null> {
@@ -73,9 +74,15 @@ export async function resolveScreenByToken(token: string, db: PrismaClient = pri
   if (!t) return null;
   const row = await db.displayScreenToken.findUnique({ where: { tokenHash: hashToken(t) }, select: { revokedAt: true, screenId: true } });
   if (!row || row.revokedAt) return null;
-  const screen = await db.displayScreen.findUnique({ where: { id: row.screenId }, select: { id: true, kind: true, nameAr: true, studentId: true, refreshSec: true, active: true } });
+  const screen = await db.displayScreen.findUnique({ where: { id: row.screenId }, select: { id: true, kind: true, nameAr: true, studentId: true, refreshSec: true, active: true, adjFajr: true, adjDhuhr: true, adjAsr: true, adjMaghrib: true, adjIsha: true } });
   if (!screen || !screen.active) return null;
-  return { id: screen.id, kind: screen.kind, nameAr: screen.nameAr, studentId: screen.studentId, refreshSec: screen.refreshSec };
+  return { id: screen.id, kind: screen.kind, nameAr: screen.nameAr, studentId: screen.studentId, refreshSec: screen.refreshSec, adjust: { FAJR: screen.adjFajr, DHUHR: screen.adjDhuhr, ASR: screen.adjAsr, MAGHRIB: screen.adjMaghrib, ISHA: screen.adjIsha } };
+}
+
+/** يقرأ تعديل مواقيت الصلاة لشاشة (دقائق لكل صلاة). الافتراضيّ أصفار إن لم توجد. */
+export async function screenPrayerAdjust(screenId: string, db: PrismaClient = prisma): Promise<PrayerAdjust> {
+  const s = await db.displayScreen.findUnique({ where: { id: screenId }, select: { adjFajr: true, adjDhuhr: true, adjAsr: true, adjMaghrib: true, adjIsha: true } });
+  return { FAJR: s?.adjFajr ?? 0, DHUHR: s?.adjDhuhr ?? 0, ASR: s?.adjAsr ?? 0, MAGHRIB: s?.adjMaghrib ?? 0, ISHA: s?.adjIsha ?? 0 };
 }
 
 /** حالة نسخ رابط الشاشة (§٩): جاهز، أو قديمٌ يُجدَّد، أو المفتاح غائب، أو لا رابط. */

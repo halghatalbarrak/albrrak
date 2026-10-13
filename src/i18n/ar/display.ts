@@ -77,6 +77,8 @@ export const displayAr = {
   dSat: "السبت",
   todayPreview: "معاينة اليوم",
   overlapWarn: "تحذير تداخل",
+  prayerAdjust: "تعديل المواقيت (دقائق)",
+  savePrayerAdjust: "حفظ التعديل",
 
   // صفحة العرض (ش٤)
   pointsWord: "نقطة",

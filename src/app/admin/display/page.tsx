@@ -17,7 +17,7 @@ type Prayer = "FAJR" | "DHUHR" | "ASR" | "MAGHRIB" | "ISHA";
 type Rel = "AFTER" | "BEFORE";
 type ContentMode = "PROGRAM" | "SLIDES";
 interface ScheduleRow { id: string; ordinal: number; startMode: StartMode; prayer: Prayer | null; rel: Rel | null; offsetMin: number; fixedTime: string | null; durationMin: number; contentMode: ContentMode; programId: string | null; programNameAr: string | null; slideIds: string[]; daysMask: number; active: boolean }
-interface Detail extends ScreenRow { slides: Slide[]; schedules: ScheduleRow[]; scheduleWarnings: string[]; schedulePreview: string[] }
+interface Detail extends ScreenRow { slides: Slide[]; schedules: ScheduleRow[]; scheduleWarnings: string[]; schedulePreview: string[]; adjust: Record<Prayer, number> }
 
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
@@ -209,6 +209,29 @@ export default function DisplayAdminPage() {
 // ───────────── قسم المواعيد لكل شاشة (§١٠) ─────────────
 const PRAYER_LABEL = { FAJR: "prayerFajr", DHUHR: "prayerDhuhr", ASR: "prayerAsr", MAGHRIB: "prayerMaghrib", ISHA: "prayerIsha" } as const;
 const DAY_LABEL = ["dSun", "dMon", "dTue", "dWed", "dThu", "dFri", "dSat"] as const;
+const PRAYER_ORDER: Prayer[] = ["FAJR", "DHUHR", "ASR", "MAGHRIB", "ISHA"];
+
+// تعديلٌ يدويّ بالدقائق لكل صلاة فوق حساب أمّ القرى (§١٠)، افتراضيّه ٠.
+function PrayerAdjustForm({ adjust, screenId, act }: { adjust: Record<Prayer, number>; screenId: string; act: (body: Record<string, unknown>) => Promise<Response | null> }) {
+  const [vals, setVals] = useState<Record<Prayer, string>>({ FAJR: String(adjust.FAJR), DHUHR: String(adjust.DHUHR), ASR: String(adjust.ASR), MAGHRIB: String(adjust.MAGHRIB), ISHA: String(adjust.ISHA) });
+  const save = () => {
+    const out = {} as Record<Prayer, number>;
+    for (const p of PRAYER_ORDER) out[p] = Number(vals[p]) || 0;
+    void act({ action: "setPrayerAdjust", screenId, adjust: out });
+  };
+  return (
+    <Card style={{ padding: sp(2), display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center", fontSize: ui.text.xs, background: ui.color.soft }}>
+      <span style={{ fontWeight: 600 }}>{t("prayerAdjust")}:</span>
+      {PRAYER_ORDER.map((p) => (
+        <label key={p} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          {t(PRAYER_LABEL[p])}
+          <Input type="number" value={vals[p]} onChange={(e) => setVals((v) => ({ ...v, [p]: e.target.value }))} style={{ width: 64 }} aria-label={t(PRAYER_LABEL[p])} />
+        </label>
+      ))}
+      <Button size="sm" onClick={save}>{t("savePrayerAdjust")}</Button>
+    </Card>
+  );
+}
 
 function Schedules({ detail, programs, act }: { detail: Detail; programs: Program[]; act: (body: Record<string, unknown>) => Promise<Response | null> }) {
   const [editId, setEditId] = useState<string | null>(null);
@@ -252,6 +275,8 @@ function Schedules({ detail, programs, act }: { detail: Detail; programs: Progra
   return (
     <div style={{ borderTop: `1px solid ${ui.color.border}`, paddingTop: sp(2), marginTop: sp(2), display: "flex", flexDirection: "column", gap: sp(2) }}>
       <SectionTitle>{t("schedules")}</SectionTitle>
+
+      <PrayerAdjustForm key={detail.id} adjust={detail.adjust} screenId={detail.id} act={act} />
 
       {detail.scheduleWarnings.length > 0 && (
         <div style={{ fontSize: ui.text.xs, color: ui.color.danger }}>

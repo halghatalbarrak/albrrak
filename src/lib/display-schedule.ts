@@ -5,6 +5,10 @@
 export type Prayer = "FAJR" | "DHUHR" | "ASR" | "MAGHRIB" | "ISHA";
 export const PRAYERS: readonly Prayer[] = ["FAJR", "DHUHR", "ASR", "MAGHRIB", "ISHA"];
 
+/** تعديلٌ يدويّ بالدقائق لكل صلاة (إعدادات الشاشة)، افتراضيّه صفر. يُطبَّق فوق الحساب. */
+export type PrayerAdjust = Record<Prayer, number>;
+export const NO_ADJUST: PrayerAdjust = { FAJR: 0, DHUHR: 0, ASR: 0, MAGHRIB: 0, ISHA: 0 };
+
 const TZ = "Asia/Riyadh";
 
 /** "HH:MM" بتوقيت مكّة للحظةٍ مطلقة. */

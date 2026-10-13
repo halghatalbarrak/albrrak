@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { emitEvent } from "@/server/events";
 import { ValidationError } from "@/server/errors";
 import { programName } from "@/i18n/ar/gamification";
+import { PRAYERS, type PrayerAdjust } from "@/lib/display-schedule";
 import { revealActiveToken, type RevealResult } from "./screens";
 import { assertDisplayAdmin } from "./guard";
 import { listSchedules, scheduleWarnings, todayPreview, type ScheduleRow } from "./schedules";
@@ -18,6 +19,16 @@ export { assertDisplayAdmin };
 export async function revealScreenToken(actorUserId: string, screenId: string, db: PrismaClient = prisma): Promise<RevealResult> {
   await assertDisplayAdmin(actorUserId, db);
   return revealActiveToken(screenId, db);
+}
+
+/** يضبط التعديل اليدويّ بالدقائق لكل صلاة لشاشة (§١٠) — بين −١٢٠ و١٢٠. */
+export async function setPrayerAdjust(actorUserId: string, screenId: string, adjust: PrayerAdjust, db: PrismaClient = prisma): Promise<void> {
+  await assertDisplayAdmin(actorUserId, db);
+  for (const p of PRAYERS) {
+    const v = adjust[p];
+    if (!Number.isInteger(v) || v < -120 || v > 120) throw new ValidationError("تعديل الصلاة دقائقُ صحيحةٌ بين −١٢٠ و١٢٠.");
+  }
+  await db.displayScreen.update({ where: { id: screenId }, data: { adjFajr: adjust.FAJR, adjDhuhr: adjust.DHUHR, adjAsr: adjust.ASR, adjMaghrib: adjust.MAGHRIB, adjIsha: adjust.ISHA } });
 }
 
 const nextOrdinal = async (screenId: string, db: PrismaClient): Promise<number> => {
@@ -69,7 +80,7 @@ export async function addBackground(actorUserId: string, screenKind: DisplayScre
 export interface ScreenDetail {
   id: string; kind: DisplayScreenKind; nameAr: string; studentId: string | null; active: boolean; hasActiveToken: boolean;
   slides: { id: string; ordinal: number; kind: DisplaySlideKind; durationSec: number; programNameAr: string | null; imageUrl: string | null; active: boolean }[];
-  schedules: ScheduleRow[]; scheduleWarnings: string[]; schedulePreview: string[];
+  schedules: ScheduleRow[]; scheduleWarnings: string[]; schedulePreview: string[]; adjust: PrayerAdjust;
 }
 
 /** تفصيل شاشةٍ للمدير (الشرائح بأسماء البرامج، ووجود رمزٍ فعّال، والمواعيد مع تحذيرات التداخل ومعاينة اليوم). */
@@ -86,6 +97,7 @@ export async function getScreenDetail(screenId: string, db: PrismaClient = prism
     id: s.id, kind: s.kind, nameAr: s.nameAr, studentId: s.studentId, active: s.active, hasActiveToken: !!token,
     slides: slides.map((x) => ({ id: x.id, ordinal: x.ordinal, kind: x.kind, durationSec: x.durationSec, programNameAr: x.programId ? programName(keyById.get(x.programId) ?? "") : null, imageUrl: x.imageUrl, active: x.active })),
     schedules, scheduleWarnings: warnings, schedulePreview: preview,
+    adjust: { FAJR: s.adjFajr, DHUHR: s.adjDhuhr, ASR: s.adjAsr, MAGHRIB: s.adjMaghrib, ISHA: s.adjIsha },
   };
 }
 

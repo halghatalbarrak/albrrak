@@ -5,6 +5,13 @@
 -- AlterTable: نسخةٌ مشفَّرة للرمز (§٩) — تبقى null للرموز القديمة.
 ALTER TABLE "DisplayScreenToken" ADD COLUMN "tokenEnc" TEXT;
 
+-- AlterTable: تعديلٌ يدويّ بالدقائق لكل صلاة فوق حساب أمّ القرى (§١٠) — افتراضيّه ٠.
+ALTER TABLE "DisplayScreen" ADD COLUMN "adjFajr" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "DisplayScreen" ADD COLUMN "adjDhuhr" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "DisplayScreen" ADD COLUMN "adjAsr" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "DisplayScreen" ADD COLUMN "adjMaghrib" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "DisplayScreen" ADD COLUMN "adjIsha" INTEGER NOT NULL DEFAULT 0;
+
 -- CreateEnum
 CREATE TYPE "DisplayScheduleStart" AS ENUM ('PRAYER', 'FIXED');
 

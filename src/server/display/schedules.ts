@@ -11,7 +11,8 @@ import {
   type Prayer,
   type ScheduleDef,
 } from "@/lib/display-schedule";
-import { madinahPrayerMs, madinahPrayerTimes } from "./prayer-times";
+import { madinahPrayerMs, madinahPrayerTimesAdjusted } from "./prayer-times";
+import { screenPrayerAdjust } from "./screens";
 import { assertDisplayAdmin } from "./guard";
 
 // ═══════════════ جدولة الشاشة بأوقات الصلاة (DISPLAY_SCREEN_RULES §١٠) ═══════════════
@@ -171,8 +172,9 @@ function contentLabel(r: DisplaySchedule, keyById: Map<string, string>): string 
 /** معاينة نصّيّة لمواعيد اليوم (§١٠): «العصر 15:24 ← 15:34–16:04: مراقي». الأرقام تُشرَّق في العرض. */
 export async function todayPreview(screenId: string, db: PrismaClient = prisma, now: Date = new Date()): Promise<string[]> {
   const dateISO = makkahDayDate(now);
-  const prayers = madinahPrayerTimes(dateISO);
-  const prayerMs = madinahPrayerMs(dateISO);
+  const adjust = await screenPrayerAdjust(screenId, db);
+  const prayers = madinahPrayerTimesAdjusted(dateISO, adjust);
+  const prayerMs = madinahPrayerMs(dateISO, adjust);
   const mid = makkahDayBounds(dateISO).start.getTime();
   const rows = await db.displaySchedule.findMany({ where: { screenId, active: true }, orderBy: { ordinal: "asc" } });
   const keyById = await programKeys(rows, db);
@@ -208,9 +210,10 @@ export async function scheduleWarnings(screenId: string, db: PrismaClient = pris
   const seen = new Set<string>();
   const warnings: string[] = [];
   const base = makkahDayDate(now);
+  const adjust = await screenPrayerAdjust(screenId, db);
   for (let k = 0; k < 7; k++) {
     const dateISO = addDaysISO(base, k);
-    const prayerMs = madinahPrayerMs(dateISO);
+    const prayerMs = madinahPrayerMs(dateISO, adjust);
     const mid = makkahDayBounds(dateISO).start.getTime();
     const wins = rows
       .map((r) => ({ r, w: resolveWindow(toScheduleDef(r), dateISO, prayerMs, mid) }))

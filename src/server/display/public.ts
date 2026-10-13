@@ -14,7 +14,7 @@ import { hhmmMakkah, resolveWindow, PRAYERS, type Prayer } from "@/lib/display-s
 import { resolveScreenByToken, type ResolvedScreen } from "./screens";
 import { rankCircle, rankProgram, type RankRow } from "./ranking";
 import { withinRateLimit } from "./rate-limit";
-import { madinahPrayerMs, madinahPrayerTimes } from "./prayer-times";
+import { madinahPrayerMs, madinahPrayerTimesAdjusted } from "./prayer-times";
 import { toScheduleDef } from "./schedules";
 
 // ═══════════════ القراءة العامّة بالرمز (ش٢) ═══════════════
@@ -173,8 +173,8 @@ async function buildScheduleSlides(screen: ResolvedScreen, r: DisplaySchedule, d
 async function resolveToday(screen: ResolvedScreen, db: PrismaClient, now: Date) {
   const dateISO = makkahDayDate(now);
   const bounds = makkahDayBounds(dateISO);
-  const prayers = madinahPrayerTimes(dateISO);
-  const prayerMs = madinahPrayerMs(dateISO);
+  const prayers = madinahPrayerTimesAdjusted(dateISO, screen.adjust);
+  const prayerMs = madinahPrayerMs(dateISO, screen.adjust);
   const rows = await db.displaySchedule.findMany({ where: { screenId: screen.id, active: true }, orderBy: { ordinal: "asc" } });
   const schedules: { startMs: number; endMs: number; slides: unknown[] }[] = [];
   for (const r of rows) {
