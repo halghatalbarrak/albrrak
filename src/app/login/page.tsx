@@ -5,14 +5,10 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { canonicalEmail, legacyEmail } from "@/lib/phone";
 import { Button, Card, Field, inputStyle, NabawiBackdrop, ui, sp } from "@/components/ui";
 
 const BRAND = "حلقات الشيخ محمد البراك";
-
-// البريد الاصطناعي — نفس نمط م١ (الجوال ← u<digits>@albrrak.app).
-function syntheticEmail(phone: string): string {
-  return `u${phone.replace(/\D/g, "")}@albrrak.app`;
-}
 
 export default function LoginPage() {
   const [phone, setPhone] = useState("");
@@ -25,14 +21,18 @@ export default function LoginPage() {
     setErr(null);
     setBusy(true);
     try {
-      const { error } = await supabaseBrowser().auth.signInWithPassword({
-        email: syntheticEmail(phone),
-        password,
-      });
-      if (error) {
-        setErr("تعذّر الدخول — تحقّق من الجوال وكلمة السر.");
-      } else {
+      // تُجرَّب الصيغة الموحّدة أوّلاً (الحسابات الجديدة)، ثمّ الخام (القديمة) — فتقبل الصيغتين.
+      const sb = supabaseBrowser();
+      const emails = [...new Set([canonicalEmail(phone), legacyEmail(phone)])];
+      let ok = false;
+      for (const email of emails) {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (!error) { ok = true; break; }
+      }
+      if (ok) {
         window.location.href = "/me";
+      } else {
+        setErr("تعذّر الدخول — تحقّق من الجوال وكلمة السر.");
       }
     } catch {
       setErr("تعذّر الاتصال بخادم الدخول.");

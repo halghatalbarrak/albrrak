@@ -60,6 +60,29 @@ describe("إضافة كادر", () => {
     ).rejects.toBeInstanceOf(ValidationError);
   });
 
+  it("نفس الرقم بصيغتين مختلفتين (05… ثمّ +9665…) ← يُكشف التكرار برسالةٍ واضحة (لا «خطأ داخلي»)", async () => {
+    const t = await tech();
+    const ok = await createStaff(t.id, { name: "أسامة", phone: "0564099173", roles: [Role.TEACHER] }, prisma, fakeAuthProvider);
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: ok.userId } });
+    expect(user.phone).toBe("+966564099173"); // يُخزَّن موحّداً
+    const err = await createStaff(t.id, { name: "أسامة", phone: "+966564099173", roles: [Role.TEACHER] }, prisma, fakeAuthProvider)
+      .catch((e) => e);
+    expect(err).toBeInstanceOf(ValidationError);
+    expect((err as ValidationError).message).toContain("مسجّل");
+  });
+
+  it("فشلُ إنشاء المصادقة بتكرارٍ (HTTP 422) ← رسالةٌ واضحةٌ لا «خطأ داخلي»", async () => {
+    const t = await tech();
+    const dupProvider = {
+      async createAuthUser() { const e = new Error("User already registered"); (e as { status?: number }).status = 422; throw e; },
+      async setPassword() {},
+    };
+    const err = await createStaff(t.id, { name: "مكرّر", phone: "0533000111", roles: [Role.TEACHER] }, prisma, dupProvider)
+      .catch((e) => e);
+    expect(err).toBeInstanceOf(ValidationError);
+    expect((err as ValidationError).message).toContain("مسجّل");
+  });
+
   it("مشرفٌ عامّ لا ينشئ مديراً تقنيّاً (أعلى من دوره) ← يُرفض", async () => {
     const s = await superAdmin();
     await expect(

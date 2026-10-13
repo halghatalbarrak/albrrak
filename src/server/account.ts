@@ -1,11 +1,16 @@
 import { type Gender, type Prisma, type PrismaClient, Role } from "@prisma/client";
 import { type AuthProvider, defaultAuthProvider } from "./auth-provider";
+import { normalizeSaudiPhone, canonicalEmail, emailVariants } from "@/lib/phone";
 import { AuthorizationError, ValidationError } from "./errors";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
+export { normalizeSaudiPhone } from "@/lib/phone"; // إعادة تصديرٍ للتوافق مع مستورديه من «./account»
+
 // حيلة المصادقة (BUILD_PLAN §٠): الجوال ← بريد اصطناعي داخلي.
 // «الحساب = إمكان الدخول». دون ١٣ لا دخول له (م٤) وإن كان له سجلّ User.
+// (لا يُوحَّد الجوال هنا عمداً — حفظاً لتطابق الحسابات القائمة المخزّنة بصيغتها؛ توحيد صيغة
+//  الكادر يقع في createStaff وحده عبر normalizeSaudiPhone، بلا مساسٍ بالوليّ/الطالب.)
 export function syntheticEmail(phone: string): string {
   const digits = phone.replace(/\D/g, "");
   if (digits.length < 6) {
@@ -48,9 +53,9 @@ export async function findOrCreateGuardian(
   db: Db,
   args: { guardianPhone: string; guardianGender: Gender },
 ): Promise<{ id: string }> {
-  const email = syntheticEmail(args.guardianPhone);
-  const existing = await db.user.findUnique({
-    where: { email },
+  // المقارنة تقبل الصيغتين (الموحّدة والخام) فيُطابَق الوليّ القائم مهما كانت صيغة جواله المخزّنة.
+  const existing = await db.user.findFirst({
+    where: { email: { in: emailVariants(args.guardianPhone) } },
     select: { id: true, roles: true },
   });
   if (existing) {
@@ -62,13 +67,15 @@ export async function findOrCreateGuardian(
     }
     return { id: existing.id };
   }
+  // حسابٌ جديد ⟵ يُكتب بالصيغة الموحّدة (E.164 للسعوديّ).
+  const canon = normalizeSaudiPhone(args.guardianPhone);
   const created = await db.user.create({
     data: {
       nameAsInId: `ولي أمر (${args.guardianPhone})`,
       gender: args.guardianGender,
       roles: [Role.GUARDIAN],
-      email,
-      phone: args.guardianPhone,
+      email: canonicalEmail(args.guardianPhone),
+      phone: canon.startsWith("966") ? `+${canon}` : args.guardianPhone,
     },
     select: { id: true },
   });

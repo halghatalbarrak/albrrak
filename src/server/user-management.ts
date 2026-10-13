@@ -9,7 +9,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 import { type AuthProvider, defaultAuthProvider } from "./auth-provider";
-import { syntheticEmail } from "./account";
+import { syntheticEmail, normalizeSaudiPhone } from "./account";
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
 
@@ -145,12 +145,33 @@ export async function createStaff(
     throw new AuthorizationError("لا تمنح دوراً أعلى من دورك.");
   }
 
-  const email = syntheticEmail(args.phone); // يرمي إن كان الجوال غير صالح
-  const clash = await db.user.findUnique({ where: { email }, select: { id: true } });
-  if (clash) throw new ValidationError("هذا الجوال مستعمَلٌ لحسابٍ قائم.");
+  // توحيد صيغة الجوال (05… / +9665… / 009665…) فتتطابق الصيغ المختلفة لنفس الرقم (منع ازدواج).
+  const rawPhone = args.phone.trim();
+  const canon = normalizeSaudiPhone(rawPhone); // 9665XXXXXXXX للسعوديّ
+  const phoneStored = canon.startsWith("966") ? `+${canon}` : rawPhone; // E.164 للسعوديّ، وإلا كما أُدخل
+  const email = syntheticEmail(canon); // بريدٌ من الصيغة الموحّدة (يرمي إن كان الجوال غير صالح)
 
-  // إنشاء مستخدم المصادقة أوّلاً (شبكة، خارج المعاملة).
-  const { authId } = await provider.createAuthUser({ email, phone: args.phone });
+  // كشف التكرار بكلّ صيغه (البريد الموحّد والخام، وصيغ الجوال) ⟵ رسالةٌ واضحة لا «خطأ داخلي».
+  const phoneVariants = [...new Set([rawPhone, canon, `+${canon}`, canon.startsWith("966") ? "0" + canon.slice(3) : canon])];
+  const clash = await db.user.findFirst({
+    where: { OR: [{ email }, { email: syntheticEmail(rawPhone) }, { phone: { in: phoneVariants } }] },
+    select: { id: true },
+  });
+  if (clash) throw new ValidationError("هذا الجوال مسجّل لمستخدم آخر.");
+
+  // إنشاء مستخدم المصادقة أوّلاً (شبكة، خارج المعاملة). الفشل غالباً تكرارٌ في المصادقة
+  // (الجوال مسجَّلٌ بصيغةٍ أخرى) ⟵ نترجمه لرسالةٍ واضحة، ونُسجّل الخطأ الحقيقيّ للتشخيص.
+  let authId: string;
+  try {
+    ({ authId } = await provider.createAuthUser({ email, phone: phoneStored }));
+  } catch (e) {
+    const info = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+    console.error(`[user-management] createAuthUser فشل (phone=${phoneStored}): ${info}`);
+    const status = (e as { status?: number }).status;
+    const duplicate = status === 409 || status === 422 || /exist|registered|duplicate|already/i.test(info);
+    if (duplicate) throw new ValidationError("هذا الجوال مسجّل لمستخدم آخر.");
+    throw e; // غير التكرار: يبقى ٥٠٠ لكنّه مُسجَّلٌ بتفصيله أعلاه (لإصلاح السبب)
+  }
 
   const token = newToken();
   try {
@@ -159,7 +180,7 @@ export async function createStaff(
         data: {
           nameAsInId: name,
           gender: "MALE", // حقلٌ إلزاميّ؛ الكادر لا يُعرَض جنسه — قيمةٌ محايدة افتراضيّة
-          phone: args.phone,
+          phone: phoneStored,
           email,
           authId,
           roles: args.roles,
