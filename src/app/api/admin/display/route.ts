@@ -2,7 +2,8 @@ import { DisplayScreenKind, Role } from "@prisma/client";
 
 import { requireRoles } from "@/server/auth";
 import { createScreen, issueToken, listScreens, revokeToken } from "@/server/display/screens";
-import { addProgramSlide, getScreenDetail, listProgramsForSlides, reorderSlides, searchStudents, setSlide } from "@/server/display/admin";
+import { addProgramSlide, getScreenDetail, listProgramsForSlides, reorderSlides, revealScreenToken, searchStudents, setSlide } from "@/server/display/admin";
+import { addSchedule, reorderSchedules, setSchedule, type ScheduleInput } from "@/server/display/schedules";
 import { errorResponse } from "@/server/http";
 import { ValidationError } from "@/server/errors";
 
@@ -42,6 +43,23 @@ export async function POST(req: Request) {
       case "revokeToken": {
         if (typeof b.screenId !== "string") throw new ValidationError("الشاشة مطلوبة.");
         return Response.json(await revokeToken(b.screenId));
+      }
+      case "revealLink": {
+        if (typeof b.screenId !== "string") throw new ValidationError("الشاشة مطلوبة.");
+        return Response.json(await revealScreenToken(actor.id, b.screenId)); // { ok, token } | { ok:false, reason }
+      }
+      case "addSchedule": {
+        if (typeof b.screenId !== "string" || typeof b.input !== "object" || b.input === null) throw new ValidationError("بيانات الموعد مطلوبة.");
+        return Response.json(await addSchedule(actor.id, b.screenId, b.input as ScheduleInput), { status: 201 });
+      }
+      case "setSchedule": {
+        if (typeof b.scheduleId !== "string" || typeof b.input !== "object" || b.input === null) throw new ValidationError("بيانات الموعد مطلوبة.");
+        return Response.json(await setSchedule(actor.id, b.scheduleId, b.input as Partial<ScheduleInput>));
+      }
+      case "reorderSchedules": {
+        if (typeof b.screenId !== "string" || !Array.isArray(b.orderedIds)) throw new ValidationError("الترتيب مطلوب.");
+        await reorderSchedules(actor.id, b.screenId, b.orderedIds.filter((x): x is string => typeof x === "string"));
+        return Response.json({ ok: true });
       }
       case "addProgramSlide": {
         if (typeof b.screenId !== "string" || typeof b.programId !== "string") throw new ValidationError("الشاشة والبرنامج مطلوبان.");

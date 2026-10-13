@@ -1474,11 +1474,14 @@ model DisplayScreen {
   @@index([kind, active])
 }
 
-// رمز الشاشة — append-only: يُلغى (revokedAt) ويُجدَّد بإنشاء رمزٍ جديد. يُخزَّن sha256 فقط.
+// رمز الشاشة — append-only: يُلغى (revokedAt) ويُجدَّد بإنشاء رمزٍ جديد.
+// التحقّق بـ sha256 (tokenHash). وإلى جانبه نسخةٌ مشفَّرة (tokenEnc) للنسخ (§٩) — لا تُفكّ إلّا لمدير
+// الشاشات. الرموز القديمة بلا tokenEnc (null) لا تُنسَخ (يُجدَّد الرابط لتفعيل النسخ).
 model DisplayScreenToken {
   id        String    @id @default(cuid())
   screenId  String
-  tokenHash String    @unique // sha256(token) — لا نصّ صريح إطلاقاً
+  tokenHash String    @unique // sha256(token) — للتحقّق فقط
+  tokenEnc  String? // AES-256-GCM(token) بمفتاح DISPLAY_TOKEN_KEY — null للرموز القديمة
   createdAt DateTime  @default(now())
   revokedAt DateTime?
 
@@ -1518,4 +1521,51 @@ model DisplayRateHit {
   count       Int      @default(0)
 
   @@unique([rkey, windowStart])
+}
+
+// ───────────── جدولة الشاشة بأوقات الصلاة (DISPLAY_SCREEN_RULES §١٠) ─────────────
+
+enum DisplayScheduleStart {
+  PRAYER // بعد/قبل صلاةٍ بعددِ دقائق
+  FIXED // ساعةٌ ثابتة بتوقيت مكّة (HH:MM)
+}
+
+enum DisplayPrayer {
+  FAJR
+  DHUHR
+  ASR
+  MAGHRIB
+  ISHA
+}
+
+enum DisplayPrayerRel {
+  AFTER // بعد الصلاة
+  BEFORE // قبل الصلاة
+}
+
+enum DisplayScheduleContent {
+  PROGRAM // برنامجٌ بعينه
+  SLIDES // شرائح مختارة من شرائح الشاشة
+}
+
+// موعدٌ مجدوَل لشاشة — append-only: التعطيل بـ active لا الحذف. الأعلى ترتيباً (ordinal أصغر) يغلب
+// عند التداخل. أوقات الصلاة للمدينة المنوّرة تُحسب على الخادم (prayer-times.ts) وتُرسل نوافذَ اليوم.
+model DisplaySchedule {
+  id          String                 @id @default(cuid())
+  screenId    String
+  ordinal     Int // الأولويّة عند التداخل: الأصغر يغلب
+  startMode   DisplayScheduleStart
+  prayer      DisplayPrayer? // لـ PRAYER
+  rel         DisplayPrayerRel? // لـ PRAYER: بعد/قبل
+  offsetMin   Int                    @default(0) // لـ PRAYER: دقائق الإزاحة (موجبة)
+  fixedTime   String? // لـ FIXED: "HH:MM" بتوقيت مكّة
+  durationMin Int // مدّة الموعد بالدقائق
+  contentMode DisplayScheduleContent
+  programId   String? // لـ PROGRAM
+  slideIds    String? // لـ SLIDES: معرّفات الشرائح المختارة مفصولةً بفواصل (بلا FK)
+  daysMask    Int                    @default(127) // بتات أيّام الأسبوع (bit0=الأحد … bit6=السبت)؛ ١٢٧=كلّها
+  active      Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+
+  @@index([screenId, active])
 }

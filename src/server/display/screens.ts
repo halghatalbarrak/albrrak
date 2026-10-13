@@ -5,6 +5,7 @@ import { DisplayScreenKind, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "@/server/events";
 import { ValidationError } from "@/server/errors";
+import { decryptDisplayToken, displayTokenKeyAvailable, encryptDisplayToken } from "./token-crypto";
 
 // ═══════════════ الشاشات ورموزها (ش١) ═══════════════
 //
@@ -32,12 +33,29 @@ export async function issueToken(screenId: string, db: PrismaClient = prisma): P
   const screen = await db.displayScreen.findUnique({ where: { id: screenId }, select: { id: true } });
   if (!screen) throw new ValidationError("شاشةٌ غير موجودة.");
   const token = newToken();
+  // §٩: نحفظ نسخةً مشفَّرة للنسخ إن توفّر المفتاح؛ وإلّا يبقى tokenEnc=null (يُجدَّد لاحقاً لتفعيل النسخ).
+  const tokenEnc = displayTokenKeyAvailable() ? encryptDisplayToken(token) : null;
   await db.$transaction(async (tx) => {
     await tx.displayScreenToken.updateMany({ where: { screenId, revokedAt: null }, data: { revokedAt: new Date() } });
-    await tx.displayScreenToken.create({ data: { screenId, tokenHash: hashToken(token) } });
+    await tx.displayScreenToken.create({ data: { screenId, tokenHash: hashToken(token), tokenEnc } });
     await emitEvent(tx, { type: "DISPLAY_TOKEN_ISSUED", subjectType: "DisplayScreen", subjectId: screenId, payload: {} });
   });
   return { token };
+}
+
+export type RevealResult = { ok: true; token: string } | { ok: false; reason: "none" | "legacy" | "keyMissing" };
+
+/**
+ * يسترجع الرمز الصريح للرابط الفعّال (§٩) من نسخته المشفَّرة — للنسخ.
+ * none: لا رمزٌ فعّال. legacy: رمزٌ قديمٌ بلا نسخةٍ مشفَّرة (يُجدَّد). keyMissing: المفتاح غير مضبوط.
+ * الصلاحية تُفرَض في الطبقة الأعلى (revealScreenToken في admin.ts). لا يُفكّ هنا إلّا لمن مرّ بذلك الحارس.
+ */
+export async function revealActiveToken(screenId: string, db: PrismaClient = prisma): Promise<RevealResult> {
+  const row = await db.displayScreenToken.findFirst({ where: { screenId, revokedAt: null }, orderBy: { createdAt: "desc" }, select: { tokenEnc: true } });
+  if (!row) return { ok: false, reason: "none" };
+  if (!row.tokenEnc) return { ok: false, reason: "legacy" };
+  if (!displayTokenKeyAvailable()) return { ok: false, reason: "keyMissing" };
+  return { ok: true, token: decryptDisplayToken(row.tokenEnc) };
 }
 
 /** يُلغي الرمز الفعّال للشاشة (لا حذف). */
@@ -60,12 +78,20 @@ export async function resolveScreenByToken(token: string, db: PrismaClient = pri
   return { id: screen.id, kind: screen.kind, nameAr: screen.nameAr, studentId: screen.studentId, refreshSec: screen.refreshSec };
 }
 
-export interface ScreenRow { id: string; kind: DisplayScreenKind; nameAr: string; studentId: string | null; active: boolean; hasActiveToken: boolean }
+/** حالة نسخ رابط الشاشة (§٩): جاهز، أو قديمٌ يُجدَّد، أو المفتاح غائب، أو لا رابط. */
+export type CopyStatus = "ready" | "legacy" | "keyMissing" | "none";
+export interface ScreenRow { id: string; kind: DisplayScreenKind; nameAr: string; studentId: string | null; active: boolean; hasActiveToken: boolean; copy: CopyStatus }
 
-/** قائمة الشاشات للمدير (بلا كشف الرمز — نعرض فقط ألهُ رمزٌ فعّال). */
+/** قائمة الشاشات للمدير (بلا كشف الرمز — نعرض فقط ألهُ رمزٌ فعّال وحالة النسخ). */
 export async function listScreens(db: PrismaClient = prisma): Promise<ScreenRow[]> {
   const screens = await db.displayScreen.findMany({ orderBy: { createdAt: "desc" } });
-  const active = await db.displayScreenToken.findMany({ where: { revokedAt: null }, select: { screenId: true } });
-  const withToken = new Set(active.map((a) => a.screenId));
-  return screens.map((s) => ({ id: s.id, kind: s.kind, nameAr: s.nameAr, studentId: s.studentId, active: s.active, hasActiveToken: withToken.has(s.id) }));
+  const active = await db.displayScreenToken.findMany({ where: { revokedAt: null }, select: { screenId: true, tokenEnc: true } });
+  const encByScreen = new Map(active.map((a) => [a.screenId, a.tokenEnc]));
+  const keyOk = displayTokenKeyAvailable();
+  return screens.map((s) => {
+    const has = encByScreen.has(s.id);
+    const enc = encByScreen.get(s.id) ?? null;
+    const copy: CopyStatus = !has ? "none" : !enc ? "legacy" : !keyOk ? "keyMissing" : "ready";
+    return { id: s.id, kind: s.kind, nameAr: s.nameAr, studentId: s.studentId, active: s.active, hasActiveToken: has, copy };
+  });
 }

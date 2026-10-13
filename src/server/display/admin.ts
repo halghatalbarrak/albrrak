@@ -1,19 +1,23 @@
-import { DisplayAssetType, DisplayScreenKind, DisplaySlideKind, Role, type PrismaClient } from "@prisma/client";
+import { DisplayAssetType, DisplayScreenKind, DisplaySlideKind, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "@/server/events";
-import { AuthorizationError, ValidationError } from "@/server/errors";
+import { ValidationError } from "@/server/errors";
 import { programName } from "@/i18n/ar/gamification";
+import { revealActiveToken, type RevealResult } from "./screens";
+import { assertDisplayAdmin } from "./guard";
+import { listSchedules, scheduleWarnings, todayPreview, type ScheduleRow } from "./schedules";
 
 // ═══════════════ إدارة الشاشات (ش٣) ═══════════════
 // مدير المنصّة يُنشئ الشاشات ويربط الرموز ويرتّب الشرائح ويرفع الصور والخلفيّات. لا حذف
 // (التعطيل بـactive، والخلفيّة append-only). إنشاء الشاشة/الرمز وإلغاؤه في screens.ts.
 
-const PLATFORM_MANAGE: readonly Role[] = [Role.SUPER_ADMIN, Role.CIRCLE_MANAGER];
-export async function assertDisplayAdmin(actorUserId: string, db: PrismaClient = prisma): Promise<void> {
-  const u = await db.user.findUnique({ where: { id: actorUserId }, select: { roles: true } });
-  if (!u) throw new AuthorizationError("مستخدم غير موجود.");
-  if (!u.roles.some((r) => PLATFORM_MANAGE.includes(r))) throw new AuthorizationError("إدارة الشاشات لمدير المنصّة.");
+export { assertDisplayAdmin };
+
+/** يسترجع رمز الرابط للنسخ (§٩) — خلف حارس إدارة الشاشات. غير المخوَّل لا يحصل عليه. */
+export async function revealScreenToken(actorUserId: string, screenId: string, db: PrismaClient = prisma): Promise<RevealResult> {
+  await assertDisplayAdmin(actorUserId, db);
+  return revealActiveToken(screenId, db);
 }
 
 const nextOrdinal = async (screenId: string, db: PrismaClient): Promise<number> => {
@@ -65,9 +69,10 @@ export async function addBackground(actorUserId: string, screenKind: DisplayScre
 export interface ScreenDetail {
   id: string; kind: DisplayScreenKind; nameAr: string; studentId: string | null; active: boolean; hasActiveToken: boolean;
   slides: { id: string; ordinal: number; kind: DisplaySlideKind; durationSec: number; programNameAr: string | null; imageUrl: string | null; active: boolean }[];
+  schedules: ScheduleRow[]; scheduleWarnings: string[]; schedulePreview: string[];
 }
 
-/** تفصيل شاشةٍ للمدير (الشرائح بأسماء البرامج، ووجود رمزٍ فعّال). */
+/** تفصيل شاشةٍ للمدير (الشرائح بأسماء البرامج، ووجود رمزٍ فعّال، والمواعيد مع تحذيرات التداخل ومعاينة اليوم). */
 export async function getScreenDetail(screenId: string, db: PrismaClient = prisma): Promise<ScreenDetail | null> {
   const s = await db.displayScreen.findUnique({ where: { id: screenId } });
   if (!s) return null;
@@ -76,9 +81,11 @@ export async function getScreenDetail(screenId: string, db: PrismaClient = prism
   const progIds = [...new Set(slides.filter((x) => x.programId).map((x) => x.programId!))];
   const progs = progIds.length ? await db.program.findMany({ where: { id: { in: progIds } }, select: { id: true, key: true } }) : [];
   const keyById = new Map(progs.map((p) => [p.id, p.key]));
+  const [schedules, warnings, preview] = await Promise.all([listSchedules(screenId, db), scheduleWarnings(screenId, db), todayPreview(screenId, db)]);
   return {
     id: s.id, kind: s.kind, nameAr: s.nameAr, studentId: s.studentId, active: s.active, hasActiveToken: !!token,
     slides: slides.map((x) => ({ id: x.id, ordinal: x.ordinal, kind: x.kind, durationSec: x.durationSec, programNameAr: x.programId ? programName(keyById.get(x.programId) ?? "") : null, imageUrl: x.imageUrl, active: x.active })),
+    schedules, scheduleWarnings: warnings, schedulePreview: preview,
   };
 }
 
