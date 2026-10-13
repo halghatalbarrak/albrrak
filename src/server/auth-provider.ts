@@ -27,7 +27,11 @@ export const supabaseAuthProvider: AuthProvider = {
       body: JSON.stringify({ email, phone, email_confirm: true }),
     });
     if (!res.ok) {
-      throw new Error(`فشل إنشاء مستخدم المصادقة: HTTP ${res.status}`);
+      // نقرأ جسم الخطأ لتشخيصٍ حقيقيّ (التكرار يظهر هنا)، ونرفق رمز الحالة لتمييزه.
+      const text = await res.text().catch(() => "");
+      const err = new Error(`فشل إنشاء مستخدم المصادقة: HTTP ${res.status}${text ? " — " + text.slice(0, 300) : ""}`);
+      (err as { status?: number }).status = res.status;
+      throw err;
     }
     const body = (await res.json()) as { id: string };
     return { authId: body.id };
