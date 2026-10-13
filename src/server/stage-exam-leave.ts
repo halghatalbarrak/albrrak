@@ -12,6 +12,7 @@ import {
 import { prisma } from "@/lib/prisma";
 
 import { canExamine } from "./examiner-eligibility";
+import { loadMaraqiPhases, maraqiFrontierKey } from "./maraqi-phase";
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
 
@@ -59,53 +60,41 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 // ─────────── البدء التلقائيّ (داخل معاملة الحصاد) ───────────
 
 /**
- * يبدأ إجازة اختبار المرحلة تلقائيًّا إن اكتمل بهذا الحزب آخرُ أحزاب مرحلته الأصليّة (كلها
- * COMPLETED). يُستدعى داخل معاملة recordHasad (عبر autoTransitionSubStage). idempotent:
- * إجازةٌ واحدةٌ لكل (طالب، مرحلة). لا يفعل شيئًا لغير المرحلة الفرعية أو لمرحلةٍ لم تكتمل.
+ * يبدأ إجازة اختبار المرحلة تلقائيًّا حين تبلغ **جبهة الطالب** نهايةَ سورة حدّ مرحلةٍ (القرار أ —
+ * لا باكتمال أحزابها). يُستدعى داخل معاملة recordHifz بعد تحديث الجبهة. idempotent: إجازةٌ واحدةٌ
+ * لكل (طالب، مرحلة). يبدأ إجازةَ **أوّل** مرحلةٍ بلغ حدَّها ولا إجازةَ لها بعد (واحدةً لكلّ نداء).
+ * الحصاد بالحزب لا يُمَسّ؛ والحزب الذي يقطعه الحدّ يُحصد لاحقًا في المرحلة التالية (لا يشترطه الاختبار).
  */
 export async function maybeStartStageExamLeave(
   tx: Prisma.TransactionClient,
-  args: { studentId: string; completedStageId: string; actorId: string },
+  args: { studentId: string; actorId: string },
 ): Promise<void> {
-  const stage = await tx.stage.findUnique({
-    where: { id: args.completedStageId },
-    select: { kind: true, parentId: true },
-  });
-  if (!stage || stage.kind !== StageKind.SUB_STAGE || !stage.parentId) return;
-  const mainStageId = stage.parentId;
+  const frontier = await maraqiFrontierKey(tx, args.studentId);
+  if (frontier === null) return;
+  const phases = await loadMaraqiPhases(tx);
 
-  const siblings = await tx.stage.findMany({
-    where: { parentId: mainStageId, kind: StageKind.SUB_STAGE },
-    select: { id: true },
-  });
-  if (siblings.length === 0) return;
-  const completed = await tx.stageProgress.count({
-    where: {
-      studentId: args.studentId,
-      stageId: { in: siblings.map((s) => s.id) },
-      state: ProgressState.COMPLETED,
-    },
-  });
-  if (completed < siblings.length) return; // ما زال في المرحلة أحزابٌ غير مكتملة
+  for (const phase of phases) {
+    if (frontier < phase.endKey) break; // لم تبلغ الجبهة حدّ هذه المرحلة (ولا ما بعدها — مرتّبةٌ تصاعدًا)
+    const existing = await tx.stageExamLeave.findUnique({
+      where: { studentId_mainStageId: { studentId: args.studentId, mainStageId: phase.id } },
+      select: { id: true },
+    });
+    if (existing) continue; // لهذه المرحلة إجازةٌ سلفًا — انظر التي بعدها
 
-  const existing = await tx.stageExamLeave.findUnique({
-    where: { studentId_mainStageId: { studentId: args.studentId, mainStageId } },
-    select: { id: true },
-  });
-  if (existing) return; // بدأت الإجازة سلفًا — لا تكرار
-
-  const startedOn = toUtcDateOnly(new Date());
-  const baseEndsOn = addCalendarDays(startedOn, STAGE_EXAM_LEAVE_DAYS);
-  await tx.stageExamLeave.create({
-    data: { studentId: args.studentId, mainStageId, startedOn, baseEndsOn, effectiveEndsOn: baseEndsOn },
-  });
-  await emitEvent(tx, {
-    type: "STAGE_EXAM_LEAVE_STARTED",
-    subjectType: "Student",
-    subjectId: args.studentId,
-    actorId: args.actorId,
-    payload: { mainStageId, baseEndsOn: iso(baseEndsOn) },
-  });
+    const startedOn = toUtcDateOnly(new Date());
+    const baseEndsOn = addCalendarDays(startedOn, STAGE_EXAM_LEAVE_DAYS);
+    await tx.stageExamLeave.create({
+      data: { studentId: args.studentId, mainStageId: phase.id, startedOn, baseEndsOn, effectiveEndsOn: baseEndsOn },
+    });
+    await emitEvent(tx, {
+      type: "STAGE_EXAM_LEAVE_STARTED",
+      subjectType: "Student",
+      subjectId: args.studentId,
+      actorId: args.actorId,
+      payload: { mainStageId: phase.id, baseEndsOn: iso(baseEndsOn) },
+    });
+    return; // إجازةٌ واحدةٌ لكلّ نداء
+  }
 }
 
 // ─────────── التأجيل ───────────
