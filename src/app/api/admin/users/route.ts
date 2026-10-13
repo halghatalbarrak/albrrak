@@ -1,4 +1,4 @@
-import { Role } from "@prisma/client";
+import { MuddakirStaffRole, Role } from "@prisma/client";
 
 import {
   createStaff,
@@ -6,6 +6,7 @@ import {
   setActive,
   setRoles,
 } from "@/server/user-management";
+import { setMuddakirStaffRoles } from "@/server/muddakir-requests";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
 import { ValidationError } from "@/server/errors";
@@ -16,6 +17,9 @@ const ADMINS = [Role.SUPER_ADMIN, Role.TECH_ADMIN];
 
 const isRoleArray = (v: unknown): v is Role[] =>
   Array.isArray(v) && v.every((r) => typeof r === "string" && (Object.values(Role) as string[]).includes(r));
+
+const isMuddakirRoleArray = (v: unknown): v is MuddakirStaffRole[] =>
+  Array.isArray(v) && v.every((r) => typeof r === "string" && (Object.values(MuddakirStaffRole) as string[]).includes(r));
 
 // GET /api/admin/users — كل المستخدمين.
 export async function GET(req: Request) {
@@ -36,7 +40,14 @@ export async function POST(req: Request) {
     if (typeof b.phone !== "string") throw new ValidationError("الجوال مطلوب.");
     if (!isRoleArray(b.roles)) throw new ValidationError("الأدوار مطلوبة.");
     const res = await createStaff(actor.id, { name: b.name, phone: b.phone, roles: b.roles });
-    return Response.json(res, { status: 201 });
+    // أدوار المدّكر (اختياريّة) تُطبَّق بعد الإنشاء، في نفس الحفظ. فشلها لا يُلغي إنشاء الحساب.
+    let muddakir: { applied: MuddakirStaffRole[]; requested: MuddakirStaffRole[] } | undefined;
+    let muddakirError: string | undefined;
+    if (isMuddakirRoleArray(b.muddakirRoles) && b.muddakirRoles.length > 0) {
+      try { muddakir = await setMuddakirStaffRoles({ actorUserId: actor.id, targetUserId: res.userId, desired: b.muddakirRoles }); }
+      catch (e) { muddakirError = e instanceof Error ? e.message : "تعذّر تعيين أدوار المدّكر."; }
+    }
+    return Response.json({ ...res, muddakir, muddakirError }, { status: 201 });
   } catch (e) {
     return errorResponse(e);
   }
@@ -51,10 +62,18 @@ export async function PATCH(req: Request) {
     if (typeof b.active === "boolean") {
       return Response.json(await setActive(actor.id, b.userId, b.active));
     }
-    if (isRoleArray(b.roles)) {
-      return Response.json(await setRoles(actor.id, b.userId, b.roles));
+    // حفظٌ واحد للأدوار العامّة وأدوار المدّكر معاً. الأدوار العامّة أوّلاً؛ فإن فشلت لم يُمَسّ المدّكر
+    // (٤٠٠). وإن نجحت ثمّ فشل المدّكر، تُحفظ العامّة ويُبلَّغ بخطأ المدّكر صراحةً (لا يضيع المحفوظ).
+    const hasRoles = isRoleArray(b.roles);
+    const hasMuddakir = isMuddakirRoleArray(b.muddakirRoles);
+    if (!hasRoles && !hasMuddakir) throw new ValidationError("لا تغيير معروف (active أو roles أو muddakirRoles).");
+    const out: Record<string, unknown> = {};
+    if (hasRoles) out.roles = (await setRoles(actor.id, b.userId, b.roles as Role[])).roles;
+    if (hasMuddakir) {
+      try { out.muddakir = await setMuddakirStaffRoles({ actorUserId: actor.id, targetUserId: b.userId, desired: b.muddakirRoles as MuddakirStaffRole[] }); }
+      catch (e) { out.muddakirError = e instanceof Error ? e.message : "تعذّر حفظ أدوار المدّكر."; }
     }
-    throw new ValidationError("لا تغيير معروف (active أو roles).");
+    return Response.json(out);
   } catch (e) {
     return errorResponse(e);
   }

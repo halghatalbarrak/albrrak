@@ -13,6 +13,15 @@ export const muddakirAr = {
   roleExaminer: "المختبِر",
   roleManager: "المدير",
 
+  // طاقم المدّكر في نافذة الأدوار (و١) — التخزين في MuddakirStaff لا في Role العامّ
+  rolesWinSection: "المدّكر",
+  rolesWinManager: "مدير برنامج المدّكر",
+  rolesWinAdmin: "إداري المدّكر",
+  rolesWinSupervisor: "مشرف المدّكر",
+  rolesWinExaminer: "مختبِر المدّكر",
+  rolesWinNoPerm: "التعيين لمدير المنصّة أو مدير البرنامج",
+  rolesWinSentForApproval: "أُرسل للاعتماد — بانتظار اعتماد مدير البرنامج",
+
   // المرحلة (§١)
   stage: "المرحلة",
   stageExamPass: "اجتياز",

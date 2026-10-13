@@ -7,11 +7,15 @@ import { useMe } from "@/lib/useMe";
 import {
   AppShell, Button, Badge, Table, Modal, ui, sp, type Column,
 } from "@/components/ui";
-import { type Role, STAFF_ROLES, ROLE_AR, toggleIn, LinkBox, linkBoxCard } from "./shared";
+import {
+  type Role, type MuddakirStaffRole, STAFF_ROLES, ROLE_AR, toggleIn,
+  MUDDAKIR_STAFF, MUDDAKIR_STAFF_AR, MUDDAKIR_SECTION, MUDDAKIR_NO_PERM, MUDDAKIR_SENT,
+  toggleStaff, muddakirStaffCaps, LinkBox, linkBoxCard,
+} from "./shared";
 
 interface UserRow {
   id: string; name: string; phone: string | null; email: string | null;
-  roles: Role[]; isActive: boolean; isStudent: boolean;
+  roles: Role[]; isActive: boolean; isStudent: boolean; muddakirStaff: MuddakirStaffRole[];
 }
 
 async function token(): Promise<string | null> {
@@ -26,9 +30,11 @@ export default function AdminUsersPage() {
   const [err, setErr] = useState<string | null>(null);
   const [linkBox, setLinkBox] = useState<{ title: string; url: string } | null>(null);
 
-  // تعديل أدوار
+  // تعديل أدوار (عامّة + مدّكر)
   const [editUser, setEditUser] = useState<UserRow | null>(null);
   const [editRoles, setEditRoles] = useState<Role[]>([]);
+  const [editStaff, setEditStaff] = useState<MuddakirStaffRole[]>([]);
+  const caps = muddakirStaffCaps(me?.roles ?? [], me?.muddakirStaff ?? []);
 
   const load = useCallback(async () => {
     const t = await token();
@@ -83,23 +89,36 @@ export default function AdminUsersPage() {
     if (!editUser) return;
     const t = await token();
     if (!t) return;
+    // حفظٌ واحد: الأدوار العامّة + أدوار المدّكر معاً.
+    const body: Record<string, unknown> = { userId: editUser.id, roles: editRoles };
+    if (caps.canEdit) body.muddakirRoles = editStaff;
     const res = await fetch("/api/admin/users", {
       method: "PATCH", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
-      body: JSON.stringify({ userId: editUser.id, roles: editRoles }),
+      body: JSON.stringify(body),
     });
-    if (res.ok) { setEditUser(null); void load(); }
-    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّر حفظ الأدوار."); }
+    if (res.ok) {
+      const j = (await res.json()) as { muddakir?: { requested: string[] }; muddakirError?: string };
+      if (j.muddakirError) setErr(`حُفظت الأدوار العامّة، وتعذّر حفظ أدوار المدّكر: ${j.muddakirError}`);
+      else if (j.muddakir?.requested?.length) setErr(MUDDAKIR_SENT);
+      else setErr(null);
+      setEditUser(null); void load();
+    } else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّر حفظ الأدوار."); }
   }
 
   const cols: Column<UserRow>[] = [
     { key: "name", header: "الاسم", cell: (u) => <span style={{ opacity: u.isActive ? 1 : 0.5 }}>{u.name}{u.isStudent ? <Badge tone="neutral">طالب</Badge> : null}</span> },
     { key: "phone", header: "الجوال", cell: (u) => <span style={{ direction: "ltr", color: ui.color.muted }}>{u.phone ?? "—"}</span> },
-    { key: "roles", header: "الأدوار", cell: (u) => <span style={{ display: "flex", gap: sp(1), flexWrap: "wrap" }}>{u.roles.map((r) => <Badge key={r} tone="primary">{ROLE_AR[r]}</Badge>)}</span> },
+    { key: "roles", header: "الأدوار", cell: (u) => (
+      <span style={{ display: "flex", gap: sp(1), flexWrap: "wrap" }}>
+        {u.roles.map((r) => <Badge key={r} tone="primary">{ROLE_AR[r]}</Badge>)}
+        {u.muddakirStaff.map((r) => <Badge key={r} tone="bronze">{MUDDAKIR_STAFF_AR[r]}</Badge>)}
+      </span>
+    ) },
     { key: "state", header: "الحالة", cell: (u) => (u.isActive ? <Badge tone="success">مُفعّل</Badge> : <Badge tone="neutral">معطَّل</Badge>) },
     { key: "act", header: "إجراء", cell: (u) => (
       <div style={{ display: "flex", gap: sp(2), justifyContent: "flex-end", flexWrap: "wrap" }}>
         {canImpersonate(u) && <Button variant="bronze" size="sm" onClick={() => void startImpersonate(u)}>انتحال</Button>}
-        <Button variant="ghost" size="sm" onClick={() => { setEditUser(u); setEditRoles(u.roles.filter((r) => STAFF_ROLES.includes(r))); }}>الأدوار</Button>
+        <Button variant="ghost" size="sm" onClick={() => { setEditUser(u); setEditRoles(u.roles.filter((r) => STAFF_ROLES.includes(r))); setEditStaff(u.muddakirStaff); }}>الأدوار</Button>
         <Button variant="ghost" size="sm" onClick={() => void reset(u)}>إعادة تعيين</Button>
         <Button variant="ghost" size="sm" onClick={() => void toggleActive(u)}>{u.isActive ? "تعطيل" : "تفعيل"}</Button>
       </div>
@@ -141,6 +160,25 @@ export default function AdminUsersPage() {
               {ROLE_AR[r]}
             </label>
           ))}
+        </div>
+
+        {/* قسم المدّكر (و١): تعيينٌ يكتب في MuddakirStaff. مربّعاتٌ معطّلةٌ لمن لا يملك، مع تلميح. */}
+        <div style={{ marginTop: sp(4), paddingTop: sp(3), borderTop: `1px solid ${ui.color.border}` }}>
+          <div style={{ fontWeight: 700, fontSize: ui.text.xs, marginBottom: sp(2), color: ui.color.bronze }}>{MUDDAKIR_SECTION}</div>
+          <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
+            {MUDDAKIR_STAFF.map((r) => {
+              const allowed = caps.can(r);
+              return (
+                <label key={r} title={allowed ? undefined : MUDDAKIR_NO_PERM}
+                  style={{ display: "flex", gap: sp(1), alignItems: "center", cursor: allowed ? "pointer" : "not-allowed", opacity: allowed ? 1 : 0.5 }}>
+                  <input type="checkbox" disabled={!allowed} checked={editStaff.includes(r)} onChange={() => setEditStaff((l) => toggleStaff(l, r))} />
+                  {MUDDAKIR_STAFF_AR[r]}
+                </label>
+              );
+            })}
+          </div>
+          {caps.adminActor && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `${sp(2)} 0 0` }}>إجراؤك يُرسَل للاعتماد.</p>}
+          {!caps.canEdit && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `${sp(2)} 0 0` }}>{MUDDAKIR_NO_PERM}</p>}
         </div>
       </Modal>
     </AppShell>
