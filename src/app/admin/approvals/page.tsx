@@ -5,12 +5,13 @@ import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Button, Input, Badge, EmptyState, Table, ui, sp, type Column } from "@/components/ui";
+import { tApprovals as tr } from "@/i18n/ar/approvals";
 
 // لوحة اعتماد المدير (الحكم ٧): اقتراحات انتقال المرحلة والتخرّج المعلَّقة — اعتماد/رفض.
 
 interface Transition { approvalId: string; studentName: string; mainStageLabel: string; finalRank: string | null }
 interface Graduation { approvalId: string; studentName: string }
-const RANK: Record<string, string> = { EXCELLENT: "تميّز", PASS: "اجتياز", FAIL: "رسوب" };
+const RANK: Record<string, string> = { EXCELLENT: tr("rankExcellent"), PASS: tr("rankPass"), FAIL: tr("rankFail") };
 
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
@@ -50,7 +51,7 @@ export default function ApprovalsPage() {
   async function decide(base: string, approvalId: string, decision: "APPROVED" | "REJECTED") {
     setMsg(null);
     const note = notes[approvalId]?.trim();
-    if (decision === "REJECTED" && !note) { setMsg("الرفض يستلزم سببًا."); return; }
+    if (decision === "REJECTED" && !note) { setMsg(tr("rejectNeedsReason")); return; }
     const t = await token();
     if (!t) { setStatus("unauth"); return; }
     const res = await fetch(`${base}/${approvalId}`, {
@@ -58,38 +59,38 @@ export default function ApprovalsPage() {
       body: JSON.stringify({ decision, note }),
     });
     if (res.ok) await load();
-    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر حسم الاقتراح."); }
+    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? tr("decideFailed")); }
   }
 
   const noteCell = (approvalId: string) => (
-    <Input placeholder="سبب الرفض (عند الرفض)" value={notes[approvalId] ?? ""} onChange={(e) => setNotes((n) => ({ ...n, [approvalId]: e.target.value }))} style={{ minWidth: 150 }} />
+    <Input placeholder={tr("rejectReasonPlaceholder")} value={notes[approvalId] ?? ""} onChange={(e) => setNotes((n) => ({ ...n, [approvalId]: e.target.value }))} style={{ minWidth: 150 }} />
   );
   const actionCell = (base: string, approvalId: string) => (
     <div style={{ display: "flex", gap: sp(2), justifyContent: "flex-end", flexWrap: "wrap" }}>
-      <Button size="sm" type="button" onClick={() => void decide(base, approvalId, "APPROVED")}>اعتماد</Button>
-      <Button variant="ghost" size="sm" type="button" onClick={() => void decide(base, approvalId, "REJECTED")}>رفض</Button>
+      <Button size="sm" type="button" onClick={() => void decide(base, approvalId, "APPROVED")}>{tr("approveBtn")}</Button>
+      <Button variant="ghost" size="sm" type="button" onClick={() => void decide(base, approvalId, "REJECTED")}>{tr("rejectBtn")}</Button>
     </div>
   );
 
   const tCols: Column<Transition>[] = [
-    { key: "name", header: "الطالب", cell: (it) => <strong>{it.studentName}</strong> },
-    { key: "stage", header: "المرحلة", cell: (it) => it.mainStageLabel },
-    { key: "rank", header: "المرتبة", cell: (it) => (it.finalRank ? RANK[it.finalRank] ?? it.finalRank : "—") },
-    { key: "note", header: "سبب الرفض", cell: (it) => noteCell(it.approvalId) },
-    { key: "act", header: "إجراءات", cell: (it) => actionCell("/api/approvals/stage-transitions", it.approvalId) },
+    { key: "name", header: tr("colStudent"), cell: (it) => <strong>{it.studentName}</strong> },
+    { key: "stage", header: tr("colStage"), cell: (it) => it.mainStageLabel },
+    { key: "rank", header: tr("colRank"), cell: (it) => (it.finalRank ? RANK[it.finalRank] ?? it.finalRank : "—") },
+    { key: "note", header: tr("colRejectReason"), cell: (it) => noteCell(it.approvalId) },
+    { key: "act", header: tr("colActions"), cell: (it) => actionCell("/api/approvals/stage-transitions", it.approvalId) },
   ];
   const gCols: Column<Graduation>[] = [
-    { key: "name", header: "الطالب", cell: (it) => <strong>{it.studentName}</strong> },
-    { key: "status", header: "الحالة", cell: () => <Badge tone="success">اكتملت ثلاث جولات</Badge> },
-    { key: "note", header: "سبب الرفض", cell: (it) => noteCell(it.approvalId) },
-    { key: "act", header: "إجراءات", cell: (it) => actionCell("/api/approvals/graduations", it.approvalId) },
+    { key: "name", header: tr("colStudent"), cell: (it) => <strong>{it.studentName}</strong> },
+    { key: "status", header: tr("colStatus"), cell: () => <Badge tone="success">{tr("threeRoundsDone")}</Badge> },
+    { key: "note", header: tr("colRejectReason"), cell: (it) => noteCell(it.approvalId) },
+    { key: "act", header: tr("colActions"), cell: (it) => actionCell("/api/approvals/graduations", it.approvalId) },
   ];
 
   if (status === "unauth")
     return (
       <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(3) }}>
-        <p>تحتاج دخولًا كمدير.</p>
-        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a>
+        <p>{tr("needManagerLogin")}</p>
+        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>{tr("login")}</a>
       </main>
     );
 
@@ -97,27 +98,27 @@ export default function ApprovalsPage() {
 
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/approvals"
-      title="الاعتمادات" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: "الاعتمادات" }]}>
+      title={tr("title")} crumbs={[{ label: tr("crumbHome"), href: "/" }, { label: tr("crumbAdmin") }, { label: tr("crumbApprovals") }]}>
 
-      {status === "loading" && <p style={{ color: ui.color.muted }}>…جارٍ التحميل</p>}
-      {status === "error" && <p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>إعادة</Button></p>}
+      {status === "loading" && <p style={{ color: ui.color.muted }}>{tr("loading")}</p>}
+      {status === "error" && <p style={{ color: ui.color.danger }}>{tr("loadFailed")} <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>{tr("retry")}</Button></p>}
 
       {status === "ready" && (
         <>
           {msg && <p style={{ color: ui.color.danger }}>{msg}</p>}
-          {pending === 0 && <EmptyState title="لا اعتمادات معلّقة" description="لا اقتراحات انتقالٍ أو تخرّجٍ بانتظارك الآن." />}
+          {pending === 0 && <EmptyState title={tr("emptyTitle")} description={tr("emptyDescription")} />}
 
           {(transitions.length > 0 || graduations.length > 0) && (
             <>
-              <h2 style={{ ...sectionTitle, marginTop: 0 }}>انتقال المرحلة</h2>
-              <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginTop: 2, marginBottom: sp(3) }}>اعتمادُك ينقل الطالب للمرحلة الأصلية التالية.</p>
+              <h2 style={{ ...sectionTitle, marginTop: 0 }}>{tr("stageSectionTitle")}</h2>
+              <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginTop: 2, marginBottom: sp(3) }}>{tr("stageSectionNote")}</p>
               {transitions.length > 0 && <Table columns={tCols} rows={transitions} />}
-              {transitions.length === 0 && <p style={{ color: ui.color.muted }}>لا اقتراحات انتقالٍ معلَّقة.</p>}
+              {transitions.length === 0 && <p style={{ color: ui.color.muted }}>{tr("noPendingTransitions")}</p>}
 
-              <h2 style={sectionTitle}>التخرّج</h2>
-              <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginTop: 2, marginBottom: sp(3) }}>اعتمادُك يخرّج الطالب ويُصدر شهادة الختم.</p>
+              <h2 style={sectionTitle}>{tr("graduationSectionTitle")}</h2>
+              <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginTop: 2, marginBottom: sp(3) }}>{tr("graduationSectionNote")}</p>
               {graduations.length > 0 && <Table columns={gCols} rows={graduations} />}
-              {graduations.length === 0 && <p style={{ color: ui.color.muted }}>لا اقتراحات تخرّجٍ معلَّقة.</p>}
+              {graduations.length === 0 && <p style={{ color: ui.color.muted }}>{tr("noPendingGraduations")}</p>}
             </>
           )}
         </>

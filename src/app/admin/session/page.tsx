@@ -6,6 +6,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { makkahDayDate } from "@/lib/makkah-day";
 import { useMe } from "@/lib/useMe";
 import { arNum, hijri, formatAyah } from "@/lib/format";
+import { tSession as t } from "@/i18n/ar/session";
 import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, TodayTargetView, type TTData, type TTBound, ui, sp } from "@/components/ui";
 
 // شاشة الجلسة اليومية (م٦ — التشغيل الذكيّ): كل طلاب الحلقة معروضون فوراً بلا اختيار
@@ -67,13 +68,13 @@ function writeQueue(q: QueuedRecord[]): void { localStorage.setItem(QUEUE_KEY, J
 async function flushQueue(): Promise<number> {
   const q = readQueue();
   if (q.length === 0) return 0;
-  const t = await token();
-  if (!t) return q.length;
+  const tok = await token();
+  if (!tok) return q.length;
   const remain: QueuedRecord[] = [];
   for (const item of q) {
     try {
       const res = await fetch(`/api/students/${item.studentId}/session`, {
-        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
         body: JSON.stringify(item.body),
       });
       if (!res.ok) remain.push(item); // خطأ خادمٍ (لا شبكة): يبقى للمراجعة.
@@ -109,9 +110,9 @@ export default function DailySessionPage() {
   // الحلقات: تُحمَّل مرّةً، وتُختار الأولى تلقائيًّا (بلا اختيارٍ مفروض).
   useEffect(() => {
     void (async () => {
-      const t = await token();
-      if (!t) { setStatus("unauth"); return; }
-      const res = await fetch("/api/attendance/circles", { headers: { authorization: `Bearer ${t}` } });
+      const tok = await token();
+      if (!tok) { setStatus("unauth"); return; }
+      const res = await fetch("/api/attendance/circles", { headers: { authorization: `Bearer ${tok}` } });
       if (res.status === 401 || res.status === 403) { setStatus("unauth"); return; }
       if (!res.ok) { setStatus("error"); return; }
       const cs = ((await res.json()) as { circles?: Circle[] }).circles ?? [];
@@ -124,9 +125,9 @@ export default function DailySessionPage() {
   const loadBoard = useCallback(async () => {
     if (!circleId) return;
     setStatus("loading"); setExpanded(null);
-    const t = await token();
-    if (!t) { setStatus("unauth"); return; }
-    const res = await fetch(`/api/circles/${circleId}/session?date=${encodeURIComponent(date)}`, { headers: { authorization: `Bearer ${t}` } });
+    const tok = await token();
+    if (!tok) { setStatus("unauth"); return; }
+    const res = await fetch(`/api/circles/${circleId}/session?date=${encodeURIComponent(date)}`, { headers: { authorization: `Bearer ${tok}` } });
     if (res.status === 401 || res.status === 403) { setStatus("unauth"); return; }
     if (!res.ok) { setStatus("error"); return; }
     setBoard(((await res.json()) as { students?: BoardStudent[] }).students ?? []);
@@ -138,8 +139,8 @@ export default function DailySessionPage() {
   if (status === "unauth")
     return (
       <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(3) }}>
-        <p>تحتاج دخولًا.</p>
-        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a>
+        <p>{t("needLogin")}</p>
+        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>{t("login")}</a>
       </main>
     );
 
@@ -147,7 +148,7 @@ export default function DailySessionPage() {
 
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/session"
-      title="الجلسة اليومية" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "التشغيل" }, { label: "الجلسة اليومية" }]}>
+      title={t("pageTitle")} crumbs={[{ label: t("crumbHome"), href: "/" }, { label: t("crumbOperation") }, { label: t("crumbSession") }]}>
 
       {/* مبدّل الحلقة يظهر فقط عند تعدّدها — لا اختيارٌ مفروض */}
       {circles.length > 1 && (
@@ -159,24 +160,24 @@ export default function DailySessionPage() {
       )}
       {current && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(3), flexWrap: "wrap", margin: `0 0 ${sp(4)}` }}>
-          <p style={{ color: ui.color.muted, margin: 0, fontSize: ui.text.base }}>{current.nameAr} — طلابها اليوم، كلٌّ بحاله وخطوته التالية.</p>
-          <a href={`/admin/circles/${circleId}/weakness`} style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.primary, textDecoration: "none", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, padding: `${sp(1.5)} ${sp(3)}` }}>خريطة ضعف الحلقة</a>
+          <p style={{ color: ui.color.muted, margin: 0, fontSize: ui.text.base }}>{current.nameAr}{t("circleHeaderSuffix")}</p>
+          <a href={`/admin/circles/${circleId}/weakness`} style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.primary, textDecoration: "none", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, padding: `${sp(1.5)} ${sp(3)}` }}>{t("weaknessMapLink")}</a>
         </div>
       )}
 
       {pending > 0 && (
         <Card style={{ marginBottom: sp(4), borderInlineStart: `4px solid ${ui.color.bronze}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(3), flexWrap: "wrap" }}>
-          <span>لا اتصال — <strong>{pending}</strong> رصدٌ محفوظٌ محليّاً، سيُزامن تلقائيّاً عند عودة الشبكة.</span>
-          <Button variant="bronze" size="sm" onClick={() => void flush()}>مزامنة الآن</Button>
+          <span>{t("offlinePrefix")}<strong>{pending}</strong>{t("offlineSuffix")}</span>
+          <Button variant="bronze" size="sm" onClick={() => void flush()}>{t("syncNow")}</Button>
         </Card>
       )}
 
-      {status === "error" && <p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" onClick={() => void loadBoard()}>إعادة</Button></p>}
+      {status === "error" && <p style={{ color: ui.color.danger }}>{t("loadFailed")}<Button variant="ghost" size="sm" onClick={() => void loadBoard()}>{t("retry")}</Button></p>}
       {status === "loading" && (
         <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>{[0, 1, 2].map((i) => <Skeleton key={i} height={92} />)}</div>
       )}
-      {status === "ready" && circles.length === 0 && <EmptyState title="لم تُسنَد إليك حلقة" description="راجِع الحلقات لإسناد حلقةٍ إليك." />}
-      {status === "ready" && board && board.length === 0 && <EmptyState title="لا طلاب في هذه الحلقة" />}
+      {status === "ready" && circles.length === 0 && <EmptyState title={t("noCircleTitle")} description={t("noCircleDesc")} />}
+      {status === "ready" && board && board.length === 0 && <EmptyState title={t("noStudents")} />}
 
       {status === "ready" && board && board.map((s) => (
         <Card key={s.studentId} style={{ marginBottom: sp(3), padding: 0, overflow: "hidden" }}>
@@ -188,21 +189,21 @@ export default function DailySessionPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), flexWrap: "wrap" }}>
               <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
               <div style={{ display: "flex", gap: sp(2), alignItems: "center" }}>
-                {s.deferredToday && <Badge tone="bronze">مؤجَّل اليوم</Badge>}
+                {s.deferredToday && <Badge tone="bronze">{t("deferredToday")}</Badge>}
                 <Badge tone={stepTone(s.nextStep)}>{s.nextStep}</Badge>
               </div>
             </div>
             <div style={{ display: "flex", gap: sp(4), flexWrap: "wrap", fontSize: ui.text.xs, color: ui.color.muted }}>
-              <span>مرحلته: <strong style={{ color: ui.color.text }}>{s.stageLabel ?? "—"}</strong>{s.hizb != null ? ` · حزب ${s.hizb}` : ""}</span>
-              <span>حفظ أمس: <strong style={{ color: ui.color.text }}>{s.yesterday ? range(s.yesterday) : "—"}</strong>{s.yesterday && !s.yesterday.mastered ? " (لم يُتقن)" : ""}</span>
-              {s.required && <span>المطلوب اليوم: <strong style={{ color: ui.color.text }}>ترسيخ {s.required.tarseekhCount} · خُمس ≈ {s.required.khums}</strong></span>}
-              {s.weeklyPercent != null && <span>دورة الأسبوع: <strong style={{ color: ui.color.text }}>{s.weeklyPercent}٪</strong></span>}
+              <span>{t("stageLabelPrefix")}<strong style={{ color: ui.color.text }}>{s.stageLabel ?? "—"}</strong>{s.hizb != null ? `${t("hizbInline")}${s.hizb}` : ""}</span>
+              <span>{t("yesterdayLabel")}<strong style={{ color: ui.color.text }}>{s.yesterday ? range(s.yesterday) : "—"}</strong>{s.yesterday && !s.yesterday.mastered ? t("notMasteredSuffix") : ""}</span>
+              {s.required && <span>{t("requiredTodayPrefix")}<strong style={{ color: ui.color.text }}>{t("requiredTarseekhPrefix")}{s.required.tarseekhCount}{t("requiredKhumsPrefix")}{s.required.khums}</strong></span>}
+              {s.weeklyPercent != null && <span>{t("weeklyCyclePrefix")}<strong style={{ color: ui.color.text }}>{s.weeklyPercent}٪</strong></span>}
             </div>
           </button>
           {/* وجهة اليوم (م٤) — المهامّ الثلاث جاهزةً بحدودها، دائمة الظهور */}
           {s.program === "MARAQI" && (
             <div style={{ borderTop: `1px solid ${ui.color.border}`, padding: `${sp(3)} ${sp(4)}` }}>
-              <div style={{ fontSize: ui.text.xs, fontWeight: 700, color: ui.color.primary, marginBottom: sp(2) }}>وجهة اليوم</div>
+              <div style={{ fontSize: ui.text.xs, fontWeight: 700, color: ui.color.primary, marginBottom: sp(2) }}>{t("todayTargetTitle")}</div>
               <TodayTargetView t={s.today} />
             </div>
           )}
@@ -234,32 +235,32 @@ function StudentDetail({ studentId, date, suggestion, onSaved }: { studentId: st
 
   const load = useCallback(async () => {
     setStatus("loading");
-    const t = await token();
-    if (!t) { setStatus("error"); return; }
-    const res = await fetch(`/api/students/${studentId}/session?date=${encodeURIComponent(date)}`, { headers: { authorization: `Bearer ${t}` } });
+    const tok = await token();
+    if (!tok) { setStatus("error"); return; }
+    const res = await fetch(`/api/students/${studentId}/session?date=${encodeURIComponent(date)}`, { headers: { authorization: `Bearer ${tok}` } });
     if (!res.ok) { setStatus("error"); return; }
     setView((await res.json()) as SessionView);
     setStatus("ready");
-    try { const fr = await fetch(`/api/students/${studentId}/forecast`, { headers: { authorization: `Bearer ${t}` } }); if (fr.ok) setForecast((await fr.json()) as Forecast); } catch { /* التقدير إضافةٌ لا تُعطّل */ }
+    try { const fr = await fetch(`/api/students/${studentId}/forecast`, { headers: { authorization: `Bearer ${tok}` } }); if (fr.ok) setForecast((await fr.json()) as Forecast); } catch { /* التقدير إضافةٌ لا تُعطّل */ }
   }, [studentId, date]);
   useEffect(() => { void load(); }, [load]);
 
   async function post(body: Record<string, unknown>) {
     setMsg(null);
-    const t = await token();
-    if (!t) return;
+    const tok = await token();
+    if (!tok) return;
     const full = { ...body, date };
     try {
       const res = await fetch(`/api/students/${studentId}/session`, {
-        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
         body: JSON.stringify(full),
       });
-      if (res.ok) { setMsg("حُفظ."); await load(); onSaved(); }
-      else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر الحفظ."); }
+      if (res.ok) { setMsg(t("savedMsg")); await load(); onSaved(); }
+      else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? t("saveFailed")); }
     } catch {
       // لا اتصال ⟵ احفظ محليّاً وزامن لاحقاً (كالحضور م٢). idempotent على مفتاح الطالب+اليوم.
       const q = readQueue(); q.push({ studentId, body: full }); writeQueue(q);
-      setMsg("لا اتصال — حُفظ محليّاً وسيُزامن تلقائيّاً عند عودة الشبكة.");
+      setMsg(t("offlineSavedMsg"));
       onSaved();
     }
   }
@@ -270,34 +271,34 @@ function StudentDetail({ studentId, date, suggestion, onSaved }: { studentId: st
   // لئلّا يتضاعف؛ يتطلّب اتصالاً، وإلا يُرشَد المعلّم للإعادة متّصلاً.
   async function reviewError(sessionId: string, errorCount: number) {
     setMsg(null);
-    const t = await token();
-    if (!t) return;
+    const tok = await token();
+    if (!tok) return;
     try {
       const res = await fetch(`/api/students/${studentId}/review-error`, {
-        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
         body: JSON.stringify({ sessionId, errorCount, date }),
       });
-      if (res.ok) { const j = (await res.json()) as { reverted: boolean }; setMsg(j.reverted ? "خطآن — عاد المقطع حفظًا جديدًا." : "خطأٌ واحد — تنبيهٌ، يبقى راسخًا."); await load(); onSaved(); }
-      else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر الرصد."); }
-    } catch { setMsg("رصد الترميم يتطلّب اتصالاً — أعِد المحاولة متّصلاً."); }
+      if (res.ok) { const j = (await res.json()) as { reverted: boolean }; setMsg(j.reverted ? t("reviewTwoErrorsMsg") : t("reviewOneErrorMsg")); await load(); onSaved(); }
+      else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? t("reviewFailed")); }
+    } catch { setMsg(t("reviewNeedsOnline")); }
   }
   async function declareReadiness(stageId: string) {
     setMsg(null);
-    const t = await token();
-    if (!t) return;
+    const tok = await token();
+    if (!tok) return;
     try {
       const res = await fetch(`/api/students/${studentId}/hasad-readiness`, {
-        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
         body: JSON.stringify({ stageId }),
       });
-      if (res.ok) { setMsg("أُعلنت الجاهزية للحصاد."); await load(); onSaved(); }
-      else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر إعلان الجاهزية."); }
-    } catch { setMsg("إعلان الجاهزية يتطلّب اتصالاً — أعِد المحاولة متّصلاً."); }
+      if (res.ok) { setMsg(t("readinessDeclaredMsg")); await load(); onSaved(); }
+      else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? t("readinessFailed")); }
+    } catch { setMsg(t("readinessNeedsOnline")); }
   }
 
-  if (status === "loading") return <p style={{ color: ui.color.muted, margin: 0 }}>…جارٍ التحميل</p>;
-  if (status === "error" || !view) return <p style={{ color: ui.color.danger, margin: 0 }}>تعذّر تحميل الجلسة.</p>;
-  if (view.program !== "MARAQI") return <p style={{ color: ui.color.muted, margin: 0 }}>الجلسة اليومية لطلاب مراقي. هذا الطالب في القاعدة المدنية.</p>;
+  if (status === "loading") return <p style={{ color: ui.color.muted, margin: 0 }}>{t("detailLoading")}</p>;
+  if (status === "error" || !view) return <p style={{ color: ui.color.danger, margin: 0 }}>{t("detailLoadFailed")}</p>;
+  if (view.program !== "MARAQI") return <p style={{ color: ui.color.muted, margin: 0 }}>{t("maraqiOnlyNote")}</p>;
 
   const cur = view.position.current;
   const s = view.session;
@@ -308,69 +309,69 @@ function StudentDetail({ studentId, date, suggestion, onSaved }: { studentId: st
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs, margin: 0 }}>{msg}</p>}
       {forecast?.hasPace && (
         <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: 0 }}>
-          تقديرٌ إرشاديّ (~{arNum(forecast.pacePerDay ?? 0)} آية/يوم):
-          {forecast.hizbDoneDate && <> إتمام الحزب نحو <strong style={{ color: ui.color.text }}>{hijri(forecast.hizbDoneDate)}</strong>؛</>}
-          {forecast.graduationDate && <> التخرّج نحو <strong style={{ color: ui.color.text }}>{hijri(forecast.graduationDate)}</strong>.</>}
+          {t("forecastPrefix")}{arNum(forecast.pacePerDay ?? 0)}{t("forecastPerDaySuffix")}
+          {forecast.hizbDoneDate && <>{t("forecastHizbPrefix")}<strong style={{ color: ui.color.text }}>{hijri(forecast.hizbDoneDate)}</strong>{t("forecastSemicolon")}</>}
+          {forecast.graduationDate && <>{t("forecastGraduationPrefix")}<strong style={{ color: ui.color.text }}>{hijri(forecast.graduationDate)}</strong>{t("forecastPeriod")}</>}
         </p>
       )}
 
       {cur && (
-        <Button variant="bronze" size="sm" style={{ alignSelf: "flex-start" }} onClick={() => void declareReadiness(cur.stageId)} title="الحصاد يُجريه مُسمِّعٌ ليس معلمه — أنت تُعلن الجاهزية فقط">
-          أعلن الجاهزية للحصاد
+        <Button variant="bronze" size="sm" style={{ alignSelf: "flex-start" }} onClick={() => void declareReadiness(cur.stageId)} title={t("declareReadinessTitle")}>
+          {t("declareReadinessBtn")}
         </Button>
       )}
 
       {/* «مؤجَّل»: حاضرٌ لم يُسمَّع لضيق الوقت — لا يحرّك الموضع ولا يمنح/يخصم. */}
-      <Button variant="ghost" size="sm" style={{ alignSelf: "flex-start" }} onClick={() => void post({ kind: "defer" })} title="حاضرٌ جاهزٌ لم يُسمَّع لضيق الوقت — يُوثَّق حاضراً أدّى، بلا نقلٍ للموضع">
-        مؤجَّل (حاضرٌ لم يُسمَّع)
+      <Button variant="ghost" size="sm" style={{ alignSelf: "flex-start" }} onClick={() => void post({ kind: "defer" })} title={t("deferTitle")}>
+        {t("deferBtn")}
       </Button>
 
       {/* الحفظ */}
       <div>
-        <h3 style={label}>الحفظ (المعلم وحده)</h3>
+        <h3 style={label}>{t("hifzTitle")}</h3>
         {suggestion && !view.hifzGate?.mustRepeat && (
           <p style={{ margin: `0 0 ${sp(2)}`, fontSize: ui.text.xs, color: ui.color.muted }}>
-            الحقل مملوءٌ بمقترح وجهة اليوم ({range(suggestion)}) — أكّده أو عدّله.
+            {t("hifzSuggestionPrefix")}{range(suggestion)}{t("hifzSuggestionSuffix")}
           </p>
         )}
         {view.hifzGate?.mustRepeat && view.hifzGate.range && (
           <p style={{ margin: `0 0 ${sp(2)}`, padding: `${sp(2)} ${sp(3)}`, background: "var(--color-warn-bg)", borderRadius: ui.radius.md, fontSize: ui.text.xs }}>
-            ⚠️ الحكم ١: يعيد <strong>نفس المقطع</strong> ({range(view.hifzGate.range)})، لا حفظ جديد.
-            <Button variant="ghost" size="sm" style={{ marginInlineStart: sp(2) }} onClick={() => setHifz((h) => ({ ...h, fromSurah: String(view.hifzGate!.range!.fromSurah), fromAyah: String(view.hifzGate!.range!.fromAyah), toSurah: String(view.hifzGate!.range!.toSurah), toAyah: String(view.hifzGate!.range!.toAyah) }))}>املأ المقطع</Button>
+            {t("hifzGatePrefix")}<strong>{t("hifzGateSameSegment")}</strong>{t("hifzGateRangeOpen")}{range(view.hifzGate.range)}{t("hifzGateSuffix")}
+            <Button variant="ghost" size="sm" style={{ marginInlineStart: sp(2) }} onClick={() => setHifz((h) => ({ ...h, fromSurah: String(view.hifzGate!.range!.fromSurah), fromAyah: String(view.hifzGate!.range!.fromAyah), toSurah: String(view.hifzGate!.range!.toSurah), toAyah: String(view.hifzGate!.range!.toAyah) }))}>{t("fillSegment")}</Button>
           </p>
         )}
         <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center", fontSize: ui.text.xs }}>
-          <span>من سورة</span><Input style={num} type="number" value={hifz.fromSurah} onChange={(e) => setHifz({ ...hifz, fromSurah: e.target.value })} />
-          <span>آية</span><Input style={num} type="number" value={hifz.fromAyah} onChange={(e) => setHifz({ ...hifz, fromAyah: e.target.value })} />
-          <span>إلى سورة</span><Input style={num} type="number" value={hifz.toSurah} onChange={(e) => setHifz({ ...hifz, toSurah: e.target.value })} />
-          <span>آية</span><Input style={num} type="number" value={hifz.toAyah} onChange={(e) => setHifz({ ...hifz, toAyah: e.target.value })} />
-          <span>المحاولات</span><Input style={num} type="number" min={1} value={hifz.attempts} onChange={(e) => setHifz({ ...hifz, attempts: e.target.value })} />
-          <label style={{ display: "flex", alignItems: "center", gap: 4 }}><input type="checkbox" checked={hifz.mastered} onChange={(e) => setHifz({ ...hifz, mastered: e.target.checked })} /> أتقن</label>
-          <Button size="sm" onClick={saveHifz}>حفظ</Button>
+          <span>{t("fromSurah")}</span><Input style={num} type="number" value={hifz.fromSurah} onChange={(e) => setHifz({ ...hifz, fromSurah: e.target.value })} />
+          <span>{t("ayah")}</span><Input style={num} type="number" value={hifz.fromAyah} onChange={(e) => setHifz({ ...hifz, fromAyah: e.target.value })} />
+          <span>{t("toSurah")}</span><Input style={num} type="number" value={hifz.toSurah} onChange={(e) => setHifz({ ...hifz, toSurah: e.target.value })} />
+          <span>{t("ayah")}</span><Input style={num} type="number" value={hifz.toAyah} onChange={(e) => setHifz({ ...hifz, toAyah: e.target.value })} />
+          <span>{t("attempts")}</span><Input style={num} type="number" min={1} value={hifz.attempts} onChange={(e) => setHifz({ ...hifz, attempts: e.target.value })} />
+          <label style={{ display: "flex", alignItems: "center", gap: 4 }}><input type="checkbox" checked={hifz.mastered} onChange={(e) => setHifz({ ...hifz, mastered: e.target.checked })} /> {t("mastered")}</label>
+          <Button size="sm" onClick={saveHifz}>{t("save")}</Button>
         </div>
         {s?.hifzFromSurah != null && (
-          <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: `${sp(2)} 0 0` }}>مُسجَّل اليوم: {s.hifzFromSurah}:{s.hifzFromAyah} ← {s.hifzToSurah}:{s.hifzToAyah} · محاولات {s.hifzAttempts} · {s.hifzMastered ? "أتقن" : "لم يُتقن"}</p>
+          <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: `${sp(2)} 0 0` }}>{t("recordedTodayPrefix")}{s.hifzFromSurah}:{s.hifzFromAyah} ← {s.hifzToSurah}:{s.hifzToAyah}{t("attemptsMid")}{s.hifzAttempts}{t("masteredSep")}{s.hifzMastered ? t("mastered") : t("notMastered")}</p>
         )}
       </div>
 
       {/* ما يُسمَّع اليوم */}
       {view.consolidation && (
         <div>
-          <h3 style={label}>ما يُسمَّع اليوم</h3>
+          <h3 style={label}>{t("heardTodayTitle")}</h3>
           <p style={{ margin: "0 0 4px", fontSize: ui.text.xs }}>
-            <strong>الترسيخ</strong> (آخر {view.consolidation.tarseekh.windowSize} مقاطع):
-            {view.consolidation.tarseekh.segments.length === 0 ? " — لا مقاطع بعد" : ""}
+            <strong>{t("tarseekhStrong")}</strong>{t("tarseekhWindowPrefix")}{view.consolidation.tarseekh.windowSize}{t("tarseekhWindowSuffix")}
+            {view.consolidation.tarseekh.segments.length === 0 ? t("noSegmentsYet") : ""}
           </p>
           <ul style={{ margin: `0 0 ${sp(2)}`, paddingInlineStart: 18, fontSize: ui.text.xs }}>
             {view.consolidation.tarseekh.segments.map((sg, i) => (<li key={i}>{range(sg)}</li>))}
           </ul>
           <p style={{ margin: 0, fontSize: ui.text.xs }}>
-            <strong>المراجعة الأسبوعية</strong>: الراسخ {view.consolidation.review.stockCount} مقطعًا · خُمس اليوم ≈ {view.consolidation.review.khums}
+            <strong>{t("weeklyReviewStrong")}</strong>{t("weeklyReviewMid")}{view.consolidation.review.stockCount}{t("weeklyReviewStockSuffix")}{view.consolidation.review.khums}
           </p>
           {view.weeklyReview && (
             <div style={{ marginTop: sp(2), fontSize: ui.text.xs }}>
-              دورة الأسبوع: أُنجِز <strong>{view.weeklyReview.done}</strong> من <strong>{view.weeklyReview.required}</strong> — المتبقّي <strong>{view.weeklyReview.remaining}</strong> ({view.weeklyReview.percent}٪)
-              {view.weeklyReview.complete && <span style={{ color: ui.color.success }}> · اكتملت ✓</span>}
+              {t("weeklyCycleDonePrefix")}<strong>{view.weeklyReview.done}</strong>{t("weeklyCycleOf")}<strong>{view.weeklyReview.required}</strong>{t("weeklyCycleRemaining")}<strong>{view.weeklyReview.remaining}</strong>{t("weeklyCyclePercentOpen")}{view.weeklyReview.percent}{t("weeklyCyclePercentClose")}
+              {view.weeklyReview.complete && <span style={{ color: ui.color.success }}>{t("weeklyCycleComplete")}</span>}
               <div style={{ height: 6, background: ui.color.border, borderRadius: ui.radius.sm, marginTop: 4 }}>
                 <div style={{ width: `${view.weeklyReview.percent}%`, height: "100%", background: ui.color.success, borderRadius: ui.radius.sm }} />
               </div>
@@ -381,8 +382,8 @@ function StudentDetail({ studentId, date, suggestion, onSaved }: { studentId: st
               {view.consolidation.review.segments.map((sg) => (
                 <li key={sg.id} style={{ display: "flex", gap: sp(2), alignItems: "center", marginBottom: 3 }}>
                   <span>{range(sg)}</span>
-                  <Button variant="ghost" size="sm" onClick={() => void reviewError(sg.id, 1)}>خطأ واحد</Button>
-                  <Button variant="danger" size="sm" onClick={() => void reviewError(sg.id, 2)}>خطآن ← ترميم</Button>
+                  <Button variant="ghost" size="sm" onClick={() => void reviewError(sg.id, 1)}>{t("oneError")}</Button>
+                  <Button variant="danger" size="sm" onClick={() => void reviewError(sg.id, 2)}>{t("twoErrors")}</Button>
                 </li>
               ))}
             </ul>
@@ -392,17 +393,17 @@ function StudentDetail({ studentId, date, suggestion, onSaved }: { studentId: st
 
       {/* الترسيخ والمراجعة (تمّ/لم يتم) */}
       <div>
-        <h3 style={label}>الترسيخ والمراجعة</h3>
+        <h3 style={label}>{t("consolidationTitle")}</h3>
         <div style={{ display: "flex", gap: sp(5), flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: sp(2) }}>
-            <span>الترسيخ: {s?.tarseekhDone == null ? "—" : s.tarseekhDone ? <Badge tone="success">تمّ</Badge> : <Badge tone="neutral">لم يتم</Badge>}</span>
-            <Button variant="ghost" size="sm" onClick={() => void post({ kind: "tarseekh", done: true })}>تمّ</Button>
-            <Button variant="ghost" size="sm" onClick={() => void post({ kind: "tarseekh", done: false })}>لم يتم</Button>
+            <span>{t("tarseekhInlineLabel")}{s?.tarseekhDone == null ? "—" : s.tarseekhDone ? <Badge tone="success">{t("done")}</Badge> : <Badge tone="neutral">{t("notDone")}</Badge>}</span>
+            <Button variant="ghost" size="sm" onClick={() => void post({ kind: "tarseekh", done: true })}>{t("done")}</Button>
+            <Button variant="ghost" size="sm" onClick={() => void post({ kind: "tarseekh", done: false })}>{t("notDone")}</Button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: sp(2) }}>
-            <span>المراجعة اليوم (مقاطع): {s?.murajaahCount ?? "—"}</span>
+            <span>{t("murajaahInlinePrefix")}{s?.murajaahCount ?? "—"}</span>
             <Input type="number" min={0} value={reviewCount} style={num} onChange={(e) => setReviewCount(e.target.value)} />
-            <Button size="sm" onClick={() => void post({ kind: "murajaah", count: Number(reviewCount || 0) })}>رصد المقدار</Button>
+            <Button size="sm" onClick={() => void post({ kind: "murajaah", count: Number(reviewCount || 0) })}>{t("recordAmount")}</Button>
           </div>
         </div>
       </div>

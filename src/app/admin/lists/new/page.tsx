@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Button, Input, Select, Field, ui, sp } from "@/components/ui";
+import { tLists } from "@/i18n/ar/lists";
 
 type Kind = "nationality" | "schoolStage" | "guardianRelation";
-const KIND_AR: Record<Kind, string> = { nationality: "جنسية", schoolStage: "مرحلة دراسية", guardianRelation: "صفة قرابة" };
+const KIND_AR: Record<Kind, string> = { nationality: tLists("kindNationality"), schoolStage: tLists("kindSchoolStage"), guardianRelation: tLists("kindGuardianRelation") };
 
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
@@ -27,7 +28,7 @@ export default function NewListItemPage() {
 
   async function save() {
     const v = nameAr.trim();
-    if (!v) { setErr("القيمة مطلوبة."); return; }
+    if (!v) { setErr(tLists("errValueRequired")); return; }
     const t = await token();
     if (!t) return;
     setSaving(true); setErr(null);
@@ -36,30 +37,30 @@ export default function NewListItemPage() {
       body: JSON.stringify({ kind, nameAr: v }),
     });
     if (res.ok) { router.push(LIST); }
-    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّرت الإضافة."); setSaving(false); }
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? tLists("errAdd")); setSaving(false); }
   }
 
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/lists"
-      title="قيمة جديدة"
-      crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: "القوائم", href: LIST }, { label: "جديدة" }]}>
+      title={tLists("newTitle")}
+      crumbs={[{ label: tLists("crumbHome"), href: "/" }, { label: tLists("crumbAdmin") }, { label: tLists("crumbLists"), href: LIST }, { label: tLists("crumbNew") }]}>
 
       <Card style={{ maxWidth: 520 }}>
-        <Field label="القائمة">
+        <Field label={tLists("fieldList")}>
           <Select value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
             <option value="nationality">{KIND_AR.nationality}</option>
             <option value="schoolStage">{KIND_AR.schoolStage}</option>
             <option value="guardianRelation">{KIND_AR.guardianRelation}</option>
           </Select>
         </Field>
-        <Field label="القيمة">
-          <Input value={nameAr} onChange={(e) => setNameAr(e.target.value)} placeholder="قيمة جديدة…"
+        <Field label={tLists("fieldValue")}>
+          <Input value={nameAr} onChange={(e) => setNameAr(e.target.value)} placeholder={tLists("valuePlaceholder")}
             onKeyDown={(e) => { if (e.key === "Enter") void save(); }} />
         </Field>
         {err && <p style={{ color: ui.color.danger }}>{err}</p>}
         <div style={{ display: "flex", gap: sp(2), marginTop: sp(2) }}>
-          <Button onClick={() => void save()} disabled={saving}>{saving ? "جارٍ…" : "إضافة"}</Button>
-          <Button variant="ghost" onClick={() => router.push(LIST)}>إلغاء</Button>
+          <Button onClick={() => void save()} disabled={saving}>{saving ? tLists("savingBtn") : tLists("addBtn")}</Button>
+          <Button variant="ghost" onClick={() => router.push(LIST)}>{tLists("cancelBtn")}</Button>
         </div>
       </Card>
     </AppShell>

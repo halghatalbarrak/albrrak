@@ -7,6 +7,7 @@ import { arNum } from "@/lib/format";
 import {
   AppShell, Button, Input, Select, Field, Badge, Table, Stat, ui, sp, type Column,
 } from "@/components/ui";
+import { tGrantPoints } from "@/i18n/ar/grant-points";
 
 interface GrantItem { id: string; nameAr: string; value: number; grantSource: string }
 interface GrantStudent { studentId: string; name: string; circleName: string }
@@ -33,8 +34,8 @@ export default function GrantPointsPage() {
     const t = await token();
     if (!t) { window.location.href = "/login"; return; }
     const res = await fetch("/api/economy/grant", { headers: { authorization: `Bearer ${t}` } });
-    if (res.status === 403) { setErr("لا صلاحية — للمعلّم والإدارة."); return; }
-    if (!res.ok) { setErr("تعذّر جلب البيانات."); return; }
+    if (res.status === 403) { setErr(tGrantPoints("errForbidden")); return; }
+    if (!res.ok) { setErr(tGrantPoints("errLoadData")); return; }
     const data = (await res.json()) as { items: GrantItem[]; students: GrantStudent[] };
     setItems(data.items); setStudents(data.students);
   }, []);
@@ -54,7 +55,7 @@ export default function GrantPointsPage() {
 
   async function grant() {
     setErr(null); setOk(null);
-    if (!studentId || !itemId) { setErr("اختر الطالب والبند."); return; }
+    if (!studentId || !itemId) { setErr(tGrantPoints("errSelectStudentAndItem")); return; }
     const t = await token();
     if (!t) return;
     const res = await fetch("/api/economy/grant", {
@@ -62,60 +63,60 @@ export default function GrantPointsPage() {
       body: JSON.stringify({ studentId, pointItemId: itemId, note: note.trim() || undefined }),
     });
     if (res.ok) {
-      setOk("تمّ المنح."); setItemId(""); setNote("");
+      setOk(tGrantPoints("okGranted")); setItemId(""); setNote("");
       void loadLedger(studentId);
     } else {
       const j = (await res.json().catch(() => ({}))) as { error?: string };
-      setErr(j.error ?? "تعذّر المنح.");
+      setErr(j.error ?? tGrantPoints("errGrant"));
     }
   }
 
   const cols: Column<LedgerRow>[] = [
-    { key: "item", header: "البند", cell: (r) => <span>{r.itemName}</span> },
-    { key: "amount", header: "النقاط", cell: (r) => (
+    { key: "item", header: tGrantPoints("colItem"), cell: (r) => <span>{r.itemName}</span> },
+    { key: "amount", header: tGrantPoints("colPoints"), cell: (r) => (
       <Badge tone={r.amount >= 0 ? "success" : "danger"}>{r.amount >= 0 ? "+" : "−"}{arNum(Math.abs(r.amount))}</Badge>
     ) },
-    { key: "by", header: "منحها", cell: (r) => <span style={{ color: ui.color.muted }}>{r.grantedByName ?? "النظام"}</span> },
-    { key: "note", header: "ملاحظة", cell: (r) => <span style={{ color: ui.color.muted }}>{r.note ?? "—"}</span> },
+    { key: "by", header: tGrantPoints("colBy"), cell: (r) => <span style={{ color: ui.color.muted }}>{r.grantedByName ?? tGrantPoints("bySystem")}</span> },
+    { key: "note", header: tGrantPoints("colNote"), cell: (r) => <span style={{ color: ui.color.muted }}>{r.note ?? "—"}</span> },
   ];
 
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/grant-points"
-      title="منح نقاط" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "التشغيل" }, { label: "منح نقاط" }]}>
+      title={tGrantPoints("title")} crumbs={[{ label: tGrantPoints("crumbHome"), href: "/" }, { label: tGrantPoints("crumbOperation") }, { label: tGrantPoints("crumbGrantPoints") }]}>
 
       {err && <p style={{ color: ui.color.danger }}>{err}</p>}
       {ok && <p style={{ color: ui.color.success }}>{ok}</p>}
 
-      <p style={{ color: ui.color.muted }}>تمنح لطلاب حلقتك فقط، ومن البنود المسموحة لك. الخادم يرفض ما عدا ذلك.</p>
+      <p style={{ color: ui.color.muted }}>{tGrantPoints("intro")}</p>
 
       <section style={{ background: ui.color.surface, border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.lg, padding: sp(4), marginBottom: sp(6) }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: sp(3) }}>
-          <Field label="الطالب">
+          <Field label={tGrantPoints("fieldStudent")}>
             <Select value={studentId} onChange={(e) => setStudentId(e.target.value)}>
-              <option value="">اختر طالبًا…</option>
+              <option value="">{tGrantPoints("studentPlaceholder")}</option>
               {students.map((s) => <option key={s.studentId} value={s.studentId}>{s.name} — {s.circleName}</option>)}
             </Select>
           </Field>
-          <Field label="البند">
+          <Field label={tGrantPoints("fieldItem")}>
             <Select value={itemId} onChange={(e) => setItemId(e.target.value)}>
-              <option value="">اختر بندًا…</option>
+              <option value="">{tGrantPoints("itemPlaceholder")}</option>
               {items.map((i) => <option key={i.id} value={i.id}>{i.nameAr} ({i.value >= 0 ? "+" : "−"}{arNum(Math.abs(i.value))})</option>)}
             </Select>
           </Field>
-          <Field label="ملاحظة (اختياريّة)"><Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="سبب المنح…" /></Field>
+          <Field label={tGrantPoints("fieldNote")}><Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={tGrantPoints("notePlaceholder")} /></Field>
         </div>
         <div style={{ marginTop: sp(3) }}>
-          <Button onClick={() => void grant()}>منح</Button>
+          <Button onClick={() => void grant()}>{tGrantPoints("grantBtn")}</Button>
         </div>
       </section>
 
       {studentId && ledger && (
         <section>
           <div style={{ marginBottom: sp(4) }}>
-            <Stat label="الرصيد الحاليّ" value={arNum(ledger.balance)} />
+            <Stat label={tGrantPoints("statCurrentBalance")} value={arNum(ledger.balance)} />
           </div>
-          <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(2) }}>آخر الحركات</h2>
-          <Table columns={cols} rows={ledger.transactions} empty="لا حركات بعد." />
+          <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(2) }}>{tGrantPoints("recentTransactions")}</h2>
+          <Table columns={cols} rows={ledger.transactions} empty={tGrantPoints("emptyTransactions")} />
         </section>
       )}
     </AppShell>
