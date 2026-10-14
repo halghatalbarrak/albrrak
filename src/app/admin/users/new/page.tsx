@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
+import { tUsers as t } from "@/i18n/ar/users";
 import { AppShell, Card, Button, Input, Field, ui, sp } from "@/components/ui";
 import {
   type Role, type MuddakirStaffRole, STAFF_ROLES, ROLE_AR, toggleIn,
@@ -34,41 +35,41 @@ export default function NewStaffPage() {
 
   async function addStaff() {
     setErr(null);
-    const t = await token();
-    if (!t) return;
+    const tok = await token();
+    if (!tok) return;
     setSaving(true);
     const res = await fetch("/api/admin/users", {
-      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
       body: JSON.stringify({ name: fName.trim(), phone: fPhone.trim(), roles: fRoles, ...(caps.canEdit ? { muddakirRoles: fStaff } : {}) }),
     });
     if (res.ok) {
       const j = (await res.json()) as { activationUrl: string; muddakirError?: string };
-      if (j.muddakirError) setErr(`أُنشئ الحساب، وتعذّر تعيين أدوار المدّكر: ${j.muddakirError}`);
+      if (j.muddakirError) setErr(`${t("createRolesPartialPrefix")}${j.muddakirError}`);
       setLink(j.activationUrl);
     } else {
       const j = (await res.json().catch(() => ({}))) as { error?: string };
-      setErr(j.error ?? "تعذّر إنشاء الكادر."); setSaving(false);
+      setErr(j.error ?? t("errCreate")); setSaving(false);
     }
   }
 
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/users"
-      title="إضافة كادر"
-      crumbs={[{ label: "الرئيسة", href: "/" }, { label: "المستخدمون", href: LIST }, { label: "كادر جديد" }]}>
+      title={t("newShellTitle")}
+      crumbs={[{ label: t("crumbHome"), href: "/" }, { label: t("crumbUsersNav"), href: LIST }, { label: t("crumbNewStaff") }]}>
 
       {link ? (
         <div style={{ ...linkBoxCard, maxWidth: 640, marginBottom: sp(4) }}>
-          <div style={{ fontWeight: 700, marginBottom: sp(1) }}>أُنشئ الكادر ✓ — أرسِل له رابط التفعيل في واتساب</div>
-          <p style={{ color: ui.color.muted, marginTop: 0, fontSize: ui.text.xs }}>انسخ الرابط الآن؛ لن يظهر مرّةً أخرى.</p>
+          <div style={{ fontWeight: 700, marginBottom: sp(1) }}>{t("createdTitle")}</div>
+          <p style={{ color: ui.color.muted, marginTop: 0, fontSize: ui.text.xs }}>{t("createdHint")}</p>
           <LinkBox url={link} />
-          <div style={{ marginTop: sp(3) }}><Button onClick={() => router.push(LIST)}>رجوع للقائمة</Button></div>
+          <div style={{ marginTop: sp(3) }}><Button onClick={() => router.push(LIST)}>{t("btnBackToList")}</Button></div>
         </div>
       ) : (
         <Card style={{ maxWidth: 560 }}>
-          <Field label="الاسم"><Input value={fName} onChange={(e) => setFName(e.target.value)} placeholder="اسم الكادر" /></Field>
-          <Field label="الجوال"><Input value={fPhone} onChange={(e) => setFPhone(e.target.value)} placeholder="9665… أو 05…" style={{ direction: "ltr" }} /></Field>
+          <Field label={t("fieldName")}><Input value={fName} onChange={(e) => setFName(e.target.value)} placeholder={t("placeholderName")} /></Field>
+          <Field label={t("fieldPhone")}><Input value={fPhone} onChange={(e) => setFPhone(e.target.value)} placeholder={t("placeholderPhone")} style={{ direction: "ltr" }} /></Field>
           {/* الأدوار العامّة — تُعطَّل إن اختيرت وظيفة مدّكر (و١: حصر الوظائف). */}
-          <Field label="الأدوار">
+          <Field label={t("fieldRoles")}>
             <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
               {STAFF_ROLES.map((r) => {
                 const blocked = fStaff.length > 0;
@@ -113,8 +114,8 @@ export default function NewStaffPage() {
           </Field>
           {err && <p style={{ color: ui.color.danger }}>{err}</p>}
           <div style={{ display: "flex", gap: sp(2), marginTop: sp(2) }}>
-            <Button onClick={() => void addStaff()} disabled={saving}>{saving ? "جارٍ…" : "إنشاء"}</Button>
-            <Button variant="ghost" onClick={() => router.push(LIST)}>إلغاء</Button>
+            <Button onClick={() => void addStaff()} disabled={saving}>{saving ? t("btnSaving") : t("btnCreate")}</Button>
+            <Button variant="ghost" onClick={() => router.push(LIST)}>{t("btnCancel")}</Button>
           </div>
         </Card>
       )}

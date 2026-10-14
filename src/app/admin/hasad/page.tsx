@@ -7,6 +7,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { gradeHizbHarvest } from "@/server/hasad-grading";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Button, EmptyState, ui, sp } from "@/components/ui";
+import { tHasad as t } from "@/i18n/ar/hasad";
 
 // شاشة الحصاد الكاملة (الحكم ٧ — نموذج محمد): صورة الوجه + تظليل الآية من المضلّعات،
 // زرّا «خطأ/تردّد»، عدّاد أخطاءٍ تراكميّ على الحزب، عدّاد تردّدٍ على الوجه (يُصفَّر بالانتقال)،
@@ -18,10 +19,10 @@ interface FaceData { page: number; imageUrl: string; ayahs: Ayah[]; polygonsUrl:
 interface Polygon { surahNumber: number; ayahNumber: number; polygon: string }
 interface Err { pageNo: number; errorType: "WORD" | "LETTER" | "FORGOTTEN_AYAH"; surah: number; ayah: number }
 
-const RANK: Record<string, string> = { EXCELLENT: "تميّز", PASS: "اجتياز", FAIL: "رسوب" };
+const RANK: Record<string, string> = { EXCELLENT: t("rankExcellent"), PASS: t("rankPass"), FAIL: t("rankFail") };
 const RANK_BG: Record<string, string> = { EXCELLENT: ui.color.success, PASS: ui.color.bronzeHover, FAIL: ui.color.danger };
 const ETYPE: { v: Err["errorType"]; l: string }[] = [
-  { v: "WORD", l: "كلمة" }, { v: "LETTER", l: "حرف" }, { v: "FORGOTTEN_AYAH", l: "نسيان آية" },
+  { v: "WORD", l: t("etypeWord") }, { v: "LETTER", l: t("etypeLetter") }, { v: "FORGOTTEN_AYAH", l: t("etypeForgottenAyah") },
 ];
 
 async function token(): Promise<string | null> {
@@ -31,7 +32,7 @@ async function token(): Promise<string | null> {
 
 const column: React.CSSProperties = { maxWidth: 520, margin: "0 auto" };
 const chip: React.CSSProperties = { padding: "0.25rem 0.6rem", borderRadius: ui.radius.full, fontSize: ui.text.xs, color: "#fff", fontWeight: 700 };
-const CRUMBS = [{ label: "الرئيسة", href: "/" }, { label: "الحصاد" }];
+const CRUMBS = [{ label: t("crumbHome"), href: "/" }, { label: t("crumbHasad") }];
 
 export default function HasadPage() {
   const { me } = useMe();
@@ -52,9 +53,9 @@ export default function HasadPage() {
   const load = useCallback(async () => {
     setStatus("loading");
     try {
-      const t = await token();
-      if (!t) { setStatus("unauth"); return; }
-      const res = await fetch("/api/hasad/ready", { headers: { authorization: `Bearer ${t}` } });
+      const tok = await token();
+      if (!tok) { setStatus("unauth"); return; }
+      const res = await fetch("/api/hasad/ready", { headers: { authorization: `Bearer ${tok}` } });
       if (res.status === 401 || res.status === 403) { setStatus("unauth"); return; }
       if (!res.ok) { setStatus("error"); return; }
       setReady(((await res.json()) as { students?: Ready[] }).students ?? []);
@@ -65,9 +66,9 @@ export default function HasadPage() {
 
   const loadFace = useCallback(async (page: number) => {
     setFace(null); setPolys([]); setPicking(false);
-    const t = await token(); if (!t) { setStatus("unauth"); return; }
-    const res = await fetch(`/api/mushaf/faces/${page}`, { headers: { authorization: `Bearer ${t}` } });
-    if (!res.ok) { setMsg("تعذّر تحميل الوجه."); return; }
+    const tok = await token(); if (!tok) { setStatus("unauth"); return; }
+    const res = await fetch(`/api/mushaf/faces/${page}`, { headers: { authorization: `Bearer ${tok}` } });
+    if (!res.ok) { setMsg(t("errLoadFace")); return; }
     const fd = (await res.json()) as FaceData;
     setFace(fd);
     try { setPolys((await (await fetch(fd.polygonsUrl)).json()) as Polygon[]); } catch { setPolys([]); }
@@ -75,9 +76,9 @@ export default function HasadPage() {
 
   async function choose(r: Ready) {
     setMsg(null); setOutcome(null); setErrors([]); setHesitations([]); setFaceIdx(0); setPick(r);
-    const t = await token(); if (!t) { setStatus("unauth"); return; }
-    const res = await fetch(`/api/hasad/faces/${r.stageId}`, { headers: { authorization: `Bearer ${t}` } });
-    if (!res.ok) { setMsg("تعذّر تحميل أوجه الحزب."); setPick(null); return; }
+    const tok = await token(); if (!tok) { setStatus("unauth"); return; }
+    const res = await fetch(`/api/hasad/faces/${r.stageId}`, { headers: { authorization: `Bearer ${tok}` } });
+    if (!res.ok) { setMsg(t("errLoadHizbFaces")); setPick(null); return; }
     const hf = (await res.json()) as { pages: number[] };
     setPages(hf.pages);
     if (hf.pages.length) await loadFace(hf.pages[0]);
@@ -105,17 +106,17 @@ export default function HasadPage() {
   }
   async function submit() {
     if (!pick) return;
-    const t = await token(); if (!t) { setStatus("unauth"); return; }
+    const tok = await token(); if (!tok) { setStatus("unauth"); return; }
     const res = await fetch(`/api/students/${pick.studentId}/hasad`, {
-      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
       body: JSON.stringify({ stageId: pick.stageId, errors, hesitations }),
     });
     if (res.ok) { const o = await res.json() as { rank: string; totalErrors: number }; setOutcome(o); await load(); }
-    else { const j = await res.json() as { error?: string }; setMsg(j.error ?? "تعذّر تسجيل الحصاد."); }
+    else { const j = await res.json() as { error?: string }; setMsg(j.error ?? t("errSubmit")); }
   }
 
   const Shell = ({ children }: { children: React.ReactNode }) => (
-    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/hasad" title="الحصاد" crumbs={CRUMBS}>
+    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/hasad" title={t("pageTitle")} crumbs={CRUMBS}>
       <div style={column}>{children}</div>
     </AppShell>
   );
@@ -123,20 +124,20 @@ export default function HasadPage() {
   if (status === "unauth")
     return (
       <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(3) }}>
-        <p>تحتاج دخولًا كمُسمِّع.</p>
-        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a>
+        <p>{t("unauthNeedLogin")}</p>
+        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>{t("loginLink")}</a>
       </main>
     );
-  if (status === "loading") return <Shell><p style={{ color: ui.color.muted }}>…جارٍ التحميل</p></Shell>;
-  if (status === "error") return <Shell><p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>إعادة</Button></p></Shell>;
+  if (status === "loading") return <Shell><p style={{ color: ui.color.muted }}>{t("loading")}</p></Shell>;
+  if (status === "error") return <Shell><p style={{ color: ui.color.danger }}>{t("loadFailed")} <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>{t("retry")}</Button></p></Shell>;
 
   // نتيجة نهائية
   if (outcome) return (
     <Shell>
       <Card style={{ background: RANK_BG[outcome.rank], color: "#fff", marginBottom: sp(3) }}>
-        المرتبة: <strong>{RANK[outcome.rank]}</strong> · مجموع الأخطاء: {outcome.totalErrors}
+        {t("rankLabel")} <strong>{RANK[outcome.rank]}</strong> · {t("totalErrors")} {outcome.totalErrors}
       </Card>
-      <Button type="button" onClick={reset}>حصادٌ جديد</Button>
+      <Button type="button" onClick={reset}>{t("newHasad")}</Button>
     </Shell>
   );
 
@@ -144,11 +145,11 @@ export default function HasadPage() {
   if (!pick) return (
     <Shell>
       {msg && <p style={{ color: ui.color.danger }}>{msg}</p>}
-      {ready.length === 0 && <EmptyState title="لا طلاب جاهزين للحصاد الآن" />}
+      {ready.length === 0 && <EmptyState title={t("noReady")} />}
       {ready.map((r) => (
         <Card key={`${r.studentId}-${r.stageId}`} style={{ marginBottom: sp(2), display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), flexWrap: "wrap" }}>
-          <span><strong>{r.name}</strong> — {r.stageLabel}{r.hizb != null ? ` · الحزب ${r.hizb}` : ""}</span>
-          <Button size="sm" type="button" onClick={() => void choose(r)}>ابدأ</Button>
+          <span><strong>{r.name}</strong> — {r.stageLabel}{r.hizb != null ? `${t("hizbPrefixDot")}${r.hizb}` : ""}</span>
+          <Button size="sm" type="button" onClick={() => void choose(r)}>{t("start")}</Button>
         </Card>
       ))}
     </Shell>
@@ -159,21 +160,21 @@ export default function HasadPage() {
   return (
     <Shell>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: sp(2), flexWrap: "wrap", gap: 6 }}>
-        <div><strong>{pick.name}</strong> · {pick.stageLabel}{pick.hizb != null ? ` · حزب ${pick.hizb}` : ""}</div>
+        <div><strong>{pick.name}</strong> · {pick.stageLabel}{pick.hizb != null ? `${t("hizbPrefixDotShort")}${pick.hizb}` : ""}</div>
         <span style={{ ...chip, background: RANK_BG[grade.rank] }}>{RANK[grade.rank]}</span>
       </div>
       <Card style={{ display: "flex", gap: sp(4), fontSize: ui.text.xs, marginBottom: sp(3), flexWrap: "wrap", padding: `${sp(2)} ${sp(4)}` }}>
-        <span>الوجه <strong>{faceIdx + 1}</strong> من {pages.length}{page != null ? ` (ص${page})` : ""}</span>
-        <span>أخطاء الحزب: <strong style={{ color: ui.color.danger }}>{grade.totalErrors}</strong></span>
-        <span>تردّد الوجه: <strong>{faceHes}</strong>{faceHes >= 3 ? " (=خطأ)" : ""}</span>
+        <span>{t("faceWord")} <strong>{faceIdx + 1}</strong> {t("ofWord")} {pages.length}{page != null ? `${t("pageParenPrefix")}${page})` : ""}</span>
+        <span>{t("hizbErrors")} <strong style={{ color: ui.color.danger }}>{grade.totalErrors}</strong></span>
+        <span>{t("faceHesitation")} <strong>{faceHes}</strong>{faceHes >= 3 ? t("countsAsError") : ""}</span>
       </Card>
       {msg && <p style={{ color: ui.color.danger }}>{msg}</p>}
 
       {/* صورة الوجه + طبقة تظليل الآيات */}
       <div style={{ position: "relative", width: "min(92vw, 400px)", margin: "0 auto", border: `1px solid ${ui.color.border}`, background: ui.color.surface }}>
         {face
-          ? <img src={face.imageUrl} alt={`وجه ${page}`} style={{ width: "100%", display: "block" }} />
-          : <div style={{ padding: "3rem", textAlign: "center", color: ui.color.muted }}>…تحميل الوجه</div>}
+          ? <img src={face.imageUrl} alt={`${t("faceAlt")} ${page}`} style={{ width: "100%", display: "block" }} />
+          : <div style={{ padding: "3rem", textAlign: "center", color: ui.color.muted }}>{t("loadingFace")}</div>}
         {face && (
           <svg viewBox={`0 0 ${vb.width} ${vb.height}`} preserveAspectRatio="none"
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
@@ -187,10 +188,10 @@ export default function HasadPage() {
       {/* قائمة آيات الوجه عند «خطأ» */}
       {picking && face && (
         <Card style={{ marginTop: sp(2) }}>
-          <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>نوع الخطأ ثمّ الآية:</div>
+          <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>{t("errorTypeThenAyah")}</div>
           <div style={{ display: "flex", gap: sp(2), marginBottom: sp(3), flexWrap: "wrap" }}>
-            {ETYPE.map((t) => (
-              <Button key={t.v} size="sm" variant={etype === t.v ? "bronze" : "ghost"} type="button" onClick={() => setEtype(t.v)}>{t.l}</Button>
+            {ETYPE.map((et) => (
+              <Button key={et.v} size="sm" variant={etype === et.v ? "bronze" : "ghost"} type="button" onClick={() => setEtype(et.v)}>{et.l}</Button>
             ))}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: sp(2) }}>
@@ -200,19 +201,19 @@ export default function HasadPage() {
               </Button>
             ))}
           </div>
-          <Button size="sm" variant="ghost" type="button" style={{ marginTop: sp(3) }} onClick={() => setPicking(false)}>إلغاء</Button>
+          <Button size="sm" variant="ghost" type="button" style={{ marginTop: sp(3) }} onClick={() => setPicking(false)}>{t("cancel")}</Button>
         </Card>
       )}
 
       {/* الأزرار */}
       <div style={{ display: "flex", gap: sp(2), marginTop: sp(3), flexWrap: "wrap", alignItems: "center" }}>
-        <Button variant="danger" type="button" onClick={() => setPicking((v) => !v)} disabled={!face}>خطأ</Button>
-        <Button variant="bronze" type="button" onClick={addHesitation} disabled={!face}>تردّد</Button>
+        <Button variant="danger" type="button" onClick={() => setPicking((v) => !v)} disabled={!face}>{t("errorBtn")}</Button>
+        <Button variant="bronze" type="button" onClick={addHesitation} disabled={!face}>{t("hesitationBtn")}</Button>
         <Button type="button" style={{ marginInlineStart: "auto" }} onClick={() => void next()} disabled={!face}>
-          {faceIdx < pages.length - 1 ? "الوجه التالي ⟵" : "إنهاء الحصاد"}
+          {faceIdx < pages.length - 1 ? t("nextFace") : t("finishHasad")}
         </Button>
       </div>
-      <Button variant="ghost" size="sm" type="button" style={{ marginTop: sp(3) }} onClick={reset}>إلغاء الحصاد</Button>
+      <Button variant="ghost" size="sm" type="button" style={{ marginTop: sp(3) }} onClick={reset}>{t("cancelHasad")}</Button>
     </Shell>
   );
 }

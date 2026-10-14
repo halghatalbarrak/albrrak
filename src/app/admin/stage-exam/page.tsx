@@ -7,6 +7,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { gradeHizbHarvest, aggregateExamRanks, type HizbRank } from "@/server/hasad-grading";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Button, EmptyState, ui, sp } from "@/components/ui";
+import { tStageExam as t } from "@/i18n/ar/stage-exam";
 
 // شاشة اختبار المرحلة (البند ١): على قالب الحصاد، لكن على **كامل المحفوظ** حزبًا حزبًا.
 // المختبِر المحايد يرصد لكل حزبٍ الأخطاء (كلمة/حرف/نسيان) والترددات (بالوجه)، والتقدير اللحظيّ
@@ -21,10 +22,10 @@ interface Polygon { surahNumber: number; ayahNumber: number; polygon: string }
 interface Err { pageNo: number; errorType: "WORD" | "LETTER" | "FORGOTTEN_AYAH"; surah: number; ayah: number }
 interface Hes { faceNo: number }
 
-const RANK: Record<string, string> = { EXCELLENT: "تميّز", PASS: "اجتياز", FAIL: "رسوب" };
+const RANK: Record<string, string> = { EXCELLENT: t("rankExcellent"), PASS: t("rankPass"), FAIL: t("rankFail") };
 const RANK_BG: Record<string, string> = { EXCELLENT: ui.color.success, PASS: ui.color.bronzeHover, FAIL: ui.color.danger };
 const ETYPE: { v: Err["errorType"]; l: string }[] = [
-  { v: "WORD", l: "كلمة" }, { v: "LETTER", l: "حرف" }, { v: "FORGOTTEN_AYAH", l: "نسيان آية" },
+  { v: "WORD", l: t("etypeWord") }, { v: "LETTER", l: t("etypeLetter") }, { v: "FORGOTTEN_AYAH", l: t("etypeForgottenAyah") },
 ];
 
 async function token(): Promise<string | null> {
@@ -37,7 +38,7 @@ function todayISO(): string {
 
 const column: React.CSSProperties = { maxWidth: 560, margin: "0 auto" };
 const chip: React.CSSProperties = { padding: "0.25rem 0.6rem", borderRadius: ui.radius.full, fontSize: ui.text.xs, color: "#fff", fontWeight: 700 };
-const CRUMBS = [{ label: "الرئيسة", href: "/" }, { label: "اختبار المرحلة" }];
+const CRUMBS = [{ label: t("crumbHome"), href: "/" }, { label: t("crumbStageExam") }];
 
 export default function StageExamPage() {
   const { me } = useMe();
@@ -62,9 +63,9 @@ export default function StageExamPage() {
   const load = useCallback(async () => {
     setStatus("loading");
     try {
-      const t = await token();
-      if (!t) { setStatus("unauth"); return; }
-      const h = { authorization: `Bearer ${t}` };
+      const tok = await token();
+      if (!tok) { setStatus("unauth"); return; }
+      const h = { authorization: `Bearer ${tok}` };
       // المختبِر يرى الجاهزين؛ المعلّم يرى الإجازات؛ كلٌّ يتجاوز 403 الآخر بأمان.
       const [rRes, lRes] = await Promise.all([
         fetch("/api/stage-exams/ready", { headers: h }),
@@ -80,9 +81,9 @@ export default function StageExamPage() {
 
   const loadFace = useCallback(async (page: number) => {
     setFace(null); setPolys([]); setPicking(false);
-    const t = await token(); if (!t) { setStatus("unauth"); return; }
-    const res = await fetch(`/api/mushaf/faces/${page}`, { headers: { authorization: `Bearer ${t}` } });
-    if (!res.ok) { setMsg("تعذّر تحميل الوجه."); return; }
+    const tok = await token(); if (!tok) { setStatus("unauth"); return; }
+    const res = await fetch(`/api/mushaf/faces/${page}`, { headers: { authorization: `Bearer ${tok}` } });
+    if (!res.ok) { setMsg(t("errLoadFace")); return; }
     const fd = (await res.json()) as FaceData;
     setFace(fd);
     try { setPolys((await (await fetch(fd.polygonsUrl)).json()) as Polygon[]); } catch { setPolys([]); }
@@ -90,9 +91,9 @@ export default function StageExamPage() {
 
   const loadHizbFaces = useCallback(async (stageId: string) => {
     setPages([]); setFaceIdx(0); setFace(null); setPolys([]);
-    const t = await token(); if (!t) { setStatus("unauth"); return; }
-    const res = await fetch(`/api/hasad/faces/${stageId}`, { headers: { authorization: `Bearer ${t}` } });
-    if (!res.ok) { setMsg("تعذّر تحميل أوجه الحزب."); return; }
+    const tok = await token(); if (!tok) { setStatus("unauth"); return; }
+    const res = await fetch(`/api/hasad/faces/${stageId}`, { headers: { authorization: `Bearer ${tok}` } });
+    if (!res.ok) { setMsg(t("errLoadHizbFaces")); return; }
     const hf = (await res.json()) as { pages: number[] };
     setPages(hf.pages);
     if (hf.pages.length) await loadFace(hf.pages[0]);
@@ -109,13 +110,13 @@ export default function StageExamPage() {
 
   async function defer(studentId: string, mainStageId: string) {
     setMsg(null);
-    const t = await token(); if (!t) { setStatus("unauth"); return; }
+    const tok = await token(); if (!tok) { setStatus("unauth"); return; }
     const res = await fetch("/api/stage-exams/defer", {
-      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
       body: JSON.stringify({ studentId, mainStageId }),
     });
     if (res.ok) await load();
-    else { const j = await res.json() as { error?: string }; setMsg(j.error ?? "تعذّر التأجيل."); }
+    else { const j = await res.json() as { error?: string }; setMsg(j.error ?? t("errDefer")); }
   }
 
   // ── الاختبار الجاري ──
@@ -161,22 +162,22 @@ export default function StageExamPage() {
   }
   async function submit() {
     if (!pick) return;
-    const t = await token(); if (!t) { setStatus("unauth"); return; }
+    const tok = await token(); if (!tok) { setStatus("unauth"); return; }
     const hizbs = pick.hizbs.map((h) => ({
       stageId: h.stageId,
       errors: errorsByHizb[h.stageId] ?? [],
       hesitations: hesByHizb[h.stageId] ?? [],
     }));
     const res = await fetch(`/api/students/${pick.studentId}/stage-exam`, {
-      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
       body: JSON.stringify({ mainStageId: pick.mainStageId, startedOn: todayISO(), hizbs }),
     });
     if (res.ok) { setOutcome(await res.json() as { status: string; finalRank: string; approvalId: string | null }); await load(); }
-    else { const j = await res.json() as { error?: string }; setMsg(j.error ?? "تعذّر تسجيل الاختبار."); }
+    else { const j = await res.json() as { error?: string }; setMsg(j.error ?? t("errSubmit")); }
   }
 
   const Shell = ({ children }: { children: React.ReactNode }) => (
-    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/stage-exam" title="اختبار المرحلة" crumbs={CRUMBS}>
+    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/stage-exam" title={t("pageTitle")} crumbs={CRUMBS}>
       <div style={column}>{children}</div>
     </AppShell>
   );
@@ -184,25 +185,25 @@ export default function StageExamPage() {
   if (status === "unauth")
     return (
       <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(3) }}>
-        <p>تحتاج دخولًا كمختبِرٍ أو معلّم.</p>
-        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a>
+        <p>{t("unauthNeedLogin")}</p>
+        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>{t("loginLink")}</a>
       </main>
     );
-  if (status === "loading") return <Shell><p style={{ color: ui.color.muted }}>…جارٍ التحميل</p></Shell>;
-  if (status === "error") return <Shell><p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>إعادة</Button></p></Shell>;
+  if (status === "loading") return <Shell><p style={{ color: ui.color.muted }}>{t("loading")}</p></Shell>;
+  if (status === "error") return <Shell><p style={{ color: ui.color.danger }}>{t("loadFailed")} <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>{t("retry")}</Button></p></Shell>;
 
   // نتيجة نهائية
   if (outcome) return (
     <Shell>
       <Card style={{ background: RANK_BG[outcome.finalRank], color: "#fff", marginBottom: sp(3) }}>
-        نتيجة الاختبار: <strong>{outcome.status === "PASSED" ? "ناجح" : "راسب"}</strong> · المرتبة: <strong>{RANK[outcome.finalRank]}</strong>
+        {t("examResult")} <strong>{outcome.status === "PASSED" ? t("resultPassed") : t("resultFailed")}</strong> · {t("rankLabel")} <strong>{RANK[outcome.finalRank]}</strong>
       </Card>
       {outcome.status === "PASSED" && outcome.approvalId && (
         <Card style={{ marginBottom: sp(3), fontSize: ui.text.xs, color: ui.color.muted }}>
-          أُنشئ اقتراح انتقالٍ معلَّق — بانتظار اعتماد المدير.
+          {t("transferProposalCreated")}
         </Card>
       )}
-      <Button type="button" onClick={reset}>اختبارٌ جديد</Button>
+      <Button type="button" onClick={reset}>{t("newExam")}</Button>
     </Shell>
   );
 
@@ -211,32 +212,32 @@ export default function StageExamPage() {
     <Shell>
       {msg && <p style={{ color: ui.color.danger }}>{msg}</p>}
 
-      <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, margin: `${sp(2)} 0` }}>الجاهزون لاختبار المرحلة</h2>
-      {ready.length === 0 && <EmptyState title="لا طلاب جاهزين لاختبار المرحلة الآن" />}
+      <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, margin: `${sp(2)} 0` }}>{t("readyTitle")}</h2>
+      {ready.length === 0 && <EmptyState title={t("noReady")} />}
       {ready.map((r) => (
         <Card key={`${r.studentId}-${r.mainStageId}`} style={{ marginBottom: sp(2), display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), flexWrap: "wrap" }}>
-          <span><strong>{r.name}</strong> — {r.mainStageLabel} · {r.hizbs.length} حزبًا</span>
-          <Button size="sm" type="button" onClick={() => void choose(r)}>ابدأ الاختبار</Button>
+          <span><strong>{r.name}</strong> — {r.mainStageLabel} · {r.hizbs.length} {t("hizbUnit")}</span>
+          <Button size="sm" type="button" onClick={() => void choose(r)}>{t("startExam")}</Button>
         </Card>
       ))}
 
       {onLeave.length > 0 && (
         <>
-          <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, margin: `${sp(4)} 0 ${sp(2)}` }}>طلابٌ في إجازة المرحلة</h2>
+          <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, margin: `${sp(4)} 0 ${sp(2)}` }}>{t("onLeaveTitle")}</h2>
           {onLeave.map((s) => (
             <Card key={`${s.studentId}-${s.mainStageId}`} style={{ marginBottom: sp(2), display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), flexWrap: "wrap" }}>
               <span style={{ fontSize: ui.text.xs }}>
                 <strong>{s.name}</strong> — {s.mainStageLabel}
                 <br />
                 <span style={{ color: ui.color.muted }}>
-                  الإجازة تنتهي {s.effectiveEndsOn}
-                  {s.teacherDeferredOnce ? " · أجّلها المعلّم" : ""}
-                  {s.adminDeferrals > 0 ? ` · تأجيلات إدارة: ${s.adminDeferrals}` : ""}
+                  {t("leaveEnds")} {s.effectiveEndsOn}
+                  {s.teacherDeferredOnce ? t("teacherDeferred") : ""}
+                  {s.adminDeferrals > 0 ? `${t("adminDeferralsPrefix")}${s.adminDeferrals}` : ""}
                 </span>
               </span>
               {s.canDefer
-                ? <Button size="sm" variant="ghost" type="button" onClick={() => void defer(s.studentId, s.mainStageId)}>تأجيل أسبوعًا</Button>
-                : <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>التأجيل المتكرّر بيد الإدارة</span>}
+                ? <Button size="sm" variant="ghost" type="button" onClick={() => void defer(s.studentId, s.mainStageId)}>{t("deferWeek")}</Button>
+                : <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{t("repeatedDeferByAdmin")}</span>}
             </Card>
           ))}
         </>
@@ -248,26 +249,26 @@ export default function StageExamPage() {
   const vb = face?.polygonViewBox ?? { width: 345, height: 550 };
   const lastFace = faceIdx >= pages.length - 1;
   const lastHizb = hizbIdx >= pick.hizbs.length - 1;
-  const nextLabel = !lastFace ? "الوجه التالي ⟵" : !lastHizb ? "الحزب التالي ⟵" : "إنهاء الاختبار";
+  const nextLabel = !lastFace ? t("nextFace") : !lastHizb ? t("nextHizb") : t("finishExam");
   return (
     <Shell>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: sp(2), flexWrap: "wrap", gap: 6 }}>
         <div><strong>{pick.name}</strong> · {pick.mainStageLabel}</div>
-        {overall && <span style={{ ...chip, background: RANK_BG[overall.finalRank] }}>الإجمالي: {RANK[overall.finalRank]}</span>}
+        {overall && <span style={{ ...chip, background: RANK_BG[overall.finalRank] }}>{t("overall")} {RANK[overall.finalRank]}</span>}
       </div>
       <Card style={{ display: "flex", gap: sp(4), fontSize: ui.text.xs, marginBottom: sp(3), flexWrap: "wrap", padding: `${sp(2)} ${sp(4)}` }}>
-        <span>الحزب <strong>{hizbIdx + 1}</strong> من {pick.hizbs.length}{curHizb ? ` (${curHizb.label})` : ""}</span>
-        <span>الوجه <strong>{faceIdx + 1}</strong> من {pages.length}{page != null ? ` (ص${page})` : ""}</span>
-        <span>أخطاء الحزب: <strong style={{ color: ui.color.danger }}>{curGrade.totalErrors}</strong> (<span style={{ background: RANK_BG[curGrade.rank], color: "#fff", padding: "0 6px", borderRadius: ui.radius.full }}>{RANK[curGrade.rank]}</span>)</span>
-        <span>تردّد الوجه: <strong>{faceHes}</strong>{faceHes >= 3 ? " (=خطأ)" : ""}</span>
+        <span>{t("hizbWord")} <strong>{hizbIdx + 1}</strong> {t("ofWord")} {pick.hizbs.length}{curHizb ? ` (${curHizb.label})` : ""}</span>
+        <span>{t("faceWord")} <strong>{faceIdx + 1}</strong> {t("ofWord")} {pages.length}{page != null ? `${t("pageParenPrefix")}${page})` : ""}</span>
+        <span>{t("hizbErrors")} <strong style={{ color: ui.color.danger }}>{curGrade.totalErrors}</strong> (<span style={{ background: RANK_BG[curGrade.rank], color: "#fff", padding: "0 6px", borderRadius: ui.radius.full }}>{RANK[curGrade.rank]}</span>)</span>
+        <span>{t("faceHesitation")} <strong>{faceHes}</strong>{faceHes >= 3 ? t("countsAsError") : ""}</span>
       </Card>
       {msg && <p style={{ color: ui.color.danger }}>{msg}</p>}
 
       {/* صورة الوجه + طبقة تظليل الآيات (كنمط الحصاد) */}
       <div style={{ position: "relative", width: "min(92vw, 400px)", margin: "0 auto", border: `1px solid ${ui.color.border}`, background: ui.color.surface }}>
         {face
-          ? <img src={face.imageUrl} alt={`وجه ${page}`} style={{ width: "100%", display: "block" }} />
-          : <div style={{ padding: "3rem", textAlign: "center", color: ui.color.muted }}>…تحميل الوجه</div>}
+          ? <img src={face.imageUrl} alt={`${t("faceAlt")} ${page}`} style={{ width: "100%", display: "block" }} />
+          : <div style={{ padding: "3rem", textAlign: "center", color: ui.color.muted }}>{t("loadingFace")}</div>}
         {face && (
           <svg viewBox={`0 0 ${vb.width} ${vb.height}`} preserveAspectRatio="none"
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
@@ -281,10 +282,10 @@ export default function StageExamPage() {
       {/* قائمة آيات الوجه عند «خطأ» */}
       {picking && face && (
         <Card style={{ marginTop: sp(2) }}>
-          <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>نوع الخطأ ثمّ الآية:</div>
+          <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>{t("errorTypeThenAyah")}</div>
           <div style={{ display: "flex", gap: sp(2), marginBottom: sp(3), flexWrap: "wrap" }}>
-            {ETYPE.map((t) => (
-              <Button key={t.v} size="sm" variant={etype === t.v ? "bronze" : "ghost"} type="button" onClick={() => setEtype(t.v)}>{t.l}</Button>
+            {ETYPE.map((et) => (
+              <Button key={et.v} size="sm" variant={etype === et.v ? "bronze" : "ghost"} type="button" onClick={() => setEtype(et.v)}>{et.l}</Button>
             ))}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: sp(2) }}>
@@ -294,17 +295,17 @@ export default function StageExamPage() {
               </Button>
             ))}
           </div>
-          <Button size="sm" variant="ghost" type="button" style={{ marginTop: sp(3) }} onClick={() => setPicking(false)}>إلغاء</Button>
+          <Button size="sm" variant="ghost" type="button" style={{ marginTop: sp(3) }} onClick={() => setPicking(false)}>{t("cancel")}</Button>
         </Card>
       )}
 
       {/* الأزرار */}
       <div style={{ display: "flex", gap: sp(2), marginTop: sp(3), flexWrap: "wrap", alignItems: "center" }}>
-        <Button variant="danger" type="button" onClick={() => setPicking((v) => !v)} disabled={!face}>خطأ</Button>
-        <Button variant="bronze" type="button" onClick={addHesitation} disabled={!face}>تردّد</Button>
+        <Button variant="danger" type="button" onClick={() => setPicking((v) => !v)} disabled={!face}>{t("errorBtn")}</Button>
+        <Button variant="bronze" type="button" onClick={addHesitation} disabled={!face}>{t("hesitationBtn")}</Button>
         <Button type="button" style={{ marginInlineStart: "auto" }} onClick={() => void next()} disabled={!face}>{nextLabel}</Button>
       </div>
-      <Button variant="ghost" size="sm" type="button" style={{ marginTop: sp(3) }} onClick={reset}>إلغاء الاختبار</Button>
+      <Button variant="ghost" size="sm" type="button" style={{ marginTop: sp(3) }} onClick={reset}>{t("cancelExam")}</Button>
     </Shell>
   );
 }

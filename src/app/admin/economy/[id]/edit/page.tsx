@@ -5,6 +5,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { AppShell, ui } from "@/components/ui";
 import { EconomyForm, LIST, type Item } from "../../shared";
+import { tEconomy as tEco } from "@/i18n/ar/economy";
 
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
@@ -23,21 +24,21 @@ export default function EditEconomyItemPage({ params }: { params: Promise<{ id: 
       const t = await token();
       if (!t) { window.location.href = "/login"; return; }
       const res = await fetch("/api/admin/economy", { headers: { authorization: `Bearer ${t}` } });
-      if (res.status === 403) { setErr("لا صلاحية — هذه الشاشة للإدارة."); return; }
-      if (!res.ok) { setErr("تعذّر جلب البند."); return; }
+      if (res.status === 403) { setErr(tEco("errNoPermission")); return; }
+      if (!res.ok) { setErr(tEco("errFetchItem")); return; }
       const data = (await res.json().catch(() => null)) as { items?: Item[] } | null;
       const found = data?.items?.find((x) => x.id === id) ?? null;
-      if (!found) { setErr("البند غير موجود."); return; }
+      if (!found) { setErr(tEco("errItemNotFound")); return; }
       setItem(found);
     })();
   }, [id]);
 
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/economy"
-      title="تعديل بند"
-      crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: "النقاط", href: LIST }, { label: "تعديل" }]}>
+      title={tEco("editTitle")}
+      crumbs={[{ label: tEco("crumbHome"), href: "/" }, { label: tEco("crumbAdmin") }, { label: tEco("crumbPoints"), href: LIST }, { label: tEco("crumbEdit") }]}>
       {err && <p style={{ color: ui.color.danger }}>{err}</p>}
-      {!err && !item && <p style={{ color: ui.color.muted }}>جارٍ التحميل…</p>}
+      {!err && !item && <p style={{ color: ui.color.muted }}>{tEco("loading")}</p>}
       {item && <EconomyForm initial={item} />}
     </AppShell>
   );

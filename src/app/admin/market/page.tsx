@@ -8,6 +8,7 @@ import { arNum } from "@/lib/format";
 import {
   AppShell, Button, Input, Field, Badge, Table, ui, sp, type Column,
 } from "@/components/ui";
+import { tMarket as t } from "@/i18n/ar/market";
 import { type Item } from "./shared";
 
 interface PendingGift {
@@ -33,23 +34,23 @@ export default function AdminMarketPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const t = await token();
-    if (!t) { window.location.href = "/login"; return; }
-    const res = await fetch("/api/admin/market", { headers: { authorization: `Bearer ${t}` } });
-    if (res.status === 403) { setErr("لا صلاحية — هذه الشاشة للإدارة."); return; }
-    if (!res.ok) { setErr("تعذّر جلب الثمار."); return; }
+    const tok = await token();
+    if (!tok) { window.location.href = "/login"; return; }
+    const res = await fetch("/api/admin/market", { headers: { authorization: `Bearer ${tok}` } });
+    if (res.status === 403) { setErr(t("errNoPermission")); return; }
+    if (!res.ok) { setErr(t("errFetchItems")); return; }
     const data = (await res.json().catch(() => null)) as { items?: Item[] } | null;
     setItems(data?.items ?? []);
     // ثمرات الوليّ المعلّقة (م٦ب-٢).
-    const gres = await fetch("/api/admin/market/gifts", { headers: { authorization: `Bearer ${t}` } });
+    const gres = await fetch("/api/admin/market/gifts", { headers: { authorization: `Bearer ${tok}` } });
     if (gres.ok) setGifts(((await gres.json()) as { gifts: PendingGift[] }).gifts);
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
   async function decideGift(id: string, action: "approve" | "reject") {
-    const t = await token();
-    if (!t) return;
+    const tok = await token();
+    if (!tok) return;
     const body: Record<string, unknown> = { id, action };
     if (action === "approve") {
       const raw = priceEdits[id];
@@ -57,56 +58,56 @@ export default function AdminMarketPage() {
       body.pricePoints = raw != null && raw.trim() !== "" ? Number(raw) : g?.proposedPricePoints ?? NaN;
     }
     const res = await fetch("/api/admin/market/gifts", {
-      method: "PATCH", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      method: "PATCH", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
       body: JSON.stringify(body),
     });
     if (res.ok) { setErr(null); void load(); }
-    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّر تنفيذ الإجراء."); }
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("errDoAction")); }
   }
 
   async function toggle(item: Item) {
-    const t = await token();
-    if (!t) return;
+    const tok = await token();
+    if (!tok) return;
     const res = await fetch("/api/admin/market", {
-      method: "PATCH", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      method: "PATCH", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
       body: JSON.stringify({ id: item.id, active: !item.active }),
     });
     if (res.ok) void load();
-    else setErr("تعذّر تغيير الحالة.");
+    else setErr(t("errToggleState"));
   }
 
   const cols: Column<Item>[] = [
-    { key: "name", header: "الثمرة", cell: (i) => (
+    { key: "name", header: t("colName"), cell: (i) => (
       <span style={{ display: "flex", gap: sp(2), alignItems: "center", opacity: i.active ? 1 : 0.5 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {i.imageUrl && <img src={i.imageUrl} alt="" width={32} height={32} style={{ borderRadius: ui.radius.sm, objectFit: "cover" }} />}
         {i.nameAr}
       </span>
     ) },
-    { key: "price", header: "قيمة الثمرة", cell: (i) => <Badge tone="bronze">{arNum(i.pricePoints)} نقطة</Badge> },
-    { key: "stock", header: "المتوفّر", cell: (i) => <span>{i.stock == null ? "بلا حدّ" : arNum(i.stock)}</span> },
-    { key: "state", header: "الحالة", cell: (i) => (i.active ? <Badge tone="success">مُفعَّل</Badge> : <Badge tone="neutral">معطَّل</Badge>) },
-    { key: "act", header: "إجراء", cell: (i) => (
+    { key: "price", header: t("colPrice"), cell: (i) => <Badge tone="bronze">{arNum(i.pricePoints)} {t("pointUnit")}</Badge> },
+    { key: "stock", header: t("colStock"), cell: (i) => <span>{i.stock == null ? t("noLimit") : arNum(i.stock)}</span> },
+    { key: "state", header: t("colState"), cell: (i) => (i.active ? <Badge tone="success">{t("stateActive")}</Badge> : <Badge tone="neutral">{t("stateInactive")}</Badge>) },
+    { key: "act", header: t("colAction"), cell: (i) => (
       <div style={{ display: "flex", gap: sp(2), justifyContent: "flex-end" }}>
-        <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/market/${i.id}/edit`)}>تعديل</Button>
-        <Button variant="ghost" size="sm" onClick={() => void toggle(i)}>{i.active ? "تعطيل" : "تفعيل"}</Button>
+        <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/market/${i.id}/edit`)}>{t("actEdit")}</Button>
+        <Button variant="ghost" size="sm" onClick={() => void toggle(i)}>{i.active ? t("actDeactivate") : t("actActivate")}</Button>
       </div>
     ) },
   ];
 
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/market"
-      title="ثمار البيدر" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: "البيدر" }]}>
+      title={t("pageTitle")} crumbs={[{ label: t("crumbHome"), href: "/" }, { label: t("crumbAdmin") }, { label: t("crumbBaydar") }]}>
 
       {err && <p style={{ color: ui.color.danger }}>{err}</p>}
-      {!err && !items && <p style={{ color: ui.color.muted }}>جارٍ التحميل…</p>}
+      {!err && !items && <p style={{ color: ui.color.muted }}>{t("loading")}</p>}
 
       {items && (
         <>
           {gifts.length > 0 && (
             <section style={{ background: "var(--color-warn-bg)", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.lg, padding: sp(4), marginBottom: sp(6) }}>
-              <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(1) }}>ثمرات بانتظار الموافقة</h2>
-              <p style={{ color: ui.color.muted, marginTop: 0 }}>ثمرات أضافها أولياء الأمور. اعتمِد القيمة المقترحة أو عدّلها، أو ارفض.</p>
+              <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(1) }}>{t("giftsTitle")}</h2>
+              <p style={{ color: ui.color.muted, marginTop: 0 }}>{t("giftsHint")}</p>
               <div style={{ display: "flex", flexDirection: "column", gap: sp(3) }}>
                 {gifts.map((g) => (
                   <div key={g.id} style={{ display: "flex", flexWrap: "wrap", gap: sp(3), alignItems: "flex-end", justifyContent: "space-between", borderTop: `1px solid ${ui.color.border}`, paddingTop: sp(3) }}>
@@ -116,17 +117,17 @@ export default function AdminMarketPage() {
                       <div>
                         <div style={{ fontWeight: 700 }}>{g.nameAr}</div>
                         <div style={{ fontSize: ui.text.xs, color: ui.color.muted }}>
-                          {g.targetStudentName ? `خاصّة بـ ${g.targetStudentName}` : "عامّة لكلّ البيدر"} · اقترحها {g.proposedByName ?? "—"}
+                          {g.targetStudentName ? `خاصّة بـ ${g.targetStudentName}` : t("giftGeneral")} · {t("giftProposedBy")} {g.proposedByName ?? "—"}
                         </div>
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: sp(2), alignItems: "flex-end" }}>
-                      <Field label="القيمة المعتمَدة">
+                      <Field label={t("giftApprovedValue")}>
                         <Input type="number" value={priceEdits[g.id] ?? String(g.proposedPricePoints ?? "")}
                           onChange={(e) => setPriceEdits((p) => ({ ...p, [g.id]: e.target.value }))} style={{ width: 96 }} />
                       </Field>
-                      <Button size="sm" onClick={() => void decideGift(g.id, "approve")}>اعتماد</Button>
-                      <Button variant="ghost" size="sm" onClick={() => void decideGift(g.id, "reject")}>رفض</Button>
+                      <Button size="sm" onClick={() => void decideGift(g.id, "approve")}>{t("giftApprove")}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => void decideGift(g.id, "reject")}>{t("giftReject")}</Button>
                     </div>
                   </div>
                 ))}
@@ -136,12 +137,12 @@ export default function AdminMarketPage() {
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), marginBottom: sp(4) }}>
             <p style={{ color: ui.color.muted, margin: 0 }}>
-              قيمة الثمرة بالنقاط. المتوفّر فارغٌ = بلا حدّ. أمين البيدر لا يُدخل القيمة — تُخصَم المثبّتة هنا. تعطيلٌ لا حذف.
+              {t("listHint")}
             </p>
-            <Button onClick={() => router.push("/admin/market/new")}>+ جديد</Button>
+            <Button onClick={() => router.push("/admin/market/new")}>{t("newBtn")}</Button>
           </div>
 
-          <Table columns={cols} rows={items} empty="لا ثمار بعد — أضِف أوّل ثمرة بزرّ «+ جديد»." />
+          <Table columns={cols} rows={items} empty={t("tableEmpty")} />
         </>
       )}
     </AppShell>

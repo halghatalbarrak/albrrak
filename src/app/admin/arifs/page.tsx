@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Button, Select, EmptyState, ui, sp } from "@/components/ui";
+import { tArifs as tr } from "@/i18n/ar/arifs";
 
 // شاشة العرفاء (الحكم ٨): المعلّم يعيّن طالباً من حلقته عريفاً، أو يعزله. العريف يُسمِّع
 // الترسيخ/المراجعة بإسناده، لا الحفظ الجديد ولا الاختبار. حالات صريحة، لا انهيار.
@@ -72,52 +73,52 @@ export default function ArifsPage() {
       headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
       body: JSON.stringify({ arifUserId, action }),
     });
-    if (res.ok) { setMsg(action === "appoint" ? "عُيّن عريفًا." : "عُزل."); await load(); }
-    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر."); }
+    if (res.ok) { setMsg(action === "appoint" ? tr("appointed") : tr("dismissed")); await load(); }
+    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? tr("actionFailed")); }
   }
 
   if (status === "unauth")
     return (
       <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(3) }}>
-        <p>تحتاج دخولًا.</p>
-        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a>
+        <p>{tr("needLogin")}</p>
+        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>{tr("login")}</a>
       </main>
     );
 
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/arifs"
-      title="العرفاء" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "التشغيل" }, { label: "العرفاء" }]}>
+      title={tr("title")} crumbs={[{ label: tr("crumbHome"), href: "/" }, { label: tr("crumbOps") }, { label: tr("crumbArifs") }]}>
       <p style={{ color: ui.color.muted, margin: `0 0 ${sp(4)}`, fontSize: ui.text.base }}>
-        العريف يُسمِّع الترسيخ والمراجعة بإسنادك ومسؤوليتك — لا الحفظ الجديد ولا الاختبار.
+        {tr("intro")}
       </p>
 
       <Select value={circleId} onChange={(e) => setCircleId(e.target.value)} style={{ width: "auto", minWidth: 200, marginBottom: sp(4) }}>
-        <option value="">— اختر حلقة —</option>
+        <option value="">{tr("selectCircle")}</option>
         {circles.map((c) => <option key={c.id} value={c.id}>{c.nameAr}</option>)}
       </Select>
 
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
-      {status === "loading" && <p style={{ color: ui.color.muted }}>…جارٍ التحميل</p>}
-      {status === "error" && <p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>إعادة</Button></p>}
-      {status === "idle" && <EmptyState title="اختر حلقةً لإدارة عرفائها" />}
+      {status === "loading" && <p style={{ color: ui.color.muted }}>{tr("loading")}</p>}
+      {status === "error" && <p style={{ color: ui.color.danger }}>{tr("loadFailed")} <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>{tr("retry")}</Button></p>}
+      {status === "idle" && <EmptyState title={tr("idleTitle")} />}
 
       {status === "ready" && (
         <>
-          <h2 style={sectionTitle}>العرفاء النشطون</h2>
-          {arifs.length === 0 && <p style={{ color: ui.color.muted }}>لا عرفاء بعد.</p>}
+          <h2 style={sectionTitle}>{tr("activeArifsTitle")}</h2>
+          {arifs.length === 0 && <p style={{ color: ui.color.muted }}>{tr("noArifs")}</p>}
           {arifs.map((a) => (
             <Card key={a.arifUserId} style={row}>
               <strong>{a.name}</strong>
-              <Button variant="danger" size="sm" type="button" onClick={() => void act(a.arifUserId, "dismiss")}>عزل</Button>
+              <Button variant="danger" size="sm" type="button" onClick={() => void act(a.arifUserId, "dismiss")}>{tr("dismissBtn")}</Button>
             </Card>
           ))}
 
-          <h2 style={sectionTitle}>طلاب الحلقة (للتعيين — أنت تقدّر تقدّمهم)</h2>
-          {candidates.length === 0 && <p style={{ color: ui.color.muted }}>لا طلاب متاحين.</p>}
+          <h2 style={sectionTitle}>{tr("candidatesTitle")}</h2>
+          {candidates.length === 0 && <p style={{ color: ui.color.muted }}>{tr("noCandidates")}</p>}
           {candidates.map((c) => (
             <Card key={c.userId} style={row}>
               <span>{c.name}</span>
-              <Button size="sm" type="button" onClick={() => void act(c.userId, "appoint")}>عيّن عريفًا</Button>
+              <Button size="sm" type="button" onClick={() => void act(c.userId, "appoint")}>{tr("appointBtn")}</Button>
             </Card>
           ))}
         </>

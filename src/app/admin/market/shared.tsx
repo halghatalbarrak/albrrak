@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { Button, Input, Field, ui, sp } from "@/components/ui";
+import { tMarket as t } from "@/i18n/ar/market";
 
 export interface Item {
   id: string;
@@ -42,8 +43,8 @@ export function MarketForm({ initial }: { initial: Item | null }) {
   const [saving, setSaving] = useState(false);
 
   async function save() {
-    const t = await token();
-    if (!t) return;
+    const tok = await token();
+    if (!tok) return;
     setSaving(true); setErr(null);
     const body = {
       ...(form.id ? { id: form.id } : {}),
@@ -54,25 +55,25 @@ export function MarketForm({ initial }: { initial: Item | null }) {
     };
     const res = await fetch("/api/admin/market", {
       method: form.id ? "PATCH" : "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
       body: JSON.stringify(body),
     });
     if (res.ok) { router.push(LIST); }
-    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّر الحفظ."); setSaving(false); }
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("errSave")); setSaving(false); }
   }
 
   return (
     <section style={{ background: ui.color.surface, border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.lg, padding: sp(4), maxWidth: 720 }}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: sp(3) }}>
-        <Field label="الاسم"><Input value={form.nameAr} onChange={(e) => setForm((f) => ({ ...f, nameAr: e.target.value }))} placeholder="مثال: قلم رصاص" /></Field>
-        <Field label="قيمة الثمرة (نقاط)"><Input type="number" value={form.pricePoints} onChange={(e) => setForm((f) => ({ ...f, pricePoints: e.target.value }))} placeholder="10" /></Field>
-        <Field label="المتوفّر (اتركه فارغًا = بلا حدّ)"><Input type="number" value={form.stock} onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))} placeholder="بلا حدّ" /></Field>
-        <Field label="رابط الصورة (اختياريّ)"><Input value={form.imageUrl} onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))} placeholder="https://…" style={{ direction: "ltr" }} /></Field>
+        <Field label={t("formName")}><Input value={form.nameAr} onChange={(e) => setForm((f) => ({ ...f, nameAr: e.target.value }))} placeholder={t("formNamePlaceholder")} /></Field>
+        <Field label={t("formPrice")}><Input type="number" value={form.pricePoints} onChange={(e) => setForm((f) => ({ ...f, pricePoints: e.target.value }))} placeholder={t("formPricePlaceholder")} /></Field>
+        <Field label={t("formStock")}><Input type="number" value={form.stock} onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))} placeholder={t("formStockPlaceholder")} /></Field>
+        <Field label={t("formImageUrl")}><Input value={form.imageUrl} onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))} placeholder={t("formImageUrlPlaceholder")} style={{ direction: "ltr" }} /></Field>
       </div>
       {err && <p style={{ color: ui.color.danger }}>{err}</p>}
       <div style={{ display: "flex", gap: sp(2), marginTop: sp(3) }}>
-        <Button onClick={() => void save()} disabled={saving}>{saving ? "جارٍ…" : form.id ? "حفظ التعديل" : "إضافة"}</Button>
-        <Button variant="ghost" onClick={() => router.push(LIST)}>إلغاء</Button>
+        <Button onClick={() => void save()} disabled={saving}>{saving ? t("formSaving") : form.id ? t("formSaveEdit") : t("formAdd")}</Button>
+        <Button variant="ghost" onClick={() => router.push(LIST)}>{t("formCancel")}</Button>
       </div>
     </section>
   );
