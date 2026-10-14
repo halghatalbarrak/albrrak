@@ -1,11 +1,33 @@
 // اللغة البصريّة (الفكرة ٧): أرقامٌ هنديّة وتقويمٌ هجريّ للعرض.
 
 import { surahName } from "./surah-names";
+import { type Locale } from "./locale";
 
 const AR = "٠١٢٣٤٥٦٧٨٩";
 
 /** يحوّل الأرقام اللاتينيّة إلى هنديّةٍ عربيّة (للعرض فقط). */
 export const arNum = (n: number | string): string => String(n).replace(/[0-9]/g, (d) => AR[Number(d)]);
+
+// ─────────── التوطين (PR-1): عرضٌ حسب اللغة بلا تغيير سلوك العربية ───────────
+
+/** أرقامٌ حسب اللغة: العربية مشرقية (arNum)، والإنجليزية/الروسية غربية (كما هي). */
+export const fmtNum = (n: number | string, locale: Locale): string => (locale === "ar" ? arNum(n) : String(n));
+
+/**
+ * تاريخ ISO حسب اللغة: العربية بالتقويم الهجريّ (أمّ القرى، كما هو)، والإنجليزية/الروسية
+ * بالتقويم الميلاديّ بلغتهما. الاتّساق مع hijri القائم محفوظٌ للعربية (نفس المخرجات).
+ */
+export function fmtDate(iso: string, locale: Locale): string {
+  if (locale === "ar") return hijri(iso);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const [y, m, d] = iso.split("-").map(Number);
+  try {
+    return new Intl.DateTimeFormat(locale === "ru" ? "ru" : "en-GB", { day: "numeric", month: "long", year: "numeric" })
+      .format(new Date(Date.UTC(y, m - 1, d)));
+  } catch {
+    return iso;
+  }
+}
 
 /**
  * عددٌ ومعدودٌ عربيّان صحيحان بأرقامٍ هنديّة: واحدٌ (مفرد)، اثنان (مثنّى)،
