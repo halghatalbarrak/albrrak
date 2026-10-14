@@ -226,8 +226,14 @@ export async function createStaff(
     for (const role of newStaff) await assignStaff({ actorUserId: actorId, targetUserId: userId, role }, db);
     return { userId, activationUrl: activationUrl(token) };
   } catch (e) {
-    // المعاملة فشلت بعد إنشاء حساب Auth ⟵ سجّل اليتيم لتنظيفٍ يدويّ (لا صمت).
-    console.error(`[user-management] حساب Auth يتيم بعد فشل الإنشاء: authId=${authId}`);
+    // المعاملة فشلت بعد إنشاء حساب Auth ⟵ عوّض بحذف حساب الدخول المُنشأ للتوّ (لا حساب دخولٍ يتيم).
+    // فإن فشل الحذف نفسه يُسجَّل بوضوحٍ مع authId لتنظيفٍ يدويّ، ولا يُبتلع الخطأ الأصليّ.
+    try {
+      await provider.deleteAuthUser({ authId });
+    } catch (delErr) {
+      const info = delErr instanceof Error ? `${delErr.name}: ${delErr.message}` : String(delErr);
+      console.error(`[user-management] تعذّر حذف حساب Auth اليتيم authId=${authId}: ${info}`);
+    }
     throw e;
   }
 }

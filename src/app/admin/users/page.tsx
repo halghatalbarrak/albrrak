@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { formatPhoneForDisplay } from "@/lib/phone";
 import { useMe } from "@/lib/useMe";
 import {
   AppShell, Button, Badge, Table, Modal, ui, sp, type Column,
@@ -108,7 +109,7 @@ export default function AdminUsersPage() {
 
   const cols: Column<UserRow>[] = [
     { key: "name", header: "الاسم", cell: (u) => <span style={{ opacity: u.isActive ? 1 : 0.5 }}>{u.name}{u.isStudent ? <Badge tone="neutral">طالب</Badge> : null}</span> },
-    { key: "phone", header: "الجوال", cell: (u) => <span style={{ direction: "ltr", color: ui.color.muted }}>{u.phone ?? "—"}</span> },
+    { key: "phone", header: "الجوال", cell: (u) => <span style={{ direction: "ltr", color: ui.color.muted }}>{u.phone ? formatPhoneForDisplay(u.phone) : "—"}</span> },
     { key: "roles", header: "الأدوار", cell: (u) => (
       <span style={{ display: "flex", gap: sp(1), flexWrap: "wrap" }}>
         {u.roles.map((r) => <Badge key={r} tone="primary">{ROLE_AR[r]}</Badge>)}

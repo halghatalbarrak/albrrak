@@ -11,6 +11,9 @@ export const fakeAuthProvider: AuthProvider = {
   async setPassword() {
     // بلا شبكة — كافٍ ألّا يرمي (الاختبار يتحقّق من أثر القاعدة: usedAt).
   },
+  async deleteAuthUser() {
+    // بلا شبكة — كافٍ ألّا يرمي.
+  },
 };
 
 function secret(): Uint8Array {
