@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { ui } from "@/components/ui";
 import { arNum } from "@/lib/format";
 import { partitionRanking, pickBackground } from "@/lib/display-tv";
+import { pickActiveWindow } from "@/lib/display-schedule";
 import { tDisplay as t } from "@/i18n/ar/display";
 
 // صفحة العرض بملء الشاشة (وضع التلفاز، ش٤) — عامّةٌ بلا دخول. تتابعُ شرائح، تحديثٌ آليّ وإعادة
@@ -19,7 +20,8 @@ type Slide =
   | { type: "program"; programNameAr: string; durationSec: number; ranking: RankItem[] }
   | { type: "home"; programNameAr: string; durationSec: number; son: Son; top: HomeTop[] }
   | { type: "image"; imageUrl: string; durationSec: number };
-interface Payload { kind: "MOSQUE" | "HOME"; nameAr: string; refreshSec: number; background: { url: string; type: "IMAGE" | "VIDEO" } | null; slides: Slide[] }
+interface ScheduleWindow { startMs: number; endMs: number; slides: Slide[] }
+interface Payload { kind: "MOSQUE" | "HOME"; nameAr: string; refreshSec: number; background: { url: string; type: "IMAGE" | "VIDEO" } | null; slides: Slide[]; schedules?: ScheduleWindow[]; dayEndsMs?: number; prayerTimes?: Record<string, string> }
 
 const FRAME = ["/brand/badge-frame-gold.webp", "/brand/badge-frame-silver.webp", "/brand/badge-frame-bronze.webp"];
 const MIN_REFRESH = 60, MAX_BACKOFF = 300;
@@ -29,6 +31,8 @@ export default function DisplayTvPage() {
   const [data, setData] = useState<Payload | null>(null);
   const [failed, setFailed] = useState(false);
   const [idx, setIdx] = useState(0);
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
+  const [reloadKey, setReloadKey] = useState(0);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backoff = useRef(0);
@@ -66,10 +70,30 @@ export default function DisplayTvPage() {
     })();
     return () => { alive = false; if (refreshTimer.current) clearTimeout(refreshTimer.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, reloadKey]);
+
+  // ── نبضة الدقيقة (§١٠): لإعادة حساب الموعد الحاليّ في المتصفّح كل دقيقة ──
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // ── إعادة الجلب عند منتصف الليل بتوقيت مكّة (§١٠): جدولُ اليوم الجديد بلا إعادة تشغيل ──
+  useEffect(() => {
+    if (!data?.dayEndsMs) return;
+    const ms = data.dayEndsMs - Date.now() + 2000;
+    if (ms <= 0) return;
+    const id = setTimeout(() => setReloadKey((k) => k + 1), ms);
+    return () => clearTimeout(id);
+  }, [data?.dayEndsMs]);
+
+  // ── الموعد الحاليّ يغلب الدورة الافتراضيّة (§١٠)؛ الأعلى ترتيباً أوّلاً ──
+  const active = useMemo(() => pickActiveWindow(data?.schedules ?? [], nowMs), [data, nowMs]);
+  const slides = useMemo(() => (active ? active.slides : (data?.slides ?? [])), [active, data]);
+  const activeKey = active ? `s:${active.startMs}` : "default";
+  useEffect(() => { setIdx(0); }, [activeKey]);
 
   // ── تتابع الشرائح (مؤقّتٌ واحدٌ يُنظَّف) ──
-  const slides = useMemo(() => data?.slides ?? [], [data]);
   useEffect(() => {
     if (slides.length === 0) return;
     const cur = idx % slides.length;
