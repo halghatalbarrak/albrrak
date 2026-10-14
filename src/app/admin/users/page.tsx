@@ -10,7 +10,8 @@ import {
 import {
   type Role, type MuddakirStaffRole, STAFF_ROLES, ROLE_AR, toggleIn,
   MUDDAKIR_STAFF, MUDDAKIR_STAFF_AR, MUDDAKIR_SECTION, MUDDAKIR_NO_PERM, MUDDAKIR_SENT,
-  toggleStaff, muddakirStaffCaps, LinkBox, linkBoxCard,
+  MUDDAKIR_EXCLUSIVE, MUDDAKIR_NONE, MUDDAKIR_EXCESS, violatesExclusivity,
+  muddakirStaffCaps, LinkBox, linkBoxCard,
 } from "./shared";
 
 interface UserRow {
@@ -112,6 +113,7 @@ export default function AdminUsersPage() {
       <span style={{ display: "flex", gap: sp(1), flexWrap: "wrap" }}>
         {u.roles.map((r) => <Badge key={r} tone="primary">{ROLE_AR[r]}</Badge>)}
         {u.muddakirStaff.map((r) => <Badge key={r} tone="bronze">{MUDDAKIR_STAFF_AR[r]}</Badge>)}
+        {violatesExclusivity(u.roles, u.muddakirStaff) && <Badge tone="danger">{MUDDAKIR_EXCESS}</Badge>}
       </span>
     ) },
     { key: "state", header: "الحالة", cell: (u) => (u.isActive ? <Badge tone="success">مُفعّل</Badge> : <Badge tone="neutral">معطَّل</Badge>) },
@@ -153,29 +155,47 @@ export default function AdminUsersPage() {
 
       <Modal open={editUser !== null} onClose={() => setEditUser(null)} title={editUser ? `أدوار: ${editUser.name}` : ""}
         footer={<><Button onClick={() => void saveRoles()}>حفظ</Button><Button variant="ghost" onClick={() => setEditUser(null)}>إلغاء</Button></>}>
+        {/* الأدوار العامّة — تُعطَّل إن اختيرت وظيفة مدّكر (و١: حصر الوظائف). */}
         <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
-          {STAFF_ROLES.map((r) => (
-            <label key={r} style={{ display: "flex", gap: sp(1), alignItems: "center", cursor: "pointer" }}>
-              <input type="checkbox" checked={editRoles.includes(r)} onChange={() => setEditRoles((l) => toggleIn(l, r))} />
-              {ROLE_AR[r]}
-            </label>
-          ))}
+          {STAFF_ROLES.map((r) => {
+            const blocked = editStaff.length > 0;
+            return (
+              <label key={r} title={blocked ? MUDDAKIR_EXCLUSIVE : undefined}
+                style={{ display: "flex", gap: sp(1), alignItems: "center", cursor: blocked ? "not-allowed" : "pointer", opacity: blocked ? 0.5 : 1 }}>
+                <input type="checkbox" disabled={blocked} checked={editRoles.includes(r)} onChange={() => setEditRoles((l) => toggleIn(l, r))} />
+                {ROLE_AR[r]}
+              </label>
+            );
+          })}
         </div>
 
-        {/* قسم المدّكر (و١): تعيينٌ يكتب في MuddakirStaff. مربّعاتٌ معطّلةٌ لمن لا يملك، مع تلميح. */}
+        {/* وظيفة المدّكر (و١): اختيارٌ واحدٌ (radio) مع «لا شيء». تُعطَّل إن حُدّد دورٌ عامّ. */}
         <div style={{ marginTop: sp(4), paddingTop: sp(3), borderTop: `1px solid ${ui.color.border}` }}>
           <div style={{ fontWeight: 700, fontSize: ui.text.xs, marginBottom: sp(2), color: ui.color.bronze }}>{MUDDAKIR_SECTION}</div>
           <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
-            {MUDDAKIR_STAFF.map((r) => {
-              const allowed = caps.can(r);
-              return (
-                <label key={r} title={allowed ? undefined : MUDDAKIR_NO_PERM}
-                  style={{ display: "flex", gap: sp(1), alignItems: "center", cursor: allowed ? "pointer" : "not-allowed", opacity: allowed ? 1 : 0.5 }}>
-                  <input type="checkbox" disabled={!allowed} checked={editStaff.includes(r)} onChange={() => setEditStaff((l) => toggleStaff(l, r))} />
-                  {MUDDAKIR_STAFF_AR[r]}
+            {(() => {
+              const rolesBlock = editRoles.length > 0;
+              const none = (
+                <label key="none" title={rolesBlock ? MUDDAKIR_EXCLUSIVE : undefined}
+                  style={{ display: "flex", gap: sp(1), alignItems: "center", cursor: rolesBlock ? "not-allowed" : "pointer", opacity: rolesBlock ? 0.5 : 1 }}>
+                  <input type="radio" name="muddakirStaff" disabled={rolesBlock} checked={editStaff.length === 0} onChange={() => setEditStaff([])} />
+                  {MUDDAKIR_NONE}
                 </label>
               );
-            })}
+              const opts = MUDDAKIR_STAFF.map((r) => {
+                const allowed = caps.can(r) && !rolesBlock;
+                const title = rolesBlock ? MUDDAKIR_EXCLUSIVE : caps.can(r) ? undefined : MUDDAKIR_NO_PERM;
+                return (
+                  <label key={r} title={title}
+                    style={{ display: "flex", gap: sp(1), alignItems: "center", cursor: allowed ? "pointer" : "not-allowed", opacity: allowed ? 1 : 0.5 }}>
+                    <input type="radio" name="muddakirStaff" disabled={!allowed} checked={editStaff[0] === r}
+                      onChange={() => { setEditStaff([r]); setEditRoles([]); }} />
+                    {MUDDAKIR_STAFF_AR[r]}
+                  </label>
+                );
+              });
+              return [none, ...opts];
+            })()}
           </div>
           {caps.adminActor && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `${sp(2)} 0 0` }}>إجراؤك يُرسَل للاعتماد.</p>}
           {!caps.canEdit && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `${sp(2)} 0 0` }}>{MUDDAKIR_NO_PERM}</p>}

@@ -3,7 +3,7 @@ import { MuddakirDeliveryMode, MuddakirRequestStatus, MuddakirRequestType, type 
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
-import { muddakirCaps, assignStaff, endStaff, activeStaffRoles, type MuddakirActor } from "./muddakir-staff";
+import { muddakirCaps, assignStaff, endStaff, activeStaffRoles, assertMuddakirExclusivity, type MuddakirActor } from "./muddakir-staff";
 import { MuddakirStaffRole } from "@prisma/client";
 import { enrollInMuddakir, assignSupervisor } from "./muddakir-enrollment";
 import { setStageMode } from "./muddakir-stages";
@@ -184,6 +184,12 @@ export async function setMuddakirStaffRoles(
   if (toAssign.length === 0 && toEnd.length === 0) return { applied: [], requested: [] };
   if (!caps.manage && !caps.admin) {
     throw new AuthorizationError("تعيين طاقم المدّكر لمدير المنصّة/البرنامج، وإجراء الإداريّ بطلبٍ يُعتمد.");
+  }
+  // الإداريّ: يُرفض الطلب المخالف للحصر عند الإنشاء أيضاً (لا طلبَ معلّقٌ فاسد). المدير المباشر
+  // يتحقّق في assignStaff (بعد حارس MANAGER) فلا نُقدّم هذا عليه. (و١: وظيفةٌ واحدةٌ بلا دورٍ عامّ.)
+  if (!caps.manage && caps.admin && desired.length > 0) {
+    const targetRoles = (await db.user.findUnique({ where: { id: args.targetUserId }, select: { roles: true } }))?.roles ?? [];
+    assertMuddakirExclusivity(targetRoles, desired);
   }
   const actor: MuddakirActor = { id: args.actorUserId, realActorId: args.actorUserId, roles: actorUser.roles, impersonating: false, caps };
   const applied: MuddakirStaffRole[] = [];
