@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 
 import { emitEvent } from "./events";
 import { isSupervisorCapable } from "./muddakir-staff";
-import { AuthorizationError, ValidationError } from "./errors";
+import { ValidationError, verr, aerr } from "./errors";
 import { closeProgramHistory, recordProgramEntry } from "./program-placement";
 import { ensureMuddakirProfile, muddakirProgramId } from "./muddakir-profile";
 import { getProgramSetting } from "./settings";
@@ -33,7 +33,7 @@ export function canManageMuddakir(roles: readonly Role[]): boolean {
 
 /** يرمي إن لم يكن المستخدم مديرًا (لإلحاق/إسناد). */
 export function assertCanManageMuddakir(roles: readonly Role[]): void {
-  if (!canManageMuddakir(roles)) throw new AuthorizationError("غير مصرَّح بإدارة المُدَّكِر.");
+  if (!canManageMuddakir(roles)) throw aerr("notAuthorizedManageMuddakir");
 }
 
 /** هل يرى المستخدم عرض المُدَّكِر؟ مديرٌ (كامل) أو مشرفٌ ARIF (حفّاظه للقراءة فقط). */
@@ -42,7 +42,7 @@ export function canViewMuddakir(roles: readonly Role[]): boolean {
 }
 
 export function assertCanViewMuddakir(roles: readonly Role[]): void {
-  if (!canViewMuddakir(roles)) throw new AuthorizationError("غير مصرَّح بعرض المُدَّكِر.");
+  if (!canViewMuddakir(roles)) throw aerr("notAuthorizedViewMuddakir");
 }
 
 // ── الإلحاق ──
@@ -68,7 +68,7 @@ export async function enrollInMuddakir(
   db: PrismaClient = prisma,
 ): Promise<EnrollMuddakirResult> {
   const student = await db.student.findUnique({ where: { id: args.studentId }, select: { id: true } });
-  if (!student) throw new ValidationError("الحافظ غير موجود.");
+  if (!student) throw verr("hafizNotFound");
   const programId = await muddakirProgramId(db);
 
   return db.$transaction(async (tx) => {
@@ -87,7 +87,7 @@ export async function enrollInMuddakir(
     }
 
     const circleId = active?.circleId;
-    if (!circleId) throw new ValidationError("الحافظ بلا حلقة؛ أسنده لحلقةٍ أوّلًا.");
+    if (!circleId) throw verr("hafizWithoutCircle");
 
     if (active) {
       await tx.enrollment.update({ where: { id: active.id }, data: { endedAt: new Date() } });
@@ -138,10 +138,10 @@ export async function assignSupervisor(
 ): Promise<{ supervisionId: string }> {
   const supervisor = await db.user.findUnique({ where: { id: args.supervisorId }, select: { id: true } });
   if (!supervisor || !(await isSupervisorCapable(db, args.supervisorId))) {
-    throw new ValidationError("المشرف يجب أن يكون مشرفًا (ARIF) أو مشرفَ مدّكرٍ مُسنَداً.");
+    throw verr("supervisorMustBeArifOrStaff");
   }
   const profile = await db.muddakirProfile.findUnique({ where: { studentId: args.studentId }, select: { studentId: true } });
-  if (!profile) throw new ValidationError("الحافظ غير ملتحقٍ بالمُدَّكِر.");
+  if (!profile) throw verr("hafizNotEnrolledInMuddakir");
   const programId = await muddakirProgramId(db);
   const max = await maxHafizPerSupervisor(programId, db);
 
@@ -157,7 +157,7 @@ export async function assignSupervisor(
 
     // حمل المشرف الهدف الآن (بعد إنهاء السابق للحافظ، فلا يُحسب مرّتين).
     const load = await tx.muddakirSupervision.count({ where: { supervisorId: args.supervisorId, endedAt: null } });
-    if (load >= max) throw new ValidationError(`بلغ المشرف سقفه الأقصى (${max}).`);
+    if (load >= max) throw new ValidationError(`بلغ المشرف سقفه الأقصى (${max}).`, "supervisorAtMaxCapacity");
 
     const created = await tx.muddakirSupervision.create({
       data: { studentId: args.studentId, supervisorId: args.supervisorId },

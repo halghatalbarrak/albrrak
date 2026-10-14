@@ -2,7 +2,7 @@ import { AutoEventType, PointGrantSource, type Prisma, type PrismaClient } from 
 
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "./events";
-import { ValidationError } from "./errors";
+import { ValidationError, verr } from "./errors";
 import { getProgramSetting, setProgramSetting } from "./settings";
 import { muddakirProgramId } from "./muddakir-profile";
 
@@ -37,11 +37,11 @@ export async function listTathbitLadder(db: Db = prisma): Promise<LadderRow[]> {
 /** يعدّل درجةً في سلّم التثبيت (أعدادٌ موجبة). لا يُنشئ درجةً جديدة — السلّم مبذورٌ بعشر درجات. */
 export async function setTathbitDegree(degreeNo: number, patch: { dailyJuz?: number; khatmaDays?: number; khatmaCount?: number; active?: boolean }, actorId: string, db: Db = prisma): Promise<void> {
   const existing = await db.muddakirTathbitDegree.findUnique({ where: { degreeNo }, select: { degreeNo: true } });
-  if (!existing) throw new ValidationError("درجةٌ غير موجودة.");
+  if (!existing) throw verr("degreeNotFound");
   const data: { dailyJuz?: number; khatmaDays?: number; khatmaCount?: number; active?: boolean } = {};
   for (const k of ["dailyJuz", "khatmaDays", "khatmaCount"] as const) {
     const v = patch[k];
-    if (v != null) { if (!Number.isInteger(v) || v < 1) throw new ValidationError(`${k} عددٌ صحيحٌ موجب.`); data[k] = v; }
+    if (v != null) { if (!Number.isInteger(v) || v < 1) throw new ValidationError(`${k} عددٌ صحيحٌ موجب.`, "degreeFieldPositiveInt"); data[k] = v; }
   }
   if (patch.active != null) data.active = patch.active;
   if (Object.keys(data).length === 0) return;
@@ -60,7 +60,7 @@ export async function listMuddakirSettings(db: Db = prisma): Promise<Record<stri
 
 /** يضبط إعداد مدّكرٍ من القائمة المسموحة فقط. */
 export async function setMuddakirSetting(key: string, value: Prisma.InputJsonValue, actorId: string, db: Db = prisma): Promise<void> {
-  if (!(MUDDAKIR_SETTING_KEYS as readonly string[]).includes(key)) throw new ValidationError("مفتاح إعدادٍ غير مسموح.");
+  if (!(MUDDAKIR_SETTING_KEYS as readonly string[]).includes(key)) throw verr("settingKeyNotAllowed");
   const pid = await muddakirProgramId(db);
   await setProgramSetting({ programId: pid, key, value, actorId }, db as PrismaClient);
 }
@@ -71,14 +71,14 @@ export interface MuddakirPointItemInput { id?: string; nameAr: string; value: nu
 
 /** يُنشئ/يعدّل بند نقاطٍ خاصّاً بالمدّكر (AUTO مربوطٌ بحدث MUDDAKIR_*). حدثٌ واحدٌ لبندٍ مفعّلٍ واحد. */
 export async function setMuddakirPointItem(input: MuddakirPointItemInput, actorId: string, db: Db = prisma): Promise<{ id: string }> {
-  if (!MUDDAKIR_AUTO_EVENTS.includes(input.eventType)) throw new ValidationError("البند خارج أحداث المدّكر.");
+  if (!MUDDAKIR_AUTO_EVENTS.includes(input.eventType)) throw verr("pointItemOutsideMuddakirEvents");
   const nameAr = input.nameAr?.trim();
-  if (!nameAr) throw new ValidationError("اسم البند مطلوب.");
-  if (!Number.isInteger(input.value) || input.value === 0) throw new ValidationError("قيمة البند عددٌ صحيحٌ غير صفر.");
+  if (!nameAr) throw verr("pointItemNameRequired");
+  if (!Number.isInteger(input.value) || input.value === 0) throw verr("pointItemValueNonZero");
   const active = input.active ?? true;
   // حدثٌ واحدٌ لبندٍ مفعّلٍ واحد: لا يُربط الحدث ببندٍ آخر مفعّل.
   const conflict = await db.autoGrantRule.findFirst({ where: { eventType: input.eventType, active: true, ...(input.id ? { pointItemId: { not: input.id } } : {}) }, select: { id: true } });
-  if (conflict && active) throw new ValidationError("هذا الحدث مربوطٌ ببندٍ مفعّلٍ آخر.");
+  if (conflict && active) throw verr("eventBoundToAnotherActiveItem");
 
   const item = input.id
     ? await db.pointItem.update({ where: { id: input.id }, data: { nameAr, value: input.value, grantSource: PointGrantSource.AUTO, active } })

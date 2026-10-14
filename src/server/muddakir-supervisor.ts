@@ -16,7 +16,7 @@ import { juzBoundsFromHizb, makkahDayBounds, makkahDayDate, type HizbRow } from 
 
 import { emitEvent } from "./events";
 import { grantAuto } from "./economy";
-import { AuthorizationError, ValidationError } from "./errors";
+import { verr, aerr } from "./errors";
 import { getProgramSetting } from "./settings";
 import { muddakirProgramId } from "./muddakir-profile";
 import {
@@ -64,15 +64,15 @@ export function canViewSupervisor(roles: readonly Role[]): boolean {
 /** المدير يكتب للجميع؛ المشرف (ARIF أو مشرف المدّكر) لحفّاظه المُسندين فقط (قيد MuddakirSupervision النشط). */
 async function assertCanActOnHafiz(db: Db, actorUserId: string, studentId: string): Promise<void> {
   const actor = await db.user.findUnique({ where: { id: actorUserId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   const caps = await muddakirCaps(db, { id: actorUserId, roles: actor.roles });
   if (caps.manage) return;
-  if (!caps.supervise) throw new AuthorizationError("هذه الشاشة للمشرف.");
+  if (!caps.supervise) throw aerr("screenForSupervisor");
   const link = await db.muddakirSupervision.findFirst({
     where: { supervisorId: actorUserId, studentId, endedAt: null },
     select: { id: true },
   });
-  if (!link) throw new AuthorizationError("لا تشرف على هذا الحافظ.");
+  if (!link) throw aerr("notSupervisingThisHafiz");
 }
 
 /**
@@ -82,9 +82,9 @@ async function assertCanActOnHafiz(db: Db, actorUserId: string, studentId: strin
  */
 async function hafizIdsFor(db: Db, actorUserId: string): Promise<{ ids: string[]; manager: boolean }> {
   const actor = await db.user.findUnique({ where: { id: actorUserId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   const caps = await muddakirCaps(db, { id: actorUserId, roles: actor.roles });
-  if (!caps.view) throw new AuthorizationError("غير مصرَّح بعرض المُدَّكِر.");
+  if (!caps.view) throw aerr("notAuthorizedViewMuddakir");
   if (caps.manage || caps.admin) {
     const profiles = await db.muddakirProfile.findMany({ select: { studentId: true } });
     return { ids: profiles.map((p) => p.studentId), manager: caps.manage };
@@ -217,7 +217,7 @@ export async function supervisorHafizDetail(actorUserId: string, studentId: stri
   await assertCanActOnHafiz(db, actorUserId, studentId);
   await applyDueTrackChange(db, studentId, makkahDayDate(now));
   const profile = await db.muddakirProfile.findUnique({ where: { studentId } });
-  if (!profile) throw new ValidationError("الحافظ غير ملتحقٍ بالمُدَّكِر.");
+  if (!profile) throw verr("hafizNotEnrolledInMuddakir");
   const programId = await muddakirProgramId(db);
   const meetingDay = await meetingDayOf(db, programId);
   const { weekStart, weekEnd } = meetingWeek(now, meetingDay);
@@ -308,9 +308,9 @@ async function tathbitSupervisorView(db: Db, studentId: string, weekStart: strin
 export async function approveTathbit(args: { actorUserId: string; studentId: string }, db: PrismaClient = prisma): Promise<{ certificateId: string; alreadyApproved: boolean }> {
   await assertCanActOnHafiz(db, args.actorUserId, args.studentId);
   const profile = await db.muddakirProfile.findUnique({ where: { studentId: args.studentId }, select: { phase: true } });
-  if (!profile || profile.phase !== "TATHBIT") throw new ValidationError("الحافظ ليس في طور التثبيت.");
+  if (!profile || profile.phase !== "TATHBIT") throw verr("hafizNotInTathbit");
   const passed = await db.muddakirRecitation.findFirst({ where: { studentId: args.studentId, kind: "TATHBIT_FINAL", passed: true }, select: { id: true } });
-  if (!passed) throw new ValidationError("لا سردَ ختاميّ مُجتازٌ لاعتماده.");
+  if (!passed) throw verr("noTathbitFinalToApprove");
   const existing = await db.certificate.findFirst({ where: { studentId: args.studentId, template: "MUDDAKIR_TATHBIT" }, select: { id: true } });
   if (existing) return { certificateId: existing.id, alreadyApproved: true };
 
@@ -345,9 +345,9 @@ export async function markHeard(args: { actorUserId: string; studentId: string; 
 /** يسجّل المشرف موضع خطأٍ (§٤٫٤/§٦): الصفحة + السطر من MushafLine، مصدره SUPERVISOR. idempotent. */
 export async function recordSupervisorError(args: { actorUserId: string; studentId: string; page: number; lineNo: number }, db: PrismaClient = prisma, now: Date = new Date()): Promise<{ recorded: boolean }> {
   await assertCanActOnHafiz(db, args.actorUserId, args.studentId);
-  if (!Number.isInteger(args.page) || !Number.isInteger(args.lineNo)) throw new ValidationError("موضعٌ غير صالح.");
+  if (!Number.isInteger(args.page) || !Number.isInteger(args.lineNo)) throw verr("invalidPosition");
   const line = await db.mushafLine.findUnique({ where: { page_lineNo: { page: args.page, lineNo: args.lineNo } }, select: { page: true } });
-  if (!line) throw new ValidationError("موضعٌ غير موجودٍ في المصحف.");
+  if (!line) throw verr("positionNotInMushaf");
   const exists = await db.muddakirError.findFirst({ where: { studentId: args.studentId, page: args.page, lineNo: args.lineNo, resolvedAt: null }, select: { id: true } });
   if (!exists) {
     await db.muddakirError.create({ data: { studentId: args.studentId, page: args.page, lineNo: args.lineNo, source: MuddakirErrorSource.SUPERVISOR, openedOn: dateVal(makkahDayDate(now)), recordedById: args.actorUserId } });
@@ -364,9 +364,9 @@ export async function approveTrackChange(args: { actorUserId: string; studentId:
   const programId = await muddakirProgramId(db);
   let track = args.track;
   if (track == null) track = (await latestTrackRequest(db, args.studentId))?.track;
-  if (track == null) throw new ValidationError("لا طلب تغيير مسارٍ من الحافظ.");
+  if (track == null) throw verr("noTrackChangeRequest");
   const tracks = await allowedTracks(db, programId);
-  if (!tracks.includes(track)) throw new ValidationError("مسارٌ غير مسموح.");
+  if (!tracks.includes(track)) throw verr("trackNotAllowed");
   const effectiveFrom = dayShift(makkahDayDate(now), 1); // الغد بتوقيت مكّة
   await db.muddakirProfile.update({ where: { studentId: args.studentId }, data: { pendingTrack: track, effectiveFrom: dateVal(effectiveFrom) } });
   return { pendingTrack: track, effectiveFrom };
@@ -375,7 +375,7 @@ export async function approveTrackChange(args: { actorUserId: string; studentId:
 /** يعدّل المشرف دورة المراجعة لحافظه (§٤٫٣/§٦) — عددٌ موجب. */
 export async function setReviewCycleDays(args: { actorUserId: string; studentId: string; days: number }, db: PrismaClient = prisma): Promise<{ reviewCycleDays: number }> {
   await assertCanActOnHafiz(db, args.actorUserId, args.studentId);
-  if (!Number.isInteger(args.days) || args.days < 1) throw new ValidationError("دورة المراجعة عددٌ صحيحٌ موجب.");
+  if (!Number.isInteger(args.days) || args.days < 1) throw verr("reviewCyclePositiveInt");
   await db.muddakirProfile.update({ where: { studentId: args.studentId }, data: { reviewCycleDays: args.days } });
   return { reviewCycleDays: args.days };
 }

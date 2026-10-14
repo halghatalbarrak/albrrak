@@ -2,7 +2,7 @@ import { MuddakirDeliveryMode, MuddakirRequestStatus, MuddakirRequestType, type 
 
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "./events";
-import { AuthorizationError, ValidationError } from "./errors";
+import { verr, aerr } from "./errors";
 import { muddakirCaps, assignStaff, endStaff, activeStaffRoles, assertMuddakirExclusivity, type MuddakirActor } from "./muddakir-staff";
 import { MuddakirStaffRole } from "@prisma/client";
 import { enrollInMuddakir, assignSupervisor } from "./muddakir-enrollment";
@@ -36,39 +36,39 @@ export async function createRequest(args: CreateRequestArgs, db: PrismaClient = 
 async function executeRequest(db: PrismaClient, type: MuddakirRequestType, payload: Record<string, unknown>, executorId: string): Promise<void> {
   switch (type) {
     case MuddakirRequestType.ENROLL: {
-      if (typeof payload.studentId !== "string") throw new ValidationError("الحافظ مطلوب.");
+      if (typeof payload.studentId !== "string") throw verr("hafizRequired");
       const deliveryMode = payload.deliveryMode === MuddakirDeliveryMode.REMOTE ? MuddakirDeliveryMode.REMOTE : MuddakirDeliveryMode.IN_PERSON;
       await enrollInMuddakir({ studentId: payload.studentId, actorId: executorId, deliveryMode }, db);
       return;
     }
     case MuddakirRequestType.ASSIGN_SUPERVISOR: {
-      if (typeof payload.studentId !== "string" || typeof payload.supervisorId !== "string") throw new ValidationError("الحافظ والمشرف مطلوبان.");
+      if (typeof payload.studentId !== "string" || typeof payload.supervisorId !== "string") throw verr("hafizAndSupervisorRequired");
       await assignSupervisor({ studentId: payload.studentId, supervisorId: payload.supervisorId, actorId: executorId }, db);
       return;
     }
     case MuddakirRequestType.SET_MODE: {
-      if (typeof payload.studentId !== "string" || (payload.mode !== "ACTIVE" && payload.mode !== "REVIEW_ONLY")) throw new ValidationError("الحافظ والوضع مطلوبان.");
+      if (typeof payload.studentId !== "string" || (payload.mode !== "ACTIVE" && payload.mode !== "REVIEW_ONLY")) throw verr("hafizAndModeRequired");
       await setStageMode({ actorUserId: executorId, studentId: payload.studentId, mode: payload.mode }, db);
       return;
     }
     case MuddakirRequestType.SET_SETTING: {
-      if (typeof payload.key !== "string" || payload.value === undefined) throw new ValidationError("المفتاح والقيمة مطلوبان.");
+      if (typeof payload.key !== "string" || payload.value === undefined) throw verr("keyAndValueRequired");
       await setMuddakirSetting(payload.key, payload.value as Prisma.InputJsonValue, executorId, db);
       return;
     }
     case MuddakirRequestType.SET_TATHBIT_LADDER: {
-      if (typeof payload.degreeNo !== "number" || typeof payload.patch !== "object" || payload.patch == null) throw new ValidationError("الدرجة والتعديل مطلوبان.");
+      if (typeof payload.degreeNo !== "number" || typeof payload.patch !== "object" || payload.patch == null) throw verr("degreeAndPatchRequired");
       await setTathbitDegree(payload.degreeNo, payload.patch as { dailyJuz?: number; khatmaDays?: number; khatmaCount?: number; active?: boolean }, executorId, db);
       return;
     }
     case MuddakirRequestType.SET_POINT_ITEM: {
-      if (typeof payload.nameAr !== "string" || typeof payload.value !== "number" || typeof payload.eventType !== "string") throw new ValidationError("بيانات البند مطلوبة.");
+      if (typeof payload.nameAr !== "string" || typeof payload.value !== "number" || typeof payload.eventType !== "string") throw verr("pointItemDataRequired");
       await setMuddakirPointItem({ id: typeof payload.id === "string" ? payload.id : undefined, nameAr: payload.nameAr, value: payload.value, eventType: payload.eventType as AutoEventType, active: payload.active as boolean | undefined }, executorId, db);
       return;
     }
     case MuddakirRequestType.SET_STAFF: {
       if (typeof payload.targetUserId !== "string" || typeof payload.role !== "string" || (payload.action !== "assign" && payload.action !== "end")) {
-        throw new ValidationError("بيانات تعيين الطاقم ناقصة.");
+        throw verr("staffAssignDataMissing");
       }
       const role = payload.role as MuddakirStaffRole;
       if (payload.action === "assign") await assignStaff({ actorUserId: executorId, targetUserId: payload.targetUserId, role }, db);
@@ -76,7 +76,7 @@ async function executeRequest(db: PrismaClient, type: MuddakirRequestType, paylo
       return;
     }
     default:
-      throw new ValidationError("نوع طلبٍ غير منفَّذٍ بعد.");
+      throw verr("requestTypeNotExecuted");
   }
 }
 
@@ -90,9 +90,9 @@ async function executeRequest(db: PrismaClient, type: MuddakirRequestType, paylo
  */
 export async function decideRequest(args: { actorUserId: string; requestId: string; decision: "APPROVED" | "REJECTED"; reason?: string }, db: PrismaClient = prisma): Promise<{ status: MuddakirRequestStatus }> {
   const actor = await db.user.findUnique({ where: { id: args.actorUserId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
-  if (!(await muddakirCaps(db, { id: args.actorUserId, roles: actor.roles })).manage) throw new AuthorizationError("البتّ لمدير البرنامج (أو مدير المنصّة).");
-  if (args.decision === "REJECTED" && !args.reason?.trim()) throw new ValidationError("سبب الرفض مطلوب.");
+  if (!actor) throw aerr("userNotFound");
+  if (!(await muddakirCaps(db, { id: args.actorUserId, roles: actor.roles })).manage) throw aerr("decideManagerOnly");
+  if (args.decision === "REJECTED" && !args.reason?.trim()) throw verr("rejectReasonRequiredMuddakir");
 
   const now = new Date();
   const nextStatus = args.decision === "APPROVED" ? MuddakirRequestStatus.APPROVED : MuddakirRequestStatus.REJECTED;
@@ -101,7 +101,7 @@ export async function decideRequest(args: { actorUserId: string; requestId: stri
     where: { id: args.requestId, status: MuddakirRequestStatus.PENDING },
     data: { status: nextStatus, decidedBy: args.actorUserId, decidedAt: now, decisionReason: args.decision === "REJECTED" ? args.reason!.trim() : null },
   });
-  if (claim.count !== 1) throw new ValidationError("الطلب ليس معلّقاً (بُتّ أو أُلغي).");
+  if (claim.count !== 1) throw verr("requestNotPending");
 
   if (args.decision === "APPROVED") {
     try {
@@ -128,7 +128,7 @@ export async function cancelRequest(args: { actorUserId: string; requestId: stri
     where: { id: args.requestId, requestedBy: args.actorUserId, status: MuddakirRequestStatus.PENDING },
     data: { status: MuddakirRequestStatus.CANCELLED },
   });
-  if (r.count !== 1) throw new ValidationError("لا طلبٌ معلّقٌ لك بهذا المعرّف.");
+  if (r.count !== 1) throw verr("noPendingRequestForYou");
   return { cancelled: true };
 }
 
@@ -159,7 +159,7 @@ export async function performOrRequest<T>(
 ): Promise<{ executed: boolean; requestId?: string; result?: T }> {
   if (actor.caps.manage) return { executed: true, result: await spec.direct() };
   if (actor.caps.admin) { const r = await createRequest({ actorUserId: actor.id, type: spec.type, payload: spec.payload, studentId: spec.studentId }, db); return { executed: false, requestId: r.id }; }
-  throw new AuthorizationError("هذا الإجراء لمدير البرنامج أو الإداريّ.");
+  throw aerr("actionManagerOrAdmin");
 }
 
 export interface SetStaffResult { applied: MuddakirStaffRole[]; requested: MuddakirStaffRole[] }
@@ -175,7 +175,7 @@ export async function setMuddakirStaffRoles(
   db: PrismaClient = prisma,
 ): Promise<SetStaffResult> {
   const actorUser = await db.user.findUnique({ where: { id: args.actorUserId }, select: { roles: true } });
-  if (!actorUser) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actorUser) throw aerr("userNotFound");
   const caps = await muddakirCaps(db, { id: args.actorUserId, roles: actorUser.roles });
   const current = await activeStaffRoles(db, args.targetUserId);
   const desired = [...new Set(args.desired)];
@@ -183,7 +183,7 @@ export async function setMuddakirStaffRoles(
   const toEnd = current.filter((r) => !desired.includes(r));
   if (toAssign.length === 0 && toEnd.length === 0) return { applied: [], requested: [] };
   if (!caps.manage && !caps.admin) {
-    throw new AuthorizationError("تعيين طاقم المدّكر لمدير المنصّة/البرنامج، وإجراء الإداريّ بطلبٍ يُعتمد.");
+    throw aerr("setStaffManagerOrApproved");
   }
   // الإداريّ: يُرفض الطلب المخالف للحصر عند الإنشاء أيضاً (لا طلبَ معلّقٌ فاسد). المدير المباشر
   // يتحقّق في assignStaff (بعد حارس MANAGER) فلا نُقدّم هذا عليه. (و١: وظيفةٌ واحدةٌ بلا دورٍ عامّ.)
