@@ -62,17 +62,18 @@ export async function PATCH(req: Request) {
     if (typeof b.active === "boolean") {
       return Response.json(await setActive(actor.id, b.userId, b.active));
     }
-    // حفظٌ واحد للأدوار العامّة وأدوار المدّكر معاً. الأدوار العامّة أوّلاً؛ فإن فشلت لم يُمَسّ المدّكر
-    // (٤٠٠). وإن نجحت ثمّ فشل المدّكر، تُحفظ العامّة ويُبلَّغ بخطأ المدّكر صراحةً (لا يضيع المحفوظ).
+    // حفظٌ واحد للأدوار العامّة وأدوار المدّكر معاً. وظيفة المدّكر أوّلاً ليَرى setRoles الإسناد الجديد،
+    // فيجوز إفراغ الأدوار العامّة إن حمل المستخدم وظيفة مدّكر (و١). فشل المدّكر يُبلَّغ صراحةً ولا يمنع
+    // حفظ الأدوار العامّة. ويبقى شرط «دورٌ واحدٌ على الأقلّ من النوعين» في setRoles.
     const hasRoles = isRoleArray(b.roles);
     const hasMuddakir = isMuddakirRoleArray(b.muddakirRoles);
     if (!hasRoles && !hasMuddakir) throw new ValidationError("لا تغيير معروف (active أو roles أو muddakirRoles).");
     const out: Record<string, unknown> = {};
-    if (hasRoles) out.roles = (await setRoles(actor.id, b.userId, b.roles as Role[])).roles;
     if (hasMuddakir) {
       try { out.muddakir = await setMuddakirStaffRoles({ actorUserId: actor.id, targetUserId: b.userId, desired: b.muddakirRoles as MuddakirStaffRole[] }); }
       catch (e) { out.muddakirError = e instanceof Error ? e.message : "تعذّر حفظ أدوار المدّكر."; }
     }
+    if (hasRoles) out.roles = (await setRoles(actor.id, b.userId, b.roles as Role[])).roles;
     return Response.json(out);
   } catch (e) {
     return errorResponse(e);

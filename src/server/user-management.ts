@@ -265,7 +265,6 @@ export async function setRoles(
   if (userId === actorId) throw new ValidationError("لا تعدّل أدوار حسابك.");
 
   const next = [...new Set(roles)];
-  if (next.length === 0) throw new ValidationError("لا بدّ من دورٍ واحدٍ على الأقلّ.");
   for (const r of next) {
     if (!Object.values(Role).includes(r)) throw new ValidationError("دورٌ غير معروف.");
   }
@@ -277,6 +276,13 @@ export async function setRoles(
 
   const target = await db.user.findUnique({ where: { id: userId }, select: { roles: true, isActive: true } });
   if (!target) throw new ValidationError("مستخدم غير موجود.");
+
+  // دورٌ واحدٌ على الأقلّ من النوعين معاً: تجوز الأدوار العامّة فارغةً إن حمل المستخدم وظيفة مدّكرٍ
+  // نشطة، ولا يُحفظ مستخدمٌ بلا أيّ دور. (و١: طاقم المدّكر إسنادٌ خاصٌّ لا دورَ عامٌّ.)
+  if (next.length === 0) {
+    const activeStaff = await db.muddakirStaff.count({ where: { userId, endedAt: null } });
+    if (activeStaff === 0) throw new ValidationError("لا بدّ من دورٍ واحدٍ على الأقلّ (دورٌ عامٌّ أو وظيفة مدّكر).");
+  }
 
   // نزع آخر مدير تقنيّ فعّال ⟵ يُمنع (إقفال النظام).
   const wasTech = target.isActive && target.roles.includes(Role.TECH_ADMIN);

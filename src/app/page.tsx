@@ -3,8 +3,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { muddakirLanding } from "@/lib/muddakir-landing";
 import { AppShell, Button, Card, NabawiBackdrop, Stat, Skeleton, BrandStar, ui, sp } from "@/components/ui";
 
 // الصفحة الرئيسة: للزائر واجهةٌ ترحيبيّة، وللداخل ملخّصٌ حسب دوره داخل اللوحة (الشريط الجانبيّ).
@@ -13,15 +15,17 @@ import { AppShell, Button, Card, NabawiBackdrop, Stat, Skeleton, BrandStar, ui, 
 const BRAND = "حلقات الشيخ محمد البراك";
 
 type Tone = "primary" | "bronze" | "success" | "danger";
-interface Me { name: string; roles: string[] }
+interface Me { name: string; roles: string[]; muddakirStaff?: string[] }
 interface Card { key: string; label: string; value: string; hint?: string; tone: Tone; href: string }
 interface NextStep { title: string; cta: string; href: string; tone: "primary" | "bronze" | "success" }
 interface Summary { scope: string; greeting: string; nextStep: NextStep; cards: Card[] }
 
 export default function Home() {
+  const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [ready, setReady] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -31,7 +35,11 @@ export default function Home() {
           const auth = { authorization: `Bearer ${session.access_token}` };
           const meRes = await fetch("/api/me", { headers: auth });
           if (meRes.ok) {
-            setMe((await meRes.json()) as Me);
+            const meJson = (await meRes.json()) as Me;
+            setMe(meJson);
+            // صاحب وظيفة المدّكر بلا دورٍ عامّ: يُوجَّه مباشرةً إلى واجهة المدّكر (و١) لا لوحةٍ فارغة.
+            const landing = muddakirLanding(meJson.roles, meJson.muddakirStaff ?? []);
+            if (landing) { setRedirecting(true); router.replace(landing); return; }
             const sumRes = await fetch("/api/summary", { headers: auth });
             if (sumRes.ok) setSummary((await sumRes.json()) as Summary);
           }
@@ -42,7 +50,7 @@ export default function Home() {
         setReady(true);
       }
     })();
-  }, []);
+  }, [router]);
 
   // ── الزائر: واجهةٌ ترحيبيّة بلمسةٍ نبويّة (صفحة الزائر فقط — لا حالة المستخدم الداخل) ──
   if (!me) {
@@ -60,6 +68,15 @@ export default function Home() {
           </div>
           {ready && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, opacity: 0.8, marginTop: sp(4), marginBottom: 0 }}>سجّل الدخول لعرض لوحتك.</p>}
         </Card>
+      </main>
+    );
+  }
+
+  // ── صاحب وظيفة المدّكر بلا دورٍ عامّ: شاشة تحويلٍ ريثما ينتقل إلى واجهة المدّكر ──
+  if (redirecting) {
+    return (
+      <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.muted, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p>…جارٍ التحويل إلى المدّكر</p>
       </main>
     );
   }
