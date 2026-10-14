@@ -25,3 +25,5 @@ export { usersAr as users } from "./users";
 export { loginAr as login } from "./login";
 export { applyAr as apply } from "./apply";
 export { activateAr as activate } from "./activate";
+// رسائل أخطاء الخادم (PR-1e)
+export { errorsAr as errors } from "./errors";

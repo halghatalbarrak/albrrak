@@ -26,3 +26,5 @@ export { usersAr as users } from "@/i18n/ar/users";
 export { loginAr as login } from "@/i18n/ar/login";
 export { applyAr as apply } from "@/i18n/ar/apply";
 export { activateAr as activate } from "@/i18n/ar/activate";
+// server error messages (PR-1e) — fall back to Arabic until translated.
+export { errorsAr as errors } from "@/i18n/ar/errors";
