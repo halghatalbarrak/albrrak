@@ -141,9 +141,9 @@ export default function MuddakirHafizPage() {
   }, [flush]);
 
   if (status === "unauth")
-    return <Center><p>هذه الشاشة للحافظ الملتحق بالمُدَّكِر.</p><a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a></Center>;
-  if (status === "loading") return <Center><p style={{ color: ui.color.muted }}>…جارٍ التحميل</p></Center>;
-  if (status === "error" || !view) return <Center><p style={{ color: ui.color.danger }}>تعذّر التحميل.</p><Button size="sm" onClick={() => void loadView()}>إعادة</Button></Center>;
+    return <Center><p>{t("hafizOnlyNote")}</p><a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>{t("login")}</a></Center>;
+  if (status === "loading") return <Center><p style={{ color: ui.color.muted }}>{t("loading")}</p></Center>;
+  if (status === "error" || !view) return <Center><p style={{ color: ui.color.danger }}>{t("loadFailed")}</p><Button size="sm" onClick={() => void loadView()}>{t("retry")}</Button></Center>;
 
   // طور التثبيت/الدائم (§١٢): شاشة الورد بدل خطّة الحفظ.
   if (view.phase && view.phase !== "MEMORIZE" && view.ward) {
@@ -407,7 +407,7 @@ function WardHome({ ward, doneToday, online, onComplete }: { ward: WardView; don
 function BigCount({ value, total, onTap, large }: { value: number; total: number; onTap: () => void; large?: boolean }) {
   const size = large ? 96 : 64;
   return (
-    <button type="button" onClick={onTap} aria-label="تكرار"
+    <button type="button" onClick={onTap} aria-label={t("repAria")}
       style={{ width: size, height: size, borderRadius: 999, border: `2px solid ${ui.color.primary}`, background: value >= total ? ui.color.primary : ui.color.surface, color: value >= total ? "#fff" : ui.color.text, fontFamily: ui.font, fontWeight: 700, fontSize: large ? ui.text.lg : ui.text.base, cursor: "pointer" }}>
       {arNum(value)} / {arNum(total)}
     </button>

@@ -52,13 +52,13 @@ export default function MuddakirRecitationPage() {
       body: JSON.stringify({ studentId: sel.studentId, passed, errors }),
     });
     if (res.ok) { setMsg(t("resultRecorded")); await load(); }
-    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر."); }
+    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? t("genericError")); }
   }, [sel, errs, load]);
 
   if (status === "unauth")
-    return <Center><p>{t("examinerTitle")} — {t("roleExaminer")}</p><a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a></Center>;
-  if (status === "loading") return <Center><p style={{ color: ui.color.muted }}>…جارٍ التحميل</p></Center>;
-  if (status === "error") return <Center><p style={{ color: ui.color.danger }}>تعذّر التحميل.</p><Button size="sm" onClick={() => void load()}>إعادة</Button></Center>;
+    return <Center><p>{t("examinerTitle")} — {t("roleExaminer")}</p><a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>{t("login")}</a></Center>;
+  if (status === "loading") return <Center><p style={{ color: ui.color.muted }}>{t("loading")}</p></Center>;
+  if (status === "error") return <Center><p style={{ color: ui.color.danger }}>{t("loadFailed")}</p><Button size="sm" onClick={() => void load()}>{t("retry")}</Button></Center>;
 
   return (
     <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, maxWidth: 520, margin: "0 auto", padding: sp(3), display: "flex", flexDirection: "column", gap: sp(3) }}>
