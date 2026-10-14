@@ -3,7 +3,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { setMuddakirStaffRoles, decideRequest } from "../muddakir-requests";
 import { assignStaff, activeStaffRoles } from "../muddakir-staff";
-import { AuthorizationError } from "../errors";
+import { setRoles } from "../user-management";
+import { AuthorizationError, ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
 import { createUser } from "../testing/factories";
 
@@ -73,5 +74,21 @@ describe("طاقم المدّكر من نافذة الأدوار (و١)", () => 
       setMuddakirStaffRoles({ actorUserId: teacher.id, targetUserId: target.id, desired: [MuddakirStaffRole.SUPERVISOR] }, prisma),
     ).rejects.toBeInstanceOf(AuthorizationError);
     expect(await activeStaffRoles(prisma, target.id)).toEqual([]);
+  });
+});
+
+describe("إفراغ الأدوار العامّة مع وظيفة مدّكر (و١، العطل)", () => {
+  it("يُحفظ مدير برنامج المدّكر بلا أيّ دورٍ عامّ (كانت كلّها تُرفَض)", async () => {
+    const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
+    const target = await createUser(prisma, { roles: [Role.TEACHER] });
+    await assignStaff({ actorUserId: platform.id, targetUserId: target.id, role: MuddakirStaffRole.MANAGER }, prisma);
+    const updated = await setRoles(platform.id, target.id, [], prisma);
+    expect(updated.roles).toEqual([]); // الحفظ نجح بلا دورٍ عامّ
+  });
+
+  it("يُرفض إفراغ الأدوار لمن لا دورَ ولا وظيفة له (دورٌ واحدٌ على الأقلّ من النوعين)", async () => {
+    const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
+    const target = await createUser(prisma, { roles: [Role.TEACHER] });
+    await expect(setRoles(platform.id, target.id, [], prisma)).rejects.toBeInstanceOf(ValidationError);
   });
 });
