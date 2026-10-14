@@ -21,3 +21,7 @@ export { sessionAr as session } from "./session";
 export { stageExamAr as stageExam } from "./stage-exam";
 export { studentsAr as students } from "./students";
 export { usersAr as users } from "./users";
+// الصفحات العامّة (PR-1d)
+export { loginAr as login } from "./login";
+export { applyAr as apply } from "./apply";
+export { activateAr as activate } from "./activate";

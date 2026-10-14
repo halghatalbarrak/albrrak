@@ -22,3 +22,7 @@ export { sessionAr as session } from "@/i18n/ar/session";
 export { stageExamAr as stageExam } from "@/i18n/ar/stage-exam";
 export { studentsAr as students } from "@/i18n/ar/students";
 export { usersAr as users } from "@/i18n/ar/users";
+// public pages (PR-1d) — fall back to Arabic until translated.
+export { loginAr as login } from "@/i18n/ar/login";
+export { applyAr as apply } from "@/i18n/ar/apply";
+export { activateAr as activate } from "@/i18n/ar/activate";
