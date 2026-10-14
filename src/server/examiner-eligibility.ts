@@ -2,7 +2,7 @@ import { type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
-import { AuthorizationError, ValidationError } from "./errors";
+import { verr, aerr } from "./errors";
 
 // قيد إسناد المُختبِر (DESIGN §٧٫٤ + الحكم ٨): «المُختبِر ليس معلمه (م١)»، **ولا عريفاً**
 // في حلقته (§٨٫٤/الحكم ٨: العريف لا يختبر). يُتحقَّق في الخادم؛ حجب الزر في الواجهة لا يُحتسب.
@@ -44,7 +44,7 @@ export async function assertCanExamine(
   db: PrismaClient = prisma,
 ): Promise<void> {
   if (!(await canExamine(args, db))) {
-    throw new AuthorizationError("لا يجوز أن يختبر المعلمُ طالبَه (م١).");
+    throw aerr("teacherCannotExamineOwnStudent");
   }
 }
 
@@ -60,7 +60,7 @@ export async function eligibleExaminers(
     where: { id: studentId },
     select: { id: true },
   });
-  if (!student) throw new ValidationError("طالب غير موجود.");
+  if (!student) throw verr("studentNotFound");
 
   const enrollments = await db.enrollment.findMany({
     where: { studentId },

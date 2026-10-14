@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import type { PrismaClient, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { NATIONAL_ID_VIEWER_ROLES } from "./capabilities";
-import { AuthorizationError } from "./errors";
+import { aerr } from "./errors";
 
 // ═══ رقم الهوية — القاعدة المطلقة م٥ ═══
 // مشفَّر (لا يُخزَّن صريحًا)، محجوب في العرض، وكل قراءةٍ صريحة تُسجَّل.
@@ -91,9 +91,7 @@ export async function readNationalId(
     NATIONAL_ID_VIEWER_ROLES.includes(r),
   );
   if (!allowed) {
-    throw new AuthorizationError(
-      "غير مخوّل بالاطّلاع على رقم الهوية (م٥).",
-    );
+    throw aerr("nationalIdViewNotAuthorized");
   }
 
   const subject = await db.user.findUnique({
@@ -101,7 +99,7 @@ export async function readNationalId(
     select: { nationalId: true },
   });
   if (!subject?.nationalId) {
-    throw new AuthorizationError("لا يوجد رقم هوية لهذا المستخدم.");
+    throw aerr("noNationalIdForUser");
   }
 
   const plain = decryptNationalId(subject.nationalId);
@@ -134,14 +132,14 @@ export async function revealApplicationNationalId(
   db: PrismaClient = prisma,
 ): Promise<string> {
   if (!args.viewerRoles.some((r) => NATIONAL_ID_VIEWER_ROLES.includes(r))) {
-    throw new AuthorizationError("غير مخوّل بالاطّلاع على رقم الهوية (م٥).");
+    throw aerr("nationalIdViewNotAuthorized");
   }
   const app = await db.application.findUnique({
     where: { id: args.applicationId },
     select: { nationalIdEnc: true },
   });
   if (!app) {
-    throw new AuthorizationError("طلب غير موجود.");
+    throw aerr("applicationNotFound");
   }
   const plain = decryptNationalId(app.nationalIdEnc);
   await db.nationalIdAccessLog.create({
