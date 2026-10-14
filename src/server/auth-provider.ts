@@ -6,6 +6,8 @@ export interface AuthProvider {
   }): Promise<{ authId: string }>;
   /** يضبط كلمة سرّ مستخدم المصادقة (عند التفعيل/إعادة التعيين). */
   setPassword(args: { authId: string; password: string }): Promise<void>;
+  /** يحذف مستخدم المصادقة — للتعويض إن فشل حفظ المستخدم بعد إنشاء حساب الدخول. */
+  deleteAuthUser(args: { authId: string }): Promise<void>;
 }
 
 // تطبيق الإنتاج: Supabase Admin API — يحتاج URL + SERVICE_ROLE_KEY + شبكة.
@@ -55,6 +57,24 @@ export const supabaseAuthProvider: AuthProvider = {
     });
     if (!res.ok) {
       throw new Error(`فشل ضبط كلمة السرّ: HTTP ${res.status}`);
+    }
+  },
+
+  async deleteAuthUser({ authId }) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      throw new Error("Supabase Admin غير مضبوط (URL / SERVICE_ROLE_KEY).");
+    }
+    const res = await fetch(`${url}/auth/v1/admin/users/${authId}`, {
+      method: "DELETE",
+      headers: {
+        apikey: key,
+        authorization: `Bearer ${key}`,
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`فشل حذف مستخدم المصادقة: HTTP ${res.status}`);
     }
   },
 };

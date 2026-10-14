@@ -76,11 +76,31 @@ describe("إضافة كادر", () => {
     const dupProvider = {
       async createAuthUser() { const e = new Error("User already registered"); (e as { status?: number }).status = 422; throw e; },
       async setPassword() {},
+      async deleteAuthUser() {},
     };
     const err = await createStaff(t.id, { name: "مكرّر", phone: "0533000111", roles: [Role.TEACHER] }, prisma, dupProvider)
       .catch((e) => e);
     expect(err).toBeInstanceOf(ValidationError);
     expect((err as ValidationError).message).toContain("مسجّل");
+  });
+
+  it("فشل حفظ المستخدم بعد إنشاء الدخول ← يُحذف حساب الدخول تعويضاً (لا حساب يتيم)", async () => {
+    const t = await tech();
+    // حسابٌ قائمٌ بـauthId معيّن؛ ثمّ نجبر المزوّر على إعادة نفس authId فيفشل حفظ المستخدم (تفرّد authId).
+    await createUser(prisma, { roles: [Role.TEACHER], authId: "auth-orphan-clash" });
+    const deleted: string[] = [];
+    const clashProvider = {
+      async createAuthUser() { return { authId: "auth-orphan-clash" }; },
+      async setPassword() {},
+      async deleteAuthUser({ authId }: { authId: string }) { deleted.push(authId); },
+    };
+    await expect(
+      createStaff(t.id, { name: "يتيم", phone: "0577000111", roles: [Role.TEACHER] }, prisma, clashProvider),
+    ).rejects.toBeTruthy();
+    // استُدعي الحذف التعويضيّ بالـauthId المُنشأ للتوّ.
+    expect(deleted).toEqual(["auth-orphan-clash"]);
+    // ولم يبقَ أثرٌ للمستخدم (المعاملة ارتدّت).
+    expect(await prisma.user.count({ where: { phone: "+966577000111" } })).toBe(0);
   });
 
   it("مشرفٌ عامّ لا ينشئ مديراً تقنيّاً (أعلى من دوره) ← يُرفض", async () => {

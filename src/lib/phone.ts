@@ -20,3 +20,14 @@ export const legacyEmail = (phone: string): string => `u${(phone ?? "").replace(
 
 /** صيغتا البريد (الموحّد والخام) — للمقارنة التي تقبل القديم والجديد بلا تغيير المخزَّن. */
 export const emailVariants = (phone: string): string[] => [...new Set([canonicalEmail(phone), legacyEmail(phone)])];
+
+/**
+ * صيغة العرض الموحّدة للواجهة — تُظهر السعوديّ بـ+9665XXXXXXXX مهما كانت صيغة تخزينه
+ * (05… · 9665… بلا + · 009665… · 5…)، بلا تغيير المخزَّن. غير المعروف يُعرض كما هو.
+ * دالّةٌ واحدةٌ يمرّ بها كلّ عرض جوالٍ في الواجهة.
+ */
+export function formatPhoneForDisplay(phone: string | null | undefined): string {
+  if (!phone) return "";
+  const canon = normalizeSaudiPhone(phone); // 9665XXXXXXXX للسعوديّ
+  return canon.startsWith("966") ? `+${canon}` : phone;
+}

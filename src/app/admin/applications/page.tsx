@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { formatPhoneForDisplay } from "@/lib/phone";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Button, Badge, EmptyState, Skeleton, Table, ui, sp, type Column } from "@/components/ui";
 
@@ -110,7 +111,7 @@ export default function AdminApplicationsPage() {
     { key: "name", header: "الاسم", cell: (r) => <strong>{r.name}</strong> },
     { key: "status", header: "الحالة", cell: (r) => (r.status === "WAITLISTED" ? <Badge tone="bronze">قائمة الانتظار</Badge> : <Badge tone="neutral">جديد</Badge>) },
     { key: "info", header: "البيانات", cell: (r) => `${r.age} سنة · ${r.gender === "MALE" ? "ذكر" : "أنثى"} · ${r.nationality}` },
-    { key: "guardian", header: "ولي الأمر", cell: (r) => r.guardianPhone },
+    { key: "guardian", header: "ولي الأمر", cell: (r) => <span style={{ direction: "ltr" }}>{formatPhoneForDisplay(r.guardianPhone)}</span> },
     { key: "hifz", header: "الحفظ", cell: (r) => (r.priorHifzJuz != null ? `${r.priorHifzJuz} جزء` : "—") },
     {
       key: "actions", header: "إجراءات", cell: (r) => (
