@@ -5,7 +5,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "./events";
-import { AuthorizationError, ValidationError } from "./errors";
+import { aerr, verr } from "./errors";
 import { recordProgramEntry, closeProgramHistory, cancelPendingTransition, activeProgramId } from "./program-placement";
 
 // ═══════════════ أفعال التسكين وتغيير البرنامج (PLACEMENT_RULES ق٢/ق٣/ق٧) ═══════════════
@@ -19,7 +19,7 @@ const PLACERS: readonly Role[] = [Role.SUPER_ADMIN, Role.CIRCLE_MANAGER, Role.TE
 export async function assertCanPlace(db: PrismaClient | Prisma.TransactionClient, actorId: string): Promise<void> {
   const a = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
   if (!a || !a.roles.some((r) => PLACERS.includes(r))) {
-    throw new AuthorizationError("التسكين وتغيير البرنامج للمشرف/مدير الحلقة/المدير التقنيّ (ق٧).");
+    throw aerr("placeChangeProgramAuthorized");
   }
 }
 
@@ -31,17 +31,17 @@ export async function placeQaidahLessons(
   await assertCanPlace(db, args.actorId);
   const programId = await activeProgramId(db, args.studentId);
   const cur = programId ? await db.program.findUnique({ where: { id: programId }, select: { key: true } }) : null;
-  if (cur?.key !== ProgramKey.QAIDAH_MADANIYYAH) throw new ValidationError("تسكين القاعدة لطلاب القاعدة المدنية.");
+  if (cur?.key !== ProgramKey.QAIDAH_MADANIYYAH) throw verr("qaidahPlacementForQaidahStudents");
 
   const prog = await db.program.findUnique({ where: { key: ProgramKey.QAIDAH_MADANIYYAH }, select: { id: true } });
-  if (!prog) throw new ValidationError("برنامج القاعدة غير مبذور.");
+  if (!prog) throw verr("qaidahProgramNotSeeded");
   const lessons = await db.stage.findMany({
     where: { programId: prog.id, kind: StageKind.LESSON },
     orderBy: { ordinal: "asc" },
     select: { id: true },
   });
   const idx = lessons.findIndex((l) => l.id === args.currentLessonId);
-  if (idx < 0) throw new ValidationError("الدرس غير موجودٍ في القاعدة.");
+  if (idx < 0) throw verr("lessonNotInQaidah");
   const before = lessons.slice(0, idx);
 
   return db.$transaction(async (tx) => {
@@ -76,7 +76,7 @@ export async function placeMaraqi(
   await assertCanPlace(db, args.actorId);
   const programId = await activeProgramId(db, args.studentId);
   const cur = programId ? await db.program.findUnique({ where: { id: programId }, select: { key: true } }) : null;
-  if (cur?.key !== ProgramKey.MARAQI) throw new ValidationError("تسكين مراقي لطلاب مراقي.");
+  if (cur?.key !== ProgramKey.MARAQI) throw verr("maraqiPlacementForMaraqiStudents");
 
   const ooo = (args.outOfOrder ?? []) as unknown as Prisma.InputJsonValue;
   return db.$transaction(async (tx) => {
@@ -107,7 +107,7 @@ export async function getProgramSettings(actorId: string, programKey: ProgramKey
     where: { key: programKey },
     select: { id: true, key: true, nameAr: true, nextProgramId: true, defaultTrackForIncomingId: true },
   });
-  if (!program) throw new ValidationError("البرنامج غير مبذور.");
+  if (!program) throw verr("programNotSeeded");
   const programs = await db.program.findMany({ select: { id: true, key: true, nameAr: true }, orderBy: { key: "asc" } });
   const tracks = program.nextProgramId
     ? await db.track.findMany({ where: { programId: program.nextProgramId, isActive: true }, select: { id: true, nameAr: true }, orderBy: { ordinal: "asc" } })
@@ -134,7 +134,7 @@ export async function setCircleDefaultProgram(
 ): Promise<void> {
   await assertCanPlace(db, args.actorId);
   const p = await db.program.findUnique({ where: { id: args.programId }, select: { id: true } });
-  if (!p) throw new ValidationError("برنامج غير موجود.");
+  if (!p) throw verr("programNotFoundGeneric");
   await db.circle.update({ where: { id: args.circleId }, data: { programId: args.programId } });
 }
 
@@ -146,9 +146,9 @@ export async function changeStudentProgram(
   await assertCanPlace(db, args.actorId);
   return db.$transaction(async (tx) => {
     const active = await tx.enrollment.findFirst({ where: { studentId: args.studentId, endedAt: null }, select: { id: true, programId: true } });
-    if (!active) throw new ValidationError("لا قيدٌ نشطٌ للطالب.");
+    if (!active) throw verr("noActiveEnrollmentForStudent");
     const target = await tx.program.findUnique({ where: { id: args.programId }, select: { key: true } });
-    if (!target) throw new ValidationError("برنامج غير موجود.");
+    if (!target) throw verr("programNotFoundGeneric");
 
     await cancelPendingTransition(tx, args.studentId, args.actorId); // ضابط ٤
     if (active.programId === args.programId) return { changed: false };

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 import { emitEvent } from "./events";
 import { recordProgramEntry, closeProgramHistory, resolveStudentProgram } from "./program-placement";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 /**
  * إسناد الطلاب للحلقات ونقلهم (م١ — Enrollment موجود، والقيد partial unique:
@@ -93,12 +93,12 @@ export async function enrollStudent(
     where: { id: args.studentId },
     select: { id: true },
   });
-  if (!student) throw new ValidationError("طالب غير موجود.");
+  if (!student) throw verr("studentNotFound");
   const circle = await db.circle.findUnique({
     where: { id: args.circleId },
     select: { id: true, nameAr: true, programId: true },
   });
-  if (!circle) throw new ValidationError("حلقة غير موجودة.");
+  if (!circle) throw verr("circleNotFound");
 
   return db.$transaction(async (tx) => {
     const active = await tx.enrollment.findFirst({
@@ -107,7 +107,7 @@ export async function enrollStudent(
     });
 
     if (active && active.circleId === args.circleId) {
-      throw new ValidationError("الطالب مُسنَدٌ إلى هذه الحلقة فعلًا.");
+      throw verr("studentAlreadyInThisCircle");
     }
 
     if (active) {

@@ -16,7 +16,7 @@ import { prisma } from "@/lib/prisma";
 import { decide, propose } from "./approval";
 import { assertCanExamine } from "./examiner-eligibility";
 import { emitEvent } from "./events";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 import { getMilestoneFailureAction } from "./settings";
 
 /**
@@ -58,8 +58,8 @@ async function requireStage(
     where: { id: stageId },
     select: { id: true, programId: true, kind: true, weight: true },
   });
-  if (!stage) throw new ValidationError("مرحلة غير موجودة.");
-  if (stage.kind !== kind) throw new ValidationError("نوع المرحلة غير متوقّع.");
+  if (!stage) throw verr("stageNotFound");
+  if (stage.kind !== kind) throw verr("stageKindUnexpected");
   return { id: stage.id, programId: stage.programId, weight: stage.weight };
 }
 
@@ -373,7 +373,7 @@ export async function decideMilestone(
 
   const payload = approval.payload as MilestonePayload | null;
   if (!payload || typeof payload.milestoneStageId !== "string") {
-    throw new ValidationError("حمولة الاعتماد ناقصة.");
+    throw verr("approvalPayloadMissing");
   }
   const stage = await requireStage(db, payload.milestoneStageId, StageKind.MILESTONE);
   const studentId = approval.subjectId;
