@@ -55,6 +55,6 @@ export async function assertCapability(
   db: PrismaClient = prisma,
 ): Promise<void> {
   if (!(await actorHasCapability(actorId, capability, db))) {
-    throw new AuthorizationError(`غير مخوّل بالصلاحية: ${capability}`);
+    throw new AuthorizationError(`غير مخوّل بالصلاحية: ${capability}`, "notAuthorizedCapability");
   }
 }

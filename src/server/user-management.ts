@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { type AuthProvider, defaultAuthProvider } from "./auth-provider";
 import { syntheticEmail, normalizeSaudiPhone } from "./account";
 import { emitEvent } from "./events";
-import { AuthorizationError, ValidationError } from "./errors";
+import { verr, aerr } from "./errors";
 import { activeStaffRoles, assertMuddakirExclusivity, assignStaff, endStaff } from "./muddakir-staff";
 
 // ═══════════════ إدارة المستخدمين (المرحلة أ) — ROLES.md ═══════════════
@@ -54,9 +54,9 @@ const LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 /** يرمي AuthorizationError إن لم يكن الفاعل من كادر إدارة المستخدمين، ويعيد أدواره. */
 async function assertUserAdmin(actorId: string, db: PrismaClient): Promise<Role[]> {
   const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   if (!isUserAdmin(actor.roles)) {
-    throw new AuthorizationError("إدارة المستخدمين للمشرف العام والمدير التقنيّ فقط (ROLES.md).");
+    throw aerr("userAdminRolesOnly");
   }
   return actor.roles;
 }
@@ -145,21 +145,21 @@ export async function createStaff(
   const actorRoles = await assertUserAdmin(actorId, db);
 
   const name = args.name?.trim();
-  if (!name) throw new ValidationError("اسم الكادر مطلوب.");
+  if (!name) throw verr("staffNameRequired");
   // حصر الوظائف (و١): موظّف المدّكر بلا دورٍ عامّ (وظيفةٌ واحدة)؛ وإلّا فدورٌ عامٌّ واحدٌ على الأقلّ.
   const newStaff = args.muddakirStaff ?? [];
   if (newStaff.length > 0) {
     assertMuddakirExclusivity(args.roles ?? [], newStaff);
   } else if (!args.roles || args.roles.length === 0) {
-    throw new ValidationError("لا بدّ من دورٍ واحدٍ على الأقلّ.");
+    throw verr("atLeastOneRole");
   }
   for (const r of args.roles) {
-    if (!Object.values(Role).includes(r)) throw new ValidationError("دورٌ غير معروف.");
+    if (!Object.values(Role).includes(r)) throw verr("unknownRole");
   }
   // لا يمنح المُنشئ دوراً أعلى من أعلى أدواره.
   const ceiling = highestRank(actorRoles);
   if (args.roles.some((r) => ROLE_RANK[r] > ceiling)) {
-    throw new AuthorizationError("لا تمنح دوراً أعلى من دورك.");
+    throw aerr("noRoleAboveYours");
   }
 
   // توحيد صيغة الجوال (05… / +9665… / 009665…) فتتطابق الصيغ المختلفة لنفس الرقم (منع ازدواج).
@@ -174,7 +174,7 @@ export async function createStaff(
     where: { OR: [{ email }, { email: syntheticEmail(rawPhone) }, { phone: { in: phoneVariants } }] },
     select: { id: true },
   });
-  if (clash) throw new ValidationError("هذا الجوال مسجّل لمستخدم آخر.");
+  if (clash) throw verr("phoneTakenByAnother");
 
   // إنشاء مستخدم المصادقة أوّلاً (شبكة، خارج المعاملة). الفشل غالباً تكرارٌ في المصادقة
   // (الجوال مسجَّلٌ بصيغةٍ أخرى) ⟵ نترجمه لرسالةٍ واضحة، ونُسجّل الخطأ الحقيقيّ للتشخيص.
@@ -186,7 +186,7 @@ export async function createStaff(
     console.error(`[user-management] createAuthUser فشل (phone=${phoneStored}): ${info}`);
     const status = (e as { status?: number }).status;
     const duplicate = status === 409 || status === 422 || /exist|registered|duplicate|already/i.test(info);
-    if (duplicate) throw new ValidationError("هذا الجوال مسجّل لمستخدم آخر.");
+    if (duplicate) throw verr("phoneTakenByAnother");
     throw e; // غير التكرار: يبقى ٥٠٠ لكنّه مُسجَّلٌ بتفصيله أعلاه (لإصلاح السبب)
   }
 
@@ -248,14 +248,14 @@ export async function setActive(
 ) {
   await assertUserAdmin(actorId, db);
   const target = await db.user.findUnique({ where: { id: userId }, select: { roles: true, isActive: true } });
-  if (!target) throw new ValidationError("مستخدم غير موجود.");
+  if (!target) throw verr("userNotFound");
 
   if (!active) {
-    if (userId === actorId) throw new ValidationError("لا تعطّل حسابك.");
+    if (userId === actorId) throw verr("noDeactivateSelf");
     // منع تعطيل آخر مدير تقنيّ فعّال.
     if (target.isActive && target.roles.includes(Role.TECH_ADMIN)) {
       if ((await countActiveTechAdmins(db)) <= 1) {
-        throw new ValidationError("لا يُعطَّل آخر مدير تقنيّ فعّال.");
+        throw verr("noDeactivateLastTechAdmin");
       }
     }
   }
@@ -280,20 +280,20 @@ export async function setRoles(
   opts: { allowEmpty?: boolean } = {},
 ) {
   const actorRoles = await assertUserAdmin(actorId, db);
-  if (userId === actorId) throw new ValidationError("لا تعدّل أدوار حسابك.");
+  if (userId === actorId) throw verr("noEditOwnRoles");
 
   const next = [...new Set(roles)];
   for (const r of next) {
-    if (!Object.values(Role).includes(r)) throw new ValidationError("دورٌ غير معروف.");
+    if (!Object.values(Role).includes(r)) throw verr("unknownRole");
   }
   // لا يمنح الفاعل دوراً أعلى من أعلى أدواره.
   const ceiling = highestRank(actorRoles);
   if (next.some((r) => ROLE_RANK[r] > ceiling)) {
-    throw new AuthorizationError("لا تمنح دوراً أعلى من دورك.");
+    throw aerr("noRoleAboveYours");
   }
 
   const target = await db.user.findUnique({ where: { id: userId }, select: { roles: true, isActive: true } });
-  if (!target) throw new ValidationError("مستخدم غير موجود.");
+  if (!target) throw verr("userNotFound");
 
   // حصر الوظائف (و١): من يحمل وظيفة مدّكرٍ لا يحمل دوراً عامّاً. ودورٌ واحدٌ على الأقلّ من النوعين
   // معاً (لا يُحفظ مستخدمٌ بلا أيّ دور). opts.allowEmpty للمنسّق (setRolesAndStaff) حين تُسنَد وظيفةٌ
@@ -301,14 +301,14 @@ export async function setRoles(
   const currentStaff = await activeStaffRoles(db, userId);
   assertMuddakirExclusivity(next, currentStaff);
   if (!opts.allowEmpty && next.length === 0 && currentStaff.length === 0) {
-    throw new ValidationError("لا بدّ من دورٍ واحدٍ على الأقلّ (دورٌ عامٌّ أو وظيفة مدّكر).");
+    throw verr("atLeastOneRoleOrStaff");
   }
 
   // نزع آخر مدير تقنيّ فعّال ⟵ يُمنع (إقفال النظام).
   const wasTech = target.isActive && target.roles.includes(Role.TECH_ADMIN);
   const staysTech = next.includes(Role.TECH_ADMIN);
   if (wasTech && !staysTech && (await countActiveTechAdmins(db)) <= 1) {
-    throw new ValidationError("لا يُنزع آخر مدير تقنيّ فعّال.");
+    throw verr("noRemoveLastTechAdmin");
   }
 
   const updated = await db.user.update({ where: { id: userId }, data: { roles: { set: next } } });
@@ -340,7 +340,7 @@ export async function setRolesAndStaff(
   const finalStaff = [...new Set(muddakirStaff)];
   assertMuddakirExclusivity(finalRoles, finalStaff);
   if (finalRoles.length === 0 && finalStaff.length === 0) {
-    throw new ValidationError("لا بدّ من دورٍ واحدٍ على الأقلّ (دورٌ عامٌّ أو وظيفة مدّكر).");
+    throw verr("atLeastOneRoleOrStaff");
   }
   const current = await activeStaffRoles(db, userId);
   const toEnd = current.filter((r) => !finalStaff.includes(r));
@@ -360,8 +360,8 @@ export async function resetPassword(
 ): Promise<{ activationUrl: string }> {
   await assertUserAdmin(actorId, db);
   const target = await db.user.findUnique({ where: { id: userId }, select: { authId: true } });
-  if (!target) throw new ValidationError("مستخدم غير موجود.");
-  if (!target.authId) throw new ValidationError("المستخدم بلا حساب دخول — لا كلمة سرّ.");
+  if (!target) throw verr("userNotFound");
+  if (!target.authId) throw verr("userNoLoginNoPassword");
 
   const token = newToken();
   await db.activationLink.create({
@@ -397,9 +397,9 @@ export async function getActivationStatus(
     where: { token },
     select: { purpose: true, usedAt: true, expiresAt: true },
   });
-  if (!link) throw new ValidationError("رابط تفعيلٍ غير صالح.");
-  if (link.usedAt) throw new ValidationError("هذا الرابط استُعمِل من قبل.");
-  if (link.expiresAt.getTime() < Date.now()) throw new ValidationError("انتهت صلاحيّة هذا الرابط.");
+  if (!link) throw verr("invalidActivationLink");
+  if (link.usedAt) throw verr("activationLinkUsed");
+  if (link.expiresAt.getTime() < Date.now()) throw verr("activationLinkExpired");
   return { purpose: link.purpose };
 }
 
@@ -414,18 +414,18 @@ export async function completeActivation(
   provider: AuthProvider = defaultAuthProvider,
 ): Promise<void> {
   if (!password || password.length < 8) {
-    throw new ValidationError("كلمة السرّ ثمانية أحرفٍ فأكثر.");
+    throw verr("passwordMinEight");
   }
   const link = await db.activationLink.findUnique({
     where: { token },
     select: { id: true, userId: true, usedAt: true, expiresAt: true },
   });
-  if (!link) throw new ValidationError("رابط تفعيلٍ غير صالح.");
-  if (link.usedAt) throw new ValidationError("هذا الرابط استُعمِل من قبل.");
-  if (link.expiresAt.getTime() < Date.now()) throw new ValidationError("انتهت صلاحيّة هذا الرابط.");
+  if (!link) throw verr("invalidActivationLink");
+  if (link.usedAt) throw verr("activationLinkUsed");
+  if (link.expiresAt.getTime() < Date.now()) throw verr("activationLinkExpired");
 
   const user = await db.user.findUnique({ where: { id: link.userId }, select: { authId: true } });
-  if (!user?.authId) throw new ValidationError("المستخدم بلا حساب دخول.");
+  if (!user?.authId) throw verr("userNoLogin");
 
   await provider.setPassword({ authId: user.authId, password });
 
@@ -434,7 +434,7 @@ export async function completeActivation(
     where: { id: link.id, usedAt: null },
     data: { usedAt: new Date() },
   });
-  if (marked.count === 0) throw new ValidationError("هذا الرابط استُعمِل من قبل.");
+  if (marked.count === 0) throw verr("activationLinkUsed");
 
   await emitEvent(db, {
     type: "USER_ACTIVATED",

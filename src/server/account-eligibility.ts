@@ -4,7 +4,7 @@ import { computeAge } from "./age-policy";
 import { provisionStudentLogin } from "./account";
 import { type AuthProvider, defaultAuthProvider } from "./auth-provider";
 import { emitEvent } from "./events";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // بلوغ الثالثة عشرة يأتي وحده (قرار محمد): **أهلية لا إنشاء تلقائي**.
 // المنصة تُنبّه المُسجِّل «بلغ ١٣ — أتُنشئ حسابًا؟»؛ والإنشاء يحتاج جوالًا
@@ -54,11 +54,11 @@ export async function createAccountForStudentReachingThirteen(
       },
     });
     if (!student.user.birthDate) {
-      throw new ValidationError("لا تاريخ ميلاد — يتعذّر التحقّق من العمر.");
+      throw verr("noBirthDateForAge");
     }
     const age = computeAge(student.user.birthDate, asOf);
     if (age < 13) {
-      throw new ValidationError("لم يبلغ الثالثة عشرة بعد.");
+      throw verr("notYetThirteen");
     }
 
     await provisionStudentLogin(

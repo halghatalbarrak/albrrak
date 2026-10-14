@@ -1,7 +1,7 @@
 import { type Gender, type Prisma, type PrismaClient, Role } from "@prisma/client";
 import { type AuthProvider, defaultAuthProvider } from "./auth-provider";
 import { normalizeSaudiPhone, canonicalEmail, emailVariants } from "@/lib/phone";
-import { AuthorizationError, ValidationError } from "./errors";
+import { verr, aerr } from "./errors";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -14,7 +14,7 @@ export { normalizeSaudiPhone } from "@/lib/phone"; // إعادة تصديرٍ ل
 export function syntheticEmail(phone: string): string {
   const digits = phone.replace(/\D/g, "");
   if (digits.length < 6) {
-    throw new ValidationError("رقم جوال غير صالح لإنشاء الحساب.");
+    throw verr("phoneInvalidForAccount");
   }
   return `u${digits}@albrrak.app`;
 }
@@ -30,12 +30,10 @@ export async function provisionStudentLogin(
   provider: AuthProvider = defaultAuthProvider,
 ): Promise<void> {
   if (args.age < 13) {
-    throw new AuthorizationError(
-      "م٤: لا يُنشأ حساب دخول لمن دون الثالثة عشرة.",
-    );
+    throw aerr("noLoginUnderThirteen");
   }
   if (!args.phone) {
-    throw new ValidationError("إنشاء الحساب يحتاج رقم جوال.");
+    throw verr("accountNeedsPhone");
   }
   const email = syntheticEmail(args.phone);
   const { authId } = await provider.createAuthUser({ email, phone: args.phone });

@@ -4,7 +4,7 @@ import { Role, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "./events";
-import { AuthorizationError, ValidationError } from "./errors";
+import { verr, aerr } from "./errors";
 import type { Actor } from "./auth";
 
 // ═══════════════ انتحال الشخصيّة (Impersonation) — طبقةٌ فوق الجلسة ═══════════════
@@ -38,7 +38,7 @@ const hmac = (data: string, key: Buffer) => createHmac("sha256", key).update(dat
  */
 export function signImpersonation(p: ImpersonationPayload): string {
   const key = secret();
-  if (!key) throw new ValidationError("الانتحال غير مُهيّأ (IMPERSONATION_SECRET مفقود).");
+  if (!key) throw verr("impersonationNotConfigured");
   const body = b64u(Buffer.from(JSON.stringify(p), "utf8"));
   return `${body}.${b64u(hmac(body, key))}`;
 }
@@ -100,23 +100,23 @@ export async function assertCanImpersonate(
   db: PrismaClient = prisma,
 ): Promise<{ nameAsInId: string; roles: Role[] }> {
   if (realActor.impersonating) {
-    throw new AuthorizationError("لا يمكن بدء انتحالٍ أثناء انتحال (يُفحَص الفاعل الحقيقيّ).");
+    throw aerr("noImpersonateWhileImpersonating");
   }
   if (!realActor.roles.includes(Role.TECH_ADMIN)) {
-    throw new AuthorizationError("الانتحال للمدير التقنيّ وحده.");
+    throw aerr("impersonationTechAdminOnly");
   }
   if (targetUserId === realActor.realActorId) {
-    throw new ValidationError("لا تنتحل نفسك.");
+    throw verr("noImpersonateSelf");
   }
   const target = await db.user.findUnique({
     where: { id: targetUserId },
     select: { isActive: true, roles: true, nameAsInId: true },
   });
   if (!target || !target.isActive) {
-    throw new ValidationError("المستخدم غير موجودٍ أو معطَّل.");
+    throw verr("userMissingOrDisabled");
   }
   if (target.roles.includes(Role.TECH_ADMIN)) {
-    throw new AuthorizationError("لا يُنتحَل مديرٌ تقنيّ.");
+    throw aerr("noImpersonateTechAdmin");
   }
   return { nameAsInId: target.nameAsInId, roles: target.roles };
 }

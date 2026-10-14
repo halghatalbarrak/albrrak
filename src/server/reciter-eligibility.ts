@@ -1,6 +1,6 @@
 import { type PrismaClient, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { AuthorizationError } from "./errors";
+import { aerr } from "./errors";
 
 // قيود إسناد المُسمِّع للحصاد (DESIGN §٨٫٩):
 //   م١ — ليس معلم الطالب عبر *كل* حلقاته.
@@ -47,8 +47,6 @@ export async function assertCanRecite(
   db: PrismaClient = prisma,
 ): Promise<void> {
   if (!(await canRecite(args, db))) {
-    throw new AuthorizationError(
-      "لا يجوز إسناد هذا المُسمِّع لهذا الطالب (م١/م٣).",
-    );
+    throw aerr("reciterNotAllowedForStudent");
   }
 }
