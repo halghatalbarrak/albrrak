@@ -1,7 +1,7 @@
 import { GuardianLinkStatus, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "./events";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // طلب فكّ ربط الولي (DESIGN §٤): يرفعه الطالب (١٣+)، ينظر فيه المدير، والرفض هو الأصل.
 // **لا يظهر للولي إطلاقًا** — لو رآه لانتفت فائدته في الحالة الوحيدة التي وُجد لها.
@@ -12,7 +12,7 @@ export async function requestUnlink(
   db: PrismaClient = prisma,
 ) {
   if (!args.reason?.trim()) {
-    throw new ValidationError("طلب فكّ الربط يستلزم سببًا مكتوبًا من الطالب.");
+    throw verr("unlinkRequestRequiresNote");
   }
   return db.$transaction(async (tx) => {
     const link = await tx.guardianLink.update({

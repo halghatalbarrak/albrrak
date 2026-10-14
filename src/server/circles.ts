@@ -1,6 +1,6 @@
 import { type Gender, type PrismaClient, type ProgramKey, type TimeSlot } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // إدارة الحلقات الأدنى: المدير يُنشئ الحلقات تحت برنامجٍ قائم (لا يُنشئ البرامج).
 // الحلقة كيانٌ عندنا (§٦٫١) — إليها يُسنَد الطالب عند التحديد.
@@ -58,9 +58,9 @@ export interface CreateCircleInput {
 
 export async function createCircle(input: CreateCircleInput, db: PrismaClient = prisma) {
   const nameAr = input.nameAr.trim();
-  if (!nameAr) throw new ValidationError("اسم الحلقة مطلوب.");
+  if (!nameAr) throw verr("circleNameRequired");
   const program = await db.program.findUnique({ where: { id: input.programId }, select: { id: true } });
-  if (!program) throw new ValidationError("البرنامج غير موجود.");
+  if (!program) throw verr("programNotFound");
   return db.circle.create({
     data: {
       nameAr,

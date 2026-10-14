@@ -11,7 +11,7 @@ import { findOrCreateGuardian, syntheticEmail } from "./account";
 import { type AuthProvider, defaultAuthProvider } from "./auth-provider";
 import { emitEvent } from "./events";
 import { encryptNationalId } from "./national-id";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // نموذج القيد ← القبول/الرفض/الانتظار ← إنشاء الحساب ← ربط الولي (§٥، §٦).
 
@@ -103,7 +103,7 @@ export async function acceptApplication(
     app.status !== ApplicationStatus.PENDING &&
     app.status !== ApplicationStatus.WAITLISTED
   ) {
-    throw new ValidationError("لا يُقبل إلا طلبٌ معلّق أو في قائمة الانتظار.");
+    throw verr("acceptPendingOrWaitlistedOnly");
   }
 
   const age = computeAge(app.birthDate, asOf);
@@ -113,7 +113,7 @@ export async function acceptApplication(
   let login: { email: string; phone: string; authId: string } | null = null;
   if (policy.createsStudentAccount) {
     if (!app.studentPhone) {
-      throw new ValidationError("طالب ١٣+ يحتاج رقم جواله لإنشاء الحساب.");
+      throw verr("studentThirteenNeedsPhone");
     }
     const email = syntheticEmail(app.studentPhone);
     const { authId } = await provider.createAuthUser({
@@ -133,7 +133,7 @@ export async function acceptApplication(
       fresh.status !== ApplicationStatus.PENDING &&
       fresh.status !== ApplicationStatus.WAITLISTED
     ) {
-      throw new ValidationError("الطلب حُسم من قبل.");
+      throw verr("applicationAlreadyDecided");
     }
 
     const nat = await tx.nationality.findUniqueOrThrow({
@@ -318,7 +318,7 @@ export async function rejectApplication(
   db: PrismaClient = prisma,
 ) {
   if (!args.note?.trim()) {
-    throw new ValidationError("الرفض يستلزم سببًا مكتوبًا.");
+    throw verr("rejectRequiresNote");
   }
   return db.$transaction(async (tx) => {
     const app = await tx.application.update({

@@ -10,7 +10,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "./events";
 import { recordProgramEntry } from "./program-placement";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // §٦٫٣ اختبار القراءة (التحديد): المُسجِّل يقرر ← المدير يعتمد قبل النفاذ ← الإسناد.
 // المخرج (§٥): لا يجيد نظراً ← القاعدة المدنية (IN_QAIDAH + حلقة). يجيد نظراً ← بانتظار
@@ -39,16 +39,16 @@ export async function proposeReadingTest(
   db: PrismaClient = prisma,
 ) {
   const notes = input.notes?.trim();
-  if (!notes) throw new ValidationError("ملاحظات المختبر مطلوبة (§٦٫٣).");
+  if (!notes) throw verr("examinerNotesRequired");
 
   return db.$transaction(async (tx) => {
     const student = await tx.student.findUnique({
       where: { id: input.studentId },
       select: { state: true },
     });
-    if (!student) throw new ValidationError("طالب غير موجود.");
+    if (!student) throw verr("studentNotFound");
     if (student.state !== StudentState.AWAITING_READING_TEST) {
-      throw new ValidationError("اختبار القراءة لا يُسجَّل إلا لطالبٍ بانتظاره.");
+      throw verr("readingTestOnlyForAwaiting");
     }
     const already = await tx.approval.findFirst({
       where: {
@@ -58,19 +58,19 @@ export async function proposeReadingTest(
       },
       select: { id: true },
     });
-    if (already) throw new ValidationError("لهذا الطالب قرار تحديدٍ معلّقٌ بالفعل.");
+    if (already) throw verr("placementDecisionPending");
 
     let circleId: string | null = null;
     if (!input.readsFluently) {
       // لا يجيد نظراً ← القاعدة المدنية ← حلقةٌ إلزامية من برنامج القاعدة.
-      if (!input.circleId) throw new ValidationError("مسار القاعدة المدنية يحتاج حلقةً.");
+      if (!input.circleId) throw verr("qaidahTrackNeedsCircle");
       const circle = await tx.circle.findUnique({
         where: { id: input.circleId },
         select: { program: { select: { key: true } } },
       });
-      if (!circle) throw new ValidationError("الحلقة غير موجودة.");
+      if (!circle) throw verr("theCircleNotFound");
       if (circle.program.key !== ProgramKey.QAIDAH_MADANIYYAH) {
-        throw new ValidationError("حلقة القاعدة المدنية فقط لمن لا يجيد النظر.");
+        throw verr("qaidahCircleOnlyForNonFluent");
       }
       circleId = input.circleId;
     }
@@ -117,7 +117,7 @@ export async function decideReadingTest(
   db: PrismaClient = prisma,
 ): Promise<PlacementResult> {
   if (args.decision === "REJECTED" && !args.note?.trim()) {
-    throw new ValidationError("الرفض يستلزم سببًا مكتوبًا (§٣٫٤).");
+    throw verr("rejectRequiresNoteSection34");
   }
   return db.$transaction(async (tx) => {
     const approval = await tx.approval.findUnique({
@@ -125,10 +125,10 @@ export async function decideReadingTest(
       select: { kind: true, status: true, subjectId: true, payload: true },
     });
     if (!approval || approval.kind !== ApprovalKind.PLACEMENT_DECISION) {
-      throw new ValidationError("قرار تحديدٍ غير موجود.");
+      throw verr("placementDecisionNotFound");
     }
     if (approval.status !== ApprovalStatus.PENDING) {
-      throw new ValidationError("القرار حُسم من قبل — لا يُحسم مرتين.");
+      throw verr("decisionAlreadyMade");
     }
 
     const updated = await tx.approval.update({
@@ -160,11 +160,11 @@ export async function decideReadingTest(
       select: { state: true },
     });
     if (student.state !== StudentState.AWAITING_READING_TEST) {
-      throw new ValidationError("حالة الطالب تغيّرت — تعذّر تنفيذ التحديد.");
+      throw verr("studentStateChangedPlacement");
     }
     const p = approval.payload as unknown as PlacementPayload;
     if (typeof p?.readsFluently !== "boolean") {
-      throw new ValidationError("بيان القرار تالفٌ — تعذّر التنفيذ.");
+      throw verr("decisionPayloadCorrupt");
     }
 
     if (p.readsFluently) {
@@ -182,10 +182,10 @@ export async function decideReadingTest(
     }
 
     // لا يجيد نظراً ← قاعدة مدنية ← حلقة + IN_QAIDAH.
-    if (!p.circleId) throw new ValidationError("قرار القاعدة المدنية بلا حلقة — تعذّر الإسناد.");
+    if (!p.circleId) throw verr("qaidahDecisionNoCircle");
     // ق١: القيد يحمل برنامجه (لا مصدرين) — من برنامج حلقة القاعدة المُتحقَّق منه سابقًا.
     const circle = await tx.circle.findUnique({ where: { id: p.circleId }, select: { programId: true } });
-    if (!circle) throw new ValidationError("حلقة القرار غير موجودة.");
+    if (!circle) throw verr("decisionCircleNotFound");
     await tx.enrollment.create({
       data: { studentId: approval.subjectId, circleId: p.circleId, programId: circle.programId },
     });

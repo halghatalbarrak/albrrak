@@ -2,7 +2,7 @@ import { type PrismaClient, type Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { computeAge } from "./age-policy";
 import { readNationalId } from "./national-id";
-import { AuthorizationError } from "./errors";
+import { aerr } from "./errors";
 
 // عرضٌ آمن للطلاب — **بلا رقم الهوية** (م٥: لا يظهر في تقرير) و**بلا جوال الطوارئ**.
 // من يحتاج الرقم الصريح يمرّ عبر readNationalId (مخوّل + مُسجَّل).
@@ -105,7 +105,7 @@ export async function revealStudentNationalId(
     where: { id: args.studentId },
     select: { userId: true },
   });
-  if (!student) throw new AuthorizationError("طالب غير موجود.");
+  if (!student) throw aerr("studentNotFound");
   return readNationalId(
     {
       viewerId: args.viewerId,
