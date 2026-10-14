@@ -3,7 +3,7 @@ import { MuddakirErrorSource, type Prisma, type PrismaClient } from "@prisma/cli
 import { prisma } from "@/lib/prisma";
 import { makkahDayDate } from "@/lib/muddakir";
 
-import { AuthorizationError, ValidationError } from "./errors";
+import { ValidationError, verr, aerr } from "./errors";
 import { deriveDay, recomputeTreatmentAndWeak } from "./muddakir-day";
 import { deriveWard } from "./muddakir-ward";
 
@@ -56,23 +56,23 @@ export async function ingestEvents(
 ): Promise<IngestResult> {
   // ملكيّة: الفاعل هو الحافظ (الطالب صاحب هذا المستخدم) — §١.
   const student = await db.student.findUnique({ where: { userId: args.actorUserId }, select: { id: true } });
-  if (!student) throw new AuthorizationError("لا حافظٌ مرتبطٌ بهذا المستخدم.");
+  if (!student) throw aerr("noHafizForUser");
   const studentId = args.studentId ?? student.id;
-  if (studentId !== student.id) throw new AuthorizationError("الأحداث لا تخصّ الحافظ نفسه.");
+  if (studentId !== student.id) throw aerr("eventsNotForSameHafiz");
   const profile = await db.muddakirProfile.findUnique({ where: { studentId }, select: { studentId: true } });
-  if (!profile) throw new ValidationError("الحافظ غير ملتحقٍ بالمُدَّكِر.");
+  if (!profile) throw verr("hafizNotEnrolledInMuddakir");
 
-  if (!Array.isArray(args.events) || args.events.length === 0) throw new ValidationError("لا أحداث.");
+  if (!Array.isArray(args.events) || args.events.length === 0) throw verr("noEvents");
 
   const rows: Prisma.MuddakirEventCreateManyInput[] = [];
   const affected = new Set<string>();
   const errorOpens: { page: number; lineNo: number; source: MuddakirErrorSource; dayStr: string }[] = [];
   for (const e of args.events) {
-    if (typeof e.clientEventId !== "string" || !e.clientEventId) throw new ValidationError("clientEventId مطلوب.");
-    if (!KNOWN.has(e.type)) throw new ValidationError(`نوع حدثٍ غير معروف: ${e.type}`);
+    if (typeof e.clientEventId !== "string" || !e.clientEventId) throw verr("clientEventIdRequired");
+    if (!KNOWN.has(e.type)) throw new ValidationError(`نوع حدثٍ غير معروف: ${e.type}`, "unknownEventType");
     const occurredAt = new Date(e.occurredAt);
-    if (isNaN(occurredAt.getTime())) throw new ValidationError("occurredAt غير صالح.");
-    if (e.studentId && e.studentId !== studentId) throw new AuthorizationError("حدثٌ لا يخصّ الحافظ نفسه.");
+    if (isNaN(occurredAt.getTime())) throw verr("invalidOccurredAt");
+    if (e.studentId && e.studentId !== studentId) throw aerr("eventNotForSameHafiz");
     const dayStr = makkahDayDate(occurredAt); // يومُ مكّة في الخادم — المرجع
     affected.add(dayStr);
     if (e.type === "MAKEUP_COMPLETE") {

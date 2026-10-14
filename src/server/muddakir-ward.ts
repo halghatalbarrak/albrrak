@@ -23,7 +23,7 @@ import { getProgramSetting } from "./settings";
 import { emitEvent } from "./events";
 import { canExamine } from "./examiner-eligibility";
 import { isExaminerCapable } from "./muddakir-staff";
-import { AuthorizationError, ValidationError } from "./errors";
+import { ValidationError, verr, aerr } from "./errors";
 
 // ═══════════════ محرّك يوم الورد في التثبيت (ت٣، §١٢ + تعديل ١) ═══════════════
 //
@@ -280,22 +280,22 @@ export async function recordTathbitFinal(
   now: Date = new Date(),
 ): Promise<RecordTathbitFinalResult> {
   const user = await db.user.findUnique({ where: { id: args.examinerUserId }, select: { id: true } });
-  if (!user) throw new AuthorizationError("مستخدم غير موجود.");
-  if (!(await isExaminerCapable(db, args.examinerUserId))) throw new AuthorizationError("السرد يسجّله المختبِر.");
-  if (!(await canExamine({ examinerUserId: args.examinerUserId, studentId: args.studentId }, db))) throw new AuthorizationError("لا يجوز أن يختبر معلّمُ الحافظ ولا عريفُ حلقته.");
+  if (!user) throw aerr("userNotFound");
+  if (!(await isExaminerCapable(db, args.examinerUserId))) throw aerr("recitationByExaminer");
+  if (!(await canExamine({ examinerUserId: args.examinerUserId, studentId: args.studentId }, db))) throw aerr("examinerNotTeacherOrArif");
 
   const v = await getWardView(args.studentId, db, now);
-  if (v.phase !== MuddakirPhase.TATHBIT || !v.finishedLadder) throw new ValidationError("لم يُتمّ درجات التثبيت بعد.");
+  if (v.phase !== MuddakirPhase.TATHBIT || !v.finishedLadder) throw verr("tathbitDegreesNotFinished");
   if (await db.muddakirRecitation.findFirst({ where: { studentId: args.studentId, kind: MuddakirRecitationKind.TATHBIT_FINAL, passed: true }, select: { id: true } })) {
-    throw new ValidationError("السرد الختاميّ مُجتازٌ فعلاً — بانتظار اعتماد المشرف.");
+    throw verr("tathbitFinalAlreadyPassed");
   }
 
   const today = makkahDayDate(now);
   const errors = args.errors ?? [];
   for (const e of errors) {
-    if (!Number.isInteger(e.page) || !Number.isInteger(e.lineNo)) throw new ValidationError("موضعٌ غير صالح.");
+    if (!Number.isInteger(e.page) || !Number.isInteger(e.lineNo)) throw verr("invalidPosition");
     const line = await db.mushafLine.findUnique({ where: { page_lineNo: { page: e.page, lineNo: e.lineNo } }, select: { page: true } });
-    if (!line) throw new ValidationError(`موضعٌ غير موجودٍ في المصحف: ${e.page}/${e.lineNo}.`);
+    if (!line) throw new ValidationError(`موضعٌ غير موجودٍ في المصحف: ${e.page}/${e.lineNo}.`, "positionNotInMushaf");
     const exists = await db.muddakirError.findFirst({ where: { studentId: args.studentId, page: e.page, lineNo: e.lineNo, resolvedAt: null }, select: { id: true } });
     if (!exists) await db.muddakirError.create({ data: { studentId: args.studentId, page: e.page, lineNo: e.lineNo, source: MuddakirErrorSource.EXAMINER, openedOn: dateVal(today), recordedById: args.examinerUserId } });
   }

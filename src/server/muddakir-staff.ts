@@ -3,7 +3,7 @@ import { MuddakirFaceState, MuddakirStaffRole, Role, type Prisma, type PrismaCli
 import { prisma } from "@/lib/prisma";
 import { requireAuth, type Actor } from "./auth";
 import { emitEvent } from "./events";
-import { AuthorizationError, ValidationError } from "./errors";
+import { ValidationError, verr, aerr } from "./errors";
 
 // ═══════════════ أدوار المدّكر المُحصَّرة وصلاحيّاتها (§٢، و١) ═══════════════
 //
@@ -27,8 +27,8 @@ export const SINGLE_FUNCTION_MSG = "موظّف المدّكر لا يحمل أد
  */
 export function assertMuddakirExclusivity(roles: readonly string[], staff: readonly string[]): void {
   if (staff.length === 0) return;
-  if (staff.length > 1) throw new ValidationError(SINGLE_FUNCTION_MSG);
-  if (roles.length > 0) throw new ValidationError(SINGLE_FUNCTION_MSG);
+  if (staff.length > 1) throw new ValidationError(SINGLE_FUNCTION_MSG, "muddakirSingleFunction");
+  if (roles.length > 0) throw new ValidationError(SINGLE_FUNCTION_MSG, "muddakirSingleFunction");
 }
 
 /** أدوار المدّكر النشطة لمستخدم (endedAt = null). */
@@ -58,7 +58,7 @@ export async function muddakirCaps(db: Db, actor: { id: string; roles: Role[] })
 
 const capsForUser = async (db: Db, userId: string): Promise<MuddakirCaps> => {
   const u = await db.user.findUnique({ where: { id: userId }, select: { roles: true } });
-  if (!u) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!u) throw aerr("userNotFound");
   return muddakirCaps(db, { id: userId, roles: u.roles });
 };
 
@@ -79,16 +79,16 @@ export async function isExaminerCapable(db: Db, userId: string): Promise<boolean
  */
 export async function assignStaff(args: { actorUserId: string; targetUserId: string; role: MuddakirStaffRole }, db: PrismaClient = prisma): Promise<{ id: string; already: boolean }> {
   const actor = await db.user.findUnique({ where: { id: args.actorUserId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   const platformManager = isPlatformManager(actor.roles);
   if (args.role === MuddakirStaffRole.MANAGER) {
-    if (!platformManager) throw new AuthorizationError("تعيين مدير البرنامج لمدير المنصّة وحده.");
+    if (!platformManager) throw aerr("assignManagerPlatformOnly");
   } else {
     const caps = await muddakirCaps(db, { id: args.actorUserId, roles: actor.roles });
-    if (!caps.manage) throw new AuthorizationError("التعيين لمدير البرنامج (أو مدير المنصّة).");
+    if (!caps.manage) throw aerr("assignByManager");
   }
   const target = await db.user.findUnique({ where: { id: args.targetUserId }, select: { id: true, roles: true } });
-  if (!target) throw new ValidationError("المستخدم الهدف غير موجود.");
+  if (!target) throw verr("targetUserNotFound");
   const existing = await db.muddakirStaff.findFirst({ where: { userId: args.targetUserId, role: args.role, endedAt: null }, select: { id: true } });
   if (existing) return { id: existing.id, already: true };
   // حصر الوظائف: الهدف بلا دورٍ عامّ، وبلا وظيفةٍ أخرى (بعد الإضافة وظيفةٌ واحدة). يُفرَض هنا فيشمل
@@ -103,13 +103,13 @@ export async function assignStaff(args: { actorUserId: string; targetUserId: str
 /** يُنهي إسناد دورٍ (بلا حذف). صلاحيّةٌ كالتعيين. */
 export async function endStaff(args: { actorUserId: string; targetUserId: string; role: MuddakirStaffRole }, db: PrismaClient = prisma): Promise<{ ended: number }> {
   const actor = await db.user.findUnique({ where: { id: args.actorUserId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   const platformManager = isPlatformManager(actor.roles);
   if (args.role === MuddakirStaffRole.MANAGER) {
-    if (!platformManager) throw new AuthorizationError("إنهاء مدير البرنامج لمدير المنصّة وحده.");
+    if (!platformManager) throw aerr("endManagerPlatformOnly");
   } else {
     const caps = await muddakirCaps(db, { id: args.actorUserId, roles: actor.roles });
-    if (!caps.manage) throw new AuthorizationError("الإنهاء لمدير البرنامج (أو مدير المنصّة).");
+    if (!caps.manage) throw aerr("endByManager");
   }
   const r = await db.muddakirStaff.updateMany({ where: { userId: args.targetUserId, role: args.role, endedAt: null }, data: { endedAt: new Date() } });
   if (r.count) await emitEvent(db, { type: "MUDDAKIR_STAFF_ENDED", subjectType: "User", subjectId: args.targetUserId, actorId: args.actorUserId, payload: { role: args.role } });
@@ -169,6 +169,6 @@ export interface MuddakirActor extends Actor { caps: MuddakirCaps }
 export async function requireMuddakir(req: Request, need: MuddakirNeed, db: PrismaClient = prisma): Promise<MuddakirActor> {
   const actor = await requireAuth(req, db);
   const caps = await muddakirCaps(db, actor);
-  if (!caps[need]) throw new AuthorizationError("غير مصرَّح بهذا في المُدَّكِر.");
+  if (!caps[need]) throw aerr("notAuthorizedInMuddakir");
   return { ...actor, caps };
 }

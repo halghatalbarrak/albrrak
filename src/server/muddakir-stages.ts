@@ -26,7 +26,7 @@ import { emitEvent } from "./events";
 import { getWardView, recordTathbitFinal } from "./muddakir-ward";
 import { isExaminerCapable } from "./muddakir-staff";
 import { assertCanExamine, canExamine } from "./examiner-eligibility";
-import { AuthorizationError, ValidationError } from "./errors";
+import { ValidationError, verr, aerr } from "./errors";
 import { getProgramSetting } from "./settings";
 import { muddakirProgramId } from "./muddakir-profile";
 import { dateVal } from "./muddakir-day";
@@ -55,7 +55,7 @@ async function loadStages(db: Db, programId: string): Promise<StageBound[]> {
   const juzCount = typeof juzSetting === "number" && juzSetting > 0 ? juzSetting : 5;
   const hizb = (await db.hizbBoundary.findMany()) as unknown as HizbRow[];
   const mushaf = (await db.mushafFace.findMany({ select: { page: true, fromSurah: true, fromAyah: true, toSurah: true, toAyah: true } })) as MushafFaceData[];
-  if (!hizb.length || !mushaf.length) throw new ValidationError("بيانات المصحف/الأحزاب غير مبذورة.");
+  if (!hizb.length || !mushaf.length) throw verr("mushafHizbNotSeeded");
   return deriveStages(mushaf, juzCount, juzBoundsFromHizb(hizb));
 }
 
@@ -85,7 +85,7 @@ async function finalPassed(db: Db, studentId: string): Promise<boolean> {
 /** حالة ختام المرحلة الحاليّة لحافظ (§١): الحدود، كم حُفظ، وهل جاهزٌ للسرد/الختاميّ/متخرّج. */
 export async function getStageProgress(studentId: string, db: PrismaClient = prisma): Promise<StageProgress> {
   const profile = await db.muddakirProfile.findUnique({ where: { studentId } });
-  if (!profile) throw new ValidationError("الحافظ غير ملتحقٍ بالمُدَّكِر.");
+  if (!profile) throw verr("hafizNotEnrolledInMuddakir");
   const programId = await muddakirProgramId(db);
   const stages = await loadStages(db, programId);
   const stage = Math.min(LAST_STAGE, Math.max(1, Number(profile.currentStageId ?? "1") || 1));
@@ -125,16 +125,16 @@ export interface RecordRecitationResult {
 /** يتحقّق أنّ الفاعل مختبِرٌ مؤهّل (RECITER، أو مختبِرُ مدّكرٍ مُسنَد، أو مديرٌ) وليس معلّمَ الحافظ ولا عريفَ حلقته. */
 async function assertExaminer(db: Db, examinerUserId: string, studentId: string): Promise<void> {
   const user = await db.user.findUnique({ where: { id: examinerUserId }, select: { id: true } });
-  if (!user) throw new AuthorizationError("مستخدم غير موجود.");
-  if (!(await isExaminerCapable(db, examinerUserId))) throw new AuthorizationError("السرد يسجّله المختبِر (المُسمِّع).");
+  if (!user) throw aerr("userNotFound");
+  if (!(await isExaminerCapable(db, examinerUserId))) throw aerr("recitationByExaminerReciter");
   await assertCanExamine({ examinerUserId, studentId }, db as PrismaClient);
 }
 
 async function recordExaminerErrors(db: Db, studentId: string, examinerUserId: string, errors: RecitationErrorInput[], today: string): Promise<void> {
   for (const e of errors) {
-    if (!Number.isInteger(e.page) || !Number.isInteger(e.lineNo)) throw new ValidationError("موضعٌ غير صالح.");
+    if (!Number.isInteger(e.page) || !Number.isInteger(e.lineNo)) throw verr("invalidPosition");
     const line = await db.mushafLine.findUnique({ where: { page_lineNo: { page: e.page, lineNo: e.lineNo } }, select: { page: true } });
-    if (!line) throw new ValidationError(`موضعٌ غير موجودٍ في المصحف: ${e.page}/${e.lineNo}.`);
+    if (!line) throw new ValidationError(`موضعٌ غير موجودٍ في المصحف: ${e.page}/${e.lineNo}.`, "positionNotInMushaf");
     const exists = await db.muddakirError.findFirst({ where: { studentId, page: e.page, lineNo: e.lineNo, resolvedAt: null }, select: { id: true } });
     if (!exists) {
       await db.muddakirError.create({ data: { studentId, page: e.page, lineNo: e.lineNo, source: MuddakirErrorSource.EXAMINER, openedOn: dateVal(today), recordedById: examinerUserId } });
@@ -154,10 +154,10 @@ export async function recordStageRecitation(args: RecordRecitationArgs, db: Pris
   const errors = args.errors ?? [];
 
   const kind = progress.awaitingFinal ? MuddakirRecitationKind.FINAL : MuddakirRecitationKind.STAGE;
-  if (progress.graduated) throw new ValidationError("الحافظ متخرّجٌ فعلاً.");
+  if (progress.graduated) throw verr("hafizAlreadyGraduated");
   if (kind === MuddakirRecitationKind.STAGE) {
-    if (args.passed && !progress.ready) throw new ValidationError("لم تُحفظ كل أوجه المرحلة بعد — لا يصحّ تسجيل الاجتياز.");
-    if (await stagePassed(db, args.studentId, progress.stage)) throw new ValidationError("المرحلة مُجتازةٌ فعلاً.");
+    if (args.passed && !progress.ready) throw verr("stageFacesNotAllMemorized");
+    if (await stagePassed(db, args.studentId, progress.stage)) throw verr("stageAlreadyPassed");
   }
 
   return db.$transaction(async (tx) => {
@@ -211,13 +211,13 @@ export async function recordStageRecitation(args: RecordRecitationArgs, db: Pris
 /** المدير أو مشرف الحافظ يحوّل وضعه بين ACTIVE وREVIEW_ONLY (§١ الوقوف عند مرحلة). */
 export async function setStageMode(args: { actorUserId: string; studentId: string; mode: MuddakirMode }, db: PrismaClient = prisma): Promise<{ mode: MuddakirMode }> {
   const actor = await db.user.findUnique({ where: { id: args.actorUserId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   if (!isManager(actor.roles)) {
-    if (!actor.roles.includes(Role.ARIF)) throw new AuthorizationError("غير مصرَّح.");
+    if (!actor.roles.includes(Role.ARIF)) throw aerr("notAuthorizedGeneric");
     const link = await db.muddakirSupervision.findFirst({ where: { supervisorId: args.actorUserId, studentId: args.studentId, endedAt: null }, select: { id: true } });
-    if (!link) throw new AuthorizationError("لا تشرف على هذا الحافظ.");
+    if (!link) throw aerr("notSupervisingThisHafiz");
   }
-  if (args.mode !== MuddakirMode.ACTIVE && args.mode !== MuddakirMode.REVIEW_ONLY) throw new ValidationError("وضعٌ غير معروف.");
+  if (args.mode !== MuddakirMode.ACTIVE && args.mode !== MuddakirMode.REVIEW_ONLY) throw verr("unknownMode");
   await db.muddakirProfile.update({ where: { studentId: args.studentId }, data: { mode: args.mode } });
   await emitEvent(db, { type: "MUDDAKIR_MODE_CHANGED", subjectType: "Student", subjectId: args.studentId, actorId: args.actorUserId, payload: { mode: args.mode } });
   return { mode: args.mode };
@@ -230,7 +230,7 @@ export interface RecitationCandidate { studentId: string; name: string; stage: n
 /** الحفّاظ الجاهزون لسردٍ (مرحلةٍ، أو ختاميّ للحفظ، أو ختاميّ للتثبيت) ممّن يجوز لهذا المختبِر اختبارهم. */
 export async function listRecitationCandidates(examinerUserId: string, db: PrismaClient = prisma): Promise<RecitationCandidate[]> {
   const examiner = await db.user.findUnique({ where: { id: examinerUserId }, select: { id: true } });
-  if (!examiner || !(await isExaminerCapable(db, examinerUserId))) throw new AuthorizationError("هذه الشاشة للمختبِر.");
+  if (!examiner || !(await isExaminerCapable(db, examinerUserId))) throw aerr("screenForExaminer");
   const profiles = await db.muddakirProfile.findMany({ select: { studentId: true, phase: true } });
   const out: Omit<RecitationCandidate, "name">[] = [];
   for (const p of profiles) {
