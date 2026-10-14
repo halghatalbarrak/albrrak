@@ -64,10 +64,10 @@ export default function MuddakirSupervisorPage() {
       const tok = await token();
       if (!tok) { setStatus("unauth"); return; }
       const res = await fetch(`/api/muddakir/supervisor?studentId=${encodeURIComponent(studentId)}`, { headers: { authorization: `Bearer ${tok}` } });
-      if (!res.ok) { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر."); return; }
+      if (!res.ok) { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? t("genericError")); return; }
       const d = (await res.json()) as Detail;
       setDetail(d); setCycle(String(d.reviewCycleDays));
-    } catch { setMsg("تعذّر التحميل."); }
+    } catch { setMsg(t("loadFailed")); }
   }, []);
 
   useEffect(() => { void loadList(); }, [loadList]);
@@ -81,13 +81,13 @@ export default function MuddakirSupervisorPage() {
       body: JSON.stringify(body),
     });
     if (res.ok) { setMsg(okMsg); if (detail) await loadDetail(detail.studentId); else await loadList(); }
-    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر."); }
+    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? t("genericError")); }
   }, [detail, loadDetail, loadList]);
 
   if (status === "unauth")
-    return <Center><p>{t("supervisorTitle")} — {t("roleSupervisor")}</p><a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a></Center>;
-  if (status === "loading") return <Center><p style={{ color: ui.color.muted }}>…جارٍ التحميل</p></Center>;
-  if (status === "error") return <Center><p style={{ color: ui.color.danger }}>تعذّر التحميل.</p><Button size="sm" onClick={() => void loadList()}>إعادة</Button></Center>;
+    return <Center><p>{t("supervisorTitle")} — {t("roleSupervisor")}</p><a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>{t("login")}</a></Center>;
+  if (status === "loading") return <Center><p style={{ color: ui.color.muted }}>{t("loading")}</p></Center>;
+  if (status === "error") return <Center><p style={{ color: ui.color.danger }}>{t("loadFailed")}</p><Button size="sm" onClick={() => void loadList()}>{t("retry")}</Button></Center>;
 
   return (
     <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, maxWidth: 520, margin: "0 auto", padding: sp(3), display: "flex", flexDirection: "column", gap: sp(3) }}>

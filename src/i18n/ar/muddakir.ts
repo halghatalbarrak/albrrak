@@ -289,6 +289,18 @@ export const muddakirAr = {
   evtFaceHeard: "تسميع وجه",
   evtStageComplete: "إتمام مرحلة",
   evtShortfall: "تقصير",
+
+  // نصوص مشتركة بين الشاشات (دخول/تحميل/أخطاء) وفتات التنقّل (PR-1c)
+  login: "دخول",
+  loading: "…جارٍ التحميل",
+  loadFailed: "تعذّر التحميل.",
+  retry: "إعادة",
+  genericError: "تعذّر.",
+  needLogin: "تحتاج دخولًا.",
+  crumbHome: "الرئيسة",
+  crumbAdmin: "الإدارة",
+  hafizOnlyNote: "هذه الشاشة للحافظ الملتحق بالمُدَّكِر.",
+  repAria: "تكرار",
 } as const;
 
 /** مفاتيح قاموس المُدَّكِر (للتحقّق الثابت عند الاستدعاء). */

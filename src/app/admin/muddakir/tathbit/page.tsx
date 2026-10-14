@@ -65,14 +65,14 @@ export default function MuddakirTathbitAdminPage() {
     if (!t) { setStatus("unauth"); return; }
     const res = await fetch("/api/muddakir/admin", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` }, body: JSON.stringify(body) });
     if (res.ok) { setMsg(res.status === 202 ? tMuddakir("savedAsRequest") : tMuddakir("saved")); await load(); }
-    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? "تعذّر."); }
+    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? tMuddakir("genericError")); }
   }
 
   if (status === "unauth")
     return (
       <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(3) }}>
-        <p>تحتاج دخولًا.</p>
-        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a>
+        <p>{tMuddakir("needLogin")}</p>
+        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>{tMuddakir("login")}</a>
       </main>
     );
 
@@ -105,11 +105,11 @@ export default function MuddakirTathbitAdminPage() {
   return (
     <AppShell roles={me?.roles ?? []} muddakirStaff={me?.muddakirStaff ?? []} userName={me?.name} activeHref="/admin/muddakir/tathbit"
       title={tMuddakir("tathbitAdminTitle")}
-      crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: tMuddakir("tathbitAdminTitle") }]}>
+      crumbs={[{ label: tMuddakir("crumbHome"), href: "/" }, { label: tMuddakir("crumbAdmin") }, { label: tMuddakir("tathbitAdminTitle") }]}>
 
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
-      {status === "loading" && <p style={{ color: ui.color.muted }}>…جارٍ التحميل</p>}
-      {status === "error" && <p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>إعادة</Button></p>}
+      {status === "loading" && <p style={{ color: ui.color.muted }}>{tMuddakir("loading")}</p>}
+      {status === "error" && <p style={{ color: ui.color.danger }}>{tMuddakir("loadFailed")} <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>{tMuddakir("retry")}</Button></p>}
 
       {status === "ready" && data && (
         <>
