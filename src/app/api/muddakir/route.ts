@@ -20,13 +20,14 @@ import { AuthorizationError, ValidationError } from "@/server/errors";
 export async function GET(req: Request) {
   try {
     const actor = await requireMuddakir(req, "view");
-    if (actor.caps.manage) {
+    // الإداريّ يأخذ لوحة المدير نفسها باطّلاعٍ كامل (و١/§٢)؛ لكن canManage=false فإجراؤه يصير طلباً.
+    if (actor.caps.manage || actor.caps.admin) {
       const [hafiz, supervisors, enrollable] = await Promise.all([
         listMuddakirHafiz(),
         listSupervisorsWithLoad(),
         listEnrollableStudents(),
       ]);
-      return Response.json({ canManage: true, hafiz, supervisors, enrollable });
+      return Response.json({ canManage: actor.caps.manage, hafiz, supervisors, enrollable });
     }
     const hafiz = await listHafizForSupervisor(actor.id);
     return Response.json({ canManage: false, hafiz, supervisors: [], enrollable: [] });

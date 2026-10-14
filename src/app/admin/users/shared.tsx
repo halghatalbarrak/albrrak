@@ -18,6 +18,13 @@ export const MUDDAKIR_STAFF_AR: Record<MuddakirStaffRole, string> = {
 export const MUDDAKIR_SECTION = tMuddakir("rolesWinSection");
 export const MUDDAKIR_NO_PERM = tMuddakir("rolesWinNoPerm");
 export const MUDDAKIR_SENT = tMuddakir("rolesWinSentForApproval");
+export const MUDDAKIR_EXCLUSIVE = tMuddakir("rolesWinExclusive");
+export const MUDDAKIR_NONE = tMuddakir("rolesWinNone");
+export const MUDDAKIR_EXCESS = tMuddakir("rolesWinExcessWarn");
+
+/** هل يجمع المستخدم اليوم وظيفة مدّكرٍ مع غيرها (دورٌ عامّ أو وظيفةٌ ثانية)؟ — تنبيه «أزل الزائد». */
+export const violatesExclusivity = (roles: readonly string[], staff: readonly string[]): boolean =>
+  staff.length > 0 && (roles.length > 0 || staff.length > 1);
 export const toggleStaff = (list: MuddakirStaffRole[], r: MuddakirStaffRole): MuddakirStaffRole[] =>
   list.includes(r) ? list.filter((x) => x !== r) : [...list, r];
 

@@ -17,6 +17,20 @@ type Db = PrismaClient | Prisma.TransactionClient;
 export const PLATFORM_MANAGE_ROLES: readonly Role[] = [Role.SUPER_ADMIN, Role.CIRCLE_MANAGER];
 const isPlatformManager = (roles: readonly Role[]): boolean => roles.some((r) => PLATFORM_MANAGE_ROLES.includes(r));
 
+// ── حصر وظائف المدّكر (قرار مدير المنصّة): من يحمل وظيفةً في المدّكر لا يحمل غيرها ──
+// لا دورَ عامّاً في المنصّة، ولا وظيفة مدّكرٍ ثانية. وظيفةٌ واحدةٌ فقط. (الحافظ ليس طاقماً فلا تمسّه.)
+export const SINGLE_FUNCTION_MSG = "موظّف المدّكر لا يحمل أدواراً أخرى: لا دورَ عامّاً في المنصّة ولا وظيفة مدّكرٍ ثانية (وظيفةٌ واحدةٌ فقط).";
+
+/**
+ * يتحقّق من الحصر على الحالة النهائيّة: إن كانت هناك وظيفة مدّكرٍ واحدةٌ على الأقلّ فيجب ألّا يصحبها
+ * دورٌ عامّ، وألّا تتجاوز الوظائف واحدة. (لا قيدَ على من لا وظيفة مدّكرٍ له — حافظٌ أو كادرٌ عامّ.)
+ */
+export function assertMuddakirExclusivity(roles: readonly string[], staff: readonly string[]): void {
+  if (staff.length === 0) return;
+  if (staff.length > 1) throw new ValidationError(SINGLE_FUNCTION_MSG);
+  if (roles.length > 0) throw new ValidationError(SINGLE_FUNCTION_MSG);
+}
+
 /** أدوار المدّكر النشطة لمستخدم (endedAt = null). */
 export async function activeStaffRoles(db: Db, userId: string): Promise<MuddakirStaffRole[]> {
   const rows = await db.muddakirStaff.findMany({ where: { userId, endedAt: null }, select: { role: true } });
@@ -73,10 +87,14 @@ export async function assignStaff(args: { actorUserId: string; targetUserId: str
     const caps = await muddakirCaps(db, { id: args.actorUserId, roles: actor.roles });
     if (!caps.manage) throw new AuthorizationError("التعيين لمدير البرنامج (أو مدير المنصّة).");
   }
-  const target = await db.user.findUnique({ where: { id: args.targetUserId }, select: { id: true } });
+  const target = await db.user.findUnique({ where: { id: args.targetUserId }, select: { id: true, roles: true } });
   if (!target) throw new ValidationError("المستخدم الهدف غير موجود.");
   const existing = await db.muddakirStaff.findFirst({ where: { userId: args.targetUserId, role: args.role, endedAt: null }, select: { id: true } });
   if (existing) return { id: existing.id, already: true };
+  // حصر الوظائف: الهدف بلا دورٍ عامّ، وبلا وظيفةٍ أخرى (بعد الإضافة وظيفةٌ واحدة). يُفرَض هنا فيشمل
+  // التعيين المباشر واعتماد طلب SET_STAFF معاً (executeRequest يستدعي assignStaff).
+  const currentStaff = await activeStaffRoles(db, args.targetUserId);
+  assertMuddakirExclusivity(target.roles, [...new Set([...currentStaff, args.role])]);
   const created = await db.muddakirStaff.create({ data: { userId: args.targetUserId, role: args.role, assignedBy: args.actorUserId }, select: { id: true } });
   await emitEvent(db, { type: "MUDDAKIR_STAFF_ASSIGNED", subjectType: "User", subjectId: args.targetUserId, actorId: args.actorUserId, payload: { role: args.role } });
   return { id: created.id, already: false };

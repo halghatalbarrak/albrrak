@@ -21,6 +21,9 @@ export const muddakirAr = {
   rolesWinExaminer: "مختبِر المدّكر",
   rolesWinNoPerm: "التعيين لمدير المنصّة أو مدير البرنامج",
   rolesWinSentForApproval: "أُرسل للاعتماد — بانتظار اعتماد مدير البرنامج",
+  rolesWinExclusive: "موظّف المدّكر لا يحمل أدواراً أخرى",
+  rolesWinNone: "لا شيء",
+  rolesWinExcessWarn: "أزل الزائد — موظّف المدّكر لا يحمل أدواراً أخرى",
 
   // المرحلة (§١)
   stage: "المرحلة",

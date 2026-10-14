@@ -1,0 +1,29 @@
+name: Muddakir violators (count)
+
+# قراءةٌ فقط (و١، حصر وظائف المدّكر): يطبع عدد من يجمع اليوم وظيفة مدّكرٍ مع غيرها. لا يغيّر شيئاً.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  count:
+    name: count combined-role muddakir staff (read-only)
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # npm ci يشغّل postinstall ⟵ prisma generate.
+      - name: Install dependencies
+        run: npm ci
+      - name: Count violators (read-only)
+        run: node scripts/ops/count-muddakir-violators.mjs

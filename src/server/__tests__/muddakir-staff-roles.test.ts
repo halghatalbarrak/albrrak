@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { setMuddakirStaffRoles, decideRequest } from "../muddakir-requests";
 import { assignStaff, activeStaffRoles } from "../muddakir-staff";
-import { setRoles } from "../user-management";
+import { setRoles, setRolesAndStaff } from "../user-management";
 import { AuthorizationError, ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
 import { createUser } from "../testing/factories";
@@ -90,5 +90,85 @@ describe("إفراغ الأدوار العامّة مع وظيفة مدّكر (�
     const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
     const target = await createUser(prisma, { roles: [Role.TEACHER] });
     await expect(setRoles(platform.id, target.id, [], prisma)).rejects.toBeInstanceOf(ValidationError);
+  });
+});
+
+describe("حصر وظائف المدّكر: وظيفةٌ واحدةٌ بلا دورٍ عامّ (و١)", () => {
+  it("مشرف المدّكر لا يُمنح دور معلّم", async () => {
+    const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
+    const sup = await createUser(prisma, { roles: [] });
+    await assignStaff({ actorUserId: platform.id, targetUserId: sup.id, role: MuddakirStaffRole.SUPERVISOR }, prisma);
+    await expect(setRoles(platform.id, sup.id, [Role.TEACHER], prisma)).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("المعلّم لا يُمنح وظيفة مدّكر", async () => {
+    const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
+    const teacher = await createUser(prisma, { roles: [Role.TEACHER] });
+    await expect(
+      setMuddakirStaffRoles({ actorUserId: platform.id, targetUserId: teacher.id, desired: [MuddakirStaffRole.SUPERVISOR] }, prisma),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(await activeStaffRoles(prisma, teacher.id)).toEqual([]);
+  });
+
+  it("لا وظيفتان مدّكر لشخصٍ واحد", async () => {
+    const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
+    const u = await createUser(prisma, { roles: [] });
+    await assignStaff({ actorUserId: platform.id, targetUserId: u.id, role: MuddakirStaffRole.SUPERVISOR }, prisma);
+    await expect(
+      setMuddakirStaffRoles({ actorUserId: platform.id, targetUserId: u.id, desired: [MuddakirStaffRole.SUPERVISOR, MuddakirStaffRole.EXAMINER] }, prisma),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(await activeStaffRoles(prisma, u.id)).toEqual([MuddakirStaffRole.SUPERVISOR]);
+  });
+
+  it("طلب SET_STAFF المخالف يُرفض عند الاعتماد (صار الهدف يحمل دوراً عامّاً)", async () => {
+    const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
+    const admin = await createUser(prisma, { roles: [] });
+    await assignStaff({ actorUserId: platform.id, targetUserId: admin.id, role: MuddakirStaffRole.ADMIN }, prisma);
+    const target = await createUser(prisma, { roles: [] }); // نظيفٌ وقت الطلب
+    const res = await setMuddakirStaffRoles({ actorUserId: admin.id, targetUserId: target.id, desired: [MuddakirStaffRole.SUPERVISOR] }, prisma);
+    expect(res.requested).toEqual([MuddakirStaffRole.SUPERVISOR]);
+    const req = await prisma.muddakirAdminRequest.findFirstOrThrow({ where: { type: "SET_STAFF", status: "PENDING" } });
+    await setRoles(platform.id, target.id, [Role.TEACHER], prisma); // صار يحمل دوراً عامّاً
+    await expect(
+      decideRequest({ actorUserId: platform.id, requestId: req.id, decision: "APPROVED" }, prisma),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(await activeStaffRoles(prisma, target.id)).not.toContain(MuddakirStaffRole.SUPERVISOR);
+  });
+
+  it("إجراء الإداريّ يصير طلباً معلّقاً (لا تنفيذٌ مباشر)", async () => {
+    const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
+    const admin = await createUser(prisma, { roles: [] });
+    await assignStaff({ actorUserId: platform.id, targetUserId: admin.id, role: MuddakirStaffRole.ADMIN }, prisma);
+    const target = await createUser(prisma, { roles: [] });
+    const res = await setMuddakirStaffRoles({ actorUserId: admin.id, targetUserId: target.id, desired: [MuddakirStaffRole.SUPERVISOR] }, prisma);
+    expect(res.applied).toEqual([]);
+    expect(res.requested).toEqual([MuddakirStaffRole.SUPERVISOR]);
+    expect(await activeStaffRoles(prisma, target.id)).toEqual([]); // لم يسرِ قبل الاعتماد
+  });
+});
+
+describe("setRolesAndStaff: الحفظ الموحّد الذرّيّ (و١)", () => {
+  it("يحوّل معلّماً إلى موظّف مدّكرٍ (تصفير العامّ + إسناد الوظيفة)", async () => {
+    const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
+    const u = await createUser(prisma, { roles: [Role.TEACHER] });
+    const r = await setRolesAndStaff(platform.id, u.id, [], [MuddakirStaffRole.MANAGER], prisma);
+    expect(r.roles).toEqual([]);
+    expect(await activeStaffRoles(prisma, u.id)).toEqual([MuddakirStaffRole.MANAGER]);
+  });
+
+  it("يعيد موظّف المدّكر إلى دورٍ عامّ (إنهاء الوظيفة + ضبط الدور)", async () => {
+    const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
+    const u = await createUser(prisma, { roles: [] });
+    await assignStaff({ actorUserId: platform.id, targetUserId: u.id, role: MuddakirStaffRole.MANAGER }, prisma);
+    const r = await setRolesAndStaff(platform.id, u.id, [Role.TEACHER], [], prisma);
+    expect(r.roles).toEqual([Role.TEACHER]);
+    expect(await activeStaffRoles(prisma, u.id)).toEqual([]);
+  });
+
+  it("يرفض الجمع (دورٌ عامّ + وظيفة) والفراغ التامّ", async () => {
+    const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
+    const u = await createUser(prisma, { roles: [] });
+    await expect(setRolesAndStaff(platform.id, u.id, [Role.TEACHER], [MuddakirStaffRole.MANAGER], prisma)).rejects.toBeInstanceOf(ValidationError);
+    await expect(setRolesAndStaff(platform.id, u.id, [], [], prisma)).rejects.toBeInstanceOf(ValidationError);
   });
 });

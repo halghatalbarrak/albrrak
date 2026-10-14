@@ -75,13 +75,19 @@ async function assertCanActOnHafiz(db: Db, actorUserId: string, studentId: strin
   if (!link) throw new AuthorizationError("لا تشرف على هذا الحافظ.");
 }
 
-/** معرّفات حفّاظ الفاعل: المدير ⟵ كلّ ملفّات المُدَّكِر؛ المشرف ⟵ إسناداته النشطة فقط. */
+/**
+ * معرّفات حفّاظ الفاعل بصلاحيّات المدّكر (تشمل الأدوار المُحصَّرة لا الأدوار العامّة وحدها، و١):
+ * المدير/الإداريّ (manage/admin) ⟵ كلّ ملفّات المُدَّكِر؛ المشرف (supervise) ⟵ إسناداته النشطة فقط.
+ * `manager` = صلاحيّةُ إدارةٍ كاملة (الإداريّ يرى الكلّ لكنه ليس manager — إجراؤه بطلب).
+ */
 async function hafizIdsFor(db: Db, actorUserId: string): Promise<{ ids: string[]; manager: boolean }> {
   const actor = await db.user.findUnique({ where: { id: actorUserId }, select: { roles: true } });
-  if (!actor || !canViewSupervisor(actor.roles)) throw new AuthorizationError("غير مصرَّح بعرض المُدَّكِر.");
-  if (isManager(actor.roles)) {
+  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  const caps = await muddakirCaps(db, { id: actorUserId, roles: actor.roles });
+  if (!caps.view) throw new AuthorizationError("غير مصرَّح بعرض المُدَّكِر.");
+  if (caps.manage || caps.admin) {
     const profiles = await db.muddakirProfile.findMany({ select: { studentId: true } });
-    return { ids: profiles.map((p) => p.studentId), manager: true };
+    return { ids: profiles.map((p) => p.studentId), manager: caps.manage };
   }
   const sups = await db.muddakirSupervision.findMany({ where: { supervisorId: actorUserId, endedAt: null }, select: { studentId: true } });
   return { ids: sups.map((s) => s.studentId), manager: false };

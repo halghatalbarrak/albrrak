@@ -8,7 +8,7 @@ import { AppShell, Card, Button, Input, Field, ui, sp } from "@/components/ui";
 import {
   type Role, type MuddakirStaffRole, STAFF_ROLES, ROLE_AR, toggleIn,
   MUDDAKIR_STAFF, MUDDAKIR_STAFF_AR, MUDDAKIR_SECTION, MUDDAKIR_NO_PERM,
-  toggleStaff, muddakirStaffCaps, LinkBox, linkBoxCard,
+  MUDDAKIR_EXCLUSIVE, MUDDAKIR_NONE, muddakirStaffCaps, LinkBox, linkBoxCard,
 } from "../shared";
 
 async function token(): Promise<string | null> {
@@ -67,28 +67,47 @@ export default function NewStaffPage() {
         <Card style={{ maxWidth: 560 }}>
           <Field label="الاسم"><Input value={fName} onChange={(e) => setFName(e.target.value)} placeholder="اسم الكادر" /></Field>
           <Field label="الجوال"><Input value={fPhone} onChange={(e) => setFPhone(e.target.value)} placeholder="9665… أو 05…" style={{ direction: "ltr" }} /></Field>
+          {/* الأدوار العامّة — تُعطَّل إن اختيرت وظيفة مدّكر (و١: حصر الوظائف). */}
           <Field label="الأدوار">
             <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
-              {STAFF_ROLES.map((r) => (
-                <label key={r} style={{ display: "flex", gap: sp(1), alignItems: "center", cursor: "pointer" }}>
-                  <input type="checkbox" checked={fRoles.includes(r)} onChange={() => setFRoles((l) => toggleIn(l, r))} />
-                  {ROLE_AR[r]}
-                </label>
-              ))}
-            </div>
-          </Field>
-          <Field label={MUDDAKIR_SECTION}>
-            <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
-              {MUDDAKIR_STAFF.map((r) => {
-                const allowed = caps.can(r);
+              {STAFF_ROLES.map((r) => {
+                const blocked = fStaff.length > 0;
                 return (
-                  <label key={r} title={allowed ? undefined : MUDDAKIR_NO_PERM}
-                    style={{ display: "flex", gap: sp(1), alignItems: "center", cursor: allowed ? "pointer" : "not-allowed", opacity: allowed ? 1 : 0.5 }}>
-                    <input type="checkbox" disabled={!allowed} checked={fStaff.includes(r)} onChange={() => setFStaff((l) => toggleStaff(l, r))} />
-                    {MUDDAKIR_STAFF_AR[r]}
+                  <label key={r} title={blocked ? MUDDAKIR_EXCLUSIVE : undefined}
+                    style={{ display: "flex", gap: sp(1), alignItems: "center", cursor: blocked ? "not-allowed" : "pointer", opacity: blocked ? 0.5 : 1 }}>
+                    <input type="checkbox" disabled={blocked} checked={fRoles.includes(r)} onChange={() => setFRoles((l) => toggleIn(l, r))} />
+                    {ROLE_AR[r]}
                   </label>
                 );
               })}
+            </div>
+          </Field>
+          {/* وظيفة المدّكر (و١): اختيارٌ واحدٌ مع «لا شيء»، تُعطَّل إن حُدّد دورٌ عامّ. */}
+          <Field label={MUDDAKIR_SECTION}>
+            <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
+              {(() => {
+                const rolesBlock = fRoles.length > 0;
+                const none = (
+                  <label key="none" title={rolesBlock ? MUDDAKIR_EXCLUSIVE : undefined}
+                    style={{ display: "flex", gap: sp(1), alignItems: "center", cursor: rolesBlock ? "not-allowed" : "pointer", opacity: rolesBlock ? 0.5 : 1 }}>
+                    <input type="radio" name="newMuddakirStaff" disabled={rolesBlock} checked={fStaff.length === 0} onChange={() => setFStaff([])} />
+                    {MUDDAKIR_NONE}
+                  </label>
+                );
+                const opts = MUDDAKIR_STAFF.map((r) => {
+                  const allowed = caps.can(r) && !rolesBlock;
+                  const title = rolesBlock ? MUDDAKIR_EXCLUSIVE : caps.can(r) ? undefined : MUDDAKIR_NO_PERM;
+                  return (
+                    <label key={r} title={title}
+                      style={{ display: "flex", gap: sp(1), alignItems: "center", cursor: allowed ? "pointer" : "not-allowed", opacity: allowed ? 1 : 0.5 }}>
+                      <input type="radio" name="newMuddakirStaff" disabled={!allowed} checked={fStaff[0] === r}
+                        onChange={() => { setFStaff([r]); setFRoles([]); }} />
+                      {MUDDAKIR_STAFF_AR[r]}
+                    </label>
+                  );
+                });
+                return [none, ...opts];
+              })()}
             </div>
             {!caps.canEdit && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `${sp(1)} 0 0` }}>{MUDDAKIR_NO_PERM}</p>}
           </Field>

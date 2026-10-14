@@ -5,6 +5,7 @@ import {
   listUsers,
   setActive,
   setRoles,
+  setRolesAndStaff,
 } from "@/server/user-management";
 import { setMuddakirStaffRoles } from "@/server/muddakir-requests";
 import { requireRoles } from "@/server/auth";
@@ -39,15 +40,10 @@ export async function POST(req: Request) {
     if (typeof b.name !== "string") throw new ValidationError("الاسم مطلوب.");
     if (typeof b.phone !== "string") throw new ValidationError("الجوال مطلوب.");
     if (!isRoleArray(b.roles)) throw new ValidationError("الأدوار مطلوبة.");
-    const res = await createStaff(actor.id, { name: b.name, phone: b.phone, roles: b.roles });
-    // أدوار المدّكر (اختياريّة) تُطبَّق بعد الإنشاء، في نفس الحفظ. فشلها لا يُلغي إنشاء الحساب.
-    let muddakir: { applied: MuddakirStaffRole[]; requested: MuddakirStaffRole[] } | undefined;
-    let muddakirError: string | undefined;
-    if (isMuddakirRoleArray(b.muddakirRoles) && b.muddakirRoles.length > 0) {
-      try { muddakir = await setMuddakirStaffRoles({ actorUserId: actor.id, targetUserId: res.userId, desired: b.muddakirRoles }); }
-      catch (e) { muddakirError = e instanceof Error ? e.message : "تعذّر تعيين أدوار المدّكر."; }
-    }
-    return Response.json({ ...res, muddakir, muddakirError }, { status: 201 });
+    // حصر الوظائف (و١): وظيفة المدّكر تُسنَد ضمن الإنشاء (الأدوار العامّة فارغةٌ حينها)، ذرّيّاً.
+    const newStaff = isMuddakirRoleArray(b.muddakirRoles) ? b.muddakirRoles : [];
+    const res = await createStaff(actor.id, { name: b.name, phone: b.phone, roles: b.roles, muddakirStaff: newStaff });
+    return Response.json(res, { status: 201 });
   } catch (e) {
     return errorResponse(e);
   }
@@ -69,11 +65,16 @@ export async function PATCH(req: Request) {
     const hasMuddakir = isMuddakirRoleArray(b.muddakirRoles);
     if (!hasRoles && !hasMuddakir) throw new ValidationError("لا تغيير معروف (active أو roles أو muddakirRoles).");
     const out: Record<string, unknown> = {};
-    if (hasMuddakir) {
+    if (hasRoles && hasMuddakir) {
+      // الحفظ الموحّد (و١): يفرض الحصر على الحالة النهائيّة ويطبّق ذرّيّاً (يحلّ تبديل العامّ↔الوظيفة).
+      const r = await setRolesAndStaff(actor.id, b.userId, b.roles as Role[], b.muddakirRoles as MuddakirStaffRole[]);
+      out.roles = r.roles; out.muddakir = { applied: r.muddakirApplied, requested: [] };
+    } else if (hasRoles) {
+      out.roles = (await setRoles(actor.id, b.userId, b.roles as Role[])).roles;
+    } else {
       try { out.muddakir = await setMuddakirStaffRoles({ actorUserId: actor.id, targetUserId: b.userId, desired: b.muddakirRoles as MuddakirStaffRole[] }); }
       catch (e) { out.muddakirError = e instanceof Error ? e.message : "تعذّر حفظ أدوار المدّكر."; }
     }
-    if (hasRoles) out.roles = (await setRoles(actor.id, b.userId, b.roles as Role[])).roles;
     return Response.json(out);
   } catch (e) {
     return errorResponse(e);

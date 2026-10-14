@@ -13,6 +13,7 @@ import { type AuthProvider, defaultAuthProvider } from "./auth-provider";
 import { syntheticEmail, normalizeSaudiPhone } from "./account";
 import { emitEvent } from "./events";
 import { AuthorizationError, ValidationError } from "./errors";
+import { activeStaffRoles, assertMuddakirExclusivity, assignStaff, endStaff } from "./muddakir-staff";
 
 // ═══════════════ إدارة المستخدمين (المرحلة أ) — ROLES.md ═══════════════
 //
@@ -121,6 +122,8 @@ export interface CreateStaffArgs {
   name: string;
   phone: string;
   roles: Role[];
+  /** وظيفة مدّكرٍ واحدة (و١): إن أُعطيت فالأدوار العامّة فارغة، وتُسنَد بعد الإنشاء. */
+  muddakirStaff?: MuddakirStaffRole[];
 }
 
 export interface CreateStaffResult {
@@ -143,7 +146,13 @@ export async function createStaff(
 
   const name = args.name?.trim();
   if (!name) throw new ValidationError("اسم الكادر مطلوب.");
-  if (!args.roles || args.roles.length === 0) throw new ValidationError("لا بدّ من دورٍ واحدٍ على الأقلّ.");
+  // حصر الوظائف (و١): موظّف المدّكر بلا دورٍ عامّ (وظيفةٌ واحدة)؛ وإلّا فدورٌ عامٌّ واحدٌ على الأقلّ.
+  const newStaff = args.muddakirStaff ?? [];
+  if (newStaff.length > 0) {
+    assertMuddakirExclusivity(args.roles ?? [], newStaff);
+  } else if (!args.roles || args.roles.length === 0) {
+    throw new ValidationError("لا بدّ من دورٍ واحدٍ على الأقلّ.");
+  }
   for (const r of args.roles) {
     if (!Object.values(Role).includes(r)) throw new ValidationError("دورٌ غير معروف.");
   }
@@ -213,6 +222,8 @@ export async function createStaff(
       });
       return user.id;
     });
+    // إسناد وظيفة المدّكر بعد الإنشاء (و١): الهدف بأدوارٍ عامّةٍ فارغة، فيمرّ حارس الحصر في assignStaff.
+    for (const role of newStaff) await assignStaff({ actorUserId: actorId, targetUserId: userId, role }, db);
     return { userId, activationUrl: activationUrl(token) };
   } catch (e) {
     // المعاملة فشلت بعد إنشاء حساب Auth ⟵ سجّل اليتيم لتنظيفٍ يدويّ (لا صمت).
@@ -260,6 +271,7 @@ export async function setRoles(
   userId: string,
   roles: Role[],
   db: PrismaClient = prisma,
+  opts: { allowEmpty?: boolean } = {},
 ) {
   const actorRoles = await assertUserAdmin(actorId, db);
   if (userId === actorId) throw new ValidationError("لا تعدّل أدوار حسابك.");
@@ -277,11 +289,13 @@ export async function setRoles(
   const target = await db.user.findUnique({ where: { id: userId }, select: { roles: true, isActive: true } });
   if (!target) throw new ValidationError("مستخدم غير موجود.");
 
-  // دورٌ واحدٌ على الأقلّ من النوعين معاً: تجوز الأدوار العامّة فارغةً إن حمل المستخدم وظيفة مدّكرٍ
-  // نشطة، ولا يُحفظ مستخدمٌ بلا أيّ دور. (و١: طاقم المدّكر إسنادٌ خاصٌّ لا دورَ عامٌّ.)
-  if (next.length === 0) {
-    const activeStaff = await db.muddakirStaff.count({ where: { userId, endedAt: null } });
-    if (activeStaff === 0) throw new ValidationError("لا بدّ من دورٍ واحدٍ على الأقلّ (دورٌ عامٌّ أو وظيفة مدّكر).");
+  // حصر الوظائف (و١): من يحمل وظيفة مدّكرٍ لا يحمل دوراً عامّاً. ودورٌ واحدٌ على الأقلّ من النوعين
+  // معاً (لا يُحفظ مستخدمٌ بلا أيّ دور). opts.allowEmpty للمنسّق (setRolesAndStaff) حين تُسنَد وظيفةٌ
+  // في الحفظ نفسه بعد تصفير الأدوار العامّة.
+  const currentStaff = await activeStaffRoles(db, userId);
+  assertMuddakirExclusivity(next, currentStaff);
+  if (!opts.allowEmpty && next.length === 0 && currentStaff.length === 0) {
+    throw new ValidationError("لا بدّ من دورٍ واحدٍ على الأقلّ (دورٌ عامٌّ أو وظيفة مدّكر).");
   }
 
   // نزع آخر مدير تقنيّ فعّال ⟵ يُمنع (إقفال النظام).
@@ -300,6 +314,35 @@ export async function setRoles(
     payload: { from: target.roles, to: next },
   });
   return updated;
+}
+
+export interface SetRolesAndStaffResult { roles: Role[]; muddakirApplied: MuddakirStaffRole[] }
+
+/**
+ * يضبط الأدوار العامّة ووظيفة المدّكر معاً في حفظٍ واحد (نافذة الأدوار). يفرض حصر الوظائف (و١) على
+ * الحالة النهائيّة، ثمّ يطبّق بترتيبٍ يتجاوز دورة الحُرّاس: يُنهي الزائد من الوظائف، ثمّ يضبط الأدوار
+ * العامّة (تُصفَّر قبل الإسناد إن صار موظّف مدّكر)، ثمّ يُسند الوظيفة الجديدة. للمدير المباشر (مدير المنصّة).
+ */
+export async function setRolesAndStaff(
+  actorId: string,
+  userId: string,
+  roles: Role[],
+  muddakirStaff: MuddakirStaffRole[],
+  db: PrismaClient = prisma,
+): Promise<SetRolesAndStaffResult> {
+  const finalRoles = [...new Set(roles)];
+  const finalStaff = [...new Set(muddakirStaff)];
+  assertMuddakirExclusivity(finalRoles, finalStaff);
+  if (finalRoles.length === 0 && finalStaff.length === 0) {
+    throw new ValidationError("لا بدّ من دورٍ واحدٍ على الأقلّ (دورٌ عامٌّ أو وظيفة مدّكر).");
+  }
+  const current = await activeStaffRoles(db, userId);
+  const toEnd = current.filter((r) => !finalStaff.includes(r));
+  const toAssign = finalStaff.filter((r) => !current.includes(r));
+  for (const role of toEnd) await endStaff({ actorUserId: actorId, targetUserId: userId, role }, db);
+  const updated = await setRoles(actorId, userId, finalRoles, db, { allowEmpty: finalStaff.length > 0 });
+  for (const role of toAssign) await assignStaff({ actorUserId: actorId, targetUserId: userId, role }, db);
+  return { roles: updated.roles, muddakirApplied: finalStaff };
 }
 
 // ═══════════════ إعادة تعيين كلمة السرّ ═══════════════
