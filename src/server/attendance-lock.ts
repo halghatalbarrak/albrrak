@@ -7,7 +7,7 @@ import { assertCanRecordCircle } from "./attendance";
 import { assertCapability } from "./authz";
 import { propose, decide } from "./approval";
 import { emitEvent } from "./events";
-import { ValidationError, AuthorizationError } from "./errors";
+import { ValidationError, verr, aerr } from "./errors";
 
 // ═══════════════ قفل يوم الحضور (المهمّة ٩ — docs/ATTENDANCE_LOCK_RULES.md) ═══════════════
 //
@@ -54,7 +54,7 @@ export async function getLockGraceDays(db: Db = prisma): Promise<number> {
 
 /** يضبط مهلة القفل العامّة (صفٌّ واحدٌ بلا programId) ويُسجّل الحدث بصاحبه. */
 export async function setLockGraceDays(days: number, actorId: string, db: PrismaClient = prisma): Promise<void> {
-  if (!Number.isInteger(days) || days < 0) throw new ValidationError("مهلة القفل عددٌ صحيحٌ ≥ ٠.");
+  if (!Number.isInteger(days) || days < 0) throw verr("lockGraceNonNegative");
   await assertCapability(actorId, "ATTENDANCE_UNLOCK", db); // صاحب صلاحيّة القفل يضبط مهلته
   await db.$transaction(async (tx) => {
     const existing = await tx.setting.findFirst({ where: { key: GRACE_KEY }, select: { id: true } });
@@ -114,7 +114,7 @@ export async function assertAttendanceDayOpen(
   const lock = await getAttendanceDayLock(circleId, date, db, now);
   if (lock.locked) {
     const why = lock.state === "APPROVED" ? "معتمَدٌ من المعلّم" : "قفلٌ تلقائيّ (انقضت مهلته)";
-    throw new ValidationError(`اليوم مقفلٌ (${why}) — اطلب فتحه لتعديل الرصد.`);
+    throw new ValidationError(`اليوم مقفلٌ (${why}) — اطلب فتحه لتعديل الرصد.`, "attendanceDayLocked");
   }
 }
 
@@ -147,18 +147,18 @@ export interface UnlockRequestArgs {
 export async function requestAttendanceUnlock(args: UnlockRequestArgs, db: PrismaClient = prisma, now: Date = new Date()) {
   await assertCanRecordCircle(args.requestedBy, args.circleId, db);
   const reason = args.reason?.trim();
-  if (!reason) throw new ValidationError("سبب طلب الفتح مطلوب.");
+  if (!reason) throw verr("unlockRequestReasonRequired");
   const dateISO = toMakkahDay(args.date);
 
   const lock = await getAttendanceDayLock(args.circleId, dateISO, db, now);
-  if (!lock.locked) throw new ValidationError("اليوم غير مقفل — لا حاجة لطلب فتح.");
+  if (!lock.locked) throw verr("dayNotLocked");
 
   const sid = dayId(args.circleId, dateISO);
   const pendingDup = await db.approval.findFirst({
     where: { kind: ApprovalKind.ATTENDANCE_UNLOCK, status: ApprovalStatus.PENDING, subjectId: sid },
     select: { id: true },
   });
-  if (pendingDup) throw new ValidationError("لهذا اليوم طلب فتحٍ معلّقٌ بالفعل.");
+  if (pendingDup) throw verr("unlockRequestPending");
 
   const approval = await propose(
     { kind: ApprovalKind.ATTENDANCE_UNLOCK, subjectType: SUBJECT_TYPE, subjectId: sid, proposedBy: args.requestedBy, payload: { circleId: args.circleId, date: dateISO, reason } },
@@ -179,7 +179,7 @@ export interface DecideUnlockArgs {
 export async function decideAttendanceUnlock(args: DecideUnlockArgs, db: PrismaClient = prisma) {
   await assertCapability(args.decidedBy, "ATTENDANCE_UNLOCK", db);
   const appr = await db.approval.findUnique({ where: { id: args.approvalId }, select: { kind: true, subjectId: true, status: true, payload: true } });
-  if (!appr || appr.kind !== ApprovalKind.ATTENDANCE_UNLOCK) throw new ValidationError("طلب فتحٍ غير موجود.");
+  if (!appr || appr.kind !== ApprovalKind.ATTENDANCE_UNLOCK) throw verr("unlockRequestNotFound");
 
   const decided = await decide({ approvalId: args.approvalId, decidedBy: args.decidedBy, decision: args.decision, note: args.note }, db);
   const p = (decided.payload ?? {}) as { circleId?: string; date?: string; reason?: string };
@@ -202,7 +202,7 @@ export interface DirectUnlockArgs {
 export async function unlockAttendanceDay(args: DirectUnlockArgs, db: PrismaClient = prisma, now: Date = new Date()): Promise<DayLock> {
   await assertCapability(args.actorId, "ATTENDANCE_UNLOCK", db);
   const reason = args.reason?.trim();
-  if (!reason) throw new ValidationError("سبب الفتح مطلوب.");
+  if (!reason) throw verr("unlockReasonRequired");
   const dateISO = toMakkahDay(args.date);
   await emitEvent(db, { type: EV_UNLOCKED, subjectType: SUBJECT_TYPE, subjectId: dayId(args.circleId, dateISO), actorId: args.actorId, payload: { circleId: args.circleId, date: dateISO, reason, via: "direct" } });
   return getAttendanceDayLock(args.circleId, dateISO, db, now);
@@ -223,7 +223,7 @@ export interface UnlockRequestRow {
 async function assertManager(actorId: string, db: PrismaClient): Promise<void> {
   const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
   if (!actor || !actor.roles.some((r) => r === Role.SUPER_ADMIN || r === Role.CIRCLE_MANAGER)) {
-    throw new AuthorizationError("هذه القائمة للإدارة.");
+    throw aerr("attendanceListForAdmin");
   }
 }
 

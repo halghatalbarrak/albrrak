@@ -18,7 +18,7 @@ import { decide } from "./approval";
 import { grantAuto, reverseConflictingAutoGrants, ATTENDANCE_EVENT_GROUP } from "./economy";
 import { emitEvent } from "./events";
 import { notifyAbsence } from "./guardian-messages";
-import { AuthorizationError, ValidationError } from "./errors";
+import { verr, aerr } from "./errors";
 
 // ═══════════════ الحضور والقياس (م٢ — DESIGN §١٠ و§١١) ═══════════════
 //
@@ -63,7 +63,7 @@ function attendanceEvent(s: AttendanceStatus): AutoEventType | null {
 /** مفتاح يوم الحضور (منتصف ليل UTC لليوم المكّيّ) — يطابق @db.Date ويوم بقيّة المنصّة (يوم مكّة). */
 export function toDateOnly(input: string | Date): Date {
   const d = typeof input === "string" ? new Date(input) : input;
-  if (Number.isNaN(d.getTime())) throw new ValidationError("تاريخ غير صالح.");
+  if (Number.isNaN(d.getTime())) throw verr("invalidDate");
   return makkahDayStart(d);
 }
 
@@ -112,7 +112,7 @@ export async function assertCanRecordCircle(
     where: { id: actorId },
     select: { roles: true },
   });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("attendanceUserNotFound");
   if (actor.roles.some((r) => r === Role.SUPER_ADMIN || r === Role.CIRCLE_MANAGER)) {
     return;
   }
@@ -121,7 +121,7 @@ export async function assertCanRecordCircle(
     select: { circleId: true },
   });
   if (!link) {
-    throw new AuthorizationError("لا تَرصد إلا حلقاتك (§٣٫٢).");
+    throw aerr("onlyYourCircles");
   }
 }
 
@@ -135,14 +135,14 @@ async function assertStudentOrGuardian(
     where: { id: studentId },
     select: { userId: true },
   });
-  if (!student) throw new ValidationError("طالب غير موجود.");
+  if (!student) throw verr("studentNotFound");
   if (student.userId === actorId) return;
   const link = await db.guardianLink.findFirst({
     where: { studentId, guardianId: actorId, status: "ACTIVE" },
     select: { id: true },
   });
   if (!link) {
-    throw new AuthorizationError("الاستئذان يقدّمه الطالب أو وليّه فقط (§١٠٫٢).");
+    throw aerr("excuseByStudentOrGuardian");
   }
 }
 
@@ -268,17 +268,17 @@ export async function recordSession(
   });
   const roster = new Set(enrollments.map((e) => e.studentId));
   if (roster.size === 0) {
-    throw new ValidationError("لا طلاب منتسبين لهذه الحلقة.");
+    throw verr("noStudentsInCircle");
   }
 
   // كل استثناءٍ لطالبٍ من الحلقة (رصد غريبٍ ← يُرفض).
   const marks = new Map<string, AttendanceMark>();
   for (const m of args.exceptions) {
     if (!roster.has(m.studentId)) {
-      throw new ValidationError("رصدُ طالبٍ ليس من الحلقة.");
+      throw verr("markStudentNotInCircle");
     }
     if (!Object.values(AttendanceStatus).includes(m.status)) {
-      throw new ValidationError("حالة حضورٍ غير معروفة.");
+      throw verr("unknownAttendanceStatus");
     }
     marks.set(m.studentId, m);
   }
@@ -386,13 +386,13 @@ export async function markStudentAttendance(
   db: PrismaClient = prisma,
 ): Promise<{ status: AttendanceStatus }> {
   await assertCanRecordCircle(args.recorderId, args.circleId, db);
-  if (!Object.values(AttendanceStatus).includes(args.status)) throw new ValidationError("حالة حضورٍ غير معروفة.");
+  if (!Object.values(AttendanceStatus).includes(args.status)) throw verr("unknownAttendanceStatus");
   const date = toDateOnly(args.date);
   const enr = await db.enrollment.findFirst({
     where: { studentId: args.studentId, circleId: args.circleId, endedAt: null },
     select: { id: true },
   });
-  if (!enr) throw new ValidationError("الطالب ليس من هذه الحلقة.");
+  if (!enr) throw verr("studentNotInThisCircle");
   // §٣ (قفل الحضور): التأشير اللحظيّ يُرفض في يومٍ مقفل — في الخادم.
   await assertAttendanceDayOpen(args.circleId, args.date, db, args.now);
   const dk = dateKey(date);
@@ -489,13 +489,13 @@ async function proposeAbsenceExcuse(
   db: PrismaClient,
 ) {
   const reason = args.reason?.trim();
-  if (!reason) throw new ValidationError("سبب العذر مطلوب.");
+  if (!reason) throw verr("excuseReasonRequired");
   const date = toDateOnly(args.date);
 
   if (target === "PRE_EXCUSED") {
     const today = toDateOnly(new Date());
     if (date.getTime() < today.getTime()) {
-      throw new ValidationError("الاستئذان المسبق لتاريخٍ لم يأتِ بعد (§١٠٫٢).");
+      throw verr("preExcuseFutureOnly");
     }
   }
 
@@ -513,7 +513,7 @@ async function proposeAbsenceExcuse(
       select: { payload: true },
     });
     if (pending.some((p) => (p.payload as unknown as ExcusePayload | null)?.date === dk)) {
-      throw new ValidationError("لهذا اليوم طلبٌ معلّقٌ بالفعل.");
+      throw verr("dayRequestPending");
     }
 
     const payload: ExcusePayload = { targetStatus: target, date: dk, reason };
@@ -579,7 +579,7 @@ export async function decideExcuse(
     select: { kind: true, status: true },
   });
   if (!found || found.kind !== ApprovalKind.ABSENCE_EXCUSE) {
-    throw new ValidationError("طلب عذرٍ غير موجود.");
+    throw verr("excuseRequestNotFound");
   }
 
   const approval = await decide(
@@ -595,7 +595,7 @@ export async function decideExcuse(
 
   const p = approval.payload as unknown as ExcusePayload | null;
   if (!p || (p.targetStatus !== "ABSENT_EXCUSED" && p.targetStatus !== "PRE_EXCUSED")) {
-    throw new ValidationError("حمولة طلب العذر تالفة.");
+    throw verr("excusePayloadCorrupt");
   }
   const studentId = approval.subjectId;
   const date = toDateOnly(p.date);

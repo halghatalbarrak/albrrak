@@ -6,7 +6,7 @@ import {
 } from "jose";
 import { Role, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { AuthenticationError, AuthorizationError } from "./errors";
+import { AuthenticationError, aerr, authErr } from "./errors";
 import { enterRequestContext, setImpersonator } from "./request-context";
 import { parseImpCookie, verifyImpersonation } from "./impersonation";
 
@@ -41,7 +41,7 @@ function remoteJwks() {
       "",
     );
     if (!base) {
-      throw new AuthenticationError("لا عنوان Supabase للتحقّق غير المتماثل (JWKS).");
+      throw authErr("noSupabaseJwks");
     }
     jwks = createRemoteJWKSet(new URL(`${base}/auth/v1/.well-known/jwks.json`));
   }
@@ -56,7 +56,7 @@ function remoteJwks() {
 export const defaultGetKey: JWTVerifyGetKey = (header, input) => {
   if ((header.alg ?? "").startsWith("HS")) {
     const s = hsSecret();
-    if (!s) throw new AuthenticationError("HS256 يحتاج SUPABASE_JWT_SECRET.");
+    if (!s) throw authErr("hs256NeedsSecret");
     return Promise.resolve(s);
   }
   return remoteJwks()(header, input);
@@ -74,7 +74,7 @@ export async function verifyJwtSub(
   try {
     const { payload } = await jwtVerify(token, getKey);
     if (typeof payload.sub !== "string" || payload.sub === "") {
-      throw new AuthenticationError("رمز بلا هوية.");
+      throw authErr("tokenNoSubject");
     }
     return payload.sub;
   } catch (e) {
@@ -88,7 +88,7 @@ export async function verifyJwtSub(
     const reason = e instanceof Error ? `${e.name}` : String(e);
     // تشخيص: لماذا رُفض التحقّق بالضبط — بلا كشف الرمز أو محتواه.
     console.error(`[auth] رفض التحقّق: alg=${alg} reason=${reason}`);
-    throw new AuthenticationError("رمز مصادقة غير صالح.");
+    throw authErr("invalidAuthToken");
   }
 }
 
@@ -96,7 +96,7 @@ export async function verifyJwtSub(
 async function verifiedSub(req: Request): Promise<string> {
   const header = req.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!token) throw new AuthenticationError("لا رمز مصادقة.");
+  if (!token) throw authErr("noAuthToken");
   return verifyJwtSub(token);
 }
 
@@ -119,7 +119,7 @@ export async function requireAuth(
     select: { id: true, roles: true, isActive: true },
   });
   if (!realUser || !realUser.isActive) {
-    throw new AuthorizationError("حساب غير موجود أو معطَّل.");
+    throw aerr("accountMissingOrDisabled");
   }
 
   // انتحالٌ نشط؟ يُقبل فقط إن: الكوكي موقّعةٌ صحيحة + مربوطةٌ بهذا الفاعل الحقيقيّ +
@@ -150,7 +150,7 @@ export async function requireRoles(
 ): Promise<Actor> {
   const actor = await requireAuth(req, db);
   if (!actor.roles.some((r) => roles.includes(r))) {
-    throw new AuthorizationError("غير مخوّل.");
+    throw aerr("notAuthorized");
   }
   return actor;
 }

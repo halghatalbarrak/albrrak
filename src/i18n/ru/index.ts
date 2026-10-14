@@ -26,3 +26,5 @@ export { usersAr as users } from "@/i18n/ar/users";
 export { loginAr as login } from "@/i18n/ar/login";
 export { applyAr as apply } from "@/i18n/ar/apply";
 export { activateAr as activate } from "@/i18n/ar/activate";
+// сообщения об ошибках сервера (PR-1e) — откат к арабскому до перевода.
+export { errorsAr as errors } from "@/i18n/ar/errors";

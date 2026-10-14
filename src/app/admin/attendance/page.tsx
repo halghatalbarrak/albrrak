@@ -86,7 +86,8 @@ export default function AttendancePage() {
   const markLocked = useCallback((cid: string, d: string) => {
     setLockedDays((prev) => (prev.some((x) => x.circleId === cid && x.date === d) ? prev : [...prev, { circleId: cid, date: d }]));
   }, []);
-  const isLockError = (e?: string) => !!e && e.includes("مقفل");
+  // §٨: يُطابَق قفل اليوم بمفتاح الخطأ (key) لا بنصّه العربيّ — فلا تنكسر المطابقة عند الترجمة.
+  const isLockError = (key?: string) => key === "attendanceDayLocked";
 
   const refreshPending = useCallback(() => setPending(readQueue().length), []);
 
@@ -106,8 +107,8 @@ export default function AttendancePage() {
         });
         if (!res.ok) {
           remain.push(s); // لا يُفقد — يبقى للمزامنة اللاحقة.
-          const j = (await res.json().catch(() => ({}))) as { error?: string };
-          if (isLockError(j.error)) markLocked(s.circleId, s.date); // §٨: اليوم مقفل ⟵ علامةٌ وزرّ فتح.
+          const j = (await res.json().catch(() => ({}))) as { error?: string; key?: string };
+          if (isLockError(j.key)) markLocked(s.circleId, s.date); // §٨: اليوم مقفل ⟵ علامةٌ وزرّ فتح.
         }
       } catch {
         remain.push(s); // ما زال بلا اتصال.
@@ -215,9 +216,9 @@ export default function AttendancePage() {
         const j = (await res.json()) as { present: number; absent: number };
         setMsg(`حُفظ الرصد: حاضر ${j.present}، غائب/مستثنى ${j.absent}.`);
       } else {
-        const j = (await res.json()) as { error?: string };
+        const j = (await res.json()) as { error?: string; key?: string };
         setErr(j.error ?? "تعذّر الحفظ.");
-        if (isLockError(j.error)) {
+        if (isLockError(j.key)) {
           // §٨: يومٌ مقفل ⟵ لا يُفقد الرصد؛ يُحفظ محليّاً بعلامةٍ وزرّ «طلب فتح».
           const q = readQueue(); q.push({ circleId, date, exceptions }); writeQueue(q); refreshPending();
           markLocked(circleId, date);
