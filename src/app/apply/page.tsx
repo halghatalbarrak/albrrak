@@ -6,11 +6,12 @@ import Link from "next/link";
 
 import { parseOptions, type Options } from "./options";
 import { Button, Card, Field, inputStyle, ui, sp } from "@/components/ui";
+import { tApply as t } from "@/i18n/ar/apply";
 
 type Status = { kind: "idle" | "sending" } | { kind: "ok" } | { kind: "error"; message: string };
 type Load = "loading" | "ready" | "error";
 
-const BRAND = "حلقات الشيخ محمد البراك";
+const BRAND = t("brand");
 
 /** هيكل صفحة التقديم بهوية المنصّة — شعار + بطاقة. */
 function Page({ children }: { children: React.ReactNode }) {
@@ -74,7 +75,7 @@ export default function ApplyPage() {
     // الجنسية combobox بالاسم ⟵ نحلّه إلى معرّفه (الأسماء فريدة).
     const nat = opts.nationalities.find((n) => n.nameAr === (raw.nationalityName ?? "").trim());
     if (!nat) {
-      setStatus({ kind: "error", message: "اختر الجنسية من القائمة." });
+      setStatus({ kind: "error", message: t("errSelectNationality") });
       return;
     }
 
@@ -107,23 +108,23 @@ export default function ApplyPage() {
         form.reset();
       } else {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
-        setStatus({ kind: "error", message: j.error ?? "تعذّر إرسال الطلب." });
+        setStatus({ kind: "error", message: j.error ?? t("errSendApplication") });
       }
     } catch {
-      setStatus({ kind: "error", message: "تعذّر الاتصال بالخادم." });
+      setStatus({ kind: "error", message: t("errConnect") });
     }
   }
 
   if (load === "loading") {
-    return <Page><p style={{ margin: 0, color: ui.color.muted }}>جارٍ التحميل…</p></Page>;
+    return <Page><p style={{ margin: 0, color: ui.color.muted }}>{t("loading")}</p></Page>;
   }
 
   if (load === "error") {
     return (
       <Page>
-        <h1 style={{ fontSize: ui.text.xl, fontWeight: 700, marginTop: 0 }}>تعذّر تحميل النموذج</h1>
-        <p style={{ color: ui.color.muted }}>حدث خطأ أثناء جلب البيانات. حاول مرة أخرى.</p>
-        <Button variant="ghost" onClick={() => void loadOptions()}>إعادة المحاولة</Button>
+        <h1 style={{ fontSize: ui.text.xl, fontWeight: 700, marginTop: 0 }}>{t("loadErrorTitle")}</h1>
+        <p style={{ color: ui.color.muted }}>{t("loadErrorBody")}</p>
+        <Button variant="ghost" onClick={() => void loadOptions()}>{t("retry")}</Button>
       </Page>
     );
   }
@@ -131,8 +132,8 @@ export default function ApplyPage() {
   if (status.kind === "ok") {
     return (
       <Page>
-        <h1 style={{ fontSize: ui.text.xl, fontWeight: 700, marginTop: 0 }}>تمّ استلام طلب القيد</h1>
-        <p style={{ color: ui.color.muted }}>سيُنظر فيه ويُبلَّغ وليّ الأمر بالنتيجة إن شاء الله.</p>
+        <h1 style={{ fontSize: ui.text.xl, fontWeight: 700, marginTop: 0 }}>{t("okTitle")}</h1>
+        <p style={{ color: ui.color.muted }}>{t("okBody")}</p>
       </Page>
     );
   }
@@ -143,12 +144,12 @@ export default function ApplyPage() {
   if (step === 1) {
     return (
       <Page>
-        <h1 style={{ fontSize: ui.text.xl, fontWeight: 700, marginTop: 0, marginBottom: sp(1) }}>نموذج القيد</h1>
-        <p style={{ color: ui.color.muted, marginTop: 0 }}>حلقات الشيخ محمد البراك — تُملأ بلا حساب.</p>
-        <Field label="تاريخ الميلاد (ميلادي)">
+        <h1 style={{ fontSize: ui.text.xl, fontWeight: 700, marginTop: 0, marginBottom: sp(1) }}>{t("formTitle")}</h1>
+        <p style={{ color: ui.color.muted, marginTop: 0 }}>{t("step1Lead")}</p>
+        <Field label={t("fieldBirthDate")}>
           <input style={inputStyle} type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} required />
         </Field>
-        <Button disabled={!birthDate} onClick={() => setStep(2)}>التالي</Button>
+        <Button disabled={!birthDate} onClick={() => setStep(2)}>{t("next")}</Button>
       </Page>
     );
   }
@@ -156,87 +157,87 @@ export default function ApplyPage() {
   // ── الخطوة ٢: باقي الحقول، بخطابٍ يناسب العمر ──
   return (
     <Page>
-      <h1 style={{ fontSize: ui.text.xl, fontWeight: 700, marginTop: 0, marginBottom: sp(1) }}>نموذج القيد</h1>
+      <h1 style={{ fontSize: ui.text.xl, fontWeight: 700, marginTop: 0, marginBottom: sp(1) }}>{t("formTitle")}</h1>
       <p style={{ color: ui.color.text, marginTop: 0 }}>
         {isChild
-          ? "هذا الطالب دون الثالثة عشرة. على ولي الأمر تعبئة البيانات."
-          : "الطالب هو من يعبّئ بياناته."}
+          ? t("childLead")
+          : t("adultLead")}
       </p>
       <Button variant="ghost" size="sm" type="button" style={{ marginBottom: sp(3) }} onClick={() => setStep(1)}>
-        ← تعديل تاريخ الميلاد
+        {t("editBirthDate")}
       </Button>
 
       {noNationalities && (
         <p style={{ color: ui.color.bronzeHover }}>
-          قوائم الجنسيات غير متاحة حاليًا — تعذّر إتمام النموذج. أبلغ الإدارة.
+          {t("noNationalities")}
         </p>
       )}
 
       <form onSubmit={onSubmit}>
-        <Field label="الاسم كما في الهوية"><input style={inputStyle} name="nameAsInId" required /></Field>
-        <Field label="رقم الهوية"><input style={inputStyle} name="nationalId" required inputMode="numeric" /></Field>
+        <Field label={t("fieldNameAsInId")}><input style={inputStyle} name="nameAsInId" required /></Field>
+        <Field label={t("fieldNationalId")}><input style={inputStyle} name="nationalId" required inputMode="numeric" /></Field>
 
-        <Field label="الجنسية (اكتب للبحث)">
+        <Field label={t("fieldNationality")}>
           <input style={inputStyle} name="nationalityName" list="nationalities-list" required autoComplete="off" />
           <datalist id="nationalities-list">
             {opts.nationalities.map((n) => <option key={n.id} value={n.nameAr} />)}
           </datalist>
         </Field>
 
-        <Field label="الجنس">
+        <Field label={t("fieldGender")}>
           <select style={inputStyle} name="gender" required defaultValue="MALE">
-            <option value="MALE">ذكر</option>
-            <option value="FEMALE">أنثى</option>
+            <option value="MALE">{t("genderMale")}</option>
+            <option value="FEMALE">{t("genderFemale")}</option>
           </select>
         </Field>
 
-        <Field label="المرحلة الدراسية">
+        <Field label={t("fieldSchoolStage")}>
           <select style={inputStyle} name="schoolStageId" defaultValue="">
-            <option value="">—</option>
+            <option value="">{t("optionDash")}</option>
             {opts.schoolStages.map((s) => <option key={s.id} value={s.id}>{s.nameAr}</option>)}
           </select>
         </Field>
 
-        <Field label="جوال ولي الأمر (يبدأ بـ 966)"><input style={inputStyle} name="guardianPhone" required inputMode="tel" /></Field>
+        <Field label={t("fieldGuardianPhone")}><input style={inputStyle} name="guardianPhone" required inputMode="tel" /></Field>
 
-        <Field label="بريد ولي الأمر (اختياريّ — لتصله تقارير الأسبوع)"><input style={inputStyle} name="guardianEmail" type="email" inputMode="email" autoComplete="off" /></Field>
+        <Field label={t("fieldGuardianEmail")}><input style={inputStyle} name="guardianEmail" type="email" inputMode="email" autoComplete="off" /></Field>
 
-        <Field label="جنس ولي الأمر">
+        <Field label={t("fieldGuardianGender")}>
           <select style={inputStyle} name="guardianGender" required defaultValue="MALE">
-            <option value="MALE">ذكر</option>
-            <option value="FEMALE">أنثى</option>
+            <option value="MALE">{t("genderMale")}</option>
+            <option value="FEMALE">{t("genderFemale")}</option>
           </select>
         </Field>
 
-        <Field label="صفة ولي الأمر">
+        <Field label={t("fieldGuardianRelation")}>
           <select style={inputStyle} name="guardianRelationId" required defaultValue="">
-            <option value="" disabled>اختر…</option>
+            <option value="" disabled>{t("optionChoose")}</option>
             {opts.guardianRelations.map((r) => <option key={r.id} value={r.id}>{r.nameAr}</option>)}
           </select>
         </Field>
 
-        <Field label={`جوال الطالب ${phoneRequired ? "(إلزامي — شرط حسابه)" : "(اختياري)"}`}>
+        <Field label={`${t("fieldStudentPhone")} ${phoneRequired ? t("studentPhoneRequired") : t("studentPhoneOptional")}`}>
           <input style={inputStyle} name="studentPhone" inputMode="tel" required={phoneRequired} />
         </Field>
 
         <fieldset style={{ border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.lg, padding: sp(4), marginBottom: sp(3) }}>
-          <legend style={{ padding: `0 ${sp(1)}`, fontSize: ui.text.xs, fontWeight: 600, color: ui.color.primary }}>جهة اتصال الطوارئ — حين لا يردّ ولي الأمر</legend>
-          <Field label="الاسم"><input style={inputStyle} name="emergencyName" required /></Field>
-          <Field label="الجوال (يخالف جوال ولي الأمر)"><input style={inputStyle} name="emergencyPhone" required inputMode="tel" /></Field>
-          <Field label="الصفة" style={{ marginBottom: 0 }}>
+          <legend style={{ padding: `0 ${sp(1)}`, fontSize: ui.text.xs, fontWeight: 600, color: ui.color.primary }}>{t("emergencyLegend")}</legend>
+          <Field label={t("emergencyName")}><input style={inputStyle} name="emergencyName" required /></Field>
+          <Field label={t("emergencyPhone")}><input style={inputStyle} name="emergencyPhone" required inputMode="tel" /></Field>
+          <Field label={t("emergencyRelation")} style={{ marginBottom: 0 }}>
             <select style={inputStyle} name="emergencyRelationId" required defaultValue="">
-              <option value="" disabled>اختر…</option>
+              <option value="" disabled>{t("optionChoose")}</option>
               {opts.guardianRelations.map((r) => <option key={r.id} value={r.id}>{r.nameAr}</option>)}
             </select>
           </Field>
         </fieldset>
 
-        <Field label="مقدار الحفظ (بالأجزاء)"><input style={inputStyle} name="priorHifzJuz" type="number" min={0} max={30} /></Field>
+        <Field label={t("fieldPriorHifz")}><input style={inputStyle} name="priorHifzJuz" type="number" min={0} max={30} /></Field>
 
         {status.kind === "error" && <p style={{ color: ui.color.danger, fontSize: ui.text.xs }}>{status.message}</p>}
 
         <Button type="submit" disabled={status.kind === "sending" || noNationalities} style={{ width: "100%", marginTop: sp(2) }}>
-          {status.kind === "sending" ? "جارٍ الإرسال…" : "إرسال طلب القيد"}
+          {status.kind === "sending" ? t("sending") : t("submit")}
         </Button>
       </form>
     </Page>

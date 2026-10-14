@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, Field, Input, ui, sp } from "@/components/ui";
+import { tActivate as t } from "@/i18n/ar/activate";
 
 // مسار التفعيل العامّ — بلا تسجيل دخول. الرمز في ?token= هو الإثبات.
 // يتحقّق من صلاحيّته، فيعرض حقلَي كلمة السرّ، وعند الحفظ يضبطها ويوجّه للدخول.
@@ -25,58 +26,58 @@ export default function ActivatePage() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get("token");
-    if (!t) { setPhase("invalid"); setMsg("لا رمز في الرابط."); return; }
-    setToken(t);
+    const tok = new URLSearchParams(window.location.search).get("token");
+    if (!tok) { setPhase("invalid"); setMsg(t("noToken")); return; }
+    setToken(tok);
     (async () => {
-      const res = await fetch(`/api/activate?token=${encodeURIComponent(t)}`);
+      const res = await fetch(`/api/activate?token=${encodeURIComponent(tok)}`);
       if (res.ok) {
         const j = (await res.json()) as { purpose: string };
         setPurpose(j.purpose); setPhase("ready");
       } else {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
-        setPhase("invalid"); setMsg(j.error ?? "رابطٌ غير صالح.");
+        setPhase("invalid"); setMsg(j.error ?? t("invalidLink"));
       }
     })();
   }, []);
 
   async function submit() {
     setErr(null);
-    if (pw.length < 8) { setErr("كلمة السرّ ثمانية أحرفٍ فأكثر."); return; }
-    if (pw !== pw2) { setErr("كلمتا السرّ غير متطابقتين."); return; }
+    if (pw.length < 8) { setErr(t("errPasswordShort")); return; }
+    if (pw !== pw2) { setErr(t("errPasswordMismatch")); return; }
     const res = await fetch("/api/activate", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ token, password: pw }),
     });
     if (res.ok) { setPhase("done"); }
-    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? "تعذّر ضبط كلمة السرّ."); }
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("errSave")); }
   }
 
   return (
     <main dir="rtl" style={centered}>
       <div style={card}>
         <h1 style={{ fontSize: ui.text.xl, fontWeight: 700, marginBottom: sp(4) }}>
-          {purpose === "RESET" ? "إعادة تعيين كلمة السرّ" : "تفعيل الحساب"}
+          {purpose === "RESET" ? t("titleReset") : t("titleActivate")}
         </h1>
 
-        {phase === "checking" && <p style={{ color: ui.color.muted }}>جارٍ التحقّق…</p>}
+        {phase === "checking" && <p style={{ color: ui.color.muted }}>{t("checking")}</p>}
 
         {phase === "invalid" && <p style={{ color: ui.color.danger }}>{msg}</p>}
 
         {phase === "done" && (
           <>
-            <p style={{ color: ui.color.success, marginBottom: sp(4) }}>تمّ ضبط كلمة السرّ. يمكنك الدخول الآن.</p>
-            <a href="/login" style={{ textDecoration: "none" }}><Button>الذهاب للدخول</Button></a>
+            <p style={{ color: ui.color.success, marginBottom: sp(4) }}>{t("doneMsg")}</p>
+            <a href="/login" style={{ textDecoration: "none" }}><Button>{t("goLogin")}</Button></a>
           </>
         )}
 
         {phase === "ready" && (
           <>
-            <p style={{ color: ui.color.muted, marginBottom: sp(4) }}>اختر كلمة سرٍّ جديدة (ثمانية أحرفٍ فأكثر).</p>
-            <Field label="كلمة السرّ"><Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></Field>
-            <Field label="تأكيد كلمة السرّ"><Input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></Field>
+            <p style={{ color: ui.color.muted, marginBottom: sp(4) }}>{t("readyHint")}</p>
+            <Field label={t("fieldPassword")}><Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></Field>
+            <Field label={t("fieldPasswordConfirm")}><Input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></Field>
             {err && <p style={{ color: ui.color.danger }}>{err}</p>}
-            <Button onClick={() => void submit()} style={{ marginTop: sp(2) }}>حفظ والدخول</Button>
+            <Button onClick={() => void submit()} style={{ marginTop: sp(2) }}>{t("saveAndLogin")}</Button>
           </>
         )}
       </div>
