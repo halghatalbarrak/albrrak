@@ -34,6 +34,13 @@ enum Gender {
   FEMALE
 }
 
+// لغة واجهة المستخدم (التوطين): العربية افتراضية، والإنجليزية والروسية. ar وحدها RTL وأرقامٌ مشرقية.
+enum Locale {
+  ar
+  en
+  ru
+}
+
 model User {
   id          String    @id @default(cuid())
   authId      String?   @unique // auth.users.id — فارغٌ لمن دون ١٣ (يُنفِذ م٤ بنيةً)
@@ -46,6 +53,7 @@ model User {
   email       String?   @unique
   roles       Role[] // صفات لا كيانات
   isActive    Boolean   @default(true)
+  locale      Locale? // لغة الواجهة المختارة (null ⟵ العربية افتراضيّاً)
   createdAt   DateTime  @default(now())
 
   student              Student?

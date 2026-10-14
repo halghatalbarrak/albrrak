@@ -9,6 +9,7 @@ import { navSections } from "./nav";
 import { Skeleton } from "./Skeleton";
 import { CommandPalette } from "./CommandPalette";
 import { ThemeToggle } from "./ThemeToggle";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 const BRAND = "حلقات الشيخ محمد البراك";
 const STAFF_ROLES = ["TEACHER", "CIRCLE_MANAGER", "SUPER_ADMIN", "RECITER", "REGISTRAR"];
@@ -166,6 +167,7 @@ export function AppShell({ roles, muddakirStaff, userName, activeHref, title, cr
             </button>
           )}
           <ThemeToggle />
+          <LanguageSwitcher />
           {userName && <span style={{ fontSize: ui.text.xs, color: ui.color.muted, whiteSpace: "nowrap" }}>{userName}</span>}
         </div>
 

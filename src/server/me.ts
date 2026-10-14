@@ -1,6 +1,8 @@
-import { ProgramKey, type MuddakirStaffRole, type PrismaClient } from "@prisma/client";
+import { ProgramKey, type Locale, type MuddakirStaffRole, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { makkahDayDate } from "@/lib/makkah-day";
+import { isLocale } from "@/lib/locale";
+import { ValidationError } from "./errors";
 
 import { activeStaffRoles } from "./muddakir-staff";
 import { getStudentPosition, getHifzGate } from "./daily-session";
@@ -15,6 +17,8 @@ export interface MyPage {
   /** أدوار المدّكر المُحصَّرة النشطة (§٢) — ليراها الشريط الجانبيّ لمن لا دورَ عامّ له. */
   muddakirStaff: MuddakirStaffRole[];
   student: { id: string; state: string } | null;
+  /** لغة الواجهة المختارة (null ⟵ العربية افتراضيّاً) — لمزامنتها مع cookie اللغة. */
+  locale: Locale | null;
 }
 
 export async function getMyPage(
@@ -27,6 +31,7 @@ export async function getMyPage(
       id: true,
       nameAsInId: true,
       roles: true,
+      locale: true,
       student: { select: { id: true, state: true } },
     },
   });
@@ -38,7 +43,14 @@ export async function getMyPage(
     student: user.student
       ? { id: user.student.id, state: user.student.state }
       : null,
+    locale: user.locale,
   };
+}
+
+/** يضبط لغة واجهة المستخدم في حسابه (التوطين). القيمة من قائمةٍ صالحة فقط. */
+export async function setMyLocale(userId: string, locale: unknown, db: PrismaClient = prisma): Promise<void> {
+  if (!isLocale(locale)) throw new ValidationError("لغةٌ غير مدعومة.");
+  await db.user.update({ where: { id: userId }, data: { locale } });
 }
 
 // ═══════════════ لوحة الطالب عن نفسه (م٨) ═══════════════
