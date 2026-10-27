@@ -1,0 +1,36 @@
+name: DB keep-alive
+
+# استعلام قراءة فقط يُبقي قاعدة Supabase (Free) نشطة فلا تُوقَف لقلة النشاط.
+# لا ترحيلات، ولا كتابة، ولا طباعة للرابط.
+on:
+  schedule:
+    - cron: "17 3 */3 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keepalive:
+    name: SELECT 1 (read-only)
+    runs-on: ubuntu-latest
+    env:
+      # من أسرار المستودع — السرّ نفسه الذي يستعمله Migrate. لا يُطبع أبدًا.
+      DB_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # npm ci يثبّت نسخة prisma نفسها التي في المشروع (postinstall ⟵ prisma generate).
+      - name: Install dependencies
+        run: npm ci
+
+      # استعلام قراءة فقط عبر stdin — لا رابط في سطر الأوامر فلا يظهر في السجل.
+      - name: Keep-alive query
+        run: echo "SELECT 1;" | npx prisma db execute --stdin --url "$DB_URL"
