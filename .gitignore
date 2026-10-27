@@ -34,6 +34,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# مجلّد العزل قبل الحذف
+_to_delete/
+
 # ملفات مؤقتة
 shot*.png
 v-*.png
