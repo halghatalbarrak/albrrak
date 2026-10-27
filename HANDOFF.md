@@ -30,7 +30,7 @@
 | **المكدَّس** | Next.js + TypeScript + Prisma + Supabase + Vercel |
 
 ### ⚠️ فخاخ معروفة (وقعنا فيها فعلاً)
-- **ثلاثة حسابات GitHub على الجهاز** (`mghniman`, `alameen5509`, `albtaqtalsyahyt-sketch`) — لا يملك أيّها المستودع. الدفع يحتاج `gh auth login` بـ`halghatalbarrak`.
+- **حسابات GitHub متعدّدة على الجهاز لا يملك أيٌّ منها المستودع** — الدفع يحتاج الحساب المالك `halghatalbarrak` وحده (`gh auth login` أو `gh auth switch`).
 - **محرّر محمد لا يحفظ `.env`** — يعيد نسخة مخزّنة قديمة. **استعمل PowerShell أو Notepad فقط.**
 - **مشروع Supabase يُوقَف** بعد أسبوع خمول → `Restore`.
 - **GitHub Actions معطّل** — يقف في الطابور ثم يُلغى، والسبب **لم يُشخَّص** (المستودع عام فالدقائق ليست القيد؛ فُحصت الفوترة والصلاحيات والتزامن). **لا تعتمد عليه.** الاختبار صار محليًّا بـembedded-postgres (القسم أدناه).
