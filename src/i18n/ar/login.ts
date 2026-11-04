@@ -12,6 +12,10 @@ export const loginAr = {
   fieldPhone: "الجوال",
   fieldPassword: "كلمة السر",
 
+  // زرّ إظهار/إخفاء كلمة السر (aria-label)
+  pwShow: "إظهار كلمة السر",
+  pwHide: "إخفاء كلمة السر",
+
   // زرّ الدخول
   submitting: "جارٍ الدخول…",
   submit: "دخول",
