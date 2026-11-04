@@ -35,9 +35,11 @@ export type IssueCode =
   | "missingGuardianPhone"
   | "teenNeedsPhone"
   | "dupInFile"
-  | "dupInDb";
+  | "alreadyStudent"
+  | "alreadyPending";
 
-export type RowLevel = "valid" | "warning" | "error";
+// skip = سطرٌ صحيحٌ لكن يُتخطّى (مستورَدٌ سابقًا) — لا يمنع غيره ولا يُعاد إنشاؤه.
+export type RowLevel = "valid" | "warning" | "error" | "skip";
 
 export interface RowIssue {
   code: IssueCode;
@@ -72,7 +74,9 @@ export interface RowResult {
   name: string;
   /** رقم الهوية محجوبًا (آخر ٤ خانات) — لا يُكشَف كاملًا أبدًا. */
   maskedId: string;
-  /** المُدخَل المحلول — موجودٌ فقط حين level ≠ "error". */
+  /** سطرٌ يُتخطّى (مستورَدٌ سابقًا) — لا يُعاد إنشاؤه. */
+  skip: boolean;
+  /** المُدخَل المحلول — موجودٌ فقط حين السطر صالحٌ للإنشاء (ليس خطأً ولا متخطًّى). */
   resolved?: ResolvedInput;
 }
 
@@ -84,8 +88,10 @@ export interface ReferenceItem {
 export interface ValidationContext {
   nationalities: ReferenceItem[];
   guardianRelations: ReferenceItem[];
-  /** مجموعة مفاتيح أرقام الهويّة الموجودة في القاعدة (محلولة ومطبَّعة) — لكشف التكرار. */
-  existingIdKeys: Set<string>;
+  /** مفاتيح أرقام هويّة طلابٍ مقبولين (User.nationalId) — «مستورَد سابقًا». */
+  existingUserIds: Set<string>;
+  /** مفاتيح أرقام هويّة طلباتٍ (Application) — «له طلب قيد معلّق». */
+  existingApplicationIds: Set<string>;
   /** تجاوزٌ يدويٌّ من المعاينة: فهرس السطر ← مُعرّفاتٌ اختارها المستخدم. */
   overrides?: Record<number, { nationalityId?: string; guardianRelationId?: string; emergencyRelationId?: string }>;
   asOf?: Date;
@@ -243,19 +249,22 @@ export function parseStudentsCsv(text: string): ParseResult {
  * الخادم لكشف التكرار، **ولا تُسجَّل ولا تُعاد إلى المتصفّح**. البيانات صغيرةٌ فالفكّ مقبول.
  * عمودٌ حتميّ (HMAC) لرقم الهويّة يُغني عن هذا لاحقًا — انظر HANDOFF.md.
  */
-export async function loadExistingIdKeys(db: PrismaClient = prisma): Promise<Set<string>> {
+export async function loadExistingIdKeys(
+  db: PrismaClient = prisma,
+): Promise<{ userIds: Set<string>; applicationIds: Set<string> }> {
   const [apps, users] = await Promise.all([
     db.application.findMany({ select: { nationalIdEnc: true } }),
     db.user.findMany({ where: { nationalId: { not: null } }, select: { nationalId: true } }),
   ]);
-  const keys = new Set<string>();
-  const add = (enc: string | null | undefined) => {
+  const userIds = new Set<string>();
+  const applicationIds = new Set<string>();
+  const add = (set: Set<string>, enc: string | null | undefined) => {
     if (!enc) return;
-    try { keys.add(nationalIdKey(decryptNationalId(enc))); } catch { /* سجلّ تالفٌ يُتجاوَز */ }
+    try { set.add(nationalIdKey(decryptNationalId(enc))); } catch { /* سجلّ تالفٌ يُتجاوَز */ }
   };
-  for (const a of apps) add(a.nationalIdEnc);
-  for (const u of users) add(u.nationalId);
-  return keys;
+  for (const a of apps) add(applicationIds, a.nationalIdEnc);
+  for (const u of users) add(userIds, u.nationalId);
+  return { userIds, applicationIds };
 }
 
 // ── التحقّق والحلّ ──
@@ -332,17 +341,22 @@ export function validateRows(rows: RawRow[], ctx: ValidationContext): RowResult[
       else issues.push({ code: "emergencyRelationUnmatched", level: "error", column: "emergencyRelation" });
     }
 
-    // كشف التكرار: داخل الملفّ أوّلًا، ثم في القاعدة.
+    // كشف التكرار:
+    //   • تكرارٌ داخل الملفّ ⟵ خطأ (لا يُستورَد الرقم نفسه مرّتين في دفعة).
+    //   • مستورَدٌ سابقًا (طالبٌ مقبول User) أو له طلبٌ معلّق (Application) ⟵ **تخطٍّ** (تحذير
+    //     يُتخطّى السطر، لا يمنع غيره) — فإعادة الملفّ لا تبدو فشلاً ولا تُكرِّر الإنشاء.
+    let skip = false;
     if (idKey) {
       if (seenInFile.has(idKey)) issues.push({ code: "dupInFile", level: "error", column: "nationalId" });
       else {
         seenInFile.add(idKey);
-        if (ctx.existingIdKeys.has(idKey)) issues.push({ code: "dupInDb", level: "error", column: "nationalId" });
+        if (ctx.existingUserIds.has(idKey)) { issues.push({ code: "alreadyStudent", level: "warning", column: "nationalId" }); skip = true; }
+        else if (ctx.existingApplicationIds.has(idKey)) { issues.push({ code: "alreadyPending", level: "warning", column: "nationalId" }); skip = true; }
       }
     }
 
     const hasError = issues.some((x) => x.level === "error");
-    const level: RowLevel = hasError ? "error" : issues.length ? "warning" : "valid";
+    const level: RowLevel = hasError ? "error" : skip ? "skip" : issues.length ? "warning" : "valid";
 
     const result: RowResult = {
       index,
@@ -350,8 +364,9 @@ export function validateRows(rows: RawRow[], ctx: ValidationContext): RowResult[
       issues,
       name,
       maskedId: idKey ? maskNationalId(idKey) : "",
+      skip,
     };
-    if (!hasError && birthDate && gender && guardianGender && nationalityId && guardianRelationId && emergencyRelationId) {
+    if (!hasError && !skip && birthDate && gender && guardianGender && nationalityId && guardianRelationId && emergencyRelationId) {
       result.resolved = {
         nameAsInId: name,
         nationalId: row.nationalId.trim(),

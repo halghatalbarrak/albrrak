@@ -44,6 +44,9 @@ export const studentImportAr = {
   summaryValid: "صالح",
   summaryWarning: "تحذير",
   summaryError: "خطأ",
+  summarySkip: "مُتخطّى",
+  skipNoticePrefix: "سيُتخطّى",
+  skipNoticeReason: "لأنهم مستوردون سابقًا",
   colRow: "السطر",
   colName: "الاسم",
   colId: "الهوية",
@@ -52,6 +55,7 @@ export const studentImportAr = {
   statusValid: "صالح",
   statusWarning: "تحذير",
   statusError: "خطأ",
+  statusSkip: "مُتخطّى",
   fixPick: "اختر القيمة الصحيحة…",
   fixNationality: "تصحيح الجنسية",
   fixRelation: "تصحيح الصلة",
@@ -80,7 +84,8 @@ export const studentImportAr = {
   issueMissingGuardianPhone: "جوال ولي الأمر مطلوب.",
   issueTeenNeedsPhone: "الطالب في الثالثة عشرة فأكثر يلزمه جوال.",
   issueDupInFile: "رقم الهوية مكرّرٌ في الملفّ.",
-  issueDupInDb: "طالبٌ بهذا الرقم موجودٌ مسبقًا.",
+  issueAlreadyStudent: "مستورَدٌ سابقًا (طالبٌ مقبول) — سيُتخطّى.",
+  issueAlreadyPending: "له طلب قيدٍ معلّق — سيُتخطّى.",
 
   // أسباب فشل الحفظ (reason keys)
   reasonImportRowFailed: "تعذّر حفظ هذا السطر.",

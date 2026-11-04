@@ -30,17 +30,18 @@ export async function POST(req: Request) {
     const lists = await listAllReferenceValues();
     const nationalities = lists.nationalities.filter((n) => n.isActive).map((n) => ({ id: n.id, nameAr: n.nameAr }));
     const guardianRelations = lists.guardianRelations.filter((r) => r.isActive).map((r) => ({ id: r.id, nameAr: r.nameAr }));
-    const existingIdKeys = await loadExistingIdKeys();
+    const { userIds, applicationIds } = await loadExistingIdKeys();
 
     const results = validateRows(parsed.rows, {
       nationalities,
       guardianRelations,
-      existingIdKeys,
+      existingUserIds: userIds,
+      existingApplicationIds: applicationIds,
       overrides: body.overrides,
     });
 
     // لا يُعاد «resolved» إلى المتصفّح (يحمل رقم الهويّة الصريح وبياناتٍ شخصيّة).
-    const safe = results.map((r) => ({ index: r.index, level: r.level, issues: r.issues, name: r.name, maskedId: r.maskedId }));
+    const safe = results.map((r) => ({ index: r.index, level: r.level, issues: r.issues, name: r.name, maskedId: r.maskedId, skip: r.skip }));
     return Response.json({ ok: true, results: safe, references: { nationalities, guardianRelations } });
   } catch (e) {
     return errorResponse(e);
