@@ -40,6 +40,7 @@ export function navSections(roles: string[], muddakirStaff: string[] = []): NavS
         { label: "الطلبات", href: "/admin/applications" },
         { label: "الحلقات", href: "/admin/circles" },
         { label: "الطلاب", href: "/admin/students" },
+        ...(has("SUPER_ADMIN") ? [{ label: "استيراد الطلاب", href: "/admin/students/import" }] : []),
         { label: "قفل الحضور", href: "/admin/attendance-lock" },
         { label: "القوائم", href: "/admin/lists" },
         { label: "النقاط", href: "/admin/economy" },
