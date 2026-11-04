@@ -61,7 +61,12 @@ export default function MePage() {
   if (err) return <main dir="rtl" style={centered}>{err}</main>;
   if (!me) return <main dir="rtl" style={centered}>جارٍ التحميل…</main>;
 
-  const signOut = async () => { await supabaseBrowser().auth.signOut(); window.location.href = "/login"; };
+  const signOut = async () => {
+    // امسح كاش الـAPI في الـService Worker (خطّة المُدَّكِر المخزَّنة) حتى لا يراها الداخل بعده.
+    try { navigator.serviceWorker?.controller?.postMessage({ type: "clearApi" }); } catch { /* لا بأس */ }
+    await supabaseBrowser().auth.signOut();
+    window.location.href = "/login";
+  };
 
   return (
     <AppShell roles={me.roles} userName={me.name} activeHref="/me"

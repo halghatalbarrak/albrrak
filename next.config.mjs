@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // إصدار كاش Service Worker (PWA): يتغيّر مع كلّ نشر (SHA الدفعة على Vercel) فيُمسح الكاش
+  // القديم في activate. محليّاً «dev». يُقرأ في العميل عبر NEXT_PUBLIC_SW_VERSION.
+  env: {
+    NEXT_PUBLIC_SW_VERSION: process.env.VERCEL_GIT_COMMIT_SHA || "dev",
+  },
   // حزم Chromium/puppeteer تبقى خارجية (لا تُحزَم) — يستخدمها مولّد الشهادات (src/server/certificate.ts).
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
   // م٥: مسار توليد صورة الشهادة يقرأ ملفّات من public/ (خطوط + شعار) ويحتاج ثنائيّة

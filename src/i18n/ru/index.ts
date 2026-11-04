@@ -22,6 +22,7 @@ export { sessionAr as session } from "@/i18n/ar/session";
 export { stageExamAr as stageExam } from "@/i18n/ar/stage-exam";
 export { studentsAr as students } from "@/i18n/ar/students";
 export { studentImportAr as studentImport } from "@/i18n/ar/student-import";
+export { pwaAr as pwa } from "@/i18n/ar/pwa";
 export { usersAr as users } from "@/i18n/ar/users";
 // публичные страницы (PR-1d) — откат к арабскому до перевода.
 export { loginAr as login } from "@/i18n/ar/login";
