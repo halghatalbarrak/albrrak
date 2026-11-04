@@ -6,6 +6,7 @@ export { Container } from "./Container";
 export { Table, type Column } from "./Table";
 export { Field, inputStyle } from "./Field";
 export { Input } from "./Input";
+export { PasswordInput, type PasswordInputProps } from "./PasswordInput";
 export { Select } from "./Select";
 export { EmptyState } from "./EmptyState";
 export { Stat } from "./Stat";

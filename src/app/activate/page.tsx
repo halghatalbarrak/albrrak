@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Field, Input, ui, sp } from "@/components/ui";
+import { Button, Field, PasswordInput, ui, sp } from "@/components/ui";
 import { tActivate as t } from "@/i18n/ar/activate";
 
 // مسار التفعيل العامّ — بلا تسجيل دخول. الرمز في ?token= هو الإثبات.
@@ -74,8 +74,8 @@ export default function ActivatePage() {
         {phase === "ready" && (
           <>
             <p style={{ color: ui.color.muted, marginBottom: sp(4) }}>{t("readyHint")}</p>
-            <Field label={t("fieldPassword")}><Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></Field>
-            <Field label={t("fieldPasswordConfirm")}><Input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></Field>
+            <Field label={t("fieldPassword")}><PasswordInput value={pw} onChange={(e) => setPw(e.target.value)} showLabel={t("pwShow")} hideLabel={t("pwHide")} /></Field>
+            <Field label={t("fieldPasswordConfirm")}><PasswordInput value={pw2} onChange={(e) => setPw2(e.target.value)} showLabel={t("pwShow")} hideLabel={t("pwHide")} /></Field>
             {err && <p style={{ color: ui.color.danger }}>{err}</p>}
             <Button onClick={() => void submit()} style={{ marginTop: sp(2) }}>{t("saveAndLogin")}</Button>
           </>

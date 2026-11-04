@@ -6,7 +6,7 @@ import Link from "next/link";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { canonicalEmail, legacyEmail } from "@/lib/phone";
-import { Button, Card, Field, inputStyle, NabawiBackdrop, ui, sp } from "@/components/ui";
+import { Button, Card, Field, inputStyle, NabawiBackdrop, PasswordInput, ui, sp } from "@/components/ui";
 import { tLogin as t } from "@/i18n/ar/login";
 
 const BRAND = t("brand");
@@ -56,7 +56,8 @@ export default function LoginPage() {
             <input style={inputStyle} value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" required />
           </Field>
           <Field label={t("fieldPassword")}>
-            <input style={inputStyle} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required
+              showLabel={t("pwShow")} hideLabel={t("pwHide")} />
           </Field>
           {err && <p style={{ color: ui.color.danger, fontSize: ui.text.xs }}>{err}</p>}
           <Button type="submit" disabled={busy} style={{ width: "100%", marginTop: sp(2) }}>
