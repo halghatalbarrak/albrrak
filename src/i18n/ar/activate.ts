@@ -23,6 +23,10 @@ export const activateAr = {
   fieldPasswordConfirm: "تأكيد كلمة السرّ",
   saveAndLogin: "حفظ والدخول",
 
+  // زرّ إظهار/إخفاء كلمة السرّ (aria-label)
+  pwShow: "إظهار كلمة السرّ",
+  pwHide: "إخفاء كلمة السرّ",
+
   // رسائل التحقّق من المدخلات والحفظ
   errPasswordShort: "كلمة السرّ ثمانية أحرفٍ فأكثر.",
   errPasswordMismatch: "كلمتا السرّ غير متطابقتين.",
