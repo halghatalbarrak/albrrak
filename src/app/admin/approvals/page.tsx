@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Button, Input, Badge, EmptyState, Table, ui, sp, type Column } from "@/components/ui";
+import { AppShell, Button, Input, Badge, EmptyState, Table, Tabs, intakeTabs, ui, sp, type Column } from "@/components/ui";
 import { tApprovals as tr } from "@/i18n/ar/approvals";
 
 // لوحة اعتماد المدير (الحكم ٧): اقتراحات انتقال المرحلة والتخرّج المعلَّقة — اعتماد/رفض.
@@ -99,6 +99,7 @@ export default function ApprovalsPage() {
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/approvals"
       title={tr("title")} crumbs={[{ label: tr("crumbHome"), href: "/" }, { label: tr("crumbAdmin") }, { label: tr("crumbApprovals") }]}>
+      <Tabs items={intakeTabs} />
 
       {status === "loading" && <p style={{ color: ui.color.muted }}>{tr("loading")}</p>}
       {status === "error" && <p style={{ color: ui.color.danger }}>{tr("loadFailed")} <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>{tr("retry")}</Button></p>}

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { arNum } from "@/lib/format";
-import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
+import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, Tabs, attendanceTabs, ui, sp } from "@/components/ui";
 import { attendanceLockAr as t } from "@/i18n/ar/attendance-lock";
 
 // شاشة الإدارة لقفل الحضور (المهمّة ٩): مهلة القفل + طلبات الفتح (بتّ) + أيّامٌ لم يعتمدها المعلّم.
@@ -91,6 +91,7 @@ export default function AttendanceLockPage() {
 
   return (
     <Shell>
+      <Tabs items={attendanceTabs} />
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs, marginBottom: sp(3) }}>{msg}</p>}
 
       {/* مهلة القفل التلقائيّ */}

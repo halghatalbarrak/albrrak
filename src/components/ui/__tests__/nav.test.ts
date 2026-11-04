@@ -1,204 +1,143 @@
 import { describe, expect, it } from "vitest";
 
 import { navSections } from "../nav";
+import { navAr as L } from "@/i18n/ar/nav";
 
-// أقسام الشريط الجانبيّ — **اتّحاد** أقسام كلّ الأدوار، لا «أعلى دورٍ يفوز». دوالُّ نقيّة.
+// أقسام الشريط الجانبيّ — تصنيفٌ وظيفيٌّ بترتيبٍ ثابت، مع الحفاظ التامّ على رؤية كلّ دور.
+// (دوالُّ نقيّة؛ التبويبات تجمع صفحاتٍ متقاربةً فوق مساراتها بلا تغيير صلاحية.)
 
-const labels = (roles: string[]) => navSections(roles).map((s) => s.label);
 const keys = (roles: string[]) => navSections(roles).map((s) => s.key);
+const hrefsOf = (roles: string[], key: string) =>
+  (navSections(roles).find((s) => s.key === key)?.items ?? []).map((i) => i.href);
 
-describe("navSections — اتّحاد أقسام كلّ أدوار المستخدم", () => {
-  it("مشرفٌ عامٌّ ووليٌّ (حالة محمد) ⟵ يرى الإدارة والبرامج والرسائل (وكلّ أقسام العمل)", () => {
-    const s = navSections(["SUPER_ADMIN", "CIRCLE_MANAGER", "REGISTRAR", "GUARDIAN"]);
-    const k = s.map((x) => x.key);
-    expect(k).toContain("manage");
-    expect(k).toContain("messages");
-    // المشرف يرى ما يراه المعلّم (عرضاً) — التشغيل والحصاد.
-    expect(k).toContain("operate");
-    expect(k).toContain("harvest");
-    // ويرى البرامج (المنهج المشترك)، والرسائل (لأنّه وليٌّ أيضاً).
-    expect(k).toContain("programs");
-    // الترتيب الثابت محفوظ: الإدارة · المستخدمون · التشغيل · الحصاد · البرامج · … · الرسائل.
-    expect(k).toEqual(["manage", "users", "operate", "harvest", "programs", "messages"]);
+describe("navSections — الترتيب والتصنيف الوظيفيّ", () => {
+  it("المشرف العام ⟵ الترتيب الكامل الثابت", () => {
+    expect(keys(["SUPER_ADMIN"])).toEqual([
+      "home", "operate", "circles", "students", "assess", "motivate", "programs", "muddakir", "settings",
+    ]);
   });
 
-  it("المشرف يرى «المستخدمون» ومدير الحلقات لا يراها (ROLES.md: إدارة المستخدمين للمشرف/التقنيّ)", () => {
-    expect(keys(["SUPER_ADMIN"])).toEqual(["manage", "users", "operate", "harvest", "programs"]);
-    expect(keys(["CIRCLE_MANAGER"])).toEqual(["manage", "operate", "harvest", "programs"]);
-    expect(keys(["SUPER_ADMIN"])).toContain("users");
-    expect(keys(["CIRCLE_MANAGER"])).not.toContain("users");
-    // المدير التقنيّ يرى «المستخدمون» أيضاً.
-    expect(keys(["TECH_ADMIN"])).toContain("users");
+  it("مدير الحلقات ⟵ كالمشرف لكنْ بلا «المستخدمون» في الإعدادات", () => {
+    expect(keys(["CIRCLE_MANAGER"])).toEqual([
+      "home", "operate", "circles", "students", "assess", "motivate", "programs", "muddakir", "settings",
+    ]);
+    expect(hrefsOf(["SUPER_ADMIN"], "settings")).toContain("/admin/users");
+    expect(hrefsOf(["CIRCLE_MANAGER"], "settings")).not.toContain("/admin/users");
+    expect(hrefsOf(["CIRCLE_MANAGER"], "settings")).toContain("/admin/lists");
   });
 
-  it("وليٌّ صرفٌ ⟵ الرسائل فقط، ولا يسقط إلى قسم الطالب ولا يرى البرامج", () => {
-    const s = navSections(["GUARDIAN"]);
-    expect(s.map((x) => x.key)).toEqual(["messages"]);
-    expect(s[0].items.map((i) => i.href)).toEqual(["/messages"]);
-    // لا قسم تعلّمٍ ولا برامجَ ولا صفحاتِ طالب (صفحتي/مراقي).
-    const allHrefs = s.flatMap((x) => x.items.map((i) => i.href));
-    expect(allHrefs).not.toContain("/me");
-    expect(allHrefs).not.toContain("/programs/maraqi");
-    expect(keys(["GUARDIAN"])).not.toContain("programs");
+  it("المدير التقنيّ ⟵ الرئيسية والإعدادات (المستخدمون) فقط", () => {
+    expect(keys(["TECH_ADMIN"])).toEqual(["home", "settings"]);
+    expect(hrefsOf(["TECH_ADMIN"], "settings")).toEqual(["/admin/users"]);
   });
 
-  it("المعلّم ⟵ التشغيل والحصاد والبرامج", () => {
-    expect(labels(["TEACHER"])).toEqual(["التشغيل", "الحصاد", "البرامج"]);
+  it("مجموعة «الطلاب والقيد»: الطلاب والطلبات؛ والاستيراد للمشرف العام وحده", () => {
+    expect(hrefsOf(["SUPER_ADMIN"], "students")).toEqual(["/admin/students", "/admin/applications", "/admin/students/import"]);
+    expect(hrefsOf(["CIRCLE_MANAGER"], "students")).toEqual(["/admin/students", "/admin/applications"]);
   });
 
-  it("المُسمِّع ⟵ الحصاد وسرد المُدَّكِر والبرامج", () => {
-    const s = navSections(["RECITER"]);
-    expect(s.map((x) => x.key)).toEqual(["harvest", "muddakirExam", "programs"]);
-    expect(s[0].items.map((i) => i.href)).toEqual(["/admin/hasad", "/admin/stage-exam"]);
-    const exam = s.find((x) => x.key === "muddakirExam")!;
-    expect(exam.items).toEqual([{ label: "سرد المُدَّكِر", href: "/muddakir/recitation" }]);
+  it("مجموعة «الحلقات والحضور»: الحلقات والحضور والعرفاء", () => {
+    expect(hrefsOf(["SUPER_ADMIN"], "circles")).toEqual(["/admin/circles", "/admin/attendance", "/admin/arifs"]);
   });
 
-  it("الطالب ⟵ البرامج والتعلّم والرسائل", () => {
-    const s = navSections(["STUDENT"]);
-    expect(s.map((x) => x.key)).toEqual(["programs", "learn", "messages"]);
-    // قسم التعلّم: «صفحتي» و«رحلتي» (التلعيب) — خرجت البرامج لقسمها المستقلّ.
-    const learn = s.find((x) => x.key === "learn")!;
-    expect(learn.items.map((i) => i.href)).toEqual(["/me", "/me/journey"]);
-    // «الرسائل» يراها الطالب والوليّ كلاهما.
-    expect(keys(["STUDENT"])).toContain("messages");
-    expect(keys(["GUARDIAN"])).toContain("messages");
+  it("مجموعة «التحفيز» تضمّ البيدر (إدارة الثمار)", () => {
+    expect(hrefsOf(["CIRCLE_MANAGER"], "motivate")).toContain("/admin/market");
   });
 
-  it("طالبٌ وليّ (وليّ ابنه وطالبٌ نفسه) ⟵ البرامج والتعلّم والرسائل بلا تكرار", () => {
+  it("مجموعة «المُدَّكِر» (للمشرف) تضمّ البرنامج والطلبات والطاقم واللقاء والسرد", () => {
+    const h = hrefsOf(["CIRCLE_MANAGER"], "muddakir");
+    expect(h).toEqual(["/admin/muddakir", "/admin/muddakir/requests", "/admin/muddakir/staff", "/admin/muddakir/tathbit", "/muddakir/supervisor", "/muddakir/recitation"]);
+  });
+
+  it("المعلّم ⟵ الرئيسية والتشغيل والحلقات والحضور والتقييم والمناهج (بلا طلاب/تحفيز/مُدَّكِر/إعدادات)", () => {
+    expect(keys(["TEACHER"])).toEqual(["home", "operate", "circles", "assess", "programs"]);
+    // للمعلّم «حلقتي» لا «الحلقات».
+    expect(navSections(["TEACHER"]).find((s) => s.key === "circles")!.items[0].label).toBe(L.circlesMine);
+  });
+
+  it("المُسمِّع ⟵ الرئيسية والتقييم والمناهج وسرد المُدَّكِر", () => {
+    expect(keys(["RECITER"])).toEqual(["home", "assess", "programs", "muddakirExam"]);
+    expect(hrefsOf(["RECITER"], "muddakirExam")).toEqual(["/muddakir/recitation"]);
+  });
+
+  it("الطالب ⟵ المناهج والتعلّم والرسائل (بلا رئيسية)", () => {
+    expect(keys(["STUDENT"])).toEqual(["programs", "learn", "messages"]);
+    expect(hrefsOf(["STUDENT"], "learn")).toEqual(["/me", "/me/journey"]);
+  });
+
+  it("وليٌّ صرفٌ ⟵ الرسائل وحدها، لا يسقط إلى الطالب ولا يرى المناهج", () => {
+    expect(keys(["GUARDIAN"])).toEqual(["messages"]);
+    const all = navSections(["GUARDIAN"]).flatMap((s) => s.items.map((i) => i.href));
+    expect(all).not.toContain("/me");
+    expect(all).not.toContain("/programs/maraqi");
+  });
+
+  it("طالبٌ وليٌّ ⟵ المناهج والتعلّم والرسائل بلا تكرار", () => {
     expect(keys(["STUDENT", "GUARDIAN"])).toEqual(["programs", "learn", "messages"]);
   });
 
-  it("معلّمٌ ومديرٌ ⟵ لا يُسقط دورٌ دوراً: يرى الإدارة والتشغيل والحصاد والبرامج", () => {
-    // الاتّحاد لا الإقصاء — عكس السلوك القديم «الأعلى يفوز».
-    expect(keys(["TEACHER", "CIRCLE_MANAGER"])).toEqual(["manage", "operate", "harvest", "programs"]);
+  it("معلّمٌ ومديرٌ ⟵ اتّحادٌ لا إقصاء (الترتيب الكامل)", () => {
+    expect(keys(["TEACHER", "CIRCLE_MANAGER"])).toEqual([
+      "home", "operate", "circles", "students", "assess", "motivate", "programs", "muddakir", "settings",
+    ]);
   });
 
-  // إصلاح الوميض: دورٌ غير معروف (فارغ) ⟵ لا قائمةَ افتراضية إطلاقاً.
-  it("بلا أدوار ⟵ [] (لا قائمةَ طالبٍ افتراضية)", () => {
+  it("بلا أدوار ⟵ [] (لا وميض)", () => {
     expect(navSections([])).toEqual([]);
   });
 
-  it("أمينُ بيدرٍ صرفٌ (م٦ب) ⟵ قسم «البيدر» وحده بمدخل «الجَنْي» (لا برامج ولا إدارة)", () => {
-    const s = navSections(["SELLER"]);
-    expect(s.map((x) => x.key)).toEqual(["market"]);
-    expect(s[0].items.map((i) => i.href)).toEqual(["/sell"]);
-    expect(s.map((x) => x.key)).not.toContain("programs");
+  it("أمينُ بيدرٍ صرفٌ (م٦ب) ⟵ «البيدر» وحده بمدخل «الجَنْي»", () => {
+    expect(keys(["SELLER"])).toEqual(["market"]);
+    expect(hrefsOf(["SELLER"], "market")).toEqual(["/sell"]);
   });
 
-  it("المدير يرى «البيدر» (إدارة الثمار) ضمن قسم الإدارة", () => {
-    const manage = navSections(["CIRCLE_MANAGER"]).find((x) => x.key === "manage")!;
-    expect(manage.items.map((i) => i.href)).toContain("/admin/market");
-  });
-
-  it("المدير يرى «المُدَّكِر» و«لقاء المُدَّكِر» و«سرد المُدَّكِر» ضمن قسم الإدارة", () => {
-    const manage = navSections(["CIRCLE_MANAGER"]).find((x) => x.key === "manage")!;
-    expect(manage.items.map((i) => i.href)).toContain("/admin/muddakir");
-    expect(manage.items.map((i) => i.href)).toContain("/muddakir/supervisor");
-    expect(manage.items.map((i) => i.href)).toContain("/muddakir/recitation");
-  });
-
-  it("المشرف (ARIF) ⟵ قسم «المُدَّكِر» وحده بمدخلَي «حفّاظي» و«اللقاء الأسبوعيّ» (لا إدارة)", () => {
+  it("المشرف (ARIF) ⟵ «المُدَّكِر» وحده (حفّاظي واللقاء الأسبوعيّ)", () => {
     const s = navSections(["ARIF"]);
     expect(s.map((x) => x.key)).toEqual(["muddakir"]);
     expect(s[0].items).toEqual([
-      { label: "حفّاظي", href: "/admin/muddakir" },
-      { label: "اللقاء الأسبوعيّ", href: "/muddakir/supervisor" },
+      { label: L.muddakirHifazi, href: "/admin/muddakir" },
+      { label: L.muddakirWeekly, href: "/muddakir/supervisor" },
     ]);
-    expect(s.map((x) => x.key)).not.toContain("manage");
   });
 
-  it("مدير + أمين بيدر ⟵ يرى «البيدر» في الإدارة وقسم «البيدر» للجَنْي كليهما", () => {
-    const k = navSections(["CIRCLE_MANAGER", "SELLER"]).map((x) => x.key);
-    expect(k).toContain("manage");
-    expect(k).toContain("market");
+  it("المناهج: القاعدة المدنية أوّلاً ثمّ مراقي", () => {
+    expect(hrefsOf(["STUDENT"], "programs")).toEqual(["/programs/civil-base", "/programs/maraqi"]);
   });
 });
 
-// ── أدوار المدّكر المُحصَّرة (§٢): شريطٌ بلا دورٍ عامّ ──
-describe("navSections — أدوار المدّكر المُحصَّرة تُظهر شريطها ولو بلا دورٍ عامّ", () => {
-  it("مدير برنامجٍ صرفٌ (بلا roles) ⟵ قسم «إدارة المُدَّكِر» بكامل مداخله", () => {
+// ── أدوار المدّكر المُحصَّرة (§٢): شريطٌ بلا دورٍ عامّ (محفوظٌ كما كان) ──
+describe("navSections — أدوار المدّكر المُحصَّرة", () => {
+  it("مدير برنامجٍ صرفٌ (MANAGER) ⟵ «إدارة المُدَّكِر» بكامل مداخله", () => {
     const s = navSections([], ["MANAGER"]);
     expect(s.map((x) => x.key)).toEqual(["muddakirAdmin"]);
-    const hrefs = s[0].items.map((i) => i.href);
-    expect(hrefs).toContain("/admin/muddakir");
-    expect(hrefs).toContain("/admin/muddakir/requests");
-    expect(hrefs).toContain("/admin/muddakir/staff");
-    expect(hrefs).toContain("/admin/muddakir/tathbit");
-    expect(hrefs).toContain("/muddakir/supervisor");
-    expect(hrefs).toContain("/muddakir/recitation");
+    const h = s[0].items.map((i) => i.href);
+    for (const href of ["/admin/muddakir", "/admin/muddakir/requests", "/admin/muddakir/staff", "/admin/muddakir/tathbit", "/muddakir/supervisor", "/muddakir/recitation"]) {
+      expect(h).toContain(href);
+    }
   });
 
-  it("إداريٌّ صرفٌ ⟵ «إدارة المُدَّكِر» بلا طاقمٍ ولا لقاءٍ/سرد، وطلباته باسم «طلباتي»", () => {
+  it("إداريٌّ صرفٌ (ADMIN) ⟵ بلا طاقمٍ ولا لقاءٍ/سرد، وطلباته «طلباتي»", () => {
     const s = navSections([], ["ADMIN"]);
     expect(s.map((x) => x.key)).toEqual(["muddakirAdmin"]);
     const items = s[0].items;
-    expect(items.map((i) => i.href)).toContain("/admin/muddakir/requests");
-    expect(items.find((i) => i.href === "/admin/muddakir/requests")!.label).toBe("طلباتي");
+    expect(items.find((i) => i.href === "/admin/muddakir/requests")!.label).toBe(L.muddakirMyRequests);
     expect(items.map((i) => i.href)).not.toContain("/admin/muddakir/staff");
     expect(items.map((i) => i.href)).not.toContain("/muddakir/supervisor");
   });
 
-  it("مشرفٌ خاصٌّ (SUPERVISOR بلا roles) ⟵ قسم «المُدَّكِر» (حفّاظي واللقاء)", () => {
+  it("مشرفٌ خاصٌّ (SUPERVISOR) ⟵ «المُدَّكِر» (حفّاظي واللقاء)", () => {
     const s = navSections([], ["SUPERVISOR"]);
     expect(s.map((x) => x.key)).toEqual(["muddakir"]);
     expect(s[0].items.map((i) => i.href)).toEqual(["/admin/muddakir", "/muddakir/supervisor"]);
   });
 
-  it("مختبِرٌ خاصٌّ (EXAMINER بلا roles) ⟵ قسم «سرد المُدَّكِر»", () => {
+  it("مختبِرٌ خاصٌّ (EXAMINER) ⟵ «سرد المُدَّكِر»", () => {
     const s = navSections([], ["EXAMINER"]);
     expect(s.map((x) => x.key)).toEqual(["muddakirExam"]);
-    expect(s[0].items).toEqual([{ label: "سرد المُدَّكِر", href: "/muddakir/recitation" }]);
+    expect(s[0].items.map((i) => i.href)).toEqual(["/muddakir/recitation"]);
   });
 
-  it("بلا roles وبلا أدوار مدّكر ⟵ [] (لا وميض)", () => {
+  it("بلا roles وبلا أدوار مدّكر ⟵ []", () => {
     expect(navSections([], [])).toEqual([]);
-  });
-
-  it("المدير المنصّيّ يرى مداخل المُدَّكِر الجديدة ضمن «الإدارة»", () => {
-    const manage = navSections(["CIRCLE_MANAGER"]).find((x) => x.key === "manage")!;
-    expect(manage.items.map((i) => i.href)).toContain("/admin/muddakir/requests");
-    expect(manage.items.map((i) => i.href)).toContain("/admin/muddakir/staff");
-    expect(manage.items.map((i) => i.href)).toContain("/admin/muddakir/tathbit");
-  });
-});
-
-// ── قسم «البرامج» المستقلّ (المنهج لا بيانات شخص) ──
-describe("navSections — «البرامج» قسمٌ مستقلٌّ يراه الجميع", () => {
-  const programsOf = (roles: string[]) => navSections(roles).find((s) => s.key === "programs");
-
-  it("مشرفٌ يرى البرامج ولا يرى «صفحتي»", () => {
-    const s = navSections(["SUPER_ADMIN"]);
-    expect(s.map((x) => x.key)).toContain("programs");
-    const allHrefs = s.flatMap((x) => x.items.map((i) => i.href));
-    expect(allHrefs).toContain("/programs/civil-base");
-    expect(allHrefs).toContain("/programs/maraqi");
-    // «صفحتي» شاشة الطالب عن نفسه — لا معنى لها للمشرف.
-    expect(allHrefs).not.toContain("/me");
-    expect(s.map((x) => x.key)).not.toContain("learn");
-  });
-
-  it("طالبٌ يرى الاثنين: البرامج و«صفحتي» في التعلّم", () => {
-    const s = navSections(["STUDENT"]);
-    expect(s.map((x) => x.key)).toContain("programs");
-    const allHrefs = s.flatMap((x) => x.items.map((i) => i.href));
-    expect(allHrefs).toContain("/programs/civil-base");
-    expect(allHrefs).toContain("/programs/maraqi");
-    expect(allHrefs).toContain("/me");
-  });
-
-  it("يراه كلّ الأدوار الخمسة: المشرف والمدير والمعلّم والمُسمِّع والطالب", () => {
-    for (const role of ["SUPER_ADMIN", "CIRCLE_MANAGER", "TEACHER", "RECITER", "STUDENT"]) {
-      expect(programsOf([role]), role).toBeDefined();
-    }
-  });
-
-  it("مداخله ثابتة الترتيب: القاعدة المدنية أوّلاً ثمّ مراقي", () => {
-    const p = programsOf(["STUDENT"])!;
-    expect(p.label).toBe("البرامج");
-    expect(p.items).toEqual([
-      { label: "القاعدة المدنية", href: "/programs/civil-base" },
-      { label: "مراقي", href: "/programs/maraqi" },
-    ]);
   });
 });
