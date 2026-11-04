@@ -13,7 +13,7 @@ interface Ref { id: string; nameAr: string }
 interface Circle { id: string; nameAr: string; programKey: string }
 type IssueCode = string;
 interface Issue { code: IssueCode; level: "warning" | "error"; column?: string }
-interface PreviewRow { index: number; level: "valid" | "warning" | "error"; issues: Issue[]; name: string; maskedId: string }
+interface PreviewRow { index: number; level: "valid" | "warning" | "error" | "skip"; issues: Issue[]; name: string; maskedId: string; skip: boolean }
 type Override = { nationalityId?: string; guardianRelationId?: string; emergencyRelationId?: string };
 interface Outcome { index: number; name: string; maskedId: string; ok: boolean; reasonKey?: string }
 interface Report { successCount: number; failCount: number; outcomes: Outcome[] }
@@ -41,7 +41,8 @@ const ISSUE_KEY: Record<string, StudentImportKey> = {
   missingGuardianPhone: "issueMissingGuardianPhone",
   teenNeedsPhone: "issueTeenNeedsPhone",
   dupInFile: "issueDupInFile",
-  dupInDb: "issueDupInDb",
+  alreadyStudent: "issueAlreadyStudent",
+  alreadyPending: "issueAlreadyPending",
 };
 const REASON_KEY: Record<string, StudentImportKey> = {
   importRowFailed: "reasonImportRowFailed",
@@ -144,18 +145,19 @@ export default function StudentImportPage() {
   }
 
   const summary = useMemo(() => {
-    const s = { valid: 0, warning: 0, error: 0 };
+    const s = { valid: 0, warning: 0, error: 0, skip: 0 };
     for (const r of rows ?? []) s[r.level] += 1;
     return s;
   }, [rows]);
 
-  const toneColor = (lvl: PreviewRow["level"]) => (lvl === "error" ? ui.color.danger : lvl === "warning" ? "#b8860b" : ui.color.success);
+  const toneColor = (lvl: PreviewRow["level"]) => (lvl === "error" ? ui.color.danger : lvl === "warning" ? "#b8860b" : lvl === "skip" ? ui.color.muted : ui.color.success);
+  const statusText = (lvl: PreviewRow["level"]) => t(lvl === "error" ? "statusError" : lvl === "warning" ? "statusWarning" : lvl === "skip" ? "statusSkip" : "statusValid");
 
   const columns: Column<PreviewRow>[] = [
     { key: "index", header: t("colRow"), cell: (r) => arNum(r.index) },
     { key: "name", header: t("colName"), cell: (r) => r.name || "—" },
     { key: "id", header: t("colId"), cell: (r) => (r.maskedId ? arNum(r.maskedId) : "—") },
-    { key: "status", header: t("colStatus"), cell: (r) => <span style={{ color: toneColor(r.level), fontWeight: 600 }}>{t(r.level === "error" ? "statusError" : r.level === "warning" ? "statusWarning" : "statusValid")}</span> },
+    { key: "status", header: t("colStatus"), cell: (r) => <span style={{ color: toneColor(r.level), fontWeight: 600 }}>{statusText(r.level)}</span> },
     {
       key: "reason", header: t("colReason"), cell: (r) => {
         const needNat = r.issues.some((i) => i.code === "nationalityUnmatched" || i.code === "missingNationality");
@@ -189,7 +191,7 @@ export default function StudentImportPage() {
     { key: "reason", header: t("colReason"), cell: (o) => (o.ok ? "—" : reasonText(o.reasonKey)) },
   ];
 
-  const committable = (rows ?? []).filter((r) => r.level !== "error").length;
+  const committable = (rows ?? []).filter((r) => r.level === "valid" || r.level === "warning").length;
 
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/students/import"
@@ -235,8 +237,12 @@ export default function StudentImportPage() {
               <p style={{ fontSize: ui.text.xs }}>
                 <span style={{ color: ui.color.success }}>{t("summaryValid")}: {arNum(summary.valid)}</span>{"  ·  "}
                 <span style={{ color: "#b8860b" }}>{t("summaryWarning")}: {arNum(summary.warning)}</span>{"  ·  "}
-                <span style={{ color: ui.color.danger }}>{t("summaryError")}: {arNum(summary.error)}</span>
+                <span style={{ color: ui.color.danger }}>{t("summaryError")}: {arNum(summary.error)}</span>{"  ·  "}
+                <span style={{ color: ui.color.muted }}>{t("summarySkip")}: {arNum(summary.skip)}</span>
               </p>
+              {summary.skip > 0 && (
+                <p style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{t("skipNoticePrefix")} {arNum(summary.skip)} {t("skipNoticeReason")}</p>
+              )}
               <Table columns={columns} rows={rows} empty="—" />
               <div style={{ marginTop: sp(4) }}>
                 <Button onClick={() => void commit()} disabled={!circleId || committable === 0 || busy !== ""}>

@@ -78,7 +78,7 @@ describe("parseCsv", () => {
 });
 
 describe("validateRows", () => {
-  const ctx = { nationalities: NAT, guardianRelations: REL, existingIdKeys: new Set<string>(["3333333333"]), asOf: ASOF };
+  const ctx = { nationalities: NAT, guardianRelations: REL, existingUserIds: new Set<string>(["3333333333"]), existingApplicationIds: new Set<string>(["5555555555"]), asOf: ASOF };
 
   it("سطرٌ صالح (طفل) يُحلّ ويأخذ الطوارئ من الوليّ", () => {
     const text = csv(row({
@@ -142,14 +142,28 @@ describe("validateRows", () => {
     expect(res[1].issues.some((i) => i.code === "dupInFile")).toBe(true);
   });
 
-  it("تكرارٌ في القاعدة ⟵ خطأ", () => {
+  it("مستورَدٌ سابقًا (طالبٌ مقبول) ⟵ تخطٍّ لا خطأ", () => {
     const text = csv(row({
       studentName: "موجود", nationalId: "3333333333", nationality: "سعودي",
       birthDate: "2016-05-01", studentGender: "ذكر", guardianName: "ولي",
       guardianGender: "ذكر", guardianRelation: "أب", guardianPhone: "0500000005",
     }));
     const [r] = validateRows(parseStudentsCsv(text).rows, ctx);
-    expect(r.issues.some((i) => i.code === "dupInDb")).toBe(true);
+    expect(r.level).toBe("skip");
+    expect(r.skip).toBe(true);
+    expect(r.issues.some((i) => i.code === "alreadyStudent" && i.level === "warning")).toBe(true);
+    expect(r.resolved).toBeUndefined(); // لا يُعاد إنشاؤه
+  });
+
+  it("له طلبٌ معلّق (Application) ⟵ تخطٍّ لا خطأ", () => {
+    const text = csv(row({
+      studentName: "معلّق", nationalId: "5555555555", nationality: "سعودي",
+      birthDate: "2016-05-01", studentGender: "ذكر", guardianName: "ولي",
+      guardianGender: "ذكر", guardianRelation: "أب", guardianPhone: "0500000007",
+    }));
+    const [r] = validateRows(parseStudentsCsv(text).rows, ctx);
+    expect(r.level).toBe("skip");
+    expect(r.issues.some((i) => i.code === "alreadyPending")).toBe(true);
   });
 
   it("طالبٌ ≥١٣ بلا جوال ⟵ خطأ", () => {

@@ -31,17 +31,18 @@ export async function POST(req: Request) {
     const lists = await listAllReferenceValues();
     const nationalities = lists.nationalities.filter((n) => n.isActive).map((n) => ({ id: n.id, nameAr: n.nameAr }));
     const guardianRelations = lists.guardianRelations.filter((r) => r.isActive).map((r) => ({ id: r.id, nameAr: r.nameAr }));
-    const existingIdKeys = await loadExistingIdKeys();
+    const { userIds, applicationIds } = await loadExistingIdKeys();
 
     const results = validateRows(parsed.rows, {
       nationalities,
       guardianRelations,
-      existingIdKeys,
+      existingUserIds: userIds,
+      existingApplicationIds: applicationIds,
       overrides: body.overrides,
     });
 
-    // تُحفظ السطور غير الخاطئة فقط (صالح/تحذير) — والتحذير يُحفظ (قاعدة الهويّة غير العشريّة).
-    const committable = results.filter((r) => r.level !== "error" && r.resolved);
+    // تُحفظ السطور الصالحة (صالح/تحذير) فقط — ويُستثنى الخطأ والمتخطّى (المستورَد سابقًا).
+    const committable = results.filter((r) => (r.level === "valid" || r.level === "warning") && r.resolved);
     if (committable.length === 0) throw new ValidationError("لا سطور صالحةٌ للاعتماد.");
 
     const report = await commitImport({ rows: committable, circleId: body.circleId, decidedBy: actor.id });
