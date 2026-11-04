@@ -104,8 +104,8 @@ export default function MuddakirHafizPage() {
   }, [view]);
 
   useEffect(() => {
-    // تسجيل Service Worker (العمل بلا إنترنت).
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/muddakir-sw.js").catch(() => {});
+    // الـService Worker الآن موحَّدٌ للمنصّة (مُسجَّلٌ من التخطيط العام في /sw.js، ويحوي
+    // استثناء /api/muddakir/today نفسه للعمل بلا إنترنت). لا تسجيل خاصٌّ هنا بعد الآن.
     setOnline(navigator.onLine);
     void refreshEvents();
     void loadView();
