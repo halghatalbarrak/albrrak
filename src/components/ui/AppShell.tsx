@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- شعارٌ من public/ بأبعادٍ ثابتة؛ لا يحتاج next/image. */
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 
 import { ui, sp } from "./tokens";
@@ -52,11 +52,19 @@ export function AppShell({ roles, muddakirStaff, userName, activeHref, title, cr
   const [drawer, setDrawer] = useState(false); // درج الجوّال
   // القسم الذي فيه الصفحة الحاليّة يبدأ مفتوحاً؛ إن لم يُعرف فالأوّل.
   const activeKey = sections.find((s) => s.items.some((it) => it.href === activeHref))?.key ?? sections[0]?.key;
-  // القسم النشط مفتوحٌ افتراضاً، وتوجيه المستخدم يتجاوز الافتراض. يتفاعل مع تأخّر
-  // وصول الأدوار (useMe): حين تصل الأقسام يُفتح النشط دون الحاجة لإعادة تهيئة.
+  // القسم النشط مفتوحٌ افتراضاً، وتوجيه المستخدم يتجاوز الافتراض — **ويُحفَظ في المتصفّح**
+  // (يتذكّر المستخدم طيَّه لكلّ مجموعة بين الزيارات). يتفاعل مع تأخّر وصول الأدوار (useMe).
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    try { const raw = localStorage.getItem("albrrak.nav.open"); if (raw) setOverrides(JSON.parse(raw) as Record<string, boolean>); } catch { /* لا بأس */ }
+  }, []);
   const isOpen = (key: string) => overrides[key] ?? key === activeKey;
-  const toggle = (key: string) => setOverrides((p) => ({ ...p, [key]: !isOpen(key) }));
+  const toggle = (key: string) =>
+    setOverrides((p) => {
+      const next = { ...p, [key]: !(p[key] ?? key === activeKey) };
+      try { localStorage.setItem("albrrak.nav.open", JSON.stringify(next)); } catch { /* لا بأس */ }
+      return next;
+    });
 
   const aside = (
     <aside className={`appshell-aside${drawer ? " open" : ""}`} style={{ background: ui.color.sidebar, color: ui.color.sidebarText }}>

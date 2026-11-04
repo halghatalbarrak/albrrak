@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Card, Button, Select, Table, EmptyState, ui, sp, type Column } from "@/components/ui";
+import { AppShell, Card, Button, Select, Table, EmptyState, Tabs, muddakirTabs, ui, sp, type Column } from "@/components/ui";
 import { tMuddakir, stageLabel, supervisorLoadLabel } from "@/i18n/ar/muddakir";
 
 // شاشة إدارة المُدَّكِر (المرحلة ٣): المدير (SUPER_ADMIN/CIRCLE_MANAGER) يُلحق ويُسند؛ المشرف
@@ -112,6 +112,7 @@ export default function MuddakirAdminPage() {
     <AppShell roles={me?.roles ?? []} muddakirStaff={me?.muddakirStaff ?? []} userName={me?.name} activeHref="/admin/muddakir"
       title={tMuddakir("adminTitle")}
       crumbs={[{ label: tMuddakir("crumbHome"), href: "/" }, { label: tMuddakir("crumbAdmin") }, { label: tMuddakir("adminTitle") }]}>
+      {(me?.roles ?? []).some((r) => r === "SUPER_ADMIN" || r === "CIRCLE_MANAGER") && <Tabs items={muddakirTabs} />}
 
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
       {status === "loading" && <p style={{ color: ui.color.muted }}>{tMuddakir("loading")}</p>}

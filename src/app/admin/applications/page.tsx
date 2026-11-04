@@ -5,7 +5,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { formatPhoneForDisplay } from "@/lib/phone";
 import { useMe } from "@/lib/useMe";
 import { tApplications as t } from "@/i18n/ar/applications";
-import { AppShell, Card, Button, Badge, EmptyState, Skeleton, Table, ui, sp, type Column } from "@/components/ui";
+import { AppShell, Card, Button, Badge, EmptyState, Skeleton, Table, Tabs, intakeTabs, ui, sp, type Column } from "@/components/ui";
 
 interface Row {
   id: string;
@@ -130,6 +130,7 @@ export default function AdminApplicationsPage() {
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/applications"
       title={`${t("shellTitlePrefix")}${rows ? ` (${rows.length})` : ""}`}
       crumbs={[{ label: t("crumbHome"), href: "/" }, { label: t("crumbAdmin") }, { label: t("crumbApplications") }]}>
+      <Tabs items={intakeTabs} />
 
       {err && <p style={{ color: ui.color.danger }}>{err}</p>}
       {!err && !rows && (

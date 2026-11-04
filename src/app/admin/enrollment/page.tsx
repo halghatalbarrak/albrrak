@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Card, Button, Select, Badge, EmptyState, Modal, Table, ui, sp, type Column } from "@/components/ui";
+import { AppShell, Card, Button, Select, Badge, EmptyState, Modal, Table, Tabs, intakeTabs, ui, sp, type Column } from "@/components/ui";
 import { tEnrollment as tr } from "@/i18n/ar/enrollment";
 
 // شاشة الإسناد: المدير يسند الطالب المقبول إلى حلقة، أو ينقله (بسجلٍّ تاريخي).
@@ -87,6 +87,7 @@ export default function EnrollmentPage() {
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/enrollment"
       title={tr("title")} crumbs={[{ label: tr("crumbHome"), href: "/" }, { label: tr("crumbAdmin") }, { label: tr("crumbEnrollment") }]}>
+      <Tabs items={intakeTabs} />
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
       {err && <p style={{ color: ui.color.danger, fontSize: ui.text.xs }}>{err}</p>}
 

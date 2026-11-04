@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Card, Button, Input, Badge, EmptyState, ui, sp } from "@/components/ui";
+import { AppShell, Card, Button, Input, Badge, EmptyState, Tabs, muddakirTabs, ui, sp } from "@/components/ui";
 import { tMuddakir } from "@/i18n/ar/muddakir";
 
 // شاشة طلبات المُدَّكِر (و٤، §٢): المدير يبتّ المعلّقة (موافقةٌ تُنفَّذ، أو رفضٌ بسبب)، والإداريّ
@@ -103,6 +103,7 @@ export default function MuddakirRequestsPage() {
     <AppShell roles={me?.roles ?? []} muddakirStaff={me?.muddakirStaff ?? []} userName={me?.name} activeHref="/admin/muddakir/requests"
       title={tMuddakir("requestsTitle")}
       crumbs={[{ label: tMuddakir("crumbHome"), href: "/" }, { label: tMuddakir("crumbAdmin") }, { label: tMuddakir("requestsTitle") }]}>
+      {(me?.roles ?? []).some((r) => r === "SUPER_ADMIN" || r === "CIRCLE_MANAGER") && <Tabs items={muddakirTabs} />}
 
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
       {status === "loading" && <p style={{ color: ui.color.muted }}>{tMuddakir("loading")}</p>}

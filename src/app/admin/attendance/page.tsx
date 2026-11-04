@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { makkahDayDate } from "@/lib/makkah-day";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Card, Button, Select, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
+import { AppShell, Card, Button, Select, Input, Badge, EmptyState, Skeleton, Tabs, attendanceTabs, ui, sp } from "@/components/ui";
 import { attendanceLockAr as tLock } from "@/i18n/ar/attendance-lock";
 
 // شاشة الرصد (م٢ — DESIGN §١٠٫١): تفترض الجميع حاضرين، والمعلم يؤشّر الغائب فقط.
@@ -252,6 +252,7 @@ export default function AttendancePage() {
   return (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/attendance"
       title="رصد الحضور" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "التشغيل" }, { label: "الحضور" }]}>
+      {(me?.roles ?? []).some((r) => r === "SUPER_ADMIN" || r === "CIRCLE_MANAGER") && <Tabs items={attendanceTabs} />}
       <p style={{ color: ui.color.muted, margin: `0 0 ${sp(4)}`, fontSize: ui.text.base }}>
         الجميع حاضرون افتراضًا — أشِّر الغائب فقط.
       </p>

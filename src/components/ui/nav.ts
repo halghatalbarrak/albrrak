@@ -1,163 +1,145 @@
 // أقسام الشريط الجانبيّ حسب الدور (قرار محمد): لا يرى أحدٌ ما لا يخصّه. دوالُّ نقيّةٌ قابلةٌ للاختبار.
+// النصوص من i18n (navAr). التصنيف وظيفيٌّ (لا بالدور) مع الحفاظ التامّ على رؤية كلّ دور:
+// صلاحيّات الخادم لا تُمسّ — هذا تنقّلٌ فقط. الصفحات المتقاربة تُجمَع بأشرطة تبويباتٍ فوق مساراتها.
+
+import { navAr as L } from "@/i18n/ar/nav";
 
 export interface NavItem { label: string; href: string }
-
-// ── الشريط الجانبيّ (المرحلة ٤): أقسامٌ قابلةٌ للطيّ، محكومةٌ بالدور. ──
-
 export interface NavSection { key: string; label: string; items: NavItem[] }
 
 /**
- * أقسام الشريط الجانبيّ (قرار محمد): **اتّحاد** أقسام كلّ أدوار المستخدم — لا «أعلى
- * دورٍ يفوز». الترتيب ثابت: الإدارة · التشغيل · الحصاد · البرامج · التعلّم · الرسائل.
- * لا يُسقط دورٌ دوراً. ومن لا دور له (لم يصل بعد) ⟵ [] (منع وميض شريط الطالب).
- *
- * المشرف العام والمدير يريان **كلّ** أقسام العمل (الإدارة والتشغيل والحصاد)، لأنّ من
- * يشرف على الحلقات يحتاج أن يرى ما يراه المعلّم ليتابع ويسدّ الغياب. هذا **عرضٌ** فقط
- * — الصلاحيّات الفعليّة (حرّاس الخادم) لا تُمسّ. و«الرسائل» يراها الطالب ووليّ الأمر.
- *
- * «البرامج» (المنهج لا بيانات شخص) يراه كلّ ذي دورٍ في المنصّة — المشرف والمدير
- * والمعلّم والمُسمِّع والطالب — لأنّه سلالم القاعدة المدنية ومراقي المشتركة. أمّا
- * «صفحتي» فتبقى في «التعلّم» للطالب وحده — فهي شاشته عن نفسه، لا معنى لها للمشرف.
+ * أقسام الشريط الجانبيّ: مجموعاتٌ وظيفيّةٌ قابلةٌ للطيّ، بترتيبٍ ثابت:
+ * الرئيسية · التشغيل اليوميّ · الحلقات والحضور · الطلاب والقيد · التقييم والاختبارات ·
+ * التحفيز · المناهج · المُدَّكِر · الإعدادات — ثمّ أقسام الأدوار المُحصَّرة (طاقم المُدَّكِر،
+ * البائع) وأقسام الطالب/الوليّ (التعلّم · الرسائل). المجموعة الفارغة لدور المستخدم تُخفى.
  */
 export function navSections(roles: string[], muddakirStaff: string[] = []): NavSection[] {
   const hasStaff = (r: string) => muddakirStaff.includes(r);
-  // مدير/إداريّ المدّكر إسنادٌ مُحصَّر بلا دورٍ عامّ (§٢): يلزم إظهار شريطه ولو كان roles فارغاً.
   if (roles.length === 0 && muddakirStaff.length === 0) return [];
   const has = (r: string) => roles.includes(r);
   const supervises = has("SUPER_ADMIN") || has("CIRCLE_MANAGER");
-  // إدارة المستخدمين (ROLES.md): للمشرف العام والمدير التقنيّ فقط — لا مدير الحلقات.
   const managesUsers = has("SUPER_ADMIN") || has("TECH_ADMIN");
-  // كلّ ذي دورٍ حقيقيٍّ في المنصّة يرى المنهج؛ الوليّ الصرف (رسائل فقط) لا يراه.
-  const seesPrograms = supervises || has("TEACHER") || has("RECITER") || has("STUDENT");
+  const teacher = has("TEACHER");
+  const reciter = has("RECITER");
+  const seesPrograms = supervises || teacher || reciter || has("STUDENT");
+  // أدوارٌ عامّةٌ تشغيليّة/إداريّة ترى «الرئيسية» (لا الطالب/الوليّ/البائع الصرف، ولا طاقم المدّكر المُحصَّر).
+  const generalStaff = supervises || teacher || reciter || managesUsers;
 
   const sections: NavSection[] = [];
+  const push = (key: string, label: string, items: NavItem[]) => { if (items.length) sections.push({ key, label, items }); };
 
-  // الإدارة — المدير والمشرف العام.
-  if (supervises) {
-    sections.push({
-      key: "manage", label: "الإدارة", items: [
-        { label: "الاعتمادات", href: "/admin/approvals" },
-        { label: "الطلبات", href: "/admin/applications" },
-        { label: "الحلقات", href: "/admin/circles" },
-        { label: "الطلاب", href: "/admin/students" },
-        ...(has("SUPER_ADMIN") ? [{ label: "استيراد الطلاب", href: "/admin/students/import" }] : []),
-        { label: "قفل الحضور", href: "/admin/attendance-lock" },
-        { label: "القوائم", href: "/admin/lists" },
-        { label: "النقاط", href: "/admin/economy" },
-        { label: "البيدر", href: "/admin/market" },
-        { label: "العرفاء", href: "/admin/arifs" },
-        { label: "القيد", href: "/admin/enrollment" },
-        { label: "التلعيب", href: "/admin/gamification" },
-        { label: "الشاشة التحفيزيّة", href: "/admin/display" },
-        { label: "المُدَّكِر", href: "/admin/muddakir" },
-        { label: "طلبات المُدَّكِر", href: "/admin/muddakir/requests" },
-        { label: "طاقم المُدَّكِر", href: "/admin/muddakir/staff" },
-        { label: "إعدادات التثبيت", href: "/admin/muddakir/tathbit" },
-        { label: "لقاء المُدَّكِر", href: "/muddakir/supervisor" },
-        { label: "سرد المُدَّكِر", href: "/muddakir/recitation" },
-      ],
-    });
+  // ١. الرئيسية
+  if (generalStaff) push("home", L.grpHome, [{ label: L.home, href: "/" }]);
+
+  // ٢. التشغيل اليوميّ — المعلّم والمشرف/المدير.
+  if (teacher || supervises) {
+    push("operate", L.grpOperate, [
+      { label: L.unified, href: "/admin/unified" },
+      { label: L.session, href: "/admin/session" },
+      { label: L.grantPoints, href: "/admin/grant-points" },
+    ]);
   }
 
-  // إدارة المُدَّكِر — مدير البرنامج/الإداريّ المُحصَّران (§٢، بلا دورٍ عامّ). مدير المنصّة يراها
-  // ضمن «الإدارة». المدير يرى الطاقم والسرد؛ والإداريّ يطّلع وإجراؤه بطلب (لا طاقم).
+  // ٣. الحلقات والحضور — المعلّم والمشرف/المدير. (قفل الحضور تبويبٌ داخل صفحة الحضور، للمشرف.)
+  if (teacher || supervises) {
+    push("circles", L.grpCircles, [
+      { label: supervises ? L.circles : L.circlesMine, href: "/admin/circles" },
+      { label: L.attendance, href: "/admin/attendance" },
+      { label: L.arifs, href: "/admin/arifs" },
+    ]);
+  }
+
+  // ٤. الطلاب والقيد — المشرف/المدير. (الطلبات/الاعتمادات/القيد تبويباتٌ فوق مساراتها.)
+  if (supervises) {
+    const items: NavItem[] = [
+      { label: L.students, href: "/admin/students" },
+      { label: L.applications, href: "/admin/applications" },
+    ];
+    if (has("SUPER_ADMIN")) items.push({ label: L.studentsImport, href: "/admin/students/import" });
+    push("students", L.grpStudents, items);
+  }
+
+  // ٥. التقييم والاختبارات — المعلّم والمُسمِّع والمشرف/المدير.
+  if (teacher || reciter || supervises) {
+    push("assess", L.grpAssess, [
+      { label: L.hasad, href: "/admin/hasad" },
+      { label: L.stageExam, href: "/admin/stage-exam" },
+    ]);
+  }
+
+  // ٦. التحفيز — المشرف/المدير.
+  if (supervises) {
+    push("motivate", L.grpMotivate, [
+      { label: L.economy, href: "/admin/economy" },
+      { label: L.market, href: "/admin/market" },
+      { label: L.gamification, href: "/admin/gamification" },
+      { label: L.display, href: "/admin/display" },
+    ]);
+  }
+
+  // ٧. المناهج — المنهج المشترك، يراه كلّ ذي دور.
+  if (seesPrograms) {
+    push("programs", L.grpPrograms, [
+      { label: L.civilBase, href: "/programs/civil-base" },
+      { label: L.maraqi, href: "/programs/maraqi" },
+    ]);
+  }
+
+  // ٨. المُدَّكِر — المشرف/المدير (البرنامج/الطلبات/الطاقم تبويباتٌ فوق مساراتها).
+  if (supervises) {
+    push("muddakir", L.grpMuddakir, [
+      { label: L.muddakirProgram, href: "/admin/muddakir" },
+      { label: L.muddakirRequests, href: "/admin/muddakir/requests" },
+      { label: L.muddakirStaff, href: "/admin/muddakir/staff" },
+      { label: L.muddakirTathbit, href: "/admin/muddakir/tathbit" },
+      { label: L.muddakirMeeting, href: "/muddakir/supervisor" },
+      { label: L.muddakirRecitation, href: "/muddakir/recitation" },
+    ]);
+  }
+
+  // ٩. الإعدادات — القوائم (المشرف/المدير) والمستخدمون (المشرف/التقنيّ).
+  {
+    const items: NavItem[] = [];
+    if (supervises) items.push({ label: L.lists, href: "/admin/lists" });
+    if (managesUsers) items.push({ label: L.users, href: "/admin/users" });
+    push("settings", L.grpSettings, items);
+  }
+
+  // ── أقسام الأدوار المُحصَّرة (طاقم المُدَّكِر بلا دورٍ عامّ، §٢) ──
   if ((hasStaff("MANAGER") || hasStaff("ADMIN")) && !supervises) {
     const items: NavItem[] = [
-      { label: "الحفّاظ", href: "/admin/muddakir" },
-      { label: hasStaff("MANAGER") ? "طلبات المُدَّكِر" : "طلباتي", href: "/admin/muddakir/requests" },
+      { label: L.muddakirHifazi, href: "/admin/muddakir" },
+      { label: hasStaff("MANAGER") ? L.muddakirRequests : L.muddakirMyRequests, href: "/admin/muddakir/requests" },
     ];
-    if (hasStaff("MANAGER")) items.push({ label: "طاقم المُدَّكِر", href: "/admin/muddakir/staff" });
-    items.push({ label: "إعدادات التثبيت", href: "/admin/muddakir/tathbit" });
+    if (hasStaff("MANAGER")) items.push({ label: L.muddakirStaff, href: "/admin/muddakir/staff" });
+    items.push({ label: L.muddakirTathbit, href: "/admin/muddakir/tathbit" });
     if (hasStaff("MANAGER")) {
-      items.push({ label: "لقاء المُدَّكِر", href: "/muddakir/supervisor" });
-      items.push({ label: "سرد المُدَّكِر", href: "/muddakir/recitation" });
+      items.push({ label: L.muddakirMeeting, href: "/muddakir/supervisor" });
+      items.push({ label: L.muddakirRecitation, href: "/muddakir/recitation" });
     }
-    sections.push({ key: "muddakirAdmin", label: "إدارة المُدَّكِر", items });
+    push("muddakirAdmin", L.grpMuddakirAdmin, items);
   }
-
-  // المُدَّكِر — المشرف (ARIF أو مشرف المدّكر الخاصّ §٢) يرى حفّاظه ويُدير لقاءهم (المدير ضمن «الإدارة»).
   if ((has("ARIF") || hasStaff("SUPERVISOR")) && !supervises) {
-    sections.push({
-      key: "muddakir", label: "المُدَّكِر", items: [
-        { label: "حفّاظي", href: "/admin/muddakir" },
-        { label: "اللقاء الأسبوعيّ", href: "/muddakir/supervisor" },
-      ],
-    });
+    push("muddakir", L.grpMuddakir, [
+      { label: L.muddakirHifazi, href: "/admin/muddakir" },
+      { label: L.muddakirWeekly, href: "/muddakir/supervisor" },
+    ]);
+  }
+  if ((reciter || hasStaff("EXAMINER")) && !supervises) {
+    push("muddakirExam", L.grpMuddakirExam, [{ label: L.muddakirRecitation, href: "/muddakir/recitation" }]);
   }
 
-  // المستخدمون — إدارة الكادر والأدوار (ROLES.md): المشرف العام والمدير التقنيّ فقط.
-  if (managesUsers) {
-    sections.push({
-      key: "users", label: "المستخدمون", items: [
-        { label: "المستخدمون", href: "/admin/users" },
-      ],
-    });
-  }
+  // ── البائع (م٦ب): نقطة بيع البيدر وحدها ──
+  if (has("SELLER")) push("market", L.grpMarket, [{ label: L.sell, href: "/sell" }]);
 
-  // التشغيل — المعلّم؛ والمشرف/المدير (يرى ما يراه المعلّم ليتابع ويسدّ الغياب).
-  if (has("TEACHER") || supervises) {
-    sections.push({
-      key: "operate", label: "التشغيل", items: [
-        { label: "الشاشة الموحّدة", href: "/admin/unified" },
-        { label: "الجلسة اليومية", href: "/admin/session" },
-        { label: "الحضور", href: "/admin/attendance" },
-        { label: "منح نقاط", href: "/admin/grant-points" },
-        { label: "حلقتي", href: "/admin/circles" },
-        { label: "العرفاء", href: "/admin/arifs" },
-      ],
-    });
-  }
-
-  // الحصاد — المعلّم والمُسمِّع؛ والمشرف/المدير. ويضمّ اختبار المرحلة (المختبِر يُجريه،
-  // والمعلّم يرى إجازات طلابه ويؤجّل).
-  if (has("TEACHER") || has("RECITER") || supervises) {
-    sections.push({
-      key: "harvest", label: "الحصاد", items: [
-        { label: "الحصاد", href: "/admin/hasad" },
-        { label: "اختبار المرحلة", href: "/admin/stage-exam" },
-      ],
-    });
-  }
-
-  // المُدَّكِر — المختبِر (RECITER أو مختبِر المدّكر الخاصّ §٢) يسجّل السرد (§٧). المدير ضمن «الإدارة».
-  if ((has("RECITER") || hasStaff("EXAMINER")) && !supervises) {
-    sections.push({
-      key: "muddakirExam", label: "سرد المُدَّكِر", items: [
-        { label: "سرد المُدَّكِر", href: "/muddakir/recitation" },
-      ],
-    });
-  }
-
-  // السوق — البائع (Role.SELLER، صلاحيّةٌ مستقلّة م٦ب): شاشة البيع كنقطة بيع سريعة.
-  if (has("SELLER")) {
-    sections.push({ key: "market", label: "البيدر", items: [{ label: "الجَنْي", href: "/sell" }] });
-  }
-
-  // البرامج — المنهج المشترك (سلالم القاعدة المدنية ومراقي)، يراه كلّ ذي دور.
-  // القاعدة المدنية أوّلاً (المسار التربويّ)، ثمّ مراقي (سلّمه تنازليٌّ: الناس أوّلاً).
-  if (seesPrograms) {
-    sections.push({
-      key: "programs", label: "البرامج", items: [
-        { label: "القاعدة المدنية", href: "/programs/civil-base" },
-        { label: "مراقي", href: "/programs/maraqi" },
-      ],
-    });
-  }
-
-  // التعلّم — الطالب وحده (صفحته عن نفسه). «صفحتي» لا معنى لها للمشرف.
+  // ── الطالب والوليّ ──
   if (has("STUDENT")) {
-    sections.push({
-      key: "learn", label: "التعلّم", items: [
-        { label: "صفحتي", href: "/me" },
-        { label: "رحلتي", href: "/me/journey" },
-      ],
-    });
+    push("learn", L.grpLearn, [
+      { label: L.myPage, href: "/me" },
+      { label: L.myJourney, href: "/me/journey" },
+    ]);
   }
-
-  // الرسائل — الطالب ووليّ الأمر (لا تُحبس في قسم واحد). وليٌّ صرفٌ ⟵ هذا القسم وحده.
-  if (has("STUDENT") || has("GUARDIAN")) {
-    sections.push({ key: "messages", label: "الرسائل", items: [{ label: "الرسائل", href: "/messages" }] });
-  }
+  if (has("STUDENT") || has("GUARDIAN")) push("messages", L.grpMessages, [{ label: L.messages, href: "/messages" }]);
 
   return sections;
 }
