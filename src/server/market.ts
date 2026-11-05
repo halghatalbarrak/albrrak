@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 
 import { getBalance } from "./economy";
 import { emitEvent } from "./events";
-import { AuthorizationError, ValidationError } from "./errors";
+import { verr, aerr } from "./errors";
 
 // ═══════════════ الاقتصاد — السوق الحقيقيّ بالكود (م٦ب) ═══════════════
 //
@@ -47,9 +47,9 @@ function isAdmin(roles: Role[]): boolean {
 /** يرمي AuthorizationError إن لم يكن الفاعل من كادر الإدارة (كإدارة بنود م٦أ). */
 async function assertMarketAdmin(actorId: string, db: PrismaClient): Promise<Role[]> {
   const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   if (!isAdmin(actor.roles)) {
-    throw new AuthorizationError("إدارة الثمار للإدارة وحدها (ECONOMY_RULES الركن ٢).");
+    throw aerr("marketManageAdminsOnly");
   }
   return actor.roles;
 }
@@ -57,9 +57,9 @@ async function assertMarketAdmin(actorId: string, db: PrismaClient): Promise<Rol
 /** يرمي AuthorizationError إن لم يكن الفاعل بائعًا (Role.SELLER)، ويعيد أدواره. */
 async function assertSeller(actorId: string, db: PrismaClient): Promise<Role[]> {
   const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   if (!actor.roles.includes(Role.SELLER)) {
-    throw new AuthorizationError("الجَنْي لأمين البيدر وحده (Role.SELLER).");
+    throw aerr("marketPickSellerOnly");
   }
   return actor.roles;
 }
@@ -81,14 +81,14 @@ function validateItemInput(input: MarketItemInput): {
   stock: number | null;
 } {
   const nameAr = input.nameAr?.trim();
-  if (!nameAr) throw new ValidationError("اسم الثمرة مطلوب.");
+  if (!nameAr) throw verr("marketItemNameRequired");
   if (!Number.isInteger(input.pricePoints) || input.pricePoints < 1) {
-    throw new ValidationError("قيمة الثمرة عددٌ صحيحٌ موجب (١ فأكثر).");
+    throw verr("marketValuePositiveInt");
   }
   let stock: number | null = null;
   if (input.stock != null) {
     if (!Number.isInteger(input.stock) || input.stock < 0) {
-      throw new ValidationError("المتوفّر عددٌ صحيحٌ غير سالب، أو اتركه فارغًا (بلا حدّ).");
+      throw verr("marketStockNonNegOrEmpty");
     }
     stock = input.stock;
   }
@@ -122,7 +122,7 @@ export async function updateMarketItem(
 ) {
   await assertMarketAdmin(actorId, db);
   const existing = await db.marketItem.findUnique({ where: { id: itemId }, select: { id: true } });
-  if (!existing) throw new ValidationError("ثمرة غير موجودة.");
+  if (!existing) throw verr("marketItemNotFound");
   const data = validateItemInput(input);
   const item = await db.marketItem.update({ where: { id: itemId }, data });
   await emitEvent(db, {
@@ -144,7 +144,7 @@ export async function setMarketItemActive(
 ) {
   await assertMarketAdmin(actorId, db);
   const existing = await db.marketItem.findUnique({ where: { id: itemId }, select: { id: true } });
-  if (!existing) throw new ValidationError("ثمرة غير موجودة.");
+  if (!existing) throw verr("marketItemNotFound");
   const item = await db.marketItem.update({ where: { id: itemId }, data: { active } });
   await emitEvent(db, {
     type: active ? "MARKET_ITEM_ENABLED" : "MARKET_ITEM_DISABLED",
@@ -237,17 +237,17 @@ async function resolveCodeTarget(
 ): Promise<string> {
   if (studentId) {
     const s = await db.student.findUnique({ where: { id: studentId }, select: { id: true, userId: true } });
-    if (!s) throw new ValidationError("طالب غير موجود.");
+    if (!s) throw verr("studentNotFound");
     if (s.userId === callerUserId) return s.id;
     const link = await db.guardianLink.findFirst({
       where: { guardianId: callerUserId, studentId, status: GuardianLinkStatus.ACTIVE },
       select: { id: true },
     });
-    if (!link) throw new AuthorizationError("لا تملك طلب كودٍ لهذا الطالب.");
+    if (!link) throw aerr("marketNoCodeRequestForStudent");
     return s.id;
   }
   const u = await db.user.findUnique({ where: { id: callerUserId }, select: { student: { select: { id: true } } } });
-  if (!u?.student) throw new ValidationError("لا سجلّ طالبٍ مرتبطٌ بحسابك.");
+  if (!u?.student) throw verr("marketNoStudentRecord");
   return u.student.id;
 }
 
@@ -280,7 +280,7 @@ export async function requestStudentCode(
       throw e;
     }
   }
-  throw new ValidationError("تعذّر توليد رمزٍ فريد — أعِد المحاولة.");
+  throw verr("marketCodeGenFailed");
 }
 
 // ═══════════════ بحث الكود (البائع: اسمٌ ورصيدٌ فقط) ═══════════════
@@ -302,21 +302,21 @@ export async function lookupStudentByCode(
 ): Promise<CodeLookup> {
   await assertSeller(sellerUserId, db);
   const code = rawCode?.trim().toUpperCase();
-  if (!code) throw new ValidationError("أدخل الرمز.");
+  if (!code) throw verr("marketEnterCode");
 
   const row = await db.studentCode.findUnique({
     where: { code },
     select: { studentId: true, usedAt: true, expiresAt: true },
   });
-  if (!row) throw new ValidationError("رمز غير صالح.");
-  if (row.usedAt) throw new ValidationError("رمزٌ مستعمَل من قبل.");
-  if (row.expiresAt.getTime() < Date.now()) throw new ValidationError("انتهت صلاحيّة الرمز — اطلب رمزًا جديدًا.");
+  if (!row) throw verr("marketCodeInvalid");
+  if (row.usedAt) throw verr("marketCodeUsed");
+  if (row.expiresAt.getTime() < Date.now()) throw verr("marketCodeExpired");
 
   const student = await db.student.findUnique({
     where: { id: row.studentId },
     select: { id: true, user: { select: { nameAsInId: true } } },
   });
-  if (!student) throw new ValidationError("طالب غير موجود.");
+  if (!student) throw verr("studentNotFound");
 
   return {
     studentId: student.id,
@@ -348,7 +348,7 @@ export interface SellResult {
 export async function sellToStudentByCode(args: SellArgs, db: PrismaClient = prisma): Promise<SellResult> {
   await assertSeller(args.sellerUserId, db);
   const code = args.code?.trim().toUpperCase();
-  if (!code) throw new ValidationError("أدخل الرمز.");
+  if (!code) throw verr("marketEnterCode");
 
   return db.$transaction(async (tx) => {
     // ١) الكود صالح؟
@@ -356,24 +356,24 @@ export async function sellToStudentByCode(args: SellArgs, db: PrismaClient = pri
       where: { code },
       select: { id: true, studentId: true, usedAt: true, expiresAt: true },
     });
-    if (!codeRow) throw new ValidationError("رمز غير صالح.");
-    if (codeRow.usedAt) throw new ValidationError("رمزٌ مستعمَل من قبل.");
+    if (!codeRow) throw verr("marketCodeInvalid");
+    if (codeRow.usedAt) throw verr("marketCodeUsed");
     if (codeRow.expiresAt.getTime() < Date.now()) {
-      throw new ValidationError("انتهت صلاحيّة الرمز — اطلب رمزًا جديدًا.");
+      throw verr("marketCodeExpired");
     }
 
     // ٢) الثمرة مفعّلة · معتمَدة · في بيدر هذا الطالب · والمخزون متاح؟
     const item = await tx.marketItem.findUnique({ where: { id: args.marketItemId } });
-    if (!item) throw new ValidationError("ثمرة غير موجودة.");
-    if (!item.active) throw new ValidationError("الثمرة معطّلة — لا تُجنى.");
+    if (!item) throw verr("marketItemNotFound");
+    if (!item.active) throw verr("marketItemDisabled");
     // م٦ب-٢: لا تُجنى ثمرةٌ غير معتمَدة (PENDING/REJECTED)، ولا ثمرةٌ موجَّهةٌ لطالبٍ آخر.
     if (item.approvalStatus !== MarketItemApproval.APPROVED) {
-      throw new ValidationError("الثمرة غير معتمَدة بعد — لا تُجنى.");
+      throw verr("marketItemNotApproved");
     }
     if (item.targetStudentId != null && item.targetStudentId !== codeRow.studentId) {
-      throw new ValidationError("هذه الثمرة ليست في بيدر هذا الطالب.");
+      throw verr("marketItemNotInStudentBaydar");
     }
-    if (item.stock != null && item.stock <= 0) throw new ValidationError("المتوفّر نفد.");
+    if (item.stock != null && item.stock <= 0) throw verr("marketStockOut");
 
     // ٣) الرصيد يكفي السعر المثبّت؟ (الرصيد = SUM(amount) — دفتر م٦أ نفسه، داخل المعاملة)
     const agg = await tx.pointTransaction.aggregate({
@@ -381,14 +381,14 @@ export async function sellToStudentByCode(args: SellArgs, db: PrismaClient = pri
       _sum: { amount: true },
     });
     const balance = agg._sum.amount ?? 0;
-    if (balance < item.pricePoints) throw new ValidationError("الرصيد لا يكفي قيمة الثمرة.");
+    if (balance < item.pricePoints) throw verr("marketInsufficientBalance");
 
     // ٤) وسمُ الكود مستعملًا — محميٌّ من السباق (لا يُستعمل إلا إن كان لم يُستعمل بعد).
     const usedNow = await tx.studentCode.updateMany({
       where: { id: codeRow.id, usedAt: null },
       data: { usedAt: new Date() },
     });
-    if (usedNow.count === 0) throw new ValidationError("رمزٌ مستعمَل من قبل.");
+    if (usedNow.count === 0) throw verr("marketCodeUsed");
 
     // ٥) إنقاص المخزون — محميٌّ من السباق (لا يُنقَص إن نفد بين الفحص والكتابة).
     if (item.stock != null) {
@@ -396,7 +396,7 @@ export async function sellToStudentByCode(args: SellArgs, db: PrismaClient = pri
         where: { id: item.id, stock: { gt: 0 } },
         data: { stock: { decrement: 1 } },
       });
-      if (dec.count === 0) throw new ValidationError("المتوفّر نفد.");
+      if (dec.count === 0) throw verr("marketStockOut");
     }
 
     // ٦) الخصم في دفتر م٦أ عبر البند النظاميّ (upsert — يبقى بعد تصفير الاختبارات).
@@ -482,9 +482,9 @@ export async function listGuardedStudents(
 /** يرمي AuthorizationError إن لم يكن الفاعل وليَّ أمر (Role.GUARDIAN). */
 async function assertGuardian(actorId: string, db: PrismaClient): Promise<void> {
   const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   if (!actor.roles.includes(Role.GUARDIAN)) {
-    throw new AuthorizationError("إضافة الثمرة لوليّ الأمر (Role.GUARDIAN).");
+    throw aerr("marketAddByGuardian");
   }
 }
 
@@ -509,9 +509,9 @@ export async function addGuardianGift(
   await assertGuardian(guardianUserId, db);
 
   const nameAr = input.nameAr?.trim();
-  if (!nameAr) throw new ValidationError("اسم الثمرة مطلوب.");
+  if (!nameAr) throw verr("marketItemNameRequired");
   if (!Number.isInteger(input.proposedPricePoints) || input.proposedPricePoints < 1) {
-    throw new ValidationError("القيمة المقترحة عددٌ صحيحٌ موجب (١ فأكثر).");
+    throw verr("marketProposedValuePositiveInt");
   }
   const imageUrl = input.imageUrl?.trim() || null;
 
@@ -522,7 +522,7 @@ export async function addGuardianGift(
       where: { guardianId: guardianUserId, studentId: input.targetStudentId, status: GuardianLinkStatus.ACTIVE },
       select: { id: true },
     });
-    if (!link) throw new AuthorizationError("لا تملك إضافة ثمرةٍ لهذا الطالب.");
+    if (!link) throw aerr("marketNoAddForStudent");
     targetStudentId = input.targetStudentId;
   }
 
@@ -618,15 +618,15 @@ export async function approveGuardianGift(
 ) {
   await assertMarketAdmin(actorId, db);
   if (!Number.isInteger(finalPricePoints) || finalPricePoints < 1) {
-    throw new ValidationError("القيمة المعتمَدة عددٌ صحيحٌ موجب (١ فأكثر).");
+    throw verr("marketApprovedValuePositiveInt");
   }
   const existing = await db.marketItem.findUnique({
     where: { id: itemId },
     select: { id: true, approvalStatus: true },
   });
-  if (!existing) throw new ValidationError("ثمرة غير موجودة.");
+  if (!existing) throw verr("marketItemNotFound");
   if (existing.approvalStatus !== MarketItemApproval.PENDING) {
-    throw new ValidationError("لا تُعتمَد إلّا ثمرةٌ بانتظار الموافقة.");
+    throw verr("marketApproveOnlyPending");
   }
   const item = await db.marketItem.update({
     where: { id: itemId },
@@ -653,9 +653,9 @@ export async function rejectGuardianGift(
     where: { id: itemId },
     select: { id: true, approvalStatus: true },
   });
-  if (!existing) throw new ValidationError("ثمرة غير موجودة.");
+  if (!existing) throw verr("marketItemNotFound");
   if (existing.approvalStatus !== MarketItemApproval.PENDING) {
-    throw new ValidationError("لا تُرفَض إلّا ثمرةٌ بانتظار الموافقة.");
+    throw verr("marketRejectOnlyPending");
   }
   const item = await db.marketItem.update({
     where: { id: itemId },
