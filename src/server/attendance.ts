@@ -457,7 +457,6 @@ export async function getSessionRoster(
     where: { circleId, endedAt: null },
     select: {
       program: { select: { key: true } },
-      circle: { select: { program: { select: { key: true } } } }, // ارتداد أمانٍ null-safe
       student: { select: { id: true, user: { select: { nameAsInId: true } } } },
     },
   });
@@ -474,7 +473,7 @@ export async function getSessionRoster(
         name: e.student.user.nameAsInId,
         status: rec?.status ?? defaultStatusFor(d), // م ج: الفراغ = غياب من العتبة فصاعدًا
         note: rec?.note ?? null,
-        programKey: e.program?.key ?? e.circle?.program?.key ?? null,
+        programKey: e.program?.key ?? null,
       };
     })
     // فرزٌ حسب البرنامج ثمّ الاسم — فتتجمّع برامج الحلقة المختلطة.

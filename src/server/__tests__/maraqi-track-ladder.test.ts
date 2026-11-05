@@ -36,7 +36,7 @@ async function scaffold() {
   await prisma.circleTeacher.create({ data: { circleId: circle.id, teacherId: teacher.id } });
   const manager = await createUser(prisma, { roles: [Role.CIRCLE_MANAGER] });
   const { student } = await createStudent(prisma);
-  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
   await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.IN_MARAQI } });
   return { program, main1, main2, t1, t2, t3, t4, t5, circle, teacher, manager, student };
 }

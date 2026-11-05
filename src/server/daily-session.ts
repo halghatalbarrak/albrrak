@@ -21,7 +21,7 @@ import { maybeStartStageExamLeave } from "./stage-exam-leave";
 import { maybeAutoAdvanceTrack } from "./maraqi-track-ladder";
 import { deferredStudentIdsForDate } from "./session-deferral";
 import { emitEvent } from "./events";
-import { AuthorizationError, ValidationError } from "./errors";
+import { AuthorizationError, ValidationError, verr } from "./errors";
 
 /** مفتاح اليوم (YYYY-MM-DD) بتوقيت مكّة — مرجع منع ازدواج المنح التلقائيّ للمهمّة (مرّةً لليوم). */
 const dayKey = (d: Date) => makkahDayDate(d);
@@ -75,14 +75,12 @@ async function activeCircle(
     select: {
       circleId: true,
       program: { select: { key: true } },
-      // ارتداد أمانٍ لقيودٍ قديمةٍ بلا برنامجٍ صريح (null-safe).
-      circle: { select: { program: { select: { key: true } } } },
     },
   });
   if (!enrollment) throw new ValidationError("الطالب غير منتسبٍ لحلقة نشطة.");
-  // البرنامج صفةٌ في القيد (المصدر)، وبرنامج الحلقة ارتداد أمانٍ فقط.
-  const programKey = enrollment.program?.key ?? enrollment.circle?.program?.key;
-  if (!programKey) throw new ValidationError("قيد الطالب بلا برنامج.");
+  // البرنامج صفةٌ في القيد (لا ارتداد للحلقة): قيدٌ بلا برنامجٍ خطأُ بيانات.
+  const programKey = enrollment.program?.key;
+  if (!programKey) throw verr("enrollmentHasNoProgram");
   return { studentId, circleId: enrollment.circleId, programKey };
 }
 

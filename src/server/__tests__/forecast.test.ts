@@ -27,7 +27,7 @@ async function maraqiStudentWithPace() {
   await prisma.stage.create({ data: { programId: program.id, kind: StageKind.SUB_STAGE, ordinal: 2, nameAr: "ح٥٩", parentId: main.id, hizbNumber: 59, fromSurah: 78, fromAyah: 1, toSurah: 86, toAyah: 17 } });
   const circle = await prisma.circle.create({ data: { nameAr: "حلقة", timeSlot: "MAGHRIB", gender: "MALE", programId: program.id } });
   const { user, student } = await createStudent(prisma);
-  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
   await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.IN_MARAQI } });
   return { student, user, circle };
 }

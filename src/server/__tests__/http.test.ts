@@ -182,7 +182,7 @@ describe("جهة الطوارئ على حدّ HTTP — لمعلّم الطالب
       where: { id: student.id },
       data: { emergencyName: "قريب", emergencyPhone: "0555111000", emergencyRelationId: rel.id },
     });
-    await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+    await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
     return { circle, student };
   }
 

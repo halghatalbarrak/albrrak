@@ -19,7 +19,7 @@ async function acceptedStudent() {
   });
   await prisma.user.update({ where: { id: user.id }, data: { birthDate: new Date("2012-01-01") } });
   const student = await prisma.student.create({ data: { userId: user.id, state: "IN_MARAQI" } });
-  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
   const guardian = await createUser(prisma, { roles: [Role.GUARDIAN] });
   await prisma.user.update({ where: { id: guardian.id }, data: { phone: "0555123456" } });
   await prisma.guardianLink.create({ data: { guardianId: guardian.id, studentId: student.id } });

@@ -69,14 +69,12 @@ export async function getUnifiedBoard(
     students.push({ ...s, attendanceStatus: statusBy.get(s.studentId) ?? null, qaidah });
   }
 
-  // ترويسة اللوحة: برنامج الحلقة الافتراضيّ إن وُجد (الحلقة قد تكون مختلطةً بلا برنامج —
-  // الواجهة تعتمد student.program لكلّ صفّ، وهذه الترويسة عرضيّةٌ فقط).
-  const circle = await db.circle.findUnique({ where: { id: circleId }, select: { program: { select: { key: true } } } });
+  // لا ترويسة برنامجٍ للحلقة (قد تكون مختلطة) — الواجهة تعتمد student.program لكلّ صفّ.
   const dayLock = await getAttendanceDayLock(circleId, date, db);
 
   return {
     circle: board.circle,
-    program: circle?.program?.key ?? null,
+    program: null,
     students,
     absentDefault: defaultStatusFor(date) === AttendanceStatus.ABSENT_UNEXCUSED,
     dayLock,

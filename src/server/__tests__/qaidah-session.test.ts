@@ -40,7 +40,7 @@ async function scaffold() {
   const teacher = await createUser(prisma, { roles: [Role.TEACHER] });
   await prisma.circleTeacher.create({ data: { circleId: circle.id, teacherId: teacher.id } });
   const { student } = await createStudent(prisma);
-  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
   const manager = await createUser(prisma, { roles: [Role.CIRCLE_MANAGER] });
 
   return { program, ch1, ch2, ln1, ln2, ln3, circle, teacher, student, manager };
@@ -90,7 +90,7 @@ describe("جلسة القاعدة — القواعد المطلقة (اختبا�
     const mTeacher = await createUser(prisma, { roles: [Role.TEACHER] });
     await prisma.circleTeacher.create({ data: { circleId: mCircle.id, teacherId: mTeacher.id } });
     const { student: mStudent } = await createStudent(prisma);
-    await prisma.enrollment.create({ data: { studentId: mStudent.id, circleId: mCircle.id } });
+    await prisma.enrollment.create({ data: { studentId: mStudent.id, circleId: mCircle.id, programId: mProgram.id } });
     void manager;
 
     await expect(

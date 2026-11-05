@@ -26,7 +26,7 @@ async function scaffold() {
   const teacher = await createUser(prisma, { roles: [Role.TEACHER] });
   await prisma.circleTeacher.create({ data: { circleId: circle.id, teacherId: teacher.id } });
   const { student } = await createStudent(prisma);
-  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
   const manager = await createUser(prisma, { roles: [Role.CIRCLE_MANAGER] });
   return { program, circle, teacher, student, manager };
 }
@@ -227,7 +227,7 @@ describe("عروض شاشة المعلّم — البنود والطلاب ال�
     const otherProgram = await createProgram(prisma, ProgramKey.QAIDAH_MADANIYYAH);
     const otherCircle = await createCircle(prisma, otherProgram.id);
     const { student: other } = await createStudent(prisma);
-    await prisma.enrollment.create({ data: { studentId: other.id, circleId: otherCircle.id } });
+    await prisma.enrollment.create({ data: { studentId: other.id, circleId: otherCircle.id, programId: otherProgram.id } });
 
     const list = await listGrantableStudents(teacher.id, prisma);
     expect(list.map((s) => s.studentId)).toEqual([student.id]);

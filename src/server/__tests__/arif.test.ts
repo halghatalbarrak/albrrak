@@ -56,8 +56,8 @@ async function scaffold() {
   await prisma.circleTeacher.create({ data: { circleId: circle.id, teacherId: teacher.id } });
   const arif = await createStudent(prisma); // { user, student }
   const peer = await createStudent(prisma);
-  await prisma.enrollment.create({ data: { studentId: arif.student.id, circleId: circle.id } });
-  await prisma.enrollment.create({ data: { studentId: peer.student.id, circleId: circle.id } });
+  await prisma.enrollment.create({ data: { studentId: arif.student.id, circleId: circle.id, programId: program.id } });
+  await prisma.enrollment.create({ data: { studentId: peer.student.id, circleId: circle.id, programId: program.id } });
   // مرجع حدود الأحزاب (يمسحه resetDb): نبذر حزب ٦٠ لقياس التغطية — كما في maraqi.test.
   await prisma.hizbBoundary.create({
     data: {
@@ -97,10 +97,10 @@ describe("تعيين العريف (الحكم ٨)", () => {
 
 describe("أهليّة العريف — راسخه ≥ حزب كامل (الحكم ٨)", () => {
   it("من راسخه أقلّ من حزبٍ كامل ⟵ يُرفض", async () => {
-    const { circle, teacher } = await scaffold();
+    const { circle, teacher, program } = await scaffold();
     // طالبٌ منتسبٌ لكن راسخه جزءٌ من حزب ٦٠ فقط (٩٠:١ ← ٩٣:٥) — لا يبلغ حزبًا كاملًا.
     const weak = await createStudent(prisma);
-    await prisma.enrollment.create({ data: { studentId: weak.student.id, circleId: circle.id } });
+    await prisma.enrollment.create({ data: { studentId: weak.student.id, circleId: circle.id, programId: program.id } });
     await giveRasikh(weak.student.id, circle.id, [[90, 1, 93, 5]]);
     await expect(
       appointArif({ circleId: circle.id, arifUserId: weak.user.id, teacherId: teacher.id }, prisma),
@@ -108,10 +108,10 @@ describe("أهليّة العريف — راسخه ≥ حزب كامل (الحك
   });
 
   it("من بلغ راسخُه حزبًا كاملًا ⟵ يُقبل", async () => {
-    const { circle, teacher } = await scaffold();
+    const { circle, teacher, program } = await scaffold();
     // طالبٌ منتسبٌ رسخ من حفظه حزبٌ كامل (حزب ٦٠: ٨٧:١ ← ١١٤:٦).
     const able = await createStudent(prisma);
-    await prisma.enrollment.create({ data: { studentId: able.student.id, circleId: circle.id } });
+    await prisma.enrollment.create({ data: { studentId: able.student.id, circleId: circle.id, programId: program.id } });
     await giveRasikh(able.student.id, circle.id, [[87, 1, 114, 6]]);
     await appointArif({ circleId: circle.id, arifUserId: able.user.id, teacherId: teacher.id }, prisma);
     expect(await isActiveArifForCircle(able.user.id, circle.id, prisma)).toBe(true);

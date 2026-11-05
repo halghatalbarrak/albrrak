@@ -90,6 +90,7 @@ export const errorsAr = {
   circleNameRequired: "اسم الحلقة مطلوب.",
   programNotFound: "البرنامج غير موجود.",
   programRequired: "البرنامج مطلوب عند التسكين.",
+  enrollmentHasNoProgram: "قيد الطالب بلا برنامج — لا يصحّ (البرنامج صفةٌ في القيد).",
   unlinkRequestRequiresNote: "طلب فكّ الربط يستلزم سببًا مكتوبًا من الطالب.",
   examinerNotesRequired: "ملاحظات المختبر مطلوبة (§٦٫٣).",
   readingTestOnlyForAwaiting: "اختبار القراءة لا يُسجَّل إلا لطالبٍ بانتظاره.",
