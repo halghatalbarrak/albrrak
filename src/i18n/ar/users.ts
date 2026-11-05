@@ -12,7 +12,7 @@ export const usersAr = {
   errReset: "تعذّرت إعادة التعيين.",
   errSaveRoles: "تعذّر حفظ الأدوار.",
   resetLinkTitlePrefix: "رابط إعادة تعيين كلمة سرّ: ", // يليه اسم المستخدم
-  saveRolesPartialPrefix: "حُفظت الأدوار العامّة، وتعذّر حفظ أدوار المدّكر: ", // يليه الخطأ
+  saveRolesPartialPrefix: "حُفظت الأدوار العامّة، وتعذّر حفظ أدوار مدّكر: ", // يليه الخطأ
 
   // أعمدة الجدول (page.tsx)
   colName: "الاسم",
@@ -51,7 +51,7 @@ export const usersAr = {
 
   // صفحة إضافة كادر (new/page.tsx)
   errCreate: "تعذّر إنشاء الكادر.",
-  createRolesPartialPrefix: "أُنشئ الحساب، وتعذّر تعيين أدوار المدّكر: ", // يليه الخطأ
+  createRolesPartialPrefix: "أُنشئ الحساب، وتعذّر تعيين أدوار مدّكر: ", // يليه الخطأ
   newShellTitle: "إضافة كادر",
   crumbUsersNav: "المستخدمون",
   crumbNewStaff: "كادر جديد",

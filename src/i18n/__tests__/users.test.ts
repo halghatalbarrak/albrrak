@@ -17,7 +17,7 @@ describe("قاموس إدارة المستخدمين (العربيّة)", () => 
     expect(tUsers("errReset")).toBe("تعذّرت إعادة التعيين.");
     expect(tUsers("errSaveRoles")).toBe("تعذّر حفظ الأدوار.");
     expect(tUsers("resetLinkTitlePrefix")).toBe("رابط إعادة تعيين كلمة سرّ: ");
-    expect(tUsers("saveRolesPartialPrefix")).toBe("حُفظت الأدوار العامّة، وتعذّر حفظ أدوار المدّكر: ");
+    expect(tUsers("saveRolesPartialPrefix")).toBe("حُفظت الأدوار العامّة، وتعذّر حفظ أدوار مدّكر: ");
     expect(tUsers("colName")).toBe("الاسم");
     expect(tUsers("colPhone")).toBe("الجوال");
     expect(tUsers("colRoles")).toBe("الأدوار");
@@ -44,7 +44,7 @@ describe("قاموس إدارة المستخدمين (العربيّة)", () => 
     expect(tUsers("btnCancel")).toBe("إلغاء");
     expect(tUsers("adminActorNote")).toBe("إجراؤك يُرسَل للاعتماد.");
     expect(tUsers("errCreate")).toBe("تعذّر إنشاء الكادر.");
-    expect(tUsers("createRolesPartialPrefix")).toBe("أُنشئ الحساب، وتعذّر تعيين أدوار المدّكر: ");
+    expect(tUsers("createRolesPartialPrefix")).toBe("أُنشئ الحساب، وتعذّر تعيين أدوار مدّكر: ");
     expect(tUsers("newShellTitle")).toBe("إضافة كادر");
     expect(tUsers("crumbUsersNav")).toBe("المستخدمون");
     expect(tUsers("crumbNewStaff")).toBe("كادر جديد");
