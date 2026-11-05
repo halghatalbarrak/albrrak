@@ -24,6 +24,7 @@ export { studentImportAr as studentImport } from "./student-import";
 export { pwaAr as pwa } from "./pwa";
 export { navAr as nav } from "./nav";
 export { unifiedAr as unified } from "./unified";
+export { meAr as me } from "./me";
 export { usersAr as users } from "./users";
 // الصفحات العامّة (PR-1d)
 export { loginAr as login } from "./login";

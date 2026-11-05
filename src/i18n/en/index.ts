@@ -25,6 +25,7 @@ export { studentImportAr as studentImport } from "@/i18n/ar/student-import";
 export { pwaAr as pwa } from "@/i18n/ar/pwa";
 export { navAr as nav } from "@/i18n/ar/nav";
 export { unifiedAr as unified } from "@/i18n/ar/unified";
+export { meAr as me } from "@/i18n/ar/me";
 export { usersAr as users } from "@/i18n/ar/users";
 // public pages (PR-1d) — fall back to Arabic until translated.
 export { loginAr as login } from "@/i18n/ar/login";
