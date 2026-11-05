@@ -11,8 +11,9 @@ export interface CircleRow {
   timeSlot: TimeSlot;
   gender: Gender;
   location: string | null;
-  programKey: ProgramKey;
-  programNameAr: string;
+  // الحلقة قد لا تتبع برنامجاً (قد تكون مختلطة) — البرنامج صفةٌ في قيد الطالب.
+  programKey: ProgramKey | null;
+  programNameAr: string | null;
 }
 
 export async function listCircles(db: PrismaClient = prisma): Promise<CircleRow[]> {
@@ -33,8 +34,8 @@ export async function listCircles(db: PrismaClient = prisma): Promise<CircleRow[
     timeSlot: r.timeSlot,
     gender: r.gender,
     location: r.location,
-    programKey: r.program.key,
-    programNameAr: r.program.nameAr,
+    programKey: r.program?.key ?? null,
+    programNameAr: r.program?.nameAr ?? null,
   }));
 }
 
@@ -52,21 +53,24 @@ export interface CreateCircleInput {
   nameAr: string;
   timeSlot: TimeSlot;
   gender: Gender;
-  programId: string;
+  /** البرنامج اختياريّ ومهجور (قرار المدير): الحلقة لا تتبع برنامجاً. */
+  programId?: string | null;
   location?: string | null;
 }
 
 export async function createCircle(input: CreateCircleInput, db: PrismaClient = prisma) {
   const nameAr = input.nameAr.trim();
   if (!nameAr) throw verr("circleNameRequired");
-  const program = await db.program.findUnique({ where: { id: input.programId }, select: { id: true } });
-  if (!program) throw verr("programNotFound");
+  if (input.programId) {
+    const program = await db.program.findUnique({ where: { id: input.programId }, select: { id: true } });
+    if (!program) throw verr("programNotFound");
+  }
   return db.circle.create({
     data: {
       nameAr,
       timeSlot: input.timeSlot,
       gender: input.gender,
-      programId: input.programId,
+      programId: input.programId ?? null,
       location: input.location?.trim() || null,
     },
     select: { id: true, nameAr: true },

@@ -437,7 +437,8 @@ export async function getQaidahSessionBoard(
     select: { studentId: true, program: { select: { key: true } }, circle: { select: { program: { select: { key: true } } } } },
   });
   const qaidahIds = new Set(
-    enr.filter((e) => (e.program?.key ?? e.circle.program.key) === ProgramKey.QAIDAH_MADANIYYAH).map((e) => e.studentId),
+    // البرنامج من القيد (المصدر)، وبرنامج الحلقة ارتداد أمانٍ null-safe للقيود القديمة.
+    enr.filter((e) => (e.program?.key ?? e.circle?.program?.key) === ProgramKey.QAIDAH_MADANIYYAH).map((e) => e.studentId),
   );
 
   const students: QaidahBoardStudent[] = [];

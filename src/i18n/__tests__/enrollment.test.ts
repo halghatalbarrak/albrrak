@@ -25,6 +25,7 @@ describe("قاموس شاشة إسناد الطلاب للحلقات (العرب
       colHistory: "السجلّ",
       noCircle: "بلا حلقة",
       selectCircle: "— اختر حلقة —",
+      programDefault: "— البرنامج (افتراضه برنامج الحلقة) —",
       move: "نقل",
       assign: "إسناد",
       viewBtn: "عرض",

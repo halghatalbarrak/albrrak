@@ -60,6 +60,28 @@ describe("إسناد الطلاب للحلقات (م١)", () => {
     ).rejects.toBeInstanceOf(ValidationError);
   });
 
+  it("حلقةٌ واحدة تجمع برنامجين: كلّ طالبٍ يقرأ برنامجه من قيده لا من الحلقة", async () => {
+    const qaidah = await createProgram(prisma, ProgramKey.QAIDAH_MADANIYYAH);
+    const maraqi = await createProgram(prisma, ProgramKey.MARAQI);
+    const circle = await createCircle(prisma, null); // حلقةٌ بلا برنامج (مختلطة)
+    const a = await createStudent(prisma);
+    const b = await createStudent(prisma);
+    const manager = await createUser(prisma);
+    await enrollStudent({ studentId: a.student.id, circleId: circle.id, programId: qaidah.id, actorId: manager.id });
+    await enrollStudent({ studentId: b.student.id, circleId: circle.id, programId: maraqi.id, actorId: manager.id });
+    expect((await getActiveEnrollment(a.student.id, prisma))?.programKey).toBe(ProgramKey.QAIDAH_MADANIYYAH);
+    expect((await getActiveEnrollment(b.student.id, prisma))?.programKey).toBe(ProgramKey.MARAQI);
+  });
+
+  it("حلقةٌ بلا برنامجٍ والبرنامج غير مُختار ← ValidationError (البرنامج مطلوب)", async () => {
+    const circle = await createCircle(prisma, null);
+    const { student } = await createStudent(prisma);
+    const manager = await createUser(prisma);
+    await expect(
+      enrollStudent({ studentId: student.id, circleId: circle.id, actorId: manager.id }),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
   it("القاعدة المطلقة: انتسابان نشطان مباشرةً في القاعدة ← تَرفضهما القاعدة (partial unique index)", async () => {
     const { c1, c2, student } = await setup();
     await prisma.enrollment.create({ data: { studentId: student.id, circleId: c1.id } });

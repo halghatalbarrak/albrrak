@@ -62,16 +62,14 @@ export async function proposeReadingTest(
 
     let circleId: string | null = null;
     if (!input.readsFluently) {
-      // لا يجيد نظراً ← القاعدة المدنية ← حلقةٌ إلزامية من برنامج القاعدة.
+      // لا يجيد نظراً ← القاعدة المدنية ← حلقةٌ إلزامية (الحلقة لا تتبع برنامجاً؛ البرنامج يُحدَّد
+      // بالنتيجة ويُحمَل على القيد، فأيّ حلقةٍ تصلح — قد تكون مختلطة).
       if (!input.circleId) throw verr("qaidahTrackNeedsCircle");
       const circle = await tx.circle.findUnique({
         where: { id: input.circleId },
-        select: { program: { select: { key: true } } },
+        select: { id: true },
       });
       if (!circle) throw verr("theCircleNotFound");
-      if (circle.program.key !== ProgramKey.QAIDAH_MADANIYYAH) {
-        throw verr("qaidahCircleOnlyForNonFluent");
-      }
       circleId = input.circleId;
     }
     // يجيد نظراً ← لا حلقة الآن (اختبار المقطع يليه).
@@ -183,16 +181,19 @@ export async function decideReadingTest(
 
     // لا يجيد نظراً ← قاعدة مدنية ← حلقة + IN_QAIDAH.
     if (!p.circleId) throw verr("qaidahDecisionNoCircle");
-    // ق١: القيد يحمل برنامجه (لا مصدرين) — من برنامج حلقة القاعدة المُتحقَّق منه سابقًا.
-    const circle = await tx.circle.findUnique({ where: { id: p.circleId }, select: { programId: true } });
+    const circle = await tx.circle.findUnique({ where: { id: p.circleId }, select: { id: true } });
     if (!circle) throw verr("decisionCircleNotFound");
+    // ق١: القيد يحمل برنامجه — والبرنامج تحدّده **النتيجة** (القاعدة المدنية)، لا الحلقة (قد تكون مختلطة).
+    const qaidah = await tx.program.findUniqueOrThrow({
+      where: { key: ProgramKey.QAIDAH_MADANIYYAH }, select: { id: true },
+    });
     await tx.enrollment.create({
-      data: { studentId: approval.subjectId, circleId: p.circleId, programId: circle.programId },
+      data: { studentId: approval.subjectId, circleId: p.circleId, programId: qaidah.id },
     });
     // ق٦: تاريخ البرامج — دخولٌ بسبب اختبار القراءة.
     await recordProgramEntry(tx, {
       studentId: approval.subjectId,
-      programId: circle.programId,
+      programId: qaidah.id,
       reason: ProgramHistoryReason.READING_TEST,
       actorId: args.decidedBy,
     });

@@ -150,6 +150,7 @@ export async function resolveStudentProgram(db: Db, studentId: string, today: st
     select: {
       circleId: true, programId: true,
       program: { select: { key: true } },
+      // ارتداد أمانٍ لقيودٍ قديمةٍ بلا برنامجٍ صريح (null-safe؛ القيود الحقيقيّة تحمل programId).
       circle: { select: { program: { select: { key: true } } } },
     },
   });
@@ -162,7 +163,7 @@ export async function resolveStudentProgram(db: Db, studentId: string, today: st
   return {
     circleId: e?.circleId ?? null,
     programId: e?.programId ?? null,
-    programKey: e ? (e.program?.key ?? e.circle.program.key) : null,
+    programKey: e ? (e.program?.key ?? e.circle?.program?.key ?? null) : null,
     pending,
   };
 }

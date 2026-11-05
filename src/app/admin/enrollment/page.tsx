@@ -10,7 +10,8 @@ import { tEnrollment as tr } from "@/i18n/ar/enrollment";
 // شاشة الإسناد: المدير يسند الطالب المقبول إلى حلقة، أو ينقله (بسجلٍّ تاريخي).
 
 interface StudentRow { id: string; name: string; state: string; circle: string | null }
-interface CircleRow { id: string; nameAr: string; programKey: string }
+interface CircleRow { id: string; nameAr: string; programKey: string | null }
+interface ProgramRow { id: string; key: string; nameAr: string }
 interface HistoryRow { id: string; circleNameAr: string; startedAt: string; endedAt: string | null }
 
 async function token(): Promise<string | null> {
@@ -22,7 +23,9 @@ export default function EnrollmentPage() {
   const { me } = useMe();
   const [students, setStudents] = useState<StudentRow[] | null>(null);
   const [circles, setCircles] = useState<CircleRow[]>([]);
+  const [programs, setPrograms] = useState<ProgramRow[]>([]);
   const [pick, setPick] = useState<Record<string, string>>({});
+  const [pickProgram, setPickProgram] = useState<Record<string, string>>({});
   const [historyFor, setHistoryFor] = useState<StudentRow | null>(null);
   const [history, setHistory] = useState<HistoryRow[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -37,7 +40,11 @@ export default function EnrollmentPage() {
       fetch("/api/admin/circles", { headers: auth }),
     ]);
     if (rs.ok) setStudents(((await rs.json()) as { students?: StudentRow[] }).students ?? []);
-    if (rc.ok) setCircles(((await rc.json()) as { circles?: CircleRow[] }).circles ?? []);
+    if (rc.ok) {
+      const cd = (await rc.json()) as { circles?: CircleRow[]; programs?: ProgramRow[] };
+      setCircles(cd.circles ?? []);
+      setPrograms(cd.programs ?? []);
+    }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -50,7 +57,7 @@ export default function EnrollmentPage() {
     if (!t) return;
     const res = await fetch(`/api/students/${studentId}/enroll`, {
       method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
-      body: JSON.stringify({ circleId }),
+      body: JSON.stringify({ circleId, programId: pickProgram[studentId] || undefined }),
     });
     if (res.ok) { setMsg(tr("assignDone")); await load(); }
     else { const j = (await res.json()) as { error?: string }; setErr(j.error ?? tr("assignFailed")); }
@@ -76,6 +83,10 @@ export default function EnrollmentPage() {
           <Select value={pick[s.id] ?? ""} onChange={(e) => setPick((p) => ({ ...p, [s.id]: e.target.value }))} style={{ width: "auto", minWidth: 150 }}>
             <option value="">{tr("selectCircle")}</option>
             {circles.map((c) => <option key={c.id} value={c.id}>{c.nameAr}</option>)}
+          </Select>
+          <Select value={pickProgram[s.id] ?? ""} onChange={(e) => setPickProgram((p) => ({ ...p, [s.id]: e.target.value }))} style={{ width: "auto", minWidth: 150 }}>
+            <option value="">{tr("programDefault")}</option>
+            {programs.map((pr) => <option key={pr.id} value={pr.id}>{pr.nameAr}</option>)}
           </Select>
           <Button size="sm" type="button" onClick={() => void assign(s.id)}>{s.circle ? tr("move") : tr("assign")}</Button>
         </div>

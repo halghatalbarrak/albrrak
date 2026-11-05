@@ -24,6 +24,7 @@ export const enrollmentAr = {
   // بلا حلقة / الإسناد
   noCircle: "بلا حلقة",
   selectCircle: "— اختر حلقة —",
+  programDefault: "— البرنامج (افتراضه برنامج الحلقة) —",
   move: "نقل",
   assign: "إسناد",
   viewBtn: "عرض",

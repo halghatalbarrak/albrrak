@@ -156,7 +156,8 @@ export default function AdminStudentsPage() {
   const canReveal = roles.includes("REGISTRAR") || roles.includes("SUPER_ADMIN");
   const canRecord = roles.includes("REGISTRAR") || roles.includes("SUPER_ADMIN");
   const canApprove = roles.includes("CIRCLE_MANAGER") || roles.includes("SUPER_ADMIN");
-  const qaidahCircles = circles.filter((c) => c.programKey === "QAIDAH_MADANIYYAH");
+  // الحلقة لا تتبع برنامجاً — أيّ حلقةٍ تصلح للقاعدة (البرنامج يُحمَل على القيد بالنتيجة).
+  const qaidahCircles = circles;
   const pendingCount = rows?.filter((r) => r.pendingPlacementId).length ?? 0;
 
   const cols: Column<Row>[] = [
