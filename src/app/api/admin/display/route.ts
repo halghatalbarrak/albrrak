@@ -6,7 +6,7 @@ import { addProgramSlide, getScreenDetail, listProgramsForSlides, reorderSlides,
 import { type PrayerAdjust } from "@/lib/display-schedule";
 import { addSchedule, reorderSchedules, setSchedule, type ScheduleInput } from "@/server/display/schedules";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 const ADMIN: Role[] = [Role.SUPER_ADMIN, Role.CIRCLE_MANAGER];
 
@@ -34,55 +34,55 @@ export async function POST(req: Request) {
     const b = (await req.json()) as Record<string, unknown>;
     switch (b.action) {
       case "createScreen": {
-        if (b.kind !== "MOSQUE" && b.kind !== "HOME") throw new ValidationError("نوع الشاشة مطلوب.");
+        if (b.kind !== "MOSQUE" && b.kind !== "HOME") throw verr("displayScreenKindRequired");
         return Response.json(await createScreen({ kind: b.kind as DisplayScreenKind, nameAr: String(b.nameAr ?? ""), studentId: typeof b.studentId === "string" ? b.studentId : null, refreshSec: typeof b.refreshSec === "number" ? b.refreshSec : undefined }), { status: 201 });
       }
       case "issueToken": {
-        if (typeof b.screenId !== "string") throw new ValidationError("الشاشة مطلوبة.");
+        if (typeof b.screenId !== "string") throw verr("displayScreenRequired");
         return Response.json(await issueToken(b.screenId)); // { token } — يُعرض مرّةً واحدة
       }
       case "revokeToken": {
-        if (typeof b.screenId !== "string") throw new ValidationError("الشاشة مطلوبة.");
+        if (typeof b.screenId !== "string") throw verr("displayScreenRequired");
         return Response.json(await revokeToken(b.screenId));
       }
       case "revealLink": {
-        if (typeof b.screenId !== "string") throw new ValidationError("الشاشة مطلوبة.");
+        if (typeof b.screenId !== "string") throw verr("displayScreenRequired");
         return Response.json(await revealScreenToken(actor.id, b.screenId)); // { ok, token } | { ok:false, reason }
       }
       case "addSchedule": {
-        if (typeof b.screenId !== "string" || typeof b.input !== "object" || b.input === null) throw new ValidationError("بيانات الموعد مطلوبة.");
+        if (typeof b.screenId !== "string" || typeof b.input !== "object" || b.input === null) throw verr("displayScheduleDataRequired");
         return Response.json(await addSchedule(actor.id, b.screenId, b.input as ScheduleInput), { status: 201 });
       }
       case "setSchedule": {
-        if (typeof b.scheduleId !== "string" || typeof b.input !== "object" || b.input === null) throw new ValidationError("بيانات الموعد مطلوبة.");
+        if (typeof b.scheduleId !== "string" || typeof b.input !== "object" || b.input === null) throw verr("displayScheduleDataRequired");
         return Response.json(await setSchedule(actor.id, b.scheduleId, b.input as Partial<ScheduleInput>));
       }
       case "reorderSchedules": {
-        if (typeof b.screenId !== "string" || !Array.isArray(b.orderedIds)) throw new ValidationError("الترتيب مطلوب.");
+        if (typeof b.screenId !== "string" || !Array.isArray(b.orderedIds)) throw verr("displayOrderRequired");
         await reorderSchedules(actor.id, b.screenId, b.orderedIds.filter((x): x is string => typeof x === "string"));
         return Response.json({ ok: true });
       }
       case "setPrayerAdjust": {
-        if (typeof b.screenId !== "string" || typeof b.adjust !== "object" || b.adjust === null) throw new ValidationError("تعديل المواقيت مطلوب.");
+        if (typeof b.screenId !== "string" || typeof b.adjust !== "object" || b.adjust === null) throw verr("displayPrayerTimesAdjustRequired");
         await setPrayerAdjust(actor.id, b.screenId, b.adjust as PrayerAdjust);
         return Response.json({ ok: true });
       }
       case "addProgramSlide": {
-        if (typeof b.screenId !== "string" || typeof b.programId !== "string") throw new ValidationError("الشاشة والبرنامج مطلوبان.");
+        if (typeof b.screenId !== "string" || typeof b.programId !== "string") throw verr("displayScreenAndProgramRequired");
         return Response.json(await addProgramSlide(actor.id, b.screenId, b.programId, typeof b.durationSec === "number" ? b.durationSec : undefined), { status: 201 });
       }
       case "setSlide": {
-        if (typeof b.slideId !== "string") throw new ValidationError("الشريحة مطلوبة.");
+        if (typeof b.slideId !== "string") throw verr("displaySlideRequired");
         await setSlide(actor.id, b.slideId, { durationSec: typeof b.durationSec === "number" ? b.durationSec : undefined, active: typeof b.active === "boolean" ? b.active : undefined });
         return Response.json({ ok: true });
       }
       case "reorder": {
-        if (typeof b.screenId !== "string" || !Array.isArray(b.orderedIds)) throw new ValidationError("الترتيب مطلوب.");
+        if (typeof b.screenId !== "string" || !Array.isArray(b.orderedIds)) throw verr("displayOrderRequired");
         await reorderSlides(actor.id, b.screenId, b.orderedIds.filter((x): x is string => typeof x === "string"));
         return Response.json({ ok: true });
       }
       default:
-        throw new ValidationError("إجراءٌ غير معروف.");
+        throw verr("displayUnknownAction");
     }
   } catch (e) {
     return errorResponse(e);

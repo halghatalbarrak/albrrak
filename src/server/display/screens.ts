@@ -4,7 +4,7 @@ import { DisplayScreenKind, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "@/server/events";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 import { type PrayerAdjust } from "@/lib/display-schedule";
 import { decryptDisplayToken, displayTokenKeyAvailable, encryptDisplayToken } from "./token-crypto";
 
@@ -18,9 +18,9 @@ const newToken = (): string => randomBytes(24).toString("base64url"); // ٣٢ م
 
 export async function createScreen(args: { kind: DisplayScreenKind; nameAr: string; studentId?: string | null; refreshSec?: number }, db: PrismaClient = prisma): Promise<{ id: string }> {
   const nameAr = args.nameAr?.trim();
-  if (!nameAr) throw new ValidationError("اسم الشاشة مطلوب.");
-  if (args.kind === DisplayScreenKind.HOME && !args.studentId) throw new ValidationError("شاشة البيت تحتاج ربط الابن.");
-  if (args.kind === DisplayScreenKind.MOSQUE && args.studentId) throw new ValidationError("شاشة المسجد بلا ابنٍ مرتبط.");
+  if (!nameAr) throw verr("displayScreenNameRequired");
+  if (args.kind === DisplayScreenKind.HOME && !args.studentId) throw verr("displayHomeNeedsSon");
+  if (args.kind === DisplayScreenKind.MOSQUE && args.studentId) throw verr("displayMosqueNoSon");
   const s = await db.displayScreen.create({
     data: { kind: args.kind, nameAr, studentId: args.studentId ?? null, ...(args.refreshSec ? { refreshSec: args.refreshSec } : {}) },
     select: { id: true },
@@ -32,7 +32,7 @@ export async function createScreen(args: { kind: DisplayScreenKind; nameAr: stri
 /** يُصدر رمزاً جديداً (يُلغي الحاليّ). يعيد النصّ الصريح **مرّةً واحدة** — لا يُخزَّن ولا يُسترجَع. */
 export async function issueToken(screenId: string, db: PrismaClient = prisma): Promise<{ token: string }> {
   const screen = await db.displayScreen.findUnique({ where: { id: screenId }, select: { id: true } });
-  if (!screen) throw new ValidationError("شاشةٌ غير موجودة.");
+  if (!screen) throw verr("displayScreenNotFound");
   const token = newToken();
   // §٩: نحفظ نسخةً مشفَّرة للنسخ إن توفّر المفتاح؛ وإلّا يبقى tokenEnc=null (يُجدَّد لاحقاً لتفعيل النسخ).
   const tokenEnc = displayTokenKeyAvailable() ? encryptDisplayToken(token) : null;

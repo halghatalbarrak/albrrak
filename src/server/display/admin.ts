@@ -2,7 +2,7 @@ import { DisplayAssetType, DisplayScreenKind, DisplaySlideKind, type PrismaClien
 
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "@/server/events";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 import { programName } from "@/i18n/ar/gamification";
 import { PRAYERS, type PrayerAdjust } from "@/lib/display-schedule";
 import { revealActiveToken, type RevealResult } from "./screens";
@@ -26,7 +26,7 @@ export async function setPrayerAdjust(actorUserId: string, screenId: string, adj
   await assertDisplayAdmin(actorUserId, db);
   for (const p of PRAYERS) {
     const v = adjust[p];
-    if (!Number.isInteger(v) || v < -120 || v > 120) throw new ValidationError("تعديل الصلاة دقائقُ صحيحةٌ بين −١٢٠ و١٢٠.");
+    if (!Number.isInteger(v) || v < -120 || v > 120) throw verr("displayPrayerAdjustRange");
   }
   await db.displayScreen.update({ where: { id: screenId }, data: { adjFajr: adjust.FAJR, adjDhuhr: adjust.DHUHR, adjAsr: adjust.ASR, adjMaghrib: adjust.MAGHRIB, adjIsha: adjust.ISHA } });
 }
@@ -38,21 +38,21 @@ const nextOrdinal = async (screenId: string, db: PrismaClient): Promise<number> 
 
 export async function addProgramSlide(actorUserId: string, screenId: string, programId: string, durationSec: number | undefined, db: PrismaClient = prisma): Promise<{ id: string }> {
   await assertDisplayAdmin(actorUserId, db);
-  if (!(await db.program.findUnique({ where: { id: programId }, select: { id: true } }))) throw new ValidationError("برنامجٌ غير موجود.");
+  if (!(await db.program.findUnique({ where: { id: programId }, select: { id: true } }))) throw verr("displayProgramNotFound");
   const row = await db.displaySlide.create({ data: { screenId, ordinal: await nextOrdinal(screenId, db), kind: DisplaySlideKind.PROGRAM, programId, ...(durationSec ? { durationSec } : {}) }, select: { id: true } });
   return row;
 }
 
 export async function addImageSlide(actorUserId: string, screenId: string, imageUrl: string, durationSec: number | undefined, db: PrismaClient = prisma): Promise<{ id: string }> {
   await assertDisplayAdmin(actorUserId, db);
-  if (!imageUrl) throw new ValidationError("رابط الصورة مطلوب.");
+  if (!imageUrl) throw verr("displayImageUrlRequired");
   return db.displaySlide.create({ data: { screenId, ordinal: await nextOrdinal(screenId, db), kind: DisplaySlideKind.IMAGE, imageUrl, ...(durationSec ? { durationSec } : {}) }, select: { id: true } });
 }
 
 export async function setSlide(actorUserId: string, slideId: string, patch: { durationSec?: number; active?: boolean }, db: PrismaClient = prisma): Promise<void> {
   await assertDisplayAdmin(actorUserId, db);
   const data: { durationSec?: number; active?: boolean } = {};
-  if (patch.durationSec !== undefined) { if (!Number.isInteger(patch.durationSec) || patch.durationSec < 1) throw new ValidationError("المدّة عددٌ موجب."); data.durationSec = patch.durationSec; }
+  if (patch.durationSec !== undefined) { if (!Number.isInteger(patch.durationSec) || patch.durationSec < 1) throw verr("displayDurationPositive"); data.durationSec = patch.durationSec; }
   if (patch.active !== undefined) data.active = patch.active;
   if (Object.keys(data).length === 0) return;
   await db.displaySlide.update({ where: { id: slideId }, data });
@@ -68,7 +68,7 @@ export async function reorderSlides(actorUserId: string, screenId: string, order
 /** يرفع خلفيّةً لنوع شاشة (append-only): يعطّل سابقتها المفعّلة ويُنشئ الجديدة مفعّلة. */
 export async function addBackground(actorUserId: string, screenKind: DisplayScreenKind, assetUrl: string, assetType: DisplayAssetType, db: PrismaClient = prisma): Promise<{ id: string }> {
   await assertDisplayAdmin(actorUserId, db);
-  if (!assetUrl) throw new ValidationError("رابط الأصل مطلوب.");
+  if (!assetUrl) throw verr("displayAssetUrlRequired");
   return db.$transaction(async (tx) => {
     await tx.displayBackground.updateMany({ where: { screenKind, active: true }, data: { active: false } });
     const row = await tx.displayBackground.create({ data: { screenKind, assetUrl, assetType, active: true }, select: { id: true } });
