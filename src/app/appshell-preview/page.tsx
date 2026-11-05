@@ -5,6 +5,7 @@
 import { useState } from "react";
 
 import { AppShell, Stat, EmptyState, Field, Input, Select, Skeleton, Modal, Button, Card, ui, sp } from "@/components/ui";
+import { tAppshellPreview as tp } from "@/i18n/ar/appshell-preview";
 
 const ROLES: Record<string, string[]> = {
   "المدير": ["CIRCLE_MANAGER"],
@@ -35,10 +36,10 @@ export default function AppShellPreview() {
         {/* محاكاةُ الصفحة الرئيسة (المرحلة ٥): الخطوة التالية + بطاقات الملخّص */}
         <Card style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(4), flexWrap: "wrap", borderInlineStart: `4px solid ${ui.color.primary}`, marginBottom: sp(6) }}>
           <div>
-            <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: 2 }}>الخطوة التالية</div>
-            <div style={{ fontSize: ui.text.lg, fontWeight: 700, color: ui.color.text }}>لديك ٥ طلبَ قيدٍ بانتظار المراجعة</div>
+            <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: 2 }}>{tp("nextStep")}</div>
+            <div style={{ fontSize: ui.text.lg, fontWeight: 700, color: ui.color.text }}>{tp("pendingApps5")}</div>
           </div>
-          <Button variant="primary">راجِع الطلبات</Button>
+          <Button variant="primary">{tp("reviewApps")}</Button>
         </Card>
 
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: sp(4), marginBottom: sp(8) }}>
@@ -50,25 +51,25 @@ export default function AppShellPreview() {
         </section>
 
         <Card style={{ marginBottom: sp(6) }}>
-          <h2 style={{ marginTop: 0, fontSize: ui.text.lg, fontWeight: 700 }}>نموذجٌ بمكوّنات موحّدة</h2>
+          <h2 style={{ marginTop: 0, fontSize: ui.text.lg, fontWeight: 700 }}>{tp("unifiedComponentsForm")}</h2>
           <Field label="اسم الطالب"><Input placeholder="اكتب الاسم…" /></Field>
           <Field label="الحلقة">
             <Select defaultValue="">
-              <option value="" disabled>اختر…</option>
-              <option>حلقة الفجر</option>
-              <option>حلقة العصر</option>
+              <option value="" disabled>{tp("choose")}</option>
+              <option>{tp("fajrCircle")}</option>
+              <option>{tp("asrCircle")}</option>
             </Select>
           </Field>
-          <Button onClick={() => setModal(true)}>فتح نافذةٍ منبثقة</Button>
+          <Button onClick={() => setModal(true)}>{tp("openModal")}</Button>
         </Card>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: sp(6) }}>
           <Card>
-            <h3 style={{ marginTop: 0, fontSize: ui.text.base, fontWeight: 700 }}>حالةُ فراغ</h3>
-            <EmptyState title="لا طلبات معلّقة" description="ستظهر هنا طلبات القيد الجديدة عند ورودها." action={<Button variant="ghost" size="sm">تحديث</Button>} />
+            <h3 style={{ marginTop: 0, fontSize: ui.text.base, fontWeight: 700 }}>{tp("emptyState")}</h3>
+            <EmptyState title="لا طلبات معلّقة" description="ستظهر هنا طلبات القيد الجديدة عند ورودها." action={<Button variant="ghost" size="sm">{tp("refresh")}</Button>} />
           </Card>
           <Card>
-            <h3 style={{ marginTop: 0, fontSize: ui.text.base, fontWeight: 700 }}>تحميل (Skeleton)</h3>
+            <h3 style={{ marginTop: 0, fontSize: ui.text.base, fontWeight: 700 }}>{tp("loadingSkeleton")}</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: sp(3) }}>
               <Skeleton height={20} width="60%" />
               <Skeleton height={16} />
@@ -78,8 +79,8 @@ export default function AppShellPreview() {
           </Card>
         </div>
 
-        <Modal open={modal} onClose={() => setModal(false)} title="تأكيد الإجراء" footer={<><Button variant="danger" size="sm" onClick={() => setModal(false)}>حذف</Button><Button variant="ghost" size="sm" onClick={() => setModal(false)}>إلغاء</Button></>}>
-          <p style={{ margin: 0, color: ui.color.text }}>هذا مثالٌ لنافذةٍ منبثقةٍ بهوية المنصّة — تُغلق بـ Esc أو بالنقر خارجها.</p>
+        <Modal open={modal} onClose={() => setModal(false)} title="تأكيد الإجراء" footer={<><Button variant="danger" size="sm" onClick={() => setModal(false)}>{tp("delete")}</Button><Button variant="ghost" size="sm" onClick={() => setModal(false)}>{tp("cancel")}</Button></>}>
+          <p style={{ margin: 0, color: ui.color.text }}>{tp("modalExample")}</p>
         </Modal>
       </AppShell>
     </div>

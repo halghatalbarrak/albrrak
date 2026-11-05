@@ -26,6 +26,7 @@ export { pwaAr as pwa } from "@/i18n/ar/pwa";
 export { navAr as nav } from "@/i18n/ar/nav";
 export { unifiedAr as unified } from "@/i18n/ar/unified";
 export { meAr as me } from "@/i18n/ar/me";
+export { appshellPreviewAr as appshellPreview } from "@/i18n/ar/appshell-preview";
 export { usersAr as users } from "@/i18n/ar/users";
 // публичные страницы (PR-1d) — откат к арабскому до перевода.
 export { loginAr as login } from "@/i18n/ar/login";
