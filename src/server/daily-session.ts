@@ -21,7 +21,7 @@ import { maybeStartStageExamLeave } from "./stage-exam-leave";
 import { maybeAutoAdvanceTrack } from "./maraqi-track-ladder";
 import { deferredStudentIdsForDate } from "./session-deferral";
 import { emitEvent } from "./events";
-import { AuthorizationError, ValidationError, verr } from "./errors";
+import { verr, aerr } from "./errors";
 
 /** مفتاح اليوم (YYYY-MM-DD) بتوقيت مكّة — مرجع منع ازدواج المنح التلقائيّ للمهمّة (مرّةً لليوم). */
 const dayKey = (d: Date) => makkahDayDate(d);
@@ -36,7 +36,7 @@ const dayKey = (d: Date) => makkahDayDate(d);
 /** يحوّل مدخلًا إلى مفتاح يوم الجلسة (منتصف ليل UTC لليوم المكّيّ) — يطابق @db.Date (ق: يوم مكّة). */
 function toDateOnly(input: string | Date): Date {
   const d = typeof input === "string" ? new Date(input) : input;
-  if (Number.isNaN(d.getTime())) throw new ValidationError("تاريخ غير صالح.");
+  if (Number.isNaN(d.getTime())) throw verr("invalidDate");
   return makkahDayStart(d);
 }
 
@@ -77,7 +77,7 @@ async function activeCircle(
       program: { select: { key: true } },
     },
   });
-  if (!enrollment) throw new ValidationError("الطالب غير منتسبٍ لحلقة نشطة.");
+  if (!enrollment) throw verr("sessionStudentNotEnrolledActive");
   // البرنامج صفةٌ في القيد (لا ارتداد للحلقة): قيدٌ بلا برنامجٍ خطأُ بيانات.
   const programKey = enrollment.program?.key;
   if (!programKey) throw verr("enrollmentHasNoProgram");
@@ -95,14 +95,14 @@ export async function assertTeachesStudent(
 ): Promise<StudentCircle> {
   const sc = await activeCircle(studentId, db);
   const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   if (actor.roles.some((r) => r === Role.SUPER_ADMIN || r === Role.CIRCLE_MANAGER)) return sc;
 
   const link = await db.circleTeacher.findFirst({
     where: { circleId: sc.circleId, teacherId: actorId, endedAt: null },
     select: { circleId: true },
   });
-  if (!link) throw new AuthorizationError("لا تَرصد إلا جلسات طلابك (§٨٫٣).");
+  if (!link) throw aerr("sessionOwnStudentsOnly");
   return sc;
 }
 
@@ -262,17 +262,17 @@ async function priorUnmasteredRange(
 export async function recordHifz(input: HifzInput, db: PrismaClient = prisma): Promise<void> {
   const sc = await assertTeachesStudent(input.teacherId, input.studentId, db);
   if (sc.programKey !== ProgramKey.MARAQI) {
-    throw new ValidationError("الجلسة اليومية لطلاب مراقي.");
+    throw verr("sessionDailyForMaraqi");
   }
   const student = await db.student.findUnique({ where: { id: input.studentId }, select: { state: true } });
   if (student?.state !== StudentState.IN_MARAQI) {
-    throw new ValidationError("تسجيل الحفظ لطالبٍ في مراقي.");
+    throw verr("hifzForMaraqiStudent");
   }
   if (!pointLE(input.fromSurah, input.fromAyah, input.toSurah, input.toAyah)) {
-    throw new ValidationError("نطاق الحفظ معكوس (البداية بعد النهاية).");
+    throw verr("hifzRangeReversed");
   }
   if (!Number.isInteger(input.attempts) || input.attempts < 1 || input.attempts > MAX_HIFZ_ATTEMPTS) {
-    throw new ValidationError("عدد المحاولات بين ١ و٣ (الفرص الثلاث — الحكم ١).");
+    throw verr("hifzAttemptsRange");
   }
   const date = toDateOnly(input.date);
 
@@ -282,7 +282,7 @@ export async function recordHifz(input: HifzInput, db: PrismaClient = prisma): P
     const same = repeat.fromSurah === input.fromSurah && repeat.fromAyah === input.fromAyah &&
       repeat.toSurah === input.toSurah && repeat.toAyah === input.toAyah;
     if (!same) {
-      throw new ValidationError("لا حفظ جديد قبل إتقان مقطع اليوم السابق — أعِد المقطع نفسه (الحكم ١).");
+      throw verr("hifzNoNewBeforeMastery");
     }
   }
   await db.$transaction(async (tx) => {
@@ -341,7 +341,7 @@ export async function assertCanRecordListening(
   });
   if (teaches) return sc;
   if (await isActiveArifForCircle(actorId, sc.circleId, db)) return sc; // الحكم ٨
-  throw new AuthorizationError("التسميع لمعلّم الحلقة أو عريفٍ مُسنَدٍ فيها (الأحكام ٦، ٨).");
+  throw aerr("recitationByTeacherOrArif");
 }
 
 /** الترسيخ — «تمّ/لم يتم فقط» (§٨٫٣). تسميعٌ مرن: المعلّم يُسمِّع أو يُسنِد (الحكم ٦). */
@@ -383,7 +383,7 @@ export interface MurajaahInput {
 export async function recordMurajaah(input: MurajaahInput, db: PrismaClient = prisma): Promise<void> {
   const sc = await assertCanRecordListening(input.actorId, input.studentId, db);
   if (!Number.isInteger(input.count) || input.count < 0) {
-    throw new ValidationError("مقدار المراجعة غير صالح (عددٌ صحيحٌ ≥ ٠).");
+    throw verr("murajaahAmountInvalid");
   }
   const listener = input.listenerId ?? input.actorId;
   const date = toDateOnly(input.date);
@@ -430,14 +430,14 @@ export async function recordReviewError(
 ): Promise<{ reverted: boolean }> {
   await assertCanRecordListening(input.actorId, input.studentId, db);
   if (!Number.isInteger(input.errorCount) || input.errorCount < 0) {
-    throw new ValidationError("عدد أخطاء المراجعة غير صالح.");
+    throw verr("murajaahErrorsInvalid");
   }
   const seg = await db.dailySession.findUnique({
     where: { id: input.sessionId },
     select: { studentId: true, hifzMastered: true, repairedAt: true },
   });
   if (!seg || seg.studentId !== input.studentId || seg.hifzMastered !== true) {
-    throw new ValidationError("مقطعٌ محفوظٌ غير موجود.");
+    throw verr("savedSegmentNotFound");
   }
   if (seg.repairedAt !== null) return { reverted: false }; // مُرمَّمٌ سلفًا — خارج الراسخ.
 
@@ -547,7 +547,7 @@ export async function getSessionView(
     where: { id: studentId },
     select: { user: { select: { nameAsInId: true } } },
   });
-  if (!student) throw new ValidationError("طالب غير موجود.");
+  if (!student) throw verr("studentNotFound");
 
   const position = await getStudentPosition(studentId, db);
   const d = toDateOnly(date);

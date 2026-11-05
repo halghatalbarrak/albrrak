@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { canExamine } from "./examiner-eligibility";
 import { loadMaraqiPhases, maraqiFrontierKey } from "./maraqi-phase";
 import { emitEvent } from "./events";
-import { AuthorizationError, ValidationError } from "./errors";
+import { verr, aerr } from "./errors";
 
 // ═══════════════ إجازة اختبار المرحلة (البند ١ — MARAQI_RULES «اختبار المرحلة والإجازة») ═══════════════
 //
@@ -131,7 +131,7 @@ export async function deferStageExam(
         where: { studentId: args.studentId },
         orderBy: { createdAt: "desc" },
       });
-  if (!leave) throw new ValidationError("لا إجازة مرحلة قائمة لهذا الطالب.");
+  if (!leave) throw verr("stageLeaveNoneActive");
 
   const admin = isAdminRole(args.actorRoles);
   let teacherDeferredOnce = leave.teacherDeferredOnce;
@@ -140,7 +140,7 @@ export async function deferStageExam(
     adminDeferrals += 1; // الإدارة تؤجّل بلا حدّ
   } else {
     if (leave.teacherDeferredOnce || leave.adminDeferrals > 0) {
-      throw new AuthorizationError("التأجيل المتكرّر يحتاج موافقة الإدارة.");
+      throw aerr("stageLeaveRepeatedDeferNeedsAdmin");
     }
     teacherDeferredOnce = true; // تأجيل المعلّم — مرّةً واحدة
   }
@@ -264,13 +264,13 @@ export async function assertReadyForStageExam(
   const leave = await db.stageExamLeave.findUnique({
     where: { studentId_mainStageId: { studentId: args.studentId, mainStageId: args.mainStageId } },
   });
-  if (!leave) throw new ValidationError("لا إجازة مرحلة — لم يُتمّ الطالب مرحلته أو لم تبدأ إجازته.");
+  if (!leave) throw verr("stageLeaveNoLeaveOrNotStarted");
   const today = toUtcDateOnly(new Date());
   if (leave.effectiveEndsOn.getTime() > today.getTime()) {
-    throw new ValidationError("إجازة المرحلة لم تنقضِ بعد — لا اختبار قبل انقضائها.");
+    throw verr("stageLeaveNotElapsed");
   }
   if (await hasPendingStageTransition(args.studentId, db)) {
-    throw new ValidationError("للطالب اقتراح انتقالٍ معلّق — لا اختبار جديد.");
+    throw verr("stageLeavePendingTransition");
   }
 }
 

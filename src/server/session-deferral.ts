@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 import { COUNTED_STATUSES } from "./attendance";
 import { emitEvent } from "./events";
-import { AuthorizationError, ValidationError } from "./errors";
+import { verr, aerr } from "./errors";
 
 /**
  * يومٌ بلا وقت (منتصف ليل UTC) — مفتاح «مؤجَّل». محلّيٌّ UTC (سلوكٌ غير متغيّر: كلّ مدخلاته
@@ -33,18 +33,18 @@ async function assertActorTeachesStudent(
   db: PrismaClient,
 ): Promise<void> {
   const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   const enrollment = await db.enrollment.findFirst({
     where: { studentId, endedAt: null },
     select: { circleId: true },
   });
-  if (!enrollment) throw new ValidationError("الطالب غير منتسبٍ لحلقة.");
+  if (!enrollment) throw verr("sessionStudentNotEnrolled");
   if (actor.roles.some((r) => r === Role.SUPER_ADMIN || r === Role.CIRCLE_MANAGER)) return;
   const link = await db.circleTeacher.findFirst({
     where: { circleId: enrollment.circleId, teacherId: actorId, endedAt: null },
     select: { circleId: true },
   });
-  if (!link) throw new AuthorizationError("لا تَرصد إلا جلسات طلابك (§٨٫٣).");
+  if (!link) throw aerr("sessionOwnStudentsOnly");
 }
 
 export interface DeferArgs {
@@ -70,7 +70,7 @@ export async function deferSession(
     select: { status: true },
   });
   if (!att || !COUNTED_STATUSES.has(att.status)) {
-    throw new ValidationError("«مؤجَّل» يتطلّب حضور الطالب هذا اليوم — لا يُسجَّل لغائب.");
+    throw verr("deferredNeedsPresence");
   }
 
   await db.deferredSession.upsert({
