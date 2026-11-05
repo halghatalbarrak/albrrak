@@ -25,6 +25,7 @@ export { pwaAr as pwa } from "./pwa";
 export { navAr as nav } from "./nav";
 export { unifiedAr as unified } from "./unified";
 export { meAr as me } from "./me";
+export { appshellPreviewAr as appshellPreview } from "./appshell-preview";
 export { usersAr as users } from "./users";
 // الصفحات العامّة (PR-1d)
 export { loginAr as login } from "./login";
