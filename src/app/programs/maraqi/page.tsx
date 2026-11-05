@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { tPrograms as tpr } from "@/i18n/ar/programs-page";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Button, EmptyState, ui, sp } from "@/components/ui";
 import { PreparedTracksPanel } from "@/components/programs/PreparedTracksPanel";
@@ -83,8 +84,8 @@ export default function MaraqiProgramPage() {
   if (status === "unauth")
     return (
       <main dir="rtl" style={centered}>
-        <p>تحتاج دخولًا لعرض الصفحة.</p>
-        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>تسجيل الدخول</a>
+        <p>{tpr("needLoginPage")}</p>
+        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>{tpr("login")}</a>
       </main>
     );
 
@@ -96,17 +97,17 @@ export default function MaraqiProgramPage() {
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/programs/maraqi" title="مراقي" crumbs={CRUMBS}>
       {/* التبويبات */}
       <div style={{ display: "flex", gap: sp(2), marginBottom: sp(4), borderBottom: `1px solid ${ui.color.border}`, paddingBottom: sp(2), flexWrap: "wrap" }}>
-        <Button size="sm" variant={activeTab === "ladder" ? "bronze" : "ghost"} onClick={() => setTab("ladder")}>السلّم البياني</Button>
-        {isAdmin && <Button size="sm" variant={activeTab === "tracks" ? "bronze" : "ghost"} onClick={() => setTab("tracks")}>المسارات المُجهَّزة</Button>}
-        {isAdmin && <Button size="sm" variant="ghost" onClick={() => { window.location.href = "/admin/programs/MARAQI/settings"; }}>⚙ إعدادات الانتقال</Button>}
+        <Button size="sm" variant={activeTab === "ladder" ? "bronze" : "ghost"} onClick={() => setTab("ladder")}>{tpr("graphLadder")}</Button>
+        {isAdmin && <Button size="sm" variant={activeTab === "tracks" ? "bronze" : "ghost"} onClick={() => setTab("tracks")}>{tpr("preparedTracks")}</Button>}
+        {isAdmin && <Button size="sm" variant="ghost" onClick={() => { window.location.href = "/admin/programs/MARAQI/settings"; }}>{tpr("transitionSettings")}</Button>}
       </div>
 
       {activeTab === "tracks" ? (
         <PreparedTracksPanel />
       ) : status === "loading" ? (
-        <p style={{ color: ui.color.muted }}>جارٍ تحميل السلّم…</p>
+        <p style={{ color: ui.color.muted }}>{tpr("loadingLadder")}</p>
       ) : status === "error" ? (
-        <p style={{ color: ui.color.danger }}>تعذّر تحميل السلّم. <Button variant="ghost" size="sm" onClick={() => void load()}>إعادة</Button></p>
+        <p style={{ color: ui.color.danger }}>{tpr("loadLadderFailedSp")}<Button variant="ghost" size="sm" onClick={() => void load()}>{tpr("retry")}</Button></p>
       ) : !ladder || mains.length === 0 ? (
         <EmptyState title="لم تُبذَر المراحل بعد" />
       ) : (
@@ -118,8 +119,8 @@ export default function MaraqiProgramPage() {
           {/* التمهيد أولاً */}
           {ladder.prelude && (
             <div style={{ ...stepStyle, background: "var(--color-ok-bg)" }}>
-              <strong>تمهيد:</strong> {ladder.prelude.nameAr}
-              <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}> · بلا حصاد</span>
+              <strong>{tpr("intro")}</strong> {ladder.prelude.nameAr}
+              <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}>{tpr("noHarvest")}</span>
             </div>
           )}
 
