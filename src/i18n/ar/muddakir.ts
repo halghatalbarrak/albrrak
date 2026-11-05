@@ -7,23 +7,23 @@ import { arNum } from "@/lib/format";
 
 export const muddakirAr = {
   // اسم البرنامج والأدوار (§٢)
-  programName: "المُدَّكِر",
+  programName: "مُدَّكِر",
   roleHafiz: "الحافظ",
   roleSupervisor: "المشرف",
   roleExaminer: "المختبِر",
   roleManager: "المدير",
 
   // طاقم المدّكر في نافذة الأدوار (و١) — التخزين في MuddakirStaff لا في Role العامّ
-  rolesWinSection: "المدّكر",
-  rolesWinManager: "مدير برنامج المدّكر",
-  rolesWinAdmin: "إداري المدّكر",
-  rolesWinSupervisor: "مشرف المدّكر",
-  rolesWinExaminer: "مختبِر المدّكر",
+  rolesWinSection: "مدّكر",
+  rolesWinManager: "مدير برنامج مدّكر",
+  rolesWinAdmin: "إداري مدّكر",
+  rolesWinSupervisor: "مشرف مدّكر",
+  rolesWinExaminer: "مختبِر مدّكر",
   rolesWinNoPerm: "التعيين لمدير المنصّة أو مدير البرنامج",
   rolesWinSentForApproval: "أُرسل للاعتماد — بانتظار اعتماد مدير البرنامج",
-  rolesWinExclusive: "موظّف المدّكر لا يحمل أدواراً أخرى",
+  rolesWinExclusive: "موظّف مدّكر لا يحمل أدواراً أخرى",
   rolesWinNone: "لا شيء",
-  rolesWinExcessWarn: "أزل الزائد — موظّف المدّكر لا يحمل أدواراً أخرى",
+  rolesWinExcessWarn: "أزل الزائد — موظّف مدّكر لا يحمل أدواراً أخرى",
 
   // المرحلة (§١)
   stage: "المرحلة",
@@ -70,7 +70,7 @@ export const muddakirAr = {
   deliveryRemote: "عن بُعد",
 
   // شاشة الإدارة (المرحلة ٣)
-  adminTitle: "إدارة المُدَّكِر",
+  adminTitle: "إدارة مُدَّكِر",
   colHafiz: "الحافظ",
   colStage: "المرحلة",
   colSupervisor: "المشرف",
@@ -171,7 +171,7 @@ export const muddakirAr = {
   modeReviewOnly: "وقوفٌ (مراجعةٌ بلا جديد)",
   setReviewOnly: "إيقافٌ عند المرحلة",
   setActive: "استئناف الحفظ",
-  examinerTitle: "سرد المُدَّكِر",
+  examinerTitle: "سرد مُدَّكِر",
   stageRecitationWord: "سرد المرحلة",
   finalRecitation: "السرد الختاميّ",
   noCandidates: "لا حفّاظ جاهزون للسرد",
@@ -211,7 +211,7 @@ export const muddakirAr = {
   staffExaminer: "مختبِر",
 
   // شاشة الطلبات (صندوق المدير / طلباتي)
-  requestsTitle: "طلبات المُدَّكِر",
+  requestsTitle: "طلبات مُدَّكِر",
   pendingInbox: "طلباتٌ بانتظار البتّ",
   myRequests: "طلباتي",
   noPendingRequests: "لا طلبات معلّقة.",
@@ -242,7 +242,7 @@ export const muddakirAr = {
   typeSetPointItem: "بند نقاط",
 
   // شاشة الطاقم (تعيين مدير/إداريّ/مشرف/مختبِر)
-  staffTitle: "طاقم المُدَّكِر",
+  staffTitle: "طاقم مُدَّكِر",
   staffCurrent: "الطاقم الحاليّ",
   staffAssign: "تعيين",
   staffEnd: "إنهاء",
@@ -268,7 +268,7 @@ export const muddakirAr = {
   settingsTitle: "الإعدادات",
   settingKey: "المفتاح",
   settingValue: "القيمة",
-  pointItemsTitle: "بنود نقاط المُدَّكِر",
+  pointItemsTitle: "بنود نقاط مُدَّكِر",
   pointItemName: "البند",
   pointItemValue: "النقاط",
   pointItemEvent: "الحدث",
@@ -299,7 +299,7 @@ export const muddakirAr = {
   needLogin: "تحتاج دخولًا.",
   crumbHome: "الرئيسة",
   crumbAdmin: "الإدارة",
-  hafizOnlyNote: "هذه الشاشة للحافظ الملتحق بالمُدَّكِر.",
+  hafizOnlyNote: "هذه الشاشة للحافظ الملتحق بمُدَّكِر.",
   repAria: "تكرار",
 } as const;
 

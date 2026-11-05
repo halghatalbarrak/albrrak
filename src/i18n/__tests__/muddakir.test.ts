@@ -4,7 +4,7 @@ import { muddakirAr, stageLabel, tMuddakir } from "../ar/muddakir";
 
 describe("قاموس المُدَّكِر (العربيّة)", () => {
   it("يستدعى بمفتاح", () => {
-    expect(tMuddakir("programName")).toBe("المُدَّكِر");
+    expect(tMuddakir("programName")).toBe("مُدَّكِر");
     expect(tMuddakir("roleHafiz")).toBe("الحافظ");
     expect(tMuddakir("pillarRibat")).toBe("الربط");
   });
@@ -38,7 +38,7 @@ describe("قاموس المُدَّكِر (العربيّة)", () => {
     expect(tMuddakir("needLogin")).toBe("تحتاج دخولًا.");
     expect(tMuddakir("crumbHome")).toBe("الرئيسة");
     expect(tMuddakir("crumbAdmin")).toBe("الإدارة");
-    expect(tMuddakir("hafizOnlyNote")).toBe("هذه الشاشة للحافظ الملتحق بالمُدَّكِر.");
+    expect(tMuddakir("hafizOnlyNote")).toBe("هذه الشاشة للحافظ الملتحق بمُدَّكِر.");
     expect(tMuddakir("repAria")).toBe("تكرار");
   });
 });

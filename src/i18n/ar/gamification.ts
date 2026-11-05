@@ -33,7 +33,7 @@ export const gamificationAr = {
   progressOf: "من", // «٣ من ٦»
 
   // أسماء البرامج (للعناوين)
-  programMUDDAKIR: "المُدَّكِر",
+  programMUDDAKIR: "مُدَّكِر",
   programMARAQI: "مراقي",
   programQAIDAH_MADANIYYAH: "القاعدة المدنية",
   programWEEKLY: "البرنامج الأسبوعيّ",
