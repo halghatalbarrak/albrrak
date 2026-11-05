@@ -5,7 +5,7 @@ import { maraqiKey } from "@/lib/maraqi-order";
 import { assertCapability } from "./authz";
 import { emitEvent } from "./events";
 import { maraqiFrontierKey } from "./maraqi-phase";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // ═══════════════ سلّم المسارات — الانتقال الإجباريّ (مراقي ٢، القرار ب) ═══════════════
 //
@@ -117,14 +117,14 @@ export interface RaiseTrackArgs { studentId: string; targetTrackId: string; acto
 export async function raiseMaraqiTrack(args: RaiseTrackArgs, db: PrismaClient = prisma): Promise<void> {
   await assertCapability(args.actorId, "TRACK_PROMOTION", db);
   const reason = args.reason?.trim();
-  if (!reason) throw new ValidationError("سبب الرفع اليدويّ مطلوب.");
+  if (!reason) throw verr("manualRaiseReasonRequired");
   const ladder = await loadLadder(db);
   const targetIdx = ladder.findIndex((t) => t.id === args.targetTrackId);
-  if (targetIdx < 0) throw new ValidationError("مسارٌ غير مفعّلٍ أو غير موجودٍ في السلّم.");
+  if (targetIdx < 0) throw verr("trackNotInLadder");
   await db.$transaction(async (tx) => {
     const assignment = await currentAssignment(tx, args.studentId);
     const curIdx = assignment ? ladder.findIndex((t) => t.id === assignment.trackId) : -1;
-    if (curIdx >= 0 && targetIdx <= curIdx) throw new ValidationError("الرفع اليدويّ إلى مسارٍ أعلى فقط (لا خفض).");
+    if (curIdx >= 0 && targetIdx <= curIdx) throw verr("manualRaiseHigherOnly");
     await switchTrack(tx, { studentId: args.studentId, fromAssignmentId: assignment?.id ?? null, fromTrackId: assignment?.trackId ?? null, toTrackId: args.targetTrackId, reason: "MANUAL_RAISE", note: reason, actorId: args.actorId, auto: false });
   });
 }

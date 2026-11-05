@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 
 import { emitEvent } from "./events";
 import { isSupervisorCapable } from "./muddakir-staff";
-import { ValidationError, verr, aerr } from "./errors";
+import { verr, aerr } from "./errors";
 import { closeProgramHistory, recordProgramEntry } from "./program-placement";
 import { ensureMuddakirProfile, muddakirProgramId } from "./muddakir-profile";
 import { getProgramSetting } from "./settings";
@@ -157,7 +157,7 @@ export async function assignSupervisor(
 
     // حمل المشرف الهدف الآن (بعد إنهاء السابق للحافظ، فلا يُحسب مرّتين).
     const load = await tx.muddakirSupervision.count({ where: { supervisorId: args.supervisorId, endedAt: null } });
-    if (load >= max) throw new ValidationError(`بلغ المشرف سقفه الأقصى (${max}).`, "supervisorAtMaxCapacity");
+    if (load >= max) throw verr("supervisorAtMaxCapacity");
 
     const created = await tx.muddakirSupervision.create({
       data: { studentId: args.studentId, supervisorId: args.supervisorId },

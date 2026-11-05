@@ -3,7 +3,7 @@ import { type Prisma, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import { emitEvent } from "./events";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 /**
  * إعدادات لكل برنامج — تُخزَّن في جدول Setting (key/value) وتُعدَّل وقت التشغيل.
@@ -59,7 +59,7 @@ export async function setProgramSetting(
     where: { id: args.programId },
     select: { id: true },
   });
-  if (!program) throw new ValidationError("برنامج غير موجود.");
+  if (!program) throw verr("programNotFoundGeneric");
 
   await db.$transaction(async (tx) => {
     await tx.setting.upsert({
@@ -85,7 +85,7 @@ export async function setMilestoneFailureAction(
   db: PrismaClient = prisma,
 ): Promise<void> {
   if (!isMilestoneFailureAction(action)) {
-    throw new ValidationError("إجراء إخفاق غير معروف.");
+    throw verr("unknownFailAction");
   }
   await setProgramSetting(
     { programId, key: MILESTONE_FAILURE_ACTION_KEY, value: action, actorId },

@@ -6,7 +6,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "./events";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // محرّك اعتماد واحد يخدم الاستعمالات الثمانية (DESIGN §٣٫٤).
 // مُقترَح ← بانتظار الاعتماد ← { معتمَد | مرفوض بسبب }.
@@ -52,7 +52,7 @@ export interface DecideArgs {
 
 export async function decide(args: DecideArgs, db: PrismaClient = prisma) {
   if (args.decision === "REJECTED" && !args.note?.trim()) {
-    throw new ValidationError("الرفض يستلزم سببًا مكتوبًا (§٣٫٤).");
+    throw verr("rejectRequiresNoteSection34");
   }
 
   return db.$transaction(async (tx) => {
@@ -61,10 +61,10 @@ export async function decide(args: DecideArgs, db: PrismaClient = prisma) {
       select: { status: true },
     });
     if (!existing) {
-      throw new ValidationError("الاعتماد غير موجود.");
+      throw verr("approvalNotFound");
     }
     if (existing.status !== ApprovalStatus.PENDING) {
-      throw new ValidationError("الاعتماد حُسم من قبل — لا يُحسم مرتين.");
+      throw verr("approvalAlreadyDecided");
     }
 
     const approval = await tx.approval.update({

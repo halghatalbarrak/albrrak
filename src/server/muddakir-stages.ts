@@ -26,7 +26,7 @@ import { emitEvent } from "./events";
 import { getWardView, recordTathbitFinal } from "./muddakir-ward";
 import { isExaminerCapable } from "./muddakir-staff";
 import { assertCanExamine, canExamine } from "./examiner-eligibility";
-import { ValidationError, verr, aerr } from "./errors";
+import { verr, aerr } from "./errors";
 import { getProgramSetting } from "./settings";
 import { muddakirProgramId } from "./muddakir-profile";
 import { dateVal } from "./muddakir-day";
@@ -134,7 +134,7 @@ async function recordExaminerErrors(db: Db, studentId: string, examinerUserId: s
   for (const e of errors) {
     if (!Number.isInteger(e.page) || !Number.isInteger(e.lineNo)) throw verr("invalidPosition");
     const line = await db.mushafLine.findUnique({ where: { page_lineNo: { page: e.page, lineNo: e.lineNo } }, select: { page: true } });
-    if (!line) throw new ValidationError(`موضعٌ غير موجودٍ في المصحف: ${e.page}/${e.lineNo}.`, "positionNotInMushaf");
+    if (!line) throw verr("mushafPositionNotFound");
     const exists = await db.muddakirError.findFirst({ where: { studentId, page: e.page, lineNo: e.lineNo, resolvedAt: null }, select: { id: true } });
     if (!exists) {
       await db.muddakirError.create({ data: { studentId, page: e.page, lineNo: e.lineNo, source: MuddakirErrorSource.EXAMINER, openedOn: dateVal(today), recordedById: examinerUserId } });

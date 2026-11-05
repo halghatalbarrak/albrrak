@@ -1,11 +1,11 @@
 import { Gender } from "@prisma/client";
 import { type ApplicationInput } from "./application";
 import { computeAge } from "./age-policy";
-import { ValidationError } from "./errors";
+import { ValidationError, verr } from "./errors";
 
-function str(v: unknown, field: string): string {
+function str(v: unknown, _field: string): string {
   if (typeof v !== "string" || v.trim() === "") {
-    throw new ValidationError(`حقل مطلوب أو غير صالح: ${field}`);
+    throw verr("fieldRequiredOrInvalid");
   }
   return v.trim();
 }
@@ -14,9 +14,9 @@ function optStr(v: unknown): string | null {
   return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
 }
 
-function gender(v: unknown, field: string): Gender {
+function gender(v: unknown, _field: string): Gender {
   if (v === Gender.MALE || v === Gender.FEMALE) return v;
-  throw new ValidationError(`جنس غير صالح: ${field}`);
+  throw verr("genderInvalidField");
 }
 
 /** يجرّد الجوال إلى أرقامه — بها يقع التصادم فعليًّا (البريد الاصطناعي يجرّد \D). */
@@ -33,13 +33,13 @@ export function parseApplicationInput(
   asOf: Date = new Date(),
 ): ApplicationInput {
   if (typeof body !== "object" || body === null) {
-    throw new ValidationError("جسم الطلب غير صالح.");
+    throw verr("invalidRequestBody");
   }
   const b = body as Record<string, unknown>;
 
   const birthMs = Date.parse(str(b.birthDate, "birthDate"));
   if (Number.isNaN(birthMs)) {
-    throw new ValidationError("تاريخ ميلاد غير صالح.");
+    throw verr("invalidBirthDate");
   }
   const birthDate = new Date(birthMs);
   const age = computeAge(birthDate, asOf);
@@ -48,7 +48,7 @@ export function parseApplicationInput(
   if (b.priorHifzJuz !== undefined && b.priorHifzJuz !== null && b.priorHifzJuz !== "") {
     const n = Number(b.priorHifzJuz);
     if (!Number.isInteger(n) || n < 0 || n > 30) {
-      throw new ValidationError("مقدار الحفظ (بالأجزاء) غير صالح.");
+      throw verr("hifzJuzInvalid");
     }
     priorHifzJuz = n;
   }
@@ -60,7 +60,7 @@ export function parseApplicationInput(
   // بريد الولي — اختياريّ (الفكرة ٩)، وإن وُجد فبصيغةٍ صالحة.
   const guardianEmail = optStr(b.guardianEmail);
   if (guardianEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(guardianEmail)) {
-    throw new ValidationError("بريد وليّ الأمر غير صالح.");
+    throw verr("guardianEmailInvalid");
   }
 
   // جوال الطالب: اختياري لمن دون ١٣، إلزامي لمن بلغها (فهو شرط الحساب — §٤/م٤).

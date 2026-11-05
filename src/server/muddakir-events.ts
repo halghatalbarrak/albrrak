@@ -3,7 +3,7 @@ import { MuddakirErrorSource, type Prisma, type PrismaClient } from "@prisma/cli
 import { prisma } from "@/lib/prisma";
 import { makkahDayDate } from "@/lib/muddakir";
 
-import { ValidationError, verr, aerr } from "./errors";
+import { verr, aerr } from "./errors";
 import { deriveDay, recomputeTreatmentAndWeak } from "./muddakir-day";
 import { deriveWard } from "./muddakir-ward";
 
@@ -69,7 +69,7 @@ export async function ingestEvents(
   const errorOpens: { page: number; lineNo: number; source: MuddakirErrorSource; dayStr: string }[] = [];
   for (const e of args.events) {
     if (typeof e.clientEventId !== "string" || !e.clientEventId) throw verr("clientEventIdRequired");
-    if (!KNOWN.has(e.type)) throw new ValidationError(`نوع حدثٍ غير معروف: ${e.type}`, "unknownEventType");
+    if (!KNOWN.has(e.type)) throw verr("unknownEventType");
     const occurredAt = new Date(e.occurredAt);
     if (isNaN(occurredAt.getTime())) throw verr("invalidOccurredAt");
     if (e.studentId && e.studentId !== studentId) throw aerr("eventNotForSameHafiz");
