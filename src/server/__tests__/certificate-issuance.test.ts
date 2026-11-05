@@ -38,7 +38,7 @@ async function scaffoldStage() {
   const teacher = await createUser(prisma, { roles: [Role.TEACHER] });
   await prisma.circleTeacher.create({ data: { circleId: circle.id, teacherId: teacher.id } });
   const { student } = await createStudent(prisma);
-  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
   await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.IN_MARAQI } });
   for (const s of [h60, h59, h58]) {
     await prisma.stageProgress.create({

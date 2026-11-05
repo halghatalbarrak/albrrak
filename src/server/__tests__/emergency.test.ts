@@ -28,7 +28,7 @@ async function scene() {
       emergencyRelationId: rel.id,
     },
   });
-  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
 
   const teacher = await createUser(prisma, { roles: [Role.TEACHER] });
   await prisma.circleTeacher.create({ data: { circleId: circle.id, teacherId: teacher.id } });

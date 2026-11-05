@@ -2,6 +2,7 @@ import { ProgramHistoryReason, ProgramKey, StudentState, type Prisma, type Prism
 
 import { emitEvent } from "./events";
 import { ensureMuddakirProfile } from "./muddakir-profile";
+import { verr } from "./errors";
 
 // ═══════════════ البرنامج صفةٌ في القيد + انتقالٌ كسولٌ مؤرَّخ (PLACEMENT_RULES ق١/ق٥/ق٦) ═══════════════
 //
@@ -150,10 +151,10 @@ export async function resolveStudentProgram(db: Db, studentId: string, today: st
     select: {
       circleId: true, programId: true,
       program: { select: { key: true } },
-      // ارتداد أمانٍ لقيودٍ قديمةٍ بلا برنامجٍ صريح (null-safe؛ القيود الحقيقيّة تحمل programId).
-      circle: { select: { program: { select: { key: true } } } },
     },
   });
+  // البرنامج صفةٌ في القيد (لا ارتداد للحلقة): قيدٌ نشطٌ بلا برنامجٍ خطأُ بيانات.
+  if (e && !e.program) throw verr("enrollmentHasNoProgram");
   const s = await db.student.findUnique({ where: { id: studentId }, select: { pendingProgramId: true, pendingFrom: true } });
   let pending: ProgramView["pending"] = null;
   if (s?.pendingProgramId && s.pendingFrom) {
@@ -163,7 +164,7 @@ export async function resolveStudentProgram(db: Db, studentId: string, today: st
   return {
     circleId: e?.circleId ?? null,
     programId: e?.programId ?? null,
-    programKey: e ? (e.program?.key ?? e.circle?.program?.key ?? null) : null,
+    programKey: e?.program?.key ?? null,
     pending,
   };
 }

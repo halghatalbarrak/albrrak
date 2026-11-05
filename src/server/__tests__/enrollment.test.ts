@@ -85,7 +85,7 @@ describe("إسناد الطلاب للحلقات (م١)", () => {
   it("القاعدة المطلقة: انتسابان نشطان مباشرةً في القاعدة ← تَرفضهما القاعدة (partial unique index)", async () => {
     const { c1, c2, student } = await setup();
     await prisma.enrollment.create({ data: { studentId: student.id, circleId: c1.id } });
-    // تجاوزٌ متعمّد للوحدة — الفهرس الجزئيّ يجب أن يرفض النشط الثاني.
+    // تجاوزٌ متعمّد للوحدة — الفهرس الجزئيّ يجب أن يرفض النشط الثاني (لا يقرأ البرنامج).
     await expect(
       prisma.enrollment.create({ data: { studentId: student.id, circleId: c2.id } }),
     ).rejects.toThrow();

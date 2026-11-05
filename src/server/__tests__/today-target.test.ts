@@ -20,7 +20,7 @@ async function scaffold(withTrack = true) {
   const teacher = await createUser(prisma, { roles: [Role.TEACHER] });
   await prisma.circleTeacher.create({ data: { circleId: circle.id, teacherId: teacher.id } });
   const { student } = await createStudent(prisma);
-  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
   await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.IN_MARAQI } });
   const track = await prisma.track.create({ data: { programId: program.id, nameAr: "صفحة", linesPerDay: 15, ordinal: 4 } });
   await prisma.trackUnit.createMany({ data: UNITS.map(([s, a, b], i) => ({ trackId: track.id, unitNo: i + 1, startSurah: s, startAyah: a, endSurah: s, endAyah: b })) });

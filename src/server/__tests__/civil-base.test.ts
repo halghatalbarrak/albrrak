@@ -92,7 +92,7 @@ describe("القاعدة المدنية — المحطة: المُختبِر ل�
     const { student } = await createStudent(prisma);
     const teacher = await createUser(prisma, { roles: [Role.TEACHER] });
     const circle = await createCircle(prisma, program.id);
-    await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+    await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
     await prisma.circleTeacher.create({ data: { circleId: circle.id, teacherId: teacher.id } });
 
     await expect(

@@ -15,7 +15,7 @@ describe("أهلية المُختبِر — ليس معلمه (م١، §٧٫٤)"
     const { student } = await createStudent(prisma);
     const ownTeacher = await createUser(prisma, { roles: [Role.TEACHER] });
     const other = await createUser(prisma, { roles: [Role.TEACHER] });
-    await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+    await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
     await prisma.circleTeacher.create({ data: { circleId: circle.id, teacherId: ownTeacher.id } });
 
     expect(await canExamine({ examinerUserId: ownTeacher.id, studentId: student.id }, prisma)).toBe(false);
@@ -33,7 +33,7 @@ describe("أهلية المُختبِر — ليس معلمه (م١، §٧٫٤)"
     const circle = await createCircle(prisma, program.id);
     const { student } = await createStudent(prisma);
     const ownTeacher = await createUser(prisma, { roles: [Role.TEACHER] });
-    await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+    await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
     await prisma.circleTeacher.create({ data: { circleId: circle.id, teacherId: ownTeacher.id } });
 
     // المعلم الوحيد هو معلمه ⟵ لا مُختبِر متاح (قائمة فارغة ⟵ على الواجهة تنبيه المدير).

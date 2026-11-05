@@ -16,7 +16,7 @@ async function scaffold() {
   const teacher = await createUser(prisma, { roles: [Role.TEACHER] });
   await prisma.circleTeacher.create({ data: { circleId: circle.id, teacherId: teacher.id } });
   const { student } = await createStudent(prisma);
-  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
   await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.IN_MARAQI } });
   const manager = await createUser(prisma, { roles: [Role.CIRCLE_MANAGER] });
   return { program, circle, teacher, student, manager };
@@ -41,9 +41,9 @@ const DATE = "2026-05-10";
 
 describe("markStudentAttendance — تأشير حضور طالبٍ واحد (م ج)", () => {
   it("يرفع حالة الطالب ويُطلق حدثها، ولا يمسّ غيره", async () => {
-    const { circle, teacher, student, manager } = await scaffold();
+    const { circle, teacher, student, manager, program } = await scaffold();
     const { student: other } = await createStudent(prisma);
-    await prisma.enrollment.create({ data: { studentId: other.id, circleId: circle.id } });
+    await prisma.enrollment.create({ data: { studentId: other.id, circleId: circle.id, programId: program.id } });
     await bind(manager.id, AutoEventType.ATTENDANCE_LATE, -1);
 
     await markStudentAttendance({ circleId: circle.id, studentId: student.id, status: AttendanceStatus.LATE, date: DATE, recorderId: teacher.id }, prisma);

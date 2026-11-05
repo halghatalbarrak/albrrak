@@ -48,7 +48,7 @@ async function harvestScaffold() {
   await prisma.circleTeacher.create({ data: { circleId: circle.id, teacherId: teacher.id } });
   const reciter = await createUser(prisma, { roles: [Role.RECITER] });
   const { student } = await createStudent(prisma);
-  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
   await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.IN_MARAQI } });
   return { program, sub, circle, teacher, reciter, student };
 }
@@ -94,10 +94,10 @@ describe("tallyAyahStudentCounts — عدد الطلاب المتمايزين ل
 describe("getCircleWeaknessMap + assertCircleAccess", () => {
   it("يعدّ الطلاب المتعثّرين في الآية نفسها عبر الحلقة", async () => {
     await seedMushafFaces(prisma);
-    const { sub, reciter, student, circle } = await harvestScaffold();
+    const { sub, reciter, student, circle, program } = await harvestScaffold();
     // طالبٌ ثانٍ في الحلقة نفسها، يتعثّر في الآية نفسها (114:1).
     const { student: s2 } = await createStudent(prisma);
-    await prisma.enrollment.create({ data: { studentId: s2.id, circleId: circle.id } });
+    await prisma.enrollment.create({ data: { studentId: s2.id, circleId: circle.id, programId: program.id } });
     await prisma.student.update({ where: { id: s2.id }, data: { state: StudentState.IN_MARAQI } });
     for (const st of [student, s2]) {
       const h = await prisma.hasad.create({ data: { studentId: st.id, stageId: sub.id, reciterId: reciter.id, fromSurah: 114, fromAyah: 1, toSurah: 114, toAyah: 6, result: HasadResult.PASS } });

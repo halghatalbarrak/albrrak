@@ -80,7 +80,7 @@ describe("getUnifiedBoard يعرض لكلّ طالبٍ لوحة برنامجه �
     const circle = await createCircle(prisma, maraqi.id);
     const mgr = await createUser(prisma, { roles: [Role.CIRCLE_MANAGER] });
     const { student } = await createStudent(prisma);
-    await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } }); // programId=null
+    await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: maraqi.id } }); // programId=null
     await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.IN_MARAQI } });
 
     const board = await getUnifiedBoard(mgr.id, circle.id, "2026-05-10", prisma);

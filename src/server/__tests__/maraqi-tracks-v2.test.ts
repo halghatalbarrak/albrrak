@@ -80,7 +80,7 @@ async function maraqiStudent(units: SeedUnit[], reachedUnits: number, policy?: {
   await seedMaraqiTrackForStudent(prisma, student.id, { units, ...policy });
   const prog = await prisma.program.findUniqueOrThrow({ where: { key: ProgramKey.MARAQI }, select: { id: true } });
   const circle = await createCircle(prisma, prog.id);
-  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
+  await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: prog.id } });
   await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.IN_MARAQI } });
   if (reachedUnits > 0) await prisma.maraqiPlacement.create({ data: { studentId: student.id, reachedSurah: 2, reachedAyah: 5 * reachedUnits } });
   return { student, circle };

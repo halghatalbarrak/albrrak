@@ -434,11 +434,11 @@ export async function getQaidahSessionBoard(
   // ق١: طلاب القاعدة في هذه الحلقة يُقرَؤون من قيدهم لا من الحلقة (تدعم الحلقة المختلطة).
   const enr = await db.enrollment.findMany({
     where: { circleId, endedAt: null },
-    select: { studentId: true, program: { select: { key: true } }, circle: { select: { program: { select: { key: true } } } } },
+    select: { studentId: true, program: { select: { key: true } } },
   });
   const qaidahIds = new Set(
-    // البرنامج من القيد (المصدر)، وبرنامج الحلقة ارتداد أمانٍ null-safe للقيود القديمة.
-    enr.filter((e) => (e.program?.key ?? e.circle?.program?.key) === ProgramKey.QAIDAH_MADANIYYAH).map((e) => e.studentId),
+    // البرنامج من القيد وحده (لا ارتداد للحلقة؛ الحلقة قد تكون مختلطة).
+    enr.filter((e) => e.program?.key === ProgramKey.QAIDAH_MADANIYYAH).map((e) => e.studentId),
   );
 
   const students: QaidahBoardStudent[] = [];
