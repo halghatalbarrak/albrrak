@@ -3,7 +3,7 @@ import { type ApplicationInput } from "./application";
 import { computeAge } from "./age-policy";
 import { ValidationError, verr } from "./errors";
 
-function str(v: unknown, _field: string): string {
+function str(v: unknown): string {
   if (typeof v !== "string" || v.trim() === "") {
     throw verr("fieldRequiredOrInvalid");
   }
@@ -14,7 +14,7 @@ function optStr(v: unknown): string | null {
   return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
 }
 
-function gender(v: unknown, _field: string): Gender {
+function gender(v: unknown): Gender {
   if (v === Gender.MALE || v === Gender.FEMALE) return v;
   throw verr("genderInvalidField");
 }
@@ -37,7 +37,7 @@ export function parseApplicationInput(
   }
   const b = body as Record<string, unknown>;
 
-  const birthMs = Date.parse(str(b.birthDate, "birthDate"));
+  const birthMs = Date.parse(str(b.birthDate));
   if (Number.isNaN(birthMs)) {
     throw verr("invalidBirthDate");
   }
@@ -53,9 +53,9 @@ export function parseApplicationInput(
     priorHifzJuz = n;
   }
 
-  const guardianPhone = str(b.guardianPhone, "guardianPhone");
+  const guardianPhone = str(b.guardianPhone);
   const studentPhone = optStr(b.studentPhone);
-  const emergencyPhone = str(b.emergencyPhone, "emergencyPhone");
+  const emergencyPhone = str(b.emergencyPhone);
 
   // بريد الولي — اختياريّ (الفكرة ٩)، وإن وُجد فبصيغةٍ صالحة.
   const guardianEmail = optStr(b.guardianEmail);
@@ -85,20 +85,20 @@ export function parseApplicationInput(
   }
 
   return {
-    nameAsInId: str(b.nameAsInId, "nameAsInId"),
-    nationalId: str(b.nationalId, "nationalId"),
-    nationalityId: str(b.nationalityId, "nationalityId"),
+    nameAsInId: str(b.nameAsInId),
+    nationalId: str(b.nationalId),
+    nationalityId: str(b.nationalityId),
     birthDate,
-    gender: gender(b.gender, "gender"),
+    gender: gender(b.gender),
     schoolStageId: optStr(b.schoolStageId),
     guardianPhone,
     guardianEmail,
-    guardianGender: gender(b.guardianGender, "guardianGender"),
-    guardianRelationId: str(b.guardianRelationId, "guardianRelationId"),
+    guardianGender: gender(b.guardianGender),
+    guardianRelationId: str(b.guardianRelationId),
     studentPhone,
-    emergencyName: str(b.emergencyName, "emergencyName"),
+    emergencyName: str(b.emergencyName),
     emergencyPhone,
-    emergencyRelationId: str(b.emergencyRelationId, "emergencyRelationId"),
+    emergencyRelationId: str(b.emergencyRelationId),
     priorHifzJuz,
     priorHifzNotes: optStr(b.priorHifzNotes),
     preferredCircleId: optStr(b.preferredCircleId),
