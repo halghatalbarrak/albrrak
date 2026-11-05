@@ -2,7 +2,7 @@ import { ProgramKey, type Locale, type MuddakirStaffRole, type PrismaClient } fr
 import { prisma } from "@/lib/prisma";
 import { makkahDayDate } from "@/lib/makkah-day";
 import { isLocale } from "@/lib/locale";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 import { activeStaffRoles } from "./muddakir-staff";
 import { getStudentPosition, getHifzGate } from "./daily-session";
@@ -49,7 +49,7 @@ export async function getMyPage(
 
 /** يضبط لغة واجهة المستخدم في حسابه (التوطين). القيمة من قائمةٍ صالحة فقط. */
 export async function setMyLocale(userId: string, locale: unknown, db: PrismaClient = prisma): Promise<void> {
-  if (!isLocale(locale)) throw new ValidationError("لغةٌ غير مدعومة.");
+  if (!isLocale(locale)) throw verr("localeUnsupported");
   await db.user.update({ where: { id: userId }, data: { locale } });
 }
 

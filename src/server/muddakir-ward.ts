@@ -23,7 +23,7 @@ import { getProgramSetting } from "./settings";
 import { emitEvent } from "./events";
 import { canExamine } from "./examiner-eligibility";
 import { isExaminerCapable } from "./muddakir-staff";
-import { ValidationError, verr, aerr } from "./errors";
+import { verr, aerr } from "./errors";
 
 // ═══════════════ محرّك يوم الورد في التثبيت (ت٣، §١٢ + تعديل ١) ═══════════════
 //
@@ -295,7 +295,7 @@ export async function recordTathbitFinal(
   for (const e of errors) {
     if (!Number.isInteger(e.page) || !Number.isInteger(e.lineNo)) throw verr("invalidPosition");
     const line = await db.mushafLine.findUnique({ where: { page_lineNo: { page: e.page, lineNo: e.lineNo } }, select: { page: true } });
-    if (!line) throw new ValidationError(`موضعٌ غير موجودٍ في المصحف: ${e.page}/${e.lineNo}.`, "positionNotInMushaf");
+    if (!line) throw verr("mushafPositionNotFound");
     const exists = await db.muddakirError.findFirst({ where: { studentId: args.studentId, page: e.page, lineNo: e.lineNo, resolvedAt: null }, select: { id: true } });
     if (!exists) await db.muddakirError.create({ data: { studentId: args.studentId, page: e.page, lineNo: e.lineNo, source: MuddakirErrorSource.EXAMINER, openedOn: dateVal(today), recordedById: args.examinerUserId } });
   }

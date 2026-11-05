@@ -2,7 +2,7 @@ import { Role, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { getFace } from "./mushaf";
-import { AuthorizationError } from "./errors";
+import { aerr } from "./errors";
 
 // خريطة ضعف الطالب (الفكرة ١): تظليل أوجه المصحف بتدرّجٍ بحسب أخطاء الحصاد المسجَّلة عند
 // الآيات. المصدر (المرحلة الأولى): HasadPageError وحده (دقيقٌ على الآية). التاريخ الكامل
@@ -182,8 +182,8 @@ export async function getCircleWeaknessMap(circleId: string, db: PrismaClient = 
 /** حارس الوصول للحلقة: المدير/المشرف أيّ حلقة، والمعلّم حلقته فقط. */
 export async function assertCircleAccess(actorId: string, circleId: string, db: PrismaClient = prisma): Promise<void> {
   const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   if (actor.roles.some((r) => r === Role.SUPER_ADMIN || r === Role.CIRCLE_MANAGER)) return;
   const link = await db.circleTeacher.findFirst({ where: { circleId, teacherId: actorId, endedAt: null }, select: { circleId: true } });
-  if (!link) throw new AuthorizationError("لا تَرى إلا خريطة حلقتك.");
+  if (!link) throw aerr("weaknessOwnCircleOnly");
 }

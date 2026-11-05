@@ -7,7 +7,7 @@ import { assertCanRecordCircle } from "./attendance";
 import { assertCapability } from "./authz";
 import { propose, decide } from "./approval";
 import { emitEvent } from "./events";
-import { ValidationError, verr, aerr } from "./errors";
+import { verr, aerr } from "./errors";
 
 // ═══════════════ قفل يوم الحضور (المهمّة ٩ — docs/ATTENDANCE_LOCK_RULES.md) ═══════════════
 //
@@ -113,8 +113,7 @@ export async function assertAttendanceDayOpen(
 ): Promise<void> {
   const lock = await getAttendanceDayLock(circleId, date, db, now);
   if (lock.locked) {
-    const why = lock.state === "APPROVED" ? "معتمَدٌ من المعلّم" : "قفلٌ تلقائيّ (انقضت مهلته)";
-    throw new ValidationError(`اليوم مقفلٌ (${why}) — اطلب فتحه لتعديل الرصد.`, "attendanceDayLocked");
+    throw verr("dayLockedRequestUnlock");
   }
 }
 

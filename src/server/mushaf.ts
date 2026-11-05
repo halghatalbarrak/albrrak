@@ -3,7 +3,7 @@ import { type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import { ayahOrdinal, SURAH_AYAH_COUNTS } from "./quran-ordinal";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // ═══════════════ أوجه المصحف (الحكم ٧) ═══════════════
 //
@@ -60,7 +60,7 @@ const POLYGON_VIEWBOX = { width: 345, height: 550 };
  */
 export async function getFace(page: number, db: PrismaClient = prisma): Promise<FaceView> {
   const f = await db.mushafFace.findUnique({ where: { page } });
-  if (!f) throw new ValidationError(`وجهٌ غير موجود: ${page}.`);
+  if (!f) throw verr("faceNotFound");
 
   const ayahs: { surah: number; ayah: number }[] = [];
   for (let s = f.fromSurah; s <= f.toSurah; s++) {

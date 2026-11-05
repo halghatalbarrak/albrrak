@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // إدارة القوائم المرجعية (الجنسية/المرحلة/صفة القرابة) من شاشة المدير:
 // إضافة قيمة، وتعطيلها (لا حذف — القيمة قد ترتبط بقيودٍ سابقة). الجدول بلا شاشة = ثابتٌ بخطوات أكثر.
@@ -72,7 +72,7 @@ export async function addReferenceValue(
   db: PrismaClient = prisma,
 ): Promise<ListItem> {
   const nameAr = args.nameAr.trim();
-  if (!nameAr) throw new ValidationError("الاسم مطلوب.");
+  if (!nameAr) throw verr("nameRequired");
 
   const d = delegate(db, args.kind);
   const last = await d.findFirst({ orderBy: { ordinal: "desc" }, select: { ordinal: true } });
@@ -82,7 +82,7 @@ export async function addReferenceValue(
     return await d.create({ data: { nameAr, ordinal }, select: SELECT });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      throw new ValidationError("هذه القيمة موجودة مسبقًا.");
+      throw verr("listValueExists");
     }
     throw e;
   }
@@ -102,7 +102,7 @@ export async function setReferenceValueActive(
     });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
-      throw new ValidationError("القيمة غير موجودة.");
+      throw verr("listValueNotFound");
     }
     throw e;
   }

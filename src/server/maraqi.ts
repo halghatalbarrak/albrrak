@@ -10,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 
 import { assertCanExamine } from "./examiner-eligibility";
 import { emitEvent } from "./events";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // ═══════════════ مراقي — المراحل والمسارات (م٤أ، DESIGN §٨) ═══════════════
 //
@@ -69,15 +69,15 @@ export async function recordPaceTest(
   db: PrismaClient = prisma,
 ): Promise<PaceTestResult> {
   if (!Number.isFinite(args.linesMemorized) || args.linesMemorized < 0) {
-    throw new ValidationError("قدر الحفظ (بالأسطر) غير صالح.");
+    throw verr("hifzLinesInvalid");
   }
   const student = await db.student.findUnique({
     where: { id: args.studentId },
     select: { state: true },
   });
-  if (!student) throw new ValidationError("طالب غير موجود.");
+  if (!student) throw verr("studentNotFound");
   if (student.state !== StudentState.AWAITING_PACE_TEST) {
-    throw new ValidationError("اختبار المقطع لا يُسجَّل إلا لطالبٍ بانتظاره.");
+    throw verr("paceTestOnlyForAwaiting");
   }
 
   // القاعدة المطلقة: المُختبِر ليس معلمه (م١).
@@ -87,7 +87,7 @@ export async function recordPaceTest(
     where: { key: ProgramKey.MARAQI },
     select: { id: true },
   });
-  if (!program) throw new ValidationError("برنامج مراقي غير مبذور.");
+  if (!program) throw verr("maraqiProgramNotSeeded");
 
   const tracks = await db.track.findMany({
     where: { programId: program.id, isActive: true },

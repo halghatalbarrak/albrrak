@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { propose } from "./approval";
 import { recordStageExam, type StageExamArgs, type StageExamOutcome } from "./stage-exam";
 import { emitEvent } from "./events";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // ═══════════════ التخرّج (الحكم ٧، المرحلة ٨) ═══════════════
 //
@@ -128,7 +128,7 @@ export async function decideGraduation(
   db: PrismaClient = prisma,
 ): Promise<GraduationResult> {
   if (args.decision === "REJECTED" && !args.note?.trim()) {
-    throw new ValidationError("الرفض يستلزم سببًا مكتوبًا (§٣٫٤).");
+    throw verr("rejectRequiresNoteSection34");
   }
   return db.$transaction(async (tx) => {
     const approval = await tx.approval.findUnique({
@@ -136,10 +136,10 @@ export async function decideGraduation(
       select: { kind: true, status: true, payload: true },
     });
     if (!approval || approval.kind !== ApprovalKind.GRADUATION) {
-      throw new ValidationError("اقتراح تخرّجٍ غير موجود.");
+      throw verr("graduationProposalNotFound");
     }
     if (approval.status !== ApprovalStatus.PENDING) {
-      throw new ValidationError("الاقتراح حُسم من قبل — لا يُحسم مرتين.");
+      throw verr("proposalAlreadyDecided");
     }
     const payload = (approval.payload ?? {}) as unknown as GraduationPayload;
 

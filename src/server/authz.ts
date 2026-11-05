@@ -1,7 +1,7 @@
 import type { PermissionDelegation, PrismaClient, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { CAPABILITY_ORIGIN_ROLES, type Capability } from "./capabilities";
-import { AuthorizationError } from "./errors";
+import { aerr } from "./errors";
 
 // نافذة تفويضٍ فعّالة = لم تُلغَ (revokedAt IS NULL).
 type ActiveDelegation = Pick<PermissionDelegation, "capability" | "holderRole" | "revokedAt">;
@@ -55,6 +55,6 @@ export async function assertCapability(
   db: PrismaClient = prisma,
 ): Promise<void> {
   if (!(await actorHasCapability(actorId, capability, db))) {
-    throw new AuthorizationError(`غير مخوّل بالصلاحية: ${capability}`, "notAuthorizedCapability");
+    throw aerr("notAuthorizedCapability");
   }
 }

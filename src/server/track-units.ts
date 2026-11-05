@@ -2,7 +2,7 @@ import { ProgramKey, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { MARAQI_SURAH_ORDER, maraqiKey } from "@/lib/maraqi-order";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // ═══════════════ وحدات المسارات المُجهَّزة — القراءة (البند ٢، المرحلة ٣) ═══════════════
 //
@@ -64,11 +64,11 @@ export async function setTrackPolicy(
 ): Promise<void> {
   const data: { tarseekhUnits?: number; reviewDaysPerWeek?: number } = {};
   if (policy.tarseekhUnits != null) {
-    if (!Number.isInteger(policy.tarseekhUnits) || policy.tarseekhUnits < 1) throw new ValidationError("عدد وحدات الترسيخ عددٌ صحيحٌ موجب.");
+    if (!Number.isInteger(policy.tarseekhUnits) || policy.tarseekhUnits < 1) throw verr("tarseekhUnitsPositiveInt");
     data.tarseekhUnits = policy.tarseekhUnits;
   }
   if (policy.reviewDaysPerWeek != null) {
-    if (!Number.isInteger(policy.reviewDaysPerWeek) || policy.reviewDaysPerWeek < 1 || policy.reviewDaysPerWeek > 7) throw new ValidationError("أيّام المراجعة بين ١ و٧.");
+    if (!Number.isInteger(policy.reviewDaysPerWeek) || policy.reviewDaysPerWeek < 1 || policy.reviewDaysPerWeek > 7) throw verr("reviewDaysRange");
     data.reviewDaysPerWeek = policy.reviewDaysPerWeek;
   }
   if (Object.keys(data).length === 0) return;

@@ -1,11 +1,11 @@
 import { Gender } from "@prisma/client";
 import { type ApplicationInput } from "./application";
 import { computeAge } from "./age-policy";
-import { ValidationError } from "./errors";
+import { ValidationError, verr } from "./errors";
 
-function str(v: unknown, field: string): string {
+function str(v: unknown): string {
   if (typeof v !== "string" || v.trim() === "") {
-    throw new ValidationError(`حقل مطلوب أو غير صالح: ${field}`);
+    throw verr("fieldRequiredOrInvalid");
   }
   return v.trim();
 }
@@ -14,9 +14,9 @@ function optStr(v: unknown): string | null {
   return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
 }
 
-function gender(v: unknown, field: string): Gender {
+function gender(v: unknown): Gender {
   if (v === Gender.MALE || v === Gender.FEMALE) return v;
-  throw new ValidationError(`جنس غير صالح: ${field}`);
+  throw verr("genderInvalidField");
 }
 
 /** يجرّد الجوال إلى أرقامه — بها يقع التصادم فعليًّا (البريد الاصطناعي يجرّد \D). */
@@ -33,13 +33,13 @@ export function parseApplicationInput(
   asOf: Date = new Date(),
 ): ApplicationInput {
   if (typeof body !== "object" || body === null) {
-    throw new ValidationError("جسم الطلب غير صالح.");
+    throw verr("invalidRequestBody");
   }
   const b = body as Record<string, unknown>;
 
-  const birthMs = Date.parse(str(b.birthDate, "birthDate"));
+  const birthMs = Date.parse(str(b.birthDate));
   if (Number.isNaN(birthMs)) {
-    throw new ValidationError("تاريخ ميلاد غير صالح.");
+    throw verr("invalidBirthDate");
   }
   const birthDate = new Date(birthMs);
   const age = computeAge(birthDate, asOf);
@@ -48,19 +48,19 @@ export function parseApplicationInput(
   if (b.priorHifzJuz !== undefined && b.priorHifzJuz !== null && b.priorHifzJuz !== "") {
     const n = Number(b.priorHifzJuz);
     if (!Number.isInteger(n) || n < 0 || n > 30) {
-      throw new ValidationError("مقدار الحفظ (بالأجزاء) غير صالح.");
+      throw verr("hifzJuzInvalid");
     }
     priorHifzJuz = n;
   }
 
-  const guardianPhone = str(b.guardianPhone, "guardianPhone");
+  const guardianPhone = str(b.guardianPhone);
   const studentPhone = optStr(b.studentPhone);
-  const emergencyPhone = str(b.emergencyPhone, "emergencyPhone");
+  const emergencyPhone = str(b.emergencyPhone);
 
   // بريد الولي — اختياريّ (الفكرة ٩)، وإن وُجد فبصيغةٍ صالحة.
   const guardianEmail = optStr(b.guardianEmail);
   if (guardianEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(guardianEmail)) {
-    throw new ValidationError("بريد وليّ الأمر غير صالح.");
+    throw verr("guardianEmailInvalid");
   }
 
   // جوال الطالب: اختياري لمن دون ١٣، إلزامي لمن بلغها (فهو شرط الحساب — §٤/م٤).
@@ -85,20 +85,20 @@ export function parseApplicationInput(
   }
 
   return {
-    nameAsInId: str(b.nameAsInId, "nameAsInId"),
-    nationalId: str(b.nationalId, "nationalId"),
-    nationalityId: str(b.nationalityId, "nationalityId"),
+    nameAsInId: str(b.nameAsInId),
+    nationalId: str(b.nationalId),
+    nationalityId: str(b.nationalityId),
     birthDate,
-    gender: gender(b.gender, "gender"),
+    gender: gender(b.gender),
     schoolStageId: optStr(b.schoolStageId),
     guardianPhone,
     guardianEmail,
-    guardianGender: gender(b.guardianGender, "guardianGender"),
-    guardianRelationId: str(b.guardianRelationId, "guardianRelationId"),
+    guardianGender: gender(b.guardianGender),
+    guardianRelationId: str(b.guardianRelationId),
     studentPhone,
-    emergencyName: str(b.emergencyName, "emergencyName"),
+    emergencyName: str(b.emergencyName),
     emergencyPhone,
-    emergencyRelationId: str(b.emergencyRelationId, "emergencyRelationId"),
+    emergencyRelationId: str(b.emergencyRelationId),
     priorHifzJuz,
     priorHifzNotes: optStr(b.priorHifzNotes),
     preferredCircleId: optStr(b.preferredCircleId),

@@ -3,7 +3,7 @@ import { type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import { ayahOrdinal, SURAH_AYAH_COUNTS } from "./quran-ordinal";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // ═══════════════ خريطة السطر↔الآية — القراءة (البند ٢، المرحلة ٢) ═══════════════
 //
@@ -85,7 +85,7 @@ export async function ayahsInLineRange(
     where: { page, lineNo: { gte: fromLine, lte: toLine } },
     orderBy: { lineNo: "asc" },
   });
-  if (rows.length === 0) throw new ValidationError("لا أسطر في هذا النطاق (خريطةٌ غير مبذورة؟).");
+  if (rows.length === 0) throw verr("noLinesInRange");
 
   let loOrd = Infinity, hiOrd = -Infinity;
   let bounds: AyahBounds = { fromSurah: 0, fromAyah: 0, toSurah: 0, toAyah: 0 };
@@ -111,7 +111,7 @@ export async function unitBoundsByLines(
   lineCount: number,
   db: PrismaClient = prisma,
 ): Promise<AyahBounds> {
-  if (!Number.isInteger(lineCount) || lineCount < 1) throw new ValidationError("عدد الأسطر ≥ ١.");
+  if (!Number.isInteger(lineCount) || lineCount < 1) throw verr("linesCountMin1");
   const S = start.surah;
 
   // أسطر السورة بترتيب القراءة (وجهٌ ثمّ سطر) = تصاعديّ آية.
@@ -120,12 +120,12 @@ export async function unitBoundsByLines(
     orderBy: [{ page: "asc" }, { lineNo: "asc" }],
     select: { startSurah: true, startAyah: true, endSurah: true, endAyah: true },
   });
-  if (lines.length === 0) throw new ValidationError("لا خريطة أسطرٍ لهذه السورة.");
+  if (lines.length === 0) throw verr("noLineMapForSurah");
 
   const startOrd = ayahOrdinal(S, start.ayah);
   const ord = (s: number, a: number) => ayahOrdinal(s, a);
   const idx0 = lines.findIndex((l) => ord(l.startSurah, l.startAyah) <= startOrd && ord(l.endSurah, l.endAyah) >= startOrd);
-  if (idx0 < 0) throw new ValidationError("موضعٌ خارج خريطة السورة.");
+  if (idx0 < 0) throw verr("positionOutsideSurahMap");
 
   const targetIdx = Math.min(idx0 + lineCount - 1, lines.length - 1);
   const endLine = lines[targetIdx];

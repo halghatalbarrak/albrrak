@@ -2,7 +2,7 @@ import { AutoEventType, PointGrantSource, type Prisma, type PrismaClient } from 
 
 import { prisma } from "@/lib/prisma";
 import { emitEvent } from "./events";
-import { ValidationError, verr } from "./errors";
+import { verr } from "./errors";
 import { getProgramSetting, setProgramSetting } from "./settings";
 import { muddakirProgramId } from "./muddakir-profile";
 
@@ -41,7 +41,7 @@ export async function setTathbitDegree(degreeNo: number, patch: { dailyJuz?: num
   const data: { dailyJuz?: number; khatmaDays?: number; khatmaCount?: number; active?: boolean } = {};
   for (const k of ["dailyJuz", "khatmaDays", "khatmaCount"] as const) {
     const v = patch[k];
-    if (v != null) { if (!Number.isInteger(v) || v < 1) throw new ValidationError(`${k} عددٌ صحيحٌ موجب.`, "degreeFieldPositiveInt"); data[k] = v; }
+    if (v != null) { if (!Number.isInteger(v) || v < 1) throw verr("positiveIntRequiredField"); data[k] = v; }
   }
   if (patch.active != null) data.active = patch.active;
   if (Object.keys(data).length === 0) return;

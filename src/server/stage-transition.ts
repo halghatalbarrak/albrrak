@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { grantAuto } from "./economy";
 import { advanceTrackAfterPhaseExam } from "./maraqi-track-ladder";
 import { emitEvent } from "./events";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // ═══════════════ اعتماد المدير + الانتقال (الحكم ٧، المرحلة ٧) ═══════════════
 //
@@ -51,7 +51,7 @@ export async function decideStageTransition(
   db: PrismaClient = prisma,
 ): Promise<StageTransitionResult> {
   if (args.decision === "REJECTED" && !args.note?.trim()) {
-    throw new ValidationError("الرفض يستلزم سببًا مكتوبًا (§٣٫٤).");
+    throw verr("rejectRequiresNoteSection34");
   }
   return db.$transaction(async (tx) => {
     const approval = await tx.approval.findUnique({
@@ -59,10 +59,10 @@ export async function decideStageTransition(
       select: { kind: true, status: true, payload: true },
     });
     if (!approval || approval.kind !== ApprovalKind.STAGE_TRANSITION) {
-      throw new ValidationError("اقتراح انتقالٍ غير موجود.");
+      throw verr("transitionProposalNotFound");
     }
     if (approval.status !== ApprovalStatus.PENDING) {
-      throw new ValidationError("الاقتراح حُسم من قبل — لا يُحسم مرتين.");
+      throw verr("proposalAlreadyDecided");
     }
     const payload = (approval.payload ?? {}) as unknown as StageTransitionPayload;
 
@@ -143,13 +143,13 @@ export async function decideRetake(
   args: DecideRetakeArgs,
   db: PrismaClient = prisma,
 ): Promise<{ examId: string }> {
-  if (!args.scopeNote?.trim()) throw new ValidationError("نطاق الإعادة مطلوب.");
+  if (!args.scopeNote?.trim()) throw verr("retakeRangeRequired");
   const exam = await db.stageExam.findUnique({
     where: { id: args.examId },
     select: { studentId: true, status: true },
   });
-  if (!exam) throw new ValidationError("اختبار المرحلة غير موجود.");
-  if (exam.status !== "FAILED") throw new ValidationError("قرار الإعادة لاختبارٍ راسبٍ فقط.");
+  if (!exam) throw verr("stageExamNotFound");
+  if (exam.status !== "FAILED") throw verr("retakeOnlyForFailed");
 
   await emitEvent(db, {
     type: "RETAKE_DECIDED",

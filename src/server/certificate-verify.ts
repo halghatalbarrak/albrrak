@@ -1,7 +1,7 @@
 import { type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { AuthorizationError } from "./errors";
+import { aerr } from "./errors";
 
 const STAFF = ["TEACHER", "CIRCLE_MANAGER", "SUPER_ADMIN", "REGISTRAR"];
 
@@ -9,10 +9,10 @@ const STAFF = ["TEACHER", "CIRCLE_MANAGER", "SUPER_ADMIN", "REGISTRAR"];
 export async function assertCanViewCertificate(actorId: string, roles: string[], certId: string, db: PrismaClient = prisma): Promise<void> {
   if (roles.some((r) => STAFF.includes(r))) return;
   const c = await db.certificate.findUnique({ where: { id: certId }, select: { studentId: true, student: { select: { userId: true } } } });
-  if (!c) throw new AuthorizationError("شهادةٌ غير موجودة.");
+  if (!c) throw aerr("certificateNotFound");
   if (c.student.userId === actorId) return;
   const link = await db.guardianLink.findFirst({ where: { guardianId: actorId, studentId: c.studentId, status: "ACTIVE" }, select: { id: true } });
-  if (!link) throw new AuthorizationError("لا تَرى إلا شهاداتك أو شهادات أبنائك.");
+  if (!link) throw aerr("certificateOwnOrChildren");
 }
 
 // تحقّقُ الشهادة (الفكرة ١٠) — وحدةٌ خفيفةٌ بلا اعتماد المولّد الثقيل، لصفحةٍ عامّة.

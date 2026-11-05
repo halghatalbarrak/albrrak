@@ -1,6 +1,6 @@
 import { type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { AuthorizationError, ValidationError } from "./errors";
+import { AuthorizationError, verr } from "./errors";
 
 // جهة اتصال الطوارئ ليست بياناً إدارياً بل أداةٌ في لحظة اضطرار.
 // يراها معلّم الطالب فقط — لطلابه هو، بضغطة صريحة، وبسطرٍ في سجل الاطّلاع.
@@ -55,7 +55,7 @@ export async function revealEmergencyContact(
     },
   });
   if (!student.emergencyName || !student.emergencyPhone) {
-    throw new ValidationError("لا جهة اتصال طوارئ مسجّلة لهذا الطالب.");
+    throw verr("emergencyNotRegistered");
   }
 
   await db.emergencyAccessLog.create({

@@ -3,7 +3,7 @@ import { Role, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 import { emitEvent } from "./events";
-import { AuthorizationError, ValidationError } from "./errors";
+import { ValidationError, verr, aerr } from "./errors";
 import { getConsolidation } from "./tarseekh";
 import { ayahOrdinal } from "./quran-ordinal";
 
@@ -63,13 +63,13 @@ async function assertTeachesCircle(
   actorId: string, circleId: string, db: PrismaClient,
 ): Promise<void> {
   const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   if (actor.roles.some((r) => r === Role.SUPER_ADMIN || r === Role.CIRCLE_MANAGER)) return;
   const link = await db.circleTeacher.findFirst({
     where: { circleId, teacherId: actorId, endedAt: null },
     select: { circleId: true },
   });
-  if (!link) throw new AuthorizationError("تعيين العريف/عزله لمعلّم الحلقة (الحكم ٨).");
+  if (!link) throw aerr("arifManageByTeacher");
 }
 
 /** هل هذا المستخدم عريفٌ نشطٌ (مُسنَد) في هذه الحلقة؟ (يخدم حرّاس التسميع والاختبار). */
@@ -107,7 +107,7 @@ export async function appointArif(args: AppointArifArgs, db: PrismaClient = pris
       })
     : null;
   if (!enrolled) {
-    throw new ValidationError("العريف طالبٌ منتسبٌ نشطًا في الحلقة نفسها (الحكم ٨).");
+    throw verr("arifMustBeActiveMember");
   }
   if ((await fullyRasikhHizbCount(student!.id, db)) < MIN_RASIKH_HIZBS) {
     throw new ValidationError(
@@ -115,7 +115,7 @@ export async function appointArif(args: AppointArifArgs, db: PrismaClient = pris
     );
   }
   if (await isActiveArifForCircle(args.arifUserId, args.circleId, db)) {
-    throw new ValidationError("هذا الطالب عريفٌ نشطٌ في الحلقة سلفًا.");
+    throw verr("arifAlreadyActive");
   }
 
   return db.$transaction(async (tx) => {
@@ -193,7 +193,7 @@ export async function dismissArif(args: DismissArifArgs, db: PrismaClient = pris
     where: { circleId: args.circleId, arifUserId: args.arifUserId, endedAt: null },
     select: { id: true },
   });
-  if (!appt) throw new ValidationError("لا تعيين عريفٍ نشطًا لهذا الطالب في الحلقة.");
+  if (!appt) throw verr("arifNoActiveAppointment");
   await db.$transaction(async (tx) => {
     await tx.arifAppointment.update({ where: { id: appt.id }, data: { endedAt: new Date() } });
     await emitEvent(tx, {
