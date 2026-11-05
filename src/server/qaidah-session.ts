@@ -19,7 +19,7 @@ import { assertTeachesStudent, listCircleStudents } from "./daily-session";
 import { grantAuto, reverseConflictingAutoGrants, QAIDAH_LESSON_EVENT_GROUP } from "./economy";
 import { scheduleTransition, nextDay } from "./program-placement";
 import { emitEvent } from "./events";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // ═══════════════ جلسة القاعدة المدنية (QAIDAH_RULES.md) — مُدمجةٌ في الشاشة الموحّدة (م ج) ═══════════════
 //
@@ -227,7 +227,7 @@ function resolveResult(args: QaidahSessionArgs): QaidahEvalResult {
   if (args.result) return args.result;
   if (args.mastered === true) return QaidahEvalResult.MASTERED;
   if (args.mastered === false) return QaidahEvalResult.NOT_MASTERED;
-  throw new ValidationError("نتيجة التقييم مطلوبة (متقن/غير متقن/مؤجَّل).");
+  throw verr("qaidahEvalResultRequired");
 }
 
 /**
@@ -244,11 +244,11 @@ export async function recordQaidahSession(
   const result = resolveResult(args);
   const sc = await assertTeachesStudent(args.actorId, args.studentId, db);
   if (sc.programKey !== ProgramKey.QAIDAH_MADANIYYAH) {
-    throw new ValidationError("جلسة القاعدة لطلاب القاعدة المدنية.");
+    throw verr("qaidahSessionForQaidahStudents");
   }
   const set = await loadQaidah(db);
   if (!set || set.lessons.length === 0) {
-    throw new ValidationError("لا دروسَ مبذورةٌ للقاعدة المدنية بعد.");
+    throw verr("qaidahNoLessonsSeeded");
   }
   const date = toDateOnly(args.date ?? new Date());
   const dk = dayKey(date);
@@ -260,7 +260,7 @@ export async function recordQaidahSession(
   });
   const student0 = await db.student.findUnique({ where: { id: args.studentId }, select: { state: true } });
   if (prior?.result === QaidahEvalResult.MASTERED && student0?.state === StudentState.COMPLETED) {
-    throw new ValidationError("تخرّج الطالب من القاعدة اليوم — التقييم مقفل.");
+    throw verr("qaidahGraduatedTodayLocked");
   }
 
   await db.$transaction(async (tx) => {
@@ -286,7 +286,7 @@ export async function recordQaidahSession(
     });
     const doneIds = new Set(completed.map((r) => r.stageId));
     const current = set.lessons.find((l) => !doneIds.has(l.id)) ?? null;
-    if (!current) throw new ValidationError("أتمّ الطالب كلّ الدروس — لا تقييمَ بعد التخرّج.");
+    if (!current) throw verr("qaidahAllLessonsDone");
 
     // ٣) اعكس النقاط المتنافية لليوم قبل منح الجديد (ق٥). مؤجَّل ⟵ عكس الكلّ (بلا keepEvent).
     const keepEvent =

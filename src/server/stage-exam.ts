@@ -17,7 +17,7 @@ import { gradeHizbHarvest, aggregateExamRanks, type HizbRank } from "./hasad-gra
 import { facePagesInRange } from "./mushaf";
 import { propose } from "./approval";
 import { emitEvent } from "./events";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 import type { HasadErrorInput, HasadHesitationInput } from "./hasad";
 
 // ═══════════════ اختبار المرحلة الأصلية (الحكم ٧) ═══════════════
@@ -101,19 +101,19 @@ export async function recordStageExam(
       stage: { select: { fromSurah: true, fromAyah: true, toSurah: true, toAyah: true } },
     },
   });
-  if (memorized.length === 0) throw new ValidationError("لا محفوظٌ مكتملٌ لاختباره.");
+  if (memorized.length === 0) throw verr("stageExamNoCompletedHifz");
 
   const memById = new Map(memorized.map((m) => [m.stageId, m.stage]));
   const providedIds = new Set(args.hizbs.map((h) => h.stageId));
   if (providedIds.size !== memorized.length || [...memById.keys()].some((id) => !providedIds.has(id))) {
-    throw new ValidationError("النطاق: كامل المحفوظ منذ أول يوم — لا مرحلةٌ وحدها.");
+    throw verr("stageExamFullRange");
   }
 
   const ranks: HizbRank[] = [];
   for (const h of args.hizbs) {
     const stage = memById.get(h.stageId);
     if (!stage || stage.fromSurah == null || stage.fromAyah == null || stage.toSurah == null || stage.toAyah == null) {
-      throw new ValidationError("حدود حزبٍ ناقصة.");
+      throw verr("stageExamHizbBoundsMissing");
     }
     const range = { fromSurah: stage.fromSurah, fromAyah: stage.fromAyah, toSurah: stage.toSurah, toAyah: stage.toAyah };
     const hesitations = h.hesitations ?? [];
@@ -121,7 +121,7 @@ export async function recordStageExam(
       const validFaces = await facePagesInRange(range, db);
       for (const hz of hesitations) {
         if (!validFaces.has(hz.faceNo)) {
-          throw new ValidationError(`الوجه ${hz.faceNo} خارج حدود الحزب المُختبَر.`);
+          throw verr("stageExamFaceOutOfHizb");
         }
       }
     }
