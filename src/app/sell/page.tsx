@@ -6,6 +6,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { arNum } from "@/lib/format";
 import { AppShell, Button, Input, Field, Badge, Stat, Card, ui, sp } from "@/components/ui";
+import { tSell as t } from "@/i18n/ar/sell";
 
 interface Sellable { id: string; nameAr: string; imageUrl: string | null; pricePoints: number; stock: number | null }
 interface Lookup { studentId: string; name: string; balance: number }
@@ -132,35 +133,35 @@ export default function SellPage() {
 
       {!student ? (
         <section style={{ maxWidth: 480 }}>
-          <p style={{ color: ui.color.muted }}>امسح رمز الحاصد بالكاميرا، أو أدخِل رقمه الاحتياطيّ.</p>
+          <p style={{ color: ui.color.muted }}>{t("scanHint")}</p>
 
           {/* حاوية الماسح — تبقى في DOM ليجدها html5-qrcode، وتظهر حين المسح. */}
           <div id="qr-reader" style={{ display: scanning ? "block" : "none", width: "100%", maxWidth: 320, marginBottom: sp(3), borderRadius: ui.radius.lg, overflow: "hidden" }} />
 
           <div style={{ display: "flex", gap: sp(2), marginBottom: sp(4), flexWrap: "wrap" }}>
             {!scanning
-              ? <Button onClick={() => void startScan()}>امسح بالكاميرا</Button>
-              : <Button variant="ghost" onClick={() => void stopScanner()}>إيقاف الكاميرا</Button>}
+              ? <Button onClick={() => void startScan()}>{t("scanWithCamera")}</Button>
+              : <Button variant="ghost" onClick={() => void stopScanner()}>{t("stopCamera")}</Button>}
           </div>
           {scanError && <p style={{ color: ui.color.muted }}>{scanError}</p>}
 
           <div style={{ display: "flex", gap: sp(2), alignItems: "flex-end" }}>
             <Field label="الرقم الاحتياطيّ"><Input value={manual} onChange={(e) => setManual(e.target.value)} placeholder="مثال: A7K2M9" style={{ direction: "ltr", textTransform: "uppercase" }} /></Field>
-            <Button onClick={() => void lookup(manual)}>بحث</Button>
+            <Button onClick={() => void lookup(manual)}>{t("search")}</Button>
           </div>
         </section>
       ) : (
         <>
           <Card style={{ marginBottom: sp(5), maxWidth: 480, borderInlineStart: `4px solid ${ui.color.primary}` }}>
-            <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted }}>الطالب</div>
+            <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted }}>{t("student")}</div>
             <div style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(2) }}>{student.name}</div>
             <Stat label="الرصيد" value={arNum(student.balance)} tone="bronze" hint="نقاط" />
             <div style={{ marginTop: sp(3) }}>
-              <Button variant="ghost" size="sm" onClick={() => { setStudent(null); setCode(""); setManual(""); setOk(null); }}>إلغاء / طالبٌ آخر</Button>
+              <Button variant="ghost" size="sm" onClick={() => { setStudent(null); setCode(""); setManual(""); setOk(null); }}>{t("cancelOtherStudent")}</Button>
             </div>
           </Card>
 
-          <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(3) }}>اختر الثمرة</h2>
+          <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(3) }}>{t("chooseFruit")}</h2>
           <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: sp(3) }}>
             {items.map((i) => {
               const afford = student.balance >= i.pricePoints;
@@ -180,12 +181,12 @@ export default function SellPage() {
                     <Badge tone="bronze">{arNum(i.pricePoints)} نقطة</Badge>
                     {i.stock != null && <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>متبقٍّ {arNum(i.stock)}</span>}
                   </div>
-                  {!afford && <span style={{ fontSize: ui.text.xs, color: ui.color.danger }}>الرصيد لا يكفي</span>}
+                  {!afford && <span style={{ fontSize: ui.text.xs, color: ui.color.danger }}>{t("insufficientBalance")}</span>}
                 </button>
               );
             })}
           </section>
-          {items.length === 0 && <p style={{ color: ui.color.muted }}>لا ثمار متاحة الآن.</p>}
+          {items.length === 0 && <p style={{ color: ui.color.muted }}>{t("noFruitsNow")}</p>}
         </>
       )}
     </AppShell>

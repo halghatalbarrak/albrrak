@@ -28,6 +28,7 @@ export { unifiedAr as unified } from "@/i18n/ar/unified";
 export { meAr as me } from "@/i18n/ar/me";
 export { appshellPreviewAr as appshellPreview } from "@/i18n/ar/appshell-preview";
 export { programsPageAr as programsPage } from "@/i18n/ar/programs-page";
+export { sellAr as sell } from "@/i18n/ar/sell";
 export { usersAr as users } from "@/i18n/ar/users";
 // public pages (PR-1d) — fall back to Arabic until translated.
 export { loginAr as login } from "@/i18n/ar/login";
