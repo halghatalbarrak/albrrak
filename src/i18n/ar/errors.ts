@@ -203,6 +203,34 @@ export const errorsAr = {
   marketApprovedValuePositiveInt: "القيمة المعتمَدة عددٌ صحيحٌ موجب (١ فأكثر).",
   marketApproveOnlyPending: "لا تُعتمَد إلّا ثمرةٌ بانتظار الموافقة.",
   marketRejectOnlyPending: "لا تُرفَض إلّا ثمرةٌ بانتظار الموافقة.",
+
+  // النقاط (economy.ts — م٦أ)
+  economyManageAdminsOnly: "إدارة بنود النقاط للإدارة وحدها (ECONOMY_RULES الركن ١).",
+  economyItemNameRequired: "اسم البند مطلوب.",
+  economyValueNonZeroInt: "قيمة البند عددٌ صحيحٌ غير صفر (موجب كسب، سالب خصم).",
+  economyUnknownGrantSource: "مصدر منحٍ غير معروف.",
+  economyUnknownLimitPeriod: "فترة حدٍّ غير معروفة.",
+  economyLimitCountPositive: "مع تحديد فترة الحدّ، العدد صحيحٌ موجب (١ فأكثر).",
+  economyAutoNeedsEventType: "بند تلقائيّ (AUTO) يلزمه نوع حدثٍ للربط.",
+  economyEventAlreadyLinked: "هذا الحدث مربوطٌ ببندٍ مفعّلٍ آخر — عطّله أوّلاً.",
+  economyItemNotFound: "بند غير موجود.",
+  economyTeacherOwnCircleOnly: "المعلّم يمنح لطلاب حلقته فقط (§٣٫٢).",
+  economyItemDisabled: "البند معطَّل — لا يُمنح.",
+  economyAutoNotManual: "بند تلقائيّ — لا يُمنح يدويًّا (منح النظام مؤجَّلٌ لـم٦أ-٢).",
+  economyNoSourcePermission: "لا تملك صلاحية مصدر هذا البند.",
+  economyGrantLimitExceeded: "تجاوز حدّ منح هذا البند في فترته.",
+
+  // الحصاد (hasad.ts)
+  hasadSubStageMaraqiOnly: "الحصاد لمرحلةٍ فرعية في مراقي.",
+  hasadSubStageBoundsMissing: "حدود المرحلة الفرعية ناقصة.",
+  hasadSubStageNoParent: "المرحلة الفرعية بلا مرحلةٍ أصلية.",
+  hasadReadinessNotDeclared: "لم تُعلَن جاهزية هذا الطالب لهذا الحصاد.",
+  hasadErrorsListRequired: "قائمة الأخطاء مطلوبة.",
+  hasadInvalidPageNo: "رقم صفحةٍ غير صالح.",
+  hasadUnknownErrorType: "نوع خطأٍ غير معروف.",
+  hasadInvalidFaceNo: "رقم وجهٍ غير صالح للتردّد.",
+  hasadHizbFacesMaraqiSubOnly: "أوجه الحزب لمرحلةٍ فرعيّة في مراقي فقط.",
+  hasadFaceOutOfRange: "وجهٌ خارج نطاق الحصاد (لا ينتمي للحزب المُختبَر).",
 } as const;
 
 /** مفاتيح أخطاء الخادم المُرحَّلة (تنمو كلّما رُحِّل مجال). */

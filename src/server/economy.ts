@@ -10,7 +10,7 @@ import {
 import { prisma } from "@/lib/prisma";
 
 import { emitEvent } from "./events";
-import { AuthorizationError, ValidationError } from "./errors";
+import { verr, aerr } from "./errors";
 
 // ═══════════════ الاقتصاد — بنود النقاط (م٦أ) ═══════════════
 //
@@ -34,9 +34,9 @@ function isAdmin(roles: Role[]): boolean {
 /** يرمي AuthorizationError إن لم يكن الفاعل من كادر الإدارة (المشرف/المدير). */
 async function assertAdmin(actorId: string, db: PrismaClient): Promise<Role[]> {
   const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   if (!isAdmin(actor.roles)) {
-    throw new AuthorizationError("إدارة بنود النقاط للإدارة وحدها (ECONOMY_RULES الركن ١).");
+    throw aerr("economyManageAdminsOnly");
   }
   return actor.roles;
 }
@@ -63,22 +63,22 @@ function validateItemInput(input: PointItemInput): {
   eventType: AutoEventType | null;
 } {
   const nameAr = input.nameAr?.trim();
-  if (!nameAr) throw new ValidationError("اسم البند مطلوب.");
+  if (!nameAr) throw verr("economyItemNameRequired");
   if (!Number.isInteger(input.value) || input.value === 0) {
-    throw new ValidationError("قيمة البند عددٌ صحيحٌ غير صفر (موجب كسب، سالب خصم).");
+    throw verr("economyValueNonZeroInt");
   }
   if (!Object.values(PointGrantSource).includes(input.grantSource)) {
-    throw new ValidationError("مصدر منحٍ غير معروف.");
+    throw verr("economyUnknownGrantSource");
   }
   const limitPeriod = input.limitPeriod ?? PointLimitPeriod.NONE;
   if (!Object.values(PointLimitPeriod).includes(limitPeriod)) {
-    throw new ValidationError("فترة حدٍّ غير معروفة.");
+    throw verr("economyUnknownLimitPeriod");
   }
   // الحدّ عددٌ موجبٌ حين تُحدَّد فترة؛ ومع NONE لا حدّ (يُهمَل العدد).
   let limitCount: number | null = null;
   if (limitPeriod !== PointLimitPeriod.NONE) {
     if (input.limitCount == null || !Number.isInteger(input.limitCount) || input.limitCount < 1) {
-      throw new ValidationError("مع تحديد فترة الحدّ، العدد صحيحٌ موجب (١ فأكثر).");
+      throw verr("economyLimitCountPositive");
     }
     limitCount = input.limitCount;
   }
@@ -86,7 +86,7 @@ function validateItemInput(input: PointItemInput): {
   let eventType: AutoEventType | null = null;
   if (input.grantSource === PointGrantSource.AUTO) {
     if (!input.eventType || !Object.values(AutoEventType).includes(input.eventType)) {
-      throw new ValidationError("بند تلقائيّ (AUTO) يلزمه نوع حدثٍ للربط.");
+      throw verr("economyAutoNeedsEventType");
     }
     eventType = input.eventType;
   }
@@ -114,7 +114,7 @@ async function syncAutoRule(
     select: { id: true },
   });
   if (conflict) {
-    throw new ValidationError("هذا الحدث مربوطٌ ببندٍ مفعّلٍ آخر — عطّله أوّلاً.");
+    throw verr("economyEventAlreadyLinked");
   }
   await db.autoGrantRule.upsert({
     where: { pointItemId },
@@ -152,7 +152,7 @@ export async function updatePointItem(
 ) {
   await assertAdmin(actorId, db);
   const existing = await db.pointItem.findUnique({ where: { id: itemId }, select: { id: true } });
-  if (!existing) throw new ValidationError("بند غير موجود.");
+  if (!existing) throw verr("economyItemNotFound");
   const { eventType, ...data } = validateItemInput(input);
   return db.$transaction(async (tx) => {
     const item = await tx.pointItem.update({ where: { id: itemId }, data });
@@ -177,7 +177,7 @@ export async function setPointItemActive(
 ) {
   await assertAdmin(actorId, db);
   const existing = await db.pointItem.findUnique({ where: { id: itemId }, select: { id: true } });
-  if (!existing) throw new ValidationError("بند غير موجود.");
+  if (!existing) throw verr("economyItemNotFound");
   return db.$transaction(async (tx) => {
     const item = await tx.pointItem.update({ where: { id: itemId }, data: { active } });
     // تعطيل/تفعيل البند يُرافقه قاعدته التلقائيّة (إن كان AUTO) فلا يمنح بندٌ معطَّل.
@@ -250,7 +250,7 @@ async function assertActorMayGrantToStudent(
     select: { id: true },
   });
   if (!link) {
-    throw new AuthorizationError("المعلّم يمنح لطلاب حلقته فقط (§٣٫٢).");
+    throw aerr("economyTeacherOwnCircleOnly");
   }
 }
 
@@ -277,17 +277,17 @@ export interface GrantArgs {
  */
 export async function grantPoints(args: GrantArgs, db: PrismaClient = prisma) {
   const actor = await db.user.findUnique({ where: { id: args.grantedBy }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
 
   const item = await db.pointItem.findUnique({ where: { id: args.pointItemId } });
-  if (!item) throw new ValidationError("بند غير موجود.");
-  if (!item.active) throw new ValidationError("البند معطَّل — لا يُمنح.");
+  if (!item) throw verr("economyItemNotFound");
+  if (!item.active) throw verr("economyItemDisabled");
 
   if (!sourceAllowedForRoles(actor.roles, item.grantSource)) {
     if (item.grantSource === PointGrantSource.AUTO) {
-      throw new AuthorizationError("بند تلقائيّ — لا يُمنح يدويًّا (منح النظام مؤجَّلٌ لـم٦أ-٢).");
+      throw aerr("economyAutoNotManual");
     }
-    throw new AuthorizationError("لا تملك صلاحية مصدر هذا البند.");
+    throw aerr("economyNoSourcePermission");
   }
 
   const note = args.note?.trim() || null;
@@ -303,7 +303,7 @@ export async function grantPoints(args: GrantArgs, db: PrismaClient = prisma) {
         where: { studentId: args.studentId, pointItemId: item.id, createdAt: { gte: start } },
       });
       if (count >= item.limitCount) {
-        throw new ValidationError("تجاوز حدّ منح هذا البند في فترته.");
+        throw verr("economyGrantLimitExceeded");
       }
     }
 
@@ -577,7 +577,7 @@ export async function getLedgerForActor(
   db: PrismaClient = prisma,
 ): Promise<StudentLedger> {
   const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
-  if (!actor) throw new AuthorizationError("مستخدم غير موجود.");
+  if (!actor) throw aerr("userNotFound");
   await assertActorMayGrantToStudent(actor.roles, actorId, studentId, db);
   return getStudentLedger(studentId, db);
 }
