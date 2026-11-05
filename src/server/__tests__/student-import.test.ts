@@ -16,6 +16,10 @@ import {
 
 // بيانات وهميّة بحتة — لا بيانات طلابٍ حقيقيّة.
 const NAT: ReferenceItem[] = [{ id: "nat-sa", nameAr: "السعودية" }];
+const PROGRAMS: ReferenceItem[] = [
+  { id: "prog-maraqi", nameAr: "مراقي" },
+  { id: "prog-qaidah", nameAr: "القاعدة المدنية" },
+];
 const REL: ReferenceItem[] = [
   { id: "rel-ab", nameAr: "الأب" },
   { id: "rel-akh", nameAr: "الأخ" },
@@ -78,7 +82,7 @@ describe("parseCsv", () => {
 });
 
 describe("validateRows", () => {
-  const ctx = { nationalities: NAT, guardianRelations: REL, existingUserIds: new Set<string>(["3333333333"]), existingApplicationIds: new Set<string>(["5555555555"]), asOf: ASOF };
+  const ctx = { nationalities: NAT, guardianRelations: REL, programs: PROGRAMS, defaultProgramId: "prog-maraqi", existingUserIds: new Set<string>(["3333333333"]), existingApplicationIds: new Set<string>(["5555555555"]), asOf: ASOF };
 
   it("سطرٌ صالح (طفل) يُحلّ ويأخذ الطوارئ من الوليّ", () => {
     const text = csv(row({
@@ -174,6 +178,46 @@ describe("validateRows", () => {
     }));
     const [r] = validateRows(parseStudentsCsv(text).rows, ctx);
     expect(r.issues.some((i) => i.code === "teenNeedsPhone")).toBe(true);
+    expect(r.level).toBe("error");
+  });
+
+  it("عمود «البرنامج» فارغ ⟵ البرنامج الافتراضيّ", () => {
+    const text = csv(row({
+      studentName: "طفل", nationalId: "6060606060", nationality: "سعودي", birthDate: "2016-05-01",
+      studentGender: "ذكر", guardianName: "ولي", guardianGender: "ذكر", guardianRelation: "أب", guardianPhone: "0500000010",
+    }));
+    const [r] = validateRows(parseStudentsCsv(text).rows, ctx);
+    expect(r.resolved?.programId).toBe("prog-maraqi"); // الافتراضيّ
+  });
+
+  it("عمود «البرنامج» مطابقٌ بالاسم ⟵ يتجاوز الافتراضيّ", () => {
+    const text = csv(row({
+      studentName: "طفل", nationalId: "6161616161", nationality: "سعودي", birthDate: "2016-05-01",
+      studentGender: "ذكر", guardianName: "ولي", guardianGender: "ذكر", guardianRelation: "أب", guardianPhone: "0500000011",
+      program: "القاعدة المدنية",
+    }));
+    const [r] = validateRows(parseStudentsCsv(text).rows, ctx);
+    expect(r.resolved?.programId).toBe("prog-qaidah");
+  });
+
+  it("برنامجٌ غير مطابقٍ ⟵ تحذير ويرتدّ للافتراضيّ", () => {
+    const text = csv(row({
+      studentName: "طفل", nationalId: "6262626262", nationality: "سعودي", birthDate: "2016-05-01",
+      studentGender: "ذكر", guardianName: "ولي", guardianGender: "ذكر", guardianRelation: "أب", guardianPhone: "0500000012",
+      program: "برنامج مجهول",
+    }));
+    const [r] = validateRows(parseStudentsCsv(text).rows, ctx);
+    expect(r.issues.some((i) => i.code === "programUnmatched" && i.level === "warning")).toBe(true);
+    expect(r.resolved?.programId).toBe("prog-maraqi");
+  });
+
+  it("بلا عمودٍ ولا افتراضيٍّ ⟵ خطأ (البرنامج مطلوب)", () => {
+    const text = csv(row({
+      studentName: "طفل", nationalId: "6363636363", nationality: "سعودي", birthDate: "2016-05-01",
+      studentGender: "ذكر", guardianName: "ولي", guardianGender: "ذكر", guardianRelation: "أب", guardianPhone: "0500000013",
+    }));
+    const [r] = validateRows(parseStudentsCsv(text).rows, { ...ctx, defaultProgramId: null });
+    expect(r.issues.some((i) => i.code === "programMissing")).toBe(true);
     expect(r.level).toBe("error");
   });
 });

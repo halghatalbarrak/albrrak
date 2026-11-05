@@ -24,9 +24,11 @@ export const studentImportAr = {
 
   // اختيار البرنامج والحلقة
   fieldProgram: "البرنامج",
+  fieldDefaultProgram: "البرنامج الافتراضيّ",
+  selectProgram: "اختر برنامجًا…",
   fieldCircle: "الحلقة",
   selectCircle: "اختر حلقة…",
-  noCircles: "لا حلقات في هذا البرنامج.",
+  noCircles: "لا حلقات.",
 
   // الملفّ والقالب
   fieldFile: "ملفّ CSV",
@@ -83,6 +85,8 @@ export const studentImportAr = {
   issueMissingGuardianRelation: "صلة ولي الأمر مطلوبة.",
   issueMissingGuardianPhone: "جوال ولي الأمر مطلوب.",
   issueTeenNeedsPhone: "الطالب في الثالثة عشرة فأكثر يلزمه جوال.",
+  issueProgramUnmatched: "البرنامج غير مطابق — سيُستعمل الافتراضيّ.",
+  issueProgramMissing: "البرنامج مطلوب — اختر برنامجًا افتراضيًّا.",
   issueDupInFile: "رقم الهوية مكرّرٌ في الملفّ.",
   issueAlreadyStudent: "مستورَدٌ سابقًا (طالبٌ مقبول) — سيُتخطّى.",
   issueAlreadyPending: "له طلب قيدٍ معلّق — سيُتخطّى.",

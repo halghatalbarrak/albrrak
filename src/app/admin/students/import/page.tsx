@@ -40,6 +40,8 @@ const ISSUE_KEY: Record<string, StudentImportKey> = {
   missingGuardianRelation: "issueMissingGuardianRelation",
   missingGuardianPhone: "issueMissingGuardianPhone",
   teenNeedsPhone: "issueTeenNeedsPhone",
+  programUnmatched: "issueProgramUnmatched",
+  programMissing: "issueProgramMissing",
   dupInFile: "issueDupInFile",
   alreadyStudent: "issueAlreadyStudent",
   alreadyPending: "issueAlreadyPending",
@@ -59,6 +61,8 @@ export default function StudentImportPage() {
 
   const [circles, setCircles] = useState<Circle[]>([]);
   const [circleId, setCircleId] = useState("");
+  const [programs, setPrograms] = useState<Ref[]>([]);
+  const [defaultProgramId, setDefaultProgramId] = useState("");
   const [csv, setCsv] = useState<string | null>(null);
   const [fileName, setFileName] = useState("");
   const [rows, setRows] = useState<PreviewRow[] | null>(null);
@@ -73,8 +77,9 @@ export default function StudentImportPage() {
     if (!tok) { window.location.href = "/login"; return; }
     const res = await fetch("/api/admin/circles", { headers: { authorization: `Bearer ${tok}` } });
     if (!res.ok) { setErr(t("errLoad")); return; }
-    const data = (await res.json().catch(() => null)) as { circles?: Circle[] } | null;
-    setCircles((data?.circles ?? []).filter((c) => c.programKey === "MARAQI"));
+    const data = (await res.json().catch(() => null)) as { circles?: Circle[]; programs?: Ref[] } | null;
+    setCircles(data?.circles ?? []); // كلّ الحلقات (الحلقة لا تتبع برنامجاً)
+    setPrograms(data?.programs ?? []);
   }, []);
 
   useEffect(() => { if (isSuper) void loadCircles(); }, [isSuper, loadCircles]);
@@ -95,7 +100,7 @@ export default function StudentImportPage() {
       if (!tok) { window.location.href = "/login"; return; }
       const res = await fetch("/api/admin/students/import/preview", {
         method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
-        body: JSON.stringify({ csv, overrides: ov }),
+        body: JSON.stringify({ csv, overrides: ov, defaultProgramId: defaultProgramId || undefined }),
       });
       if (res.status === 403) { setErr(t("errForbidden")); return; }
       const data = (await res.json().catch(() => null)) as
@@ -105,7 +110,7 @@ export default function StudentImportPage() {
       if (!data.ok) { setErr(`${t("errMissingColumns")} ${data.missingColumns.join("، ")}`); setRows(null); return; }
       setRows(data.results); setRefs(data.references);
     } finally { setBusy(""); }
-  }, [csv]);
+  }, [csv, defaultProgramId]);
 
   function setOverride(index: number, patch: Override) {
     const next = { ...overrides, [index]: { ...overrides[index], ...patch } };
@@ -122,7 +127,7 @@ export default function StudentImportPage() {
       if (!tok) { window.location.href = "/login"; return; }
       const res = await fetch("/api/admin/students/import/commit", {
         method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
-        body: JSON.stringify({ csv, circleId, overrides }),
+        body: JSON.stringify({ csv, circleId, overrides, defaultProgramId: defaultProgramId || undefined }),
       });
       const data = (await res.json().catch(() => null)) as (Report & { error?: string }) | { error: string } | null;
       if (!res.ok || !data || !("outcomes" in data)) {
@@ -205,9 +210,12 @@ export default function StudentImportPage() {
           <p style={{ color: ui.color.muted }}>{t("intro")}</p>
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: sp(4), alignItems: "flex-end", marginBottom: sp(5) }}>
-            <label style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
-              <span style={{ fontSize: ui.text.xs, fontWeight: 600 }}>{t("fieldProgram")}</span>
-              <span style={{ fontWeight: 700 }}>مراقي</span>
+            <label style={{ display: "flex", flexDirection: "column", gap: sp(1), minWidth: 220 }}>
+              <span style={{ fontSize: ui.text.xs, fontWeight: 600 }}>{t("fieldDefaultProgram")}</span>
+              <Select value={defaultProgramId} onChange={(e) => { setDefaultProgramId(e.target.value); if (csv) void runPreview(overrides); }}>
+                <option value="">{t("selectProgram")}</option>
+                {programs.map((p) => <option key={p.id} value={p.id}>{p.nameAr}</option>)}
+              </Select>
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: sp(1), minWidth: 220 }}>
               <span style={{ fontSize: ui.text.xs, fontWeight: 600 }}>{t("fieldCircle")}</span>
