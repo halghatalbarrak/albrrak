@@ -30,6 +30,8 @@ export interface EnrollmentRow {
 export interface EnrollArgs {
   studentId: string;
   circleId: string;
+  /** البرنامج يُختار عند التسكين (صفة القيد). إن أُغفل فبرنامج الحلقة الافتراضيّ (توافقًا). */
+  programId?: string | null;
   actorId: string;
 }
 
@@ -99,6 +101,9 @@ export async function enrollStudent(
     select: { id: true, nameAr: true, programId: true },
   });
   if (!circle) throw verr("circleNotFound");
+  // البرنامج صفةٌ في القيد: المُختار صراحةً، وإلا برنامج الحلقة الافتراضيّ (للحلقات القديمة).
+  const programId = args.programId ?? circle.programId;
+  if (!programId) throw verr("programRequired");
 
   return db.$transaction(async (tx) => {
     const active = await tx.enrollment.findFirst({
@@ -121,7 +126,7 @@ export async function enrollStudent(
 
     // ق١: البرنامج يُسنَد من برنامج الحلقة الافتراضيّ (يغيّره المشرف لاحقًا بتغيير البرنامج).
     const created = await tx.enrollment.create({
-      data: { studentId: args.studentId, circleId: args.circleId, programId: circle.programId },
+      data: { studentId: args.studentId, circleId: args.circleId, programId },
       select: {
         id: true,
         circleId: true,
@@ -133,7 +138,7 @@ export async function enrollStudent(
     // ق٦: تاريخ البرامج — دخولٌ ببرنامج الحلقة (إسنادٌ أوّل، أو تغييرٌ عند النقل).
     await recordProgramEntry(tx, {
       studentId: args.studentId,
-      programId: circle.programId,
+      programId,
       reason: active ? ProgramHistoryReason.CHANGE : ProgramHistoryReason.ASSIGNMENT,
       actorId: args.actorId,
     });

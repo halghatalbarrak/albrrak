@@ -93,7 +93,7 @@ export async function createProgram(db: PrismaClient, key: ProgramKey = ProgramK
   });
 }
 
-export async function createCircle(db: PrismaClient, programId: string) {
+export async function createCircle(db: PrismaClient, programId: string | null = null) {
   return db.circle.create({
     data: {
       nameAr: `حلقة-${uniq()}`,

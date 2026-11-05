@@ -75,11 +75,14 @@ async function activeCircle(
     select: {
       circleId: true,
       program: { select: { key: true } },
+      // ارتداد أمانٍ لقيودٍ قديمةٍ بلا برنامجٍ صريح (null-safe).
       circle: { select: { program: { select: { key: true } } } },
     },
   });
   if (!enrollment) throw new ValidationError("الطالب غير منتسبٍ لحلقة نشطة.");
-  const programKey = enrollment.program?.key ?? enrollment.circle.program.key;
+  // البرنامج صفةٌ في القيد (المصدر)، وبرنامج الحلقة ارتداد أمانٍ فقط.
+  const programKey = enrollment.program?.key ?? enrollment.circle?.program?.key;
+  if (!programKey) throw new ValidationError("قيد الطالب بلا برنامج.");
   return { studentId, circleId: enrollment.circleId, programKey };
 }
 

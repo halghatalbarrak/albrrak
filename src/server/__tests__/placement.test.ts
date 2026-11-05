@@ -144,18 +144,25 @@ describe("§٦٫٣ اختبار القراءة — المُسجِّل يقترح
     ).rejects.toBeInstanceOf(ValidationError);
   });
 
-  it("حلقةٌ من برنامجٍ غير القاعدة المدنية ← يُرفض", async () => {
+  it("القاعدة المدنية تُسنَد لأيّ حلقة، والبرنامج من النتيجة لا الحلقة (حلقة مختلطة)", async () => {
     const s = await scene();
+    // حلقةٌ برنامجها الافتراضيّ «مراقي» — تقبل طالب القاعدة (الحلقة لا تتبع برنامجاً).
     const maraqi = await createProgram(prisma, ProgramKey.MARAQI);
-    const maraqiCircle = await createCircle(prisma, maraqi.id);
-    await expect(
-      proposeReadingTest({
-        studentId: s.student.id,
-        examinerId: s.registrar.id,
-        notes: "x",
-        readsFluently: false,
-        circleId: maraqiCircle.id,
-      }),
-    ).rejects.toBeInstanceOf(ValidationError);
+    const mixedCircle = await createCircle(prisma, maraqi.id);
+    const approval = await proposeReadingTest({
+      studentId: s.student.id,
+      examinerId: s.registrar.id,
+      notes: "x",
+      readsFluently: false,
+      circleId: mixedCircle.id,
+    });
+    const res = await decideReadingTest({ approvalId: approval.id, decidedBy: s.manager.id, decision: "APPROVED" });
+    expect(res.outcome).toBe("QAIDAH");
+    const enr = await prisma.enrollment.findFirstOrThrow({
+      where: { studentId: s.student.id, endedAt: null },
+      select: { circleId: true, program: { select: { key: true } } },
+    });
+    expect(enr.circleId).toBe(mixedCircle.id); // أُسنِد للحلقة المختارة
+    expect(enr.program?.key).toBe(ProgramKey.QAIDAH_MADANIYYAH); // البرنامج من النتيجة لا من الحلقة
   });
 });

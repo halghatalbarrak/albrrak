@@ -31,12 +31,12 @@ export async function POST(req: Request) {
       throw new ValidationError("جنس الحلقة غير صالح.");
     }
     if (typeof b.nameAr !== "string") throw new ValidationError("اسم الحلقة مطلوب.");
-    if (typeof b.programId !== "string") throw new ValidationError("البرنامج مطلوب.");
+    // البرنامج اختياريّ (الحلقة لا تتبع برنامجاً — قرار المدير).
     const circle = await createCircle({
       nameAr: b.nameAr,
       timeSlot: b.timeSlot,
       gender: b.gender,
-      programId: b.programId,
+      programId: typeof b.programId === "string" ? b.programId : null,
       location: typeof b.location === "string" ? b.location : null,
     });
     return Response.json(circle, { status: 201 });

@@ -89,6 +89,7 @@ export const errorsAr = {
   approvalPayloadMissing: "حمولة الاعتماد ناقصة.",
   circleNameRequired: "اسم الحلقة مطلوب.",
   programNotFound: "البرنامج غير موجود.",
+  programRequired: "البرنامج مطلوب عند التسكين.",
   unlinkRequestRequiresNote: "طلب فكّ الربط يستلزم سببًا مكتوبًا من الطالب.",
   examinerNotesRequired: "ملاحظات المختبر مطلوبة (§٦٫٣).",
   readingTestOnlyForAwaiting: "اختبار القراءة لا يُسجَّل إلا لطالبٍ بانتظاره.",

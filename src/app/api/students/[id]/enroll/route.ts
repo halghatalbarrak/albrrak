@@ -10,11 +10,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   try {
     const actor = await requireRoles(req, [Role.CIRCLE_MANAGER, Role.SUPER_ADMIN]);
     const { id } = await ctx.params;
-    const b = (await req.json()) as { circleId?: unknown };
+    const b = (await req.json()) as { circleId?: unknown; programId?: unknown };
     if (typeof b.circleId !== "string" || b.circleId.trim() === "") {
       throw new ValidationError("حلقة غير محدّدة.");
     }
-    const result = await enrollStudent({ studentId: id, circleId: b.circleId, actorId: actor.id });
+    // البرنامج يُختار عند التسكين (اختياريّ؛ إن أُغفل فبرنامج الحلقة الافتراضيّ).
+    const programId = typeof b.programId === "string" && b.programId ? b.programId : undefined;
+    const result = await enrollStudent({ studentId: id, circleId: b.circleId, programId, actorId: actor.id });
     return Response.json(result);
   } catch (e) {
     return errorResponse(e);

@@ -124,8 +124,9 @@ model Circle {
   timeSlot    TimeSlot
   location    String?
   gender      Gender // العزل لاحقاً — الحقل الآن
-  programId   String
-  program     Program         @relation(fields: [programId], references: [id])
+  // الحلقة لا تتبع برنامجاً (قرار المدير): مهجورٌ واختياريّ — البرنامج صفةٌ في قيد الطالب (Enrollment.programId).
+  programId   String?
+  program     Program?        @relation(fields: [programId], references: [id])
   teachers    CircleTeacher[] // متعدد لمتعدد
   enrollments Enrollment[]
 }
