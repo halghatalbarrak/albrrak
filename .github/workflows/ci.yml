@@ -32,6 +32,10 @@ jobs:
       - name: Build (next build)
         run: npm run build
 
+      # بوّابة التوطين: تمنع ازدياد النصوص العربيّة الحرفيّة (throw + JSX) فوق السقف المحفوظ.
+      - name: i18n literal gate
+        run: node scripts/i18n-literals.mjs
+
   test:
     name: server rule tests (Postgres)
     runs-on: ubuntu-latest
