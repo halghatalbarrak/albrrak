@@ -1,7 +1,7 @@
 import { DisplayScheduleContent, DisplayScheduleStart, type DisplaySchedule, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 import { programName } from "@/i18n/ar/gamification";
 import { makkahDayBounds, makkahDayDate } from "@/lib/makkah-day";
 import {
@@ -55,39 +55,39 @@ export interface ScheduleInput {
 
 /** يتحقّق من المدخلات ويبني بيانات الكتابة (بلا screenId/ordinal). يرمي ValidationError عند الخلل. */
 async function validate(screenId: string, input: ScheduleInput, db: PrismaClient): Promise<Record<string, unknown>> {
-  if (!Number.isInteger(input.durationMin) || input.durationMin < 1 || input.durationMin > 1440) throw new ValidationError("مدّة الموعد دقائقُ بين ١ و١٤٤٠.");
+  if (!Number.isInteger(input.durationMin) || input.durationMin < 1 || input.durationMin > 1440) throw verr("displaySlotDurationRange");
   const daysMask = input.daysMask ?? 127;
-  if (!Number.isInteger(daysMask) || daysMask < 1 || daysMask > 127) throw new ValidationError("أيّام الموعد غير صالحة.");
+  if (!Number.isInteger(daysMask) || daysMask < 1 || daysMask > 127) throw verr("displayDaysInvalid");
 
   const data: Record<string, unknown> = { startMode: input.startMode, durationMin: input.durationMin, contentMode: input.contentMode, daysMask, active: input.active ?? true };
 
   if (input.startMode === DisplayScheduleStart.PRAYER) {
-    if (!input.prayer || !PRAYER_VALUES.includes(input.prayer)) throw new ValidationError("صلاة الموعد مطلوبة.");
-    if (input.rel !== "AFTER" && input.rel !== "BEFORE") throw new ValidationError("حدّد: بعد أو قبل الصلاة.");
+    if (!input.prayer || !PRAYER_VALUES.includes(input.prayer)) throw verr("displayPrayerRequired");
+    if (input.rel !== "AFTER" && input.rel !== "BEFORE") throw verr("displayBeforeAfterPrayer");
     const off = input.offsetMin ?? 0;
-    if (!Number.isInteger(off) || off < 0 || off > 720) throw new ValidationError("دقائق الإزاحة بين ٠ و٧٢٠.");
+    if (!Number.isInteger(off) || off < 0 || off > 720) throw verr("displayOffsetRange");
     Object.assign(data, { prayer: input.prayer, rel: input.rel, offsetMin: off, fixedTime: null });
   } else if (input.startMode === DisplayScheduleStart.FIXED) {
     const t = (input.fixedTime ?? "").trim();
     const m = /^(\d{2}):(\d{2})$/.exec(t);
-    if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) throw new ValidationError("الساعة الثابتة بصيغة HH:MM بتوقيت مكّة.");
+    if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) throw verr("displayFixedTimeFormat");
     Object.assign(data, { fixedTime: t, prayer: null, rel: null, offsetMin: 0 });
   } else {
-    throw new ValidationError("نوع بداية الموعد مطلوب.");
+    throw verr("displayScheduleKindRequired");
   }
 
   if (input.contentMode === DisplayScheduleContent.PROGRAM) {
-    if (typeof input.programId !== "string" || !input.programId) throw new ValidationError("برنامج الموعد مطلوب.");
-    if (!(await db.program.findUnique({ where: { id: input.programId }, select: { id: true } }))) throw new ValidationError("برنامجٌ غير موجود.");
+    if (typeof input.programId !== "string" || !input.programId) throw verr("displayScheduleProgramRequired");
+    if (!(await db.program.findUnique({ where: { id: input.programId }, select: { id: true } }))) throw verr("displayProgramNotFound");
     Object.assign(data, { programId: input.programId, slideIds: null });
   } else if (input.contentMode === DisplayScheduleContent.SLIDES) {
     const ids = [...new Set((input.slideIds ?? []).filter((x) => typeof x === "string" && x))];
-    if (ids.length === 0) throw new ValidationError("اختر شريحةً واحدةً على الأقلّ.");
+    if (ids.length === 0) throw verr("displayPickOneSlide");
     const owned = await db.displaySlide.findMany({ where: { id: { in: ids }, screenId }, select: { id: true } });
-    if (owned.length !== ids.length) throw new ValidationError("شريحةٌ مختارةٌ لا تخصّ هذه الشاشة.");
+    if (owned.length !== ids.length) throw verr("displaySlideNotOfScreen");
     Object.assign(data, { slideIds: ids.join(","), programId: null });
   } else {
-    throw new ValidationError("محتوى الموعد مطلوب.");
+    throw verr("displayScheduleContentRequired");
   }
   return data;
 }
@@ -99,7 +99,7 @@ const nextOrdinal = async (screenId: string, db: PrismaClient): Promise<number> 
 
 export async function addSchedule(actorUserId: string, screenId: string, input: ScheduleInput, db: PrismaClient = prisma): Promise<{ id: string; warnings: string[] }> {
   await assertDisplayAdmin(actorUserId, db);
-  if (!(await db.displayScreen.findUnique({ where: { id: screenId }, select: { id: true } }))) throw new ValidationError("شاشةٌ غير موجودة.");
+  if (!(await db.displayScreen.findUnique({ where: { id: screenId }, select: { id: true } }))) throw verr("displayScreenNotFound");
   const data = await validate(screenId, input, db);
   const row = await db.displaySchedule.create({ data: { screenId, ordinal: await nextOrdinal(screenId, db), ...data } as never, select: { id: true } });
   return { id: row.id, warnings: await scheduleWarnings(screenId, db) };
@@ -108,7 +108,7 @@ export async function addSchedule(actorUserId: string, screenId: string, input: 
 export async function setSchedule(actorUserId: string, scheduleId: string, input: Partial<ScheduleInput> & { active?: boolean }, db: PrismaClient = prisma): Promise<{ warnings: string[] }> {
   await assertDisplayAdmin(actorUserId, db);
   const cur = await db.displaySchedule.findUnique({ where: { id: scheduleId } });
-  if (!cur) throw new ValidationError("موعدٌ غير موجود.");
+  if (!cur) throw verr("displayScheduleNotFound");
   // تعديلٌ لمفتاحٍ واحد (التعطيل) أو تعديلٌ كامل. إن غابت الحقول البنيويّة نكتفي بـ active.
   const structural = input.startMode !== undefined || input.contentMode !== undefined || input.durationMin !== undefined || input.daysMask !== undefined || input.prayer !== undefined || input.rel !== undefined || input.offsetMin !== undefined || input.fixedTime !== undefined || input.programId !== undefined || input.slideIds !== undefined;
   if (structural) {
