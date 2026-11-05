@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { tMe as tm } from "@/i18n/ar/me";
 import { AppShell, Button, Card, Stat, Badge, Skeleton, TodayTargetView, type TTData, ui, sp } from "@/components/ui";
 import { arNum, hijri } from "@/lib/format";
 import { CodeSection } from "./CodeSection";
@@ -59,7 +60,7 @@ export default function MePage() {
   }, []);
 
   if (err) return <main dir="rtl" style={centered}>{err}</main>;
-  if (!me) return <main dir="rtl" style={centered}>جارٍ التحميل…</main>;
+  if (!me) return <main dir="rtl" style={centered}>{tm("loading")}</main>;
 
   const signOut = async () => {
     // امسح كاش الـAPI في الـService Worker (خطّة المُدَّكِر المخزَّنة) حتى لا يراها الداخل بعده.
@@ -77,8 +78,8 @@ export default function MePage() {
       {me.student && (
         <a href="/me/journey" style={{ textDecoration: "none" }}>
           <Card style={{ marginBottom: sp(6), borderInlineStart: `4px solid ${ui.color.bronze}`, cursor: "pointer" }}>
-            <div style={{ fontWeight: 700, color: ui.color.text }}>رحلتي والأوسمة 🔥🏅</div>
-            <p style={{ margin: `${sp(1)} 0 0`, color: ui.color.muted }}>خريطة تقدّمك في برامجك، وسلسلتك، وأوسمتك.</p>
+            <div style={{ fontWeight: 700, color: ui.color.text }}>{tm("journeyBadges")}</div>
+            <p style={{ margin: `${sp(1)} 0 0`, color: ui.color.muted }}>{tm("journeyDesc")}</p>
           </Card>
         </a>
       )}
@@ -86,8 +87,8 @@ export default function MePage() {
       {me.roles.includes("GUARDIAN") && (
         <a href="/bidder" style={{ textDecoration: "none" }}>
           <Card style={{ marginBottom: sp(6), borderInlineStart: `4px solid ${ui.color.bronze}`, cursor: "pointer" }}>
-            <div style={{ fontWeight: 700, color: ui.color.text }}>بيدر أبنائي 🌱</div>
-            <p style={{ margin: `${sp(1)} 0 0`, color: ui.color.muted }}>تابِع بيدر أبنائك وأضِف ثمرةً تحفيزيّة يجنيها ابنك بنقاطه.</p>
+            <div style={{ fontWeight: 700, color: ui.color.text }}>{tm("childrenBaydar")}</div>
+            <p style={{ margin: `${sp(1)} 0 0`, color: ui.color.muted }}>{tm("childrenBaydarDesc")}</p>
           </Card>
         </a>
       )}
@@ -99,7 +100,7 @@ export default function MePage() {
           </div>
           {balance.transactions.length > 0 && (
             <Card>
-              <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>آخر الحركات</div>
+              <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>{tm("recentActivity")}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
                 {balance.transactions.slice(0, 5).map((t) => (
                   <div key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: sp(2), alignItems: "center" }}>
@@ -118,17 +119,17 @@ export default function MePage() {
           <Skeleton height={72} /><Skeleton height={110} />
         </div>
       ) : !sess.hasStudent ? (
-        <Card style={{ maxWidth: 520 }}><p style={{ margin: 0 }}>لا سجلّ طالبٍ مرتبطٌ بحسابك.</p></Card>
+        <Card style={{ maxWidth: 520 }}><p style={{ margin: 0 }}>{tm("noStudentRecord")}</p></Card>
       ) : sess.program !== "MARAQI" ? (
         // قاعدة مدنية أو لم يبدأ مراقي
         <>
           <Card style={{ marginBottom: sp(6), maxWidth: 640 }}>
-            <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: 2 }}>حالتك</div>
+            <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: 2 }}>{tm("yourStatus")}</div>
             <div style={{ fontSize: ui.text.lg, fontWeight: 700 }}>{STATE_AR[sess.state ?? ""] ?? sess.state}</div>
             {sess.positionLabel && <p style={{ color: ui.color.muted, margin: `${sp(2)} 0 0` }}>موضعك: {sess.positionLabel}</p>}
           </Card>
           {sess.program === "QAIDAH_MADANIYYAH" && (
-            <a href="/programs/civil-base" style={{ textDecoration: "none" }}><Button variant="bronze">افتح سلّم القاعدة المدنية</Button></a>
+            <a href="/programs/civil-base" style={{ textDecoration: "none" }}><Button variant="bronze">{tm("openCivilBaseLadder")}</Button></a>
           )}
         </>
       ) : (
@@ -136,7 +137,7 @@ export default function MePage() {
         <>
           {sess.target && (
             <Card style={{ marginBottom: sp(6), borderInlineStart: `4px solid ${ui.color.goldLine}` }}>
-              <div style={{ fontSize: ui.text.base, fontWeight: 700, color: ui.color.primary, marginBottom: sp(3) }}>مهمّتك اليوم</div>
+              <div style={{ fontSize: ui.text.base, fontWeight: 700, color: ui.color.primary, marginBottom: sp(3) }}>{tm("todayTask")}</div>
               <TodayTargetView t={sess.target} forStudent />
             </Card>
           )}
@@ -150,11 +151,11 @@ export default function MePage() {
 
           {forecast?.hasPace && (
             <Card style={{ marginBottom: sp(6), borderInlineStart: `4px solid ${ui.color.bronze}` }}>
-              <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>تقديرٌ إرشاديّ (لا موعد يُحاسَب عليه)</div>
+              <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>{tm("estimateHint")}</div>
               <div style={{ fontSize: ui.text.base }}>
                 على وتيرتك الحاليّة (~{arNum(forecast.pacePerDay ?? 0)} آية في يوم الحلقة):
-                {forecast.hizbDoneDate && <> تُتمّ ما بين يديك نحو <strong>{hijri(forecast.hizbDoneDate)}</strong>؛</>}
-                {forecast.graduationDate && <> وتُتمّ مراقي بإذن الله نحو <strong>{hijri(forecast.graduationDate)}</strong>.</>}
+                {forecast.hizbDoneDate && <>{tm("finishBetween")}<strong>{hijri(forecast.hizbDoneDate)}</strong>{tm("semicolon")}</>}
+                {forecast.graduationDate && <>{tm("finishMaraqi")}<strong>{hijri(forecast.graduationDate)}</strong>.</>}
               </div>
             </Card>
           )}
@@ -166,14 +167,14 @@ export default function MePage() {
           )}
 
           <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
-            <a href="/me/weakness" style={{ textDecoration: "none" }}><Button variant="bronze">مواضع تحتاج مراجعة</Button></a>
-            <a href="/programs/maraqi" style={{ textDecoration: "none" }}><Button variant="ghost">افتح سلّم مراقي</Button></a>
+            <a href="/me/weakness" style={{ textDecoration: "none" }}><Button variant="bronze">{tm("needReview")}</Button></a>
+            <a href="/programs/maraqi" style={{ textDecoration: "none" }}><Button variant="ghost">{tm("openMaraqiLadder")}</Button></a>
           </div>
         </>
       )}
 
       <div style={{ marginTop: sp(8) }}>
-        <Button variant="ghost" onClick={signOut}>خروج</Button>
+        <Button variant="ghost" onClick={signOut}>{tm("logout")}</Button>
       </div>
     </AppShell>
   );
