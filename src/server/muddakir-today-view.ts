@@ -16,7 +16,7 @@ import { applyDueTrackChange, getDayStatus, latestTrackRequest, loadDayEngineSet
 import { getStageProgress, type StageProgress } from "./muddakir-stages";
 import { gamiSummary, type GamiSummary } from "./gamification/journey";
 import { deriveWard, getWardView } from "./muddakir-ward";
-import { AuthorizationError } from "./errors";
+import { aerr } from "./errors";
 
 // عرض يوم الحافظ الكامل (المرحلة ٥): رأسٌ (المرحلة/الأجزاء/موضع الوجه/المسار/التقدّم) + تذكير اللقاء
 // + خطّة اليوم + الحالة + قضاء الأمس + الإعدادات اللازمة للعدّادات. يُقرأ مرّةً ويُخزَّن للعمل بلا إنترنت.
@@ -104,9 +104,9 @@ const engineNum = (v: number, d: number) => (typeof v === "number" && v > 0 ? v 
 /** عرض يوم الحافظ لمستخدمٍ مصادَق (يتحقّق أنّه حافظٌ ملتحق) — يُستدعى من مسار API. */
 export async function hafizViewForUser(actorUserId: string, db: PrismaClient = prisma): Promise<HafizTodayView> {
   const student = await db.student.findUnique({ where: { userId: actorUserId }, select: { id: true } });
-  if (!student) throw new AuthorizationError("هذه الشاشة للحافظ.");
+  if (!student) throw aerr("screenForHafiz");
   const profile = await db.muddakirProfile.findUnique({ where: { studentId: student.id }, select: { studentId: true } });
-  if (!profile) throw new AuthorizationError("لستَ ملتحقًا بالمُدَّكِر.");
+  if (!profile) throw aerr("notEnrolledInMuddakir");
   return getHafizTodayView(student.id, db);
 }
 
@@ -133,9 +133,9 @@ export type MuddakirHome =
 /** بيت الحافظ بحسب طوره. لا يُرسَل أيُّ شيءٍ خاصٍّ بالمشرف (المواضع المفاجئة) هنا (تعديل ٣). */
 export async function hafizHomeForUser(actorUserId: string, db: PrismaClient = prisma, now: Date = new Date()): Promise<MuddakirHome> {
   const student = await db.student.findUnique({ where: { userId: actorUserId }, select: { id: true } });
-  if (!student) throw new AuthorizationError("هذه الشاشة للحافظ.");
+  if (!student) throw aerr("screenForHafiz");
   const profile = await db.muddakirProfile.findUnique({ where: { studentId: student.id }, select: { phase: true } });
-  if (!profile) throw new AuthorizationError("لستَ ملتحقًا بالمُدَّكِر.");
+  if (!profile) throw aerr("notEnrolledInMuddakir");
 
   if (profile.phase === "MEMORIZE") {
     return { ...(await getHafizTodayView(student.id, db, now)), phase: "MEMORIZE", ward: null };
