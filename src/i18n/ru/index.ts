@@ -29,6 +29,7 @@ export { meAr as me } from "@/i18n/ar/me";
 export { appshellPreviewAr as appshellPreview } from "@/i18n/ar/appshell-preview";
 export { programsPageAr as programsPage } from "@/i18n/ar/programs-page";
 export { sellAr as sell } from "@/i18n/ar/sell";
+export { verifyAr as verify } from "@/i18n/ar/verify";
 export { usersAr as users } from "@/i18n/ar/users";
 // публичные страницы (PR-1d) — откат к арабскому до перевода.
 export { loginAr as login } from "@/i18n/ar/login";

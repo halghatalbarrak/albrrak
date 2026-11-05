@@ -28,6 +28,7 @@ export { meAr as me } from "./me";
 export { appshellPreviewAr as appshellPreview } from "./appshell-preview";
 export { programsPageAr as programsPage } from "./programs-page";
 export { sellAr as sell } from "./sell";
+export { verifyAr as verify } from "./verify";
 export { usersAr as users } from "./users";
 // الصفحات العامّة (PR-1d)
 export { loginAr as login } from "./login";
