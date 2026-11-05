@@ -7,6 +7,12 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Button, Select, EmptyState, Skeleton, Table, ui, sp, type Column } from "@/components/ui";
 import { tCircles as t } from "@/i18n/ar/circles";
+import { navAr } from "@/i18n/ar/nav";
+import { arNum } from "@/lib/format";
+
+const PROGRAM_AR: Record<string, string> = {
+  QAIDAH_MADANIYYAH: navAr.civilBase, MARAQI: navAr.maraqi, MUDDAKIR: navAr.grpMuddakir, WEEKLY: navAr.weekly,
+};
 
 const linkBtn: React.CSSProperties = { fontSize: ui.text.xs, fontWeight: 600, color: ui.color.primary, textDecoration: "none", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, padding: `${sp(1.5)} ${sp(2.5)}` };
 
@@ -16,8 +22,9 @@ interface Circle {
   timeSlot: string;
   gender: string;
   location: string | null;
-  programKey: string;
-  programNameAr: string;
+  programKey: string | null;
+  programNameAr: string | null;
+  programCounts: { programKey: string; n: number }[];
 }
 interface Program { id: string; key: string; nameAr: string }
 
@@ -65,6 +72,11 @@ export default function AdminCirclesPage() {
           {programs.map((p) => <option key={p.id} value={p.id}>{p.nameAr}</option>)}
         </Select>
       ) : c.programNameAr
+    ) },
+    { key: "students", header: t("colStudents"), cell: (c) => (
+      c.programCounts.length
+        ? c.programCounts.map((pc) => `${PROGRAM_AR[pc.programKey] ?? pc.programKey} ${arNum(pc.n)}`).join(" · ")
+        : "—"
     ) },
     { key: "slot", header: t("colSlot"), cell: (c) => SLOT_AR[c.timeSlot] ?? c.timeSlot },
     { key: "gender", header: t("colGender"), cell: (c) => (c.gender === "MALE" ? t("genderMale") : t("genderFemale")) },

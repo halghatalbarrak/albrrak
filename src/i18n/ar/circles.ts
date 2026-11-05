@@ -23,6 +23,7 @@ export const circlesAr = {
   // شاشة قائمة الحلقات
   listTitle: "الحلقات",
   colName: "الاسم",
+  colStudents: "الطلاب",
   colDefaultProgram: "البرنامج الافتراضيّ",
   colSlot: "الوقت",
   colGender: "الجنس",

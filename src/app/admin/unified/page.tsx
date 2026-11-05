@@ -8,6 +8,18 @@ import { useMe } from "@/lib/useMe";
 import { arNum, formatAyah } from "@/lib/format";
 import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
 import { attendanceLockAr as tLock } from "@/i18n/ar/attendance-lock";
+import { navAr } from "@/i18n/ar/nav";
+
+// تسمية البرنامج (شارةٌ لكلّ طالب + عدّادٌ في الترويسة — الحلقة قد تجمع برامج مختلفة). النصوص من i18n.
+const PROGRAM_AR: Record<string, string> = {
+  QAIDAH_MADANIYYAH: navAr.civilBase, MARAQI: navAr.maraqi, MUDDAKIR: navAr.grpMuddakir, WEEKLY: navAr.weekly,
+};
+/** عدّاد الطلاب لكلّ برنامج في الحلقة: «مراقي ٢٠ · القاعدة ٩». */
+function programCounts(students: { program: string | null }[]): string {
+  const by = new Map<string, number>();
+  for (const s of students) { const k = s.program ?? ""; if (k) by.set(k, (by.get(k) ?? 0) + 1); }
+  return [...by.entries()].map(([k, n]) => `${PROGRAM_AR[k] ?? k} ${arNum(n)}`).join(" · ");
+}
 
 // شاشة التشغيل الموحّدة (م ج): لوحة الحلقة كلها — لكل طالبٍ حضورُه ووجهةُ يومه بالأزرار، بلا
 // مغادرة. طبقة عرضٍ وتسجيلٍ فوق المحرّكات القائمة (getUnifiedBoard/markAttendance/session/extra/
@@ -30,6 +42,7 @@ interface Qaidah {
 }
 interface Student {
   studentId: string; name: string;
+  program: string | null;
   attendanceStatus: string | null;
   todayHifzDone: boolean; tarseekhDone: boolean | null;
   today: Target;
@@ -135,6 +148,9 @@ export default function UnifiedPage() {
       )}
       {dayLock && <DayLockBar lock={dayLock} circleId={circleId} date={date} post={post} />}
       {absentDefault && <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginBottom: sp(2) }}>الأصل اليوم «غياب»: من لم تَرفعه حاضرًا يُحسب غائبًا. أشِّر الحاضرين من اللوحة.</p>}
+      {students && students.length > 0 && programCounts(students) && (
+        <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginBottom: sp(2) }}>{programCounts(students)}</p>
+      )}
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs, marginBottom: sp(2) }}>{msg}</p>}
 
       <div style={{ display: "flex", gap: sp(4), alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -145,7 +161,10 @@ export default function UnifiedPage() {
             return (
               <button key={s.studentId} onClick={() => setSelected(s.studentId)}
                 style={{ textAlign: "start", border: `1px solid ${s.studentId === selected ? ui.color.goldLine : ui.color.border}`, background: s.studentId === selected ? ui.color.soft : ui.color.surface, borderRadius: ui.radius.md, padding: `${sp(2)} ${sp(3)}`, cursor: "pointer", fontFamily: ui.font, color: ui.color.text, display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(2) }}>
-                <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
+                <span style={{ display: "flex", gap: 4, alignItems: "center", minWidth: 0 }}>
+                  <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
+                  {s.program && <Badge tone="neutral">{PROGRAM_AR[s.program] ?? s.program}</Badge>}
+                </span>
                 <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
                   {done ? <Badge tone="success">{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>
                     : absentDefault ? <Badge tone="danger">غياب (لم يُرفَع)</Badge> : <Badge tone="neutral">لم يُرفَع</Badge>}

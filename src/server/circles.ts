@@ -14,20 +14,28 @@ export interface CircleRow {
   // الحلقة قد لا تتبع برنامجاً (قد تكون مختلطة) — البرنامج صفةٌ في قيد الطالب.
   programKey: ProgramKey | null;
   programNameAr: string | null;
+  /** عدد الطلاب النشطين لكلّ برنامج في الحلقة (عدّاد الترويسة: «مراقي ٢٠ · القاعدة ٩»). */
+  programCounts: { programKey: ProgramKey; n: number }[];
 }
 
 export async function listCircles(db: PrismaClient = prisma): Promise<CircleRow[]> {
-  const rows = await db.circle.findMany({
-    select: {
-      id: true,
-      nameAr: true,
-      timeSlot: true,
-      gender: true,
-      location: true,
-      program: { select: { key: true, nameAr: true } },
-    },
-    orderBy: { nameAr: "asc" },
-  });
+  const [rows, grouped, programs] = await Promise.all([
+    db.circle.findMany({
+      select: { id: true, nameAr: true, timeSlot: true, gender: true, location: true, program: { select: { key: true, nameAr: true } } },
+      orderBy: { nameAr: "asc" },
+    }),
+    db.enrollment.groupBy({ by: ["circleId", "programId"], where: { endedAt: null }, _count: { _all: true } }),
+    db.program.findMany({ select: { id: true, key: true } }),
+  ]);
+  const keyById = new Map(programs.map((p) => [p.id, p.key]));
+  const countsByCircle = new Map<string, { programKey: ProgramKey; n: number }[]>();
+  for (const g of grouped) {
+    const key = g.programId ? keyById.get(g.programId) : undefined;
+    if (!key) continue; // قيدٌ بلا برنامجٍ معروف — يُتجاوَز في العدّاد
+    const list = countsByCircle.get(g.circleId) ?? [];
+    list.push({ programKey: key, n: g._count._all });
+    countsByCircle.set(g.circleId, list);
+  }
   return rows.map((r) => ({
     id: r.id,
     nameAr: r.nameAr,
@@ -36,6 +44,7 @@ export async function listCircles(db: PrismaClient = prisma): Promise<CircleRow[
     location: r.location,
     programKey: r.program?.key ?? null,
     programNameAr: r.program?.nameAr ?? null,
+    programCounts: countsByCircle.get(r.id) ?? [],
   }));
 }
 
