@@ -38,6 +38,7 @@ export const navAr = {
   display: "الشاشة التحفيزيّة",
   civilBase: "القاعدة المدنية",
   maraqi: "مراقي",
+  weekly: "الأسبوعيّ",
   muddakirProgram: "البرنامج",
   muddakirRequests: "الطلبات",
   muddakirMyRequests: "طلباتي",

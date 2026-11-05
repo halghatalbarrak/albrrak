@@ -7,6 +7,15 @@ import { makkahDayDate } from "@/lib/makkah-day";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Button, Select, Input, Badge, EmptyState, Skeleton, Tabs, attendanceTabs, ui, sp } from "@/components/ui";
 import { attendanceLockAr as tLock } from "@/i18n/ar/attendance-lock";
+import { navAr } from "@/i18n/ar/nav";
+
+// تسمية البرنامج (شارةٌ لكلّ طالب — الحلقة قد تجمع برامج مختلفة). النصوص من i18n.
+const PROGRAM_AR: Record<string, string> = {
+  QAIDAH_MADANIYYAH: navAr.civilBase,
+  MARAQI: navAr.maraqi,
+  MUDDAKIR: navAr.grpMuddakir,
+  WEEKLY: navAr.weekly,
+};
 
 // شاشة الرصد (م٢ — DESIGN §١٠٫١): تفترض الجميع حاضرين، والمعلم يؤشّر الغائب فقط.
 // تعمل بلا إنترنت: إن تعذّر الإرسال، يُحفظ الرصد محليًّا (localStorage) ويُزامن لاحقًا.
@@ -21,6 +30,7 @@ interface RosterRow {
   name: string;
   status: string;
   note: string | null;
+  programKey: string | null;
 }
 interface QueuedSession {
   circleId: string;
@@ -306,7 +316,10 @@ export default function AttendancePage() {
         <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
           {roster.map((s) => (
             <Card key={s.studentId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(3), padding: `${sp(2)} ${sp(4)}` }}>
-              <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
+              <span style={{ display: "flex", alignItems: "center", gap: sp(2), minWidth: 0 }}>
+                <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
+                {s.programKey && <Badge tone="neutral">{PROGRAM_AR[s.programKey] ?? s.programKey}</Badge>}
+              </span>
               {isExcused(s.status) ? (
                 <Badge tone="success">{STATUS_LABEL[s.status]} (معتمَد)</Badge>
               ) : (

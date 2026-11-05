@@ -3,6 +3,7 @@ import {
   ApprovalStatus,
   AttendanceStatus,
   AutoEventType,
+  ProgramKey,
   ProgressState,
   Role,
   type Prisma,
@@ -441,6 +442,8 @@ export interface RosterRow {
   name: string;
   status: AttendanceStatus;
   note: string | null;
+  /** برنامج الطالب في قيده (شارةٌ في الواجهة؛ الحلقة قد تجمع برامج مختلفة). */
+  programKey: ProgramKey | null;
 }
 
 /** قائمة الحلقة ليومٍ مع الحالة المسجَّلة (أو حاضر افتراضًا) — لملء الشاشة. */
@@ -452,7 +455,11 @@ export async function getSessionRoster(
   const d = toDateOnly(date);
   const enrollments = await db.enrollment.findMany({
     where: { circleId, endedAt: null },
-    select: { student: { select: { id: true, user: { select: { nameAsInId: true } } } } },
+    select: {
+      program: { select: { key: true } },
+      circle: { select: { program: { select: { key: true } } } }, // ارتداد أمانٍ null-safe
+      student: { select: { id: true, user: { select: { nameAsInId: true } } } },
+    },
   });
   const rows = await db.attendance.findMany({
     where: { circleId, date: d },
@@ -467,9 +474,11 @@ export async function getSessionRoster(
         name: e.student.user.nameAsInId,
         status: rec?.status ?? defaultStatusFor(d), // م ج: الفراغ = غياب من العتبة فصاعدًا
         note: rec?.note ?? null,
+        programKey: e.program?.key ?? e.circle?.program?.key ?? null,
       };
     })
-    .sort((a, b) => a.name.localeCompare(b.name, "ar"));
+    // فرزٌ حسب البرنامج ثمّ الاسم — فتتجمّع برامج الحلقة المختلطة.
+    .sort((a, b) => (a.programKey ?? "").localeCompare(b.programKey ?? "") || a.name.localeCompare(b.name, "ar"));
 }
 
 // ═══════════════ العذر والاستئذان — إجراءان بدورة حياة ═══════════════
