@@ -16,6 +16,8 @@ export const IMPORT_COLUMNS = [
   { key: "emergencyRelation", ar: "صلة جهة الطوارئ" },
   { key: "emergencyPhone", ar: "جوال الطوارئ" },
   { key: "hifzAmount", ar: "مقدار الحفظ" },
+  // اختياريّ: برنامج الطالب في تسكينه. إن تُرك فارغًا فالبرنامج الافتراضيّ المُختار في صفحة الاستيراد.
+  { key: "program", ar: "البرنامج" },
 ] as const;
 
 export type ColumnKey = (typeof IMPORT_COLUMNS)[number]["key"];

@@ -34,6 +34,8 @@ export type IssueCode =
   | "missingGuardianRelation"
   | "missingGuardianPhone"
   | "teenNeedsPhone"
+  | "programUnmatched"
+  | "programMissing"
   | "dupInFile"
   | "alreadyStudent"
   | "alreadyPending";
@@ -63,6 +65,8 @@ export interface ResolvedInput {
   emergencyPhone: string;
   emergencyRelationId: string;
   priorHifzNotes: string | null;
+  /** برنامج التسكين (من عمود «البرنامج» أو الافتراضيّ المُختار في الصفحة). */
+  programId: string;
 }
 
 export interface RowResult {
@@ -88,6 +92,10 @@ export interface ReferenceItem {
 export interface ValidationContext {
   nationalities: ReferenceItem[];
   guardianRelations: ReferenceItem[];
+  /** البرامج المتاحة (لمطابقة عمود «البرنامج» بالاسم). */
+  programs: ReferenceItem[];
+  /** البرنامج الافتراضيّ المُختار في صفحة الاستيراد (للسطور بلا عمود برنامج). */
+  defaultProgramId: string | null;
   /** مفاتيح أرقام هويّة طلابٍ مقبولين (User.nationalId) — «مستورَد سابقًا». */
   existingUserIds: Set<string>;
   /** مفاتيح أرقام هويّة طلباتٍ (Application) — «له طلب قيد معلّق». */
@@ -341,6 +349,15 @@ export function validateRows(rows: RawRow[], ctx: ValidationContext): RowResult[
       else issues.push({ code: "emergencyRelationUnmatched", level: "error", column: "emergencyRelation" });
     }
 
+    // البرنامج: من عمود «البرنامج» (مطابقةٌ بالاسم) وإلا الافتراضيّ المُختار في الصفحة.
+    let programId = ctx.defaultProgramId ?? undefined;
+    if (row.program.trim()) {
+      const m = matchReference(row.program, ctx.programs);
+      if (m) programId = m.id;
+      else issues.push({ code: "programUnmatched", level: ctx.defaultProgramId ? "warning" : "error", column: "program" });
+    }
+    if (!programId) issues.push({ code: "programMissing", level: "error", column: "program" });
+
     // كشف التكرار:
     //   • تكرارٌ داخل الملفّ ⟵ خطأ (لا يُستورَد الرقم نفسه مرّتين في دفعة).
     //   • مستورَدٌ سابقًا (طالبٌ مقبول User) أو له طلبٌ معلّق (Application) ⟵ **تخطٍّ** (تحذير
@@ -366,7 +383,7 @@ export function validateRows(rows: RawRow[], ctx: ValidationContext): RowResult[
       maskedId: idKey ? maskNationalId(idKey) : "",
       skip,
     };
-    if (!hasError && !skip && birthDate && gender && guardianGender && nationalityId && guardianRelationId && emergencyRelationId) {
+    if (!hasError && !skip && birthDate && gender && guardianGender && nationalityId && guardianRelationId && emergencyRelationId && programId) {
       result.resolved = {
         nameAsInId: name,
         nationalId: row.nationalId.trim(),
@@ -381,6 +398,7 @@ export function validateRows(rows: RawRow[], ctx: ValidationContext): RowResult[
         emergencyPhone,
         emergencyRelationId,
         priorHifzNotes: row.hifzAmount.trim() || null,
+        programId,
       };
     }
     return result;
@@ -455,7 +473,7 @@ export async function commitImport(
         await rollback(); // حساب Auth يتيمٌ إن فشلت معاملة القبول بعد إنشائه
         throw e;
       }
-      await enrollStudent({ studentId, circleId: args.circleId, actorId: args.decidedBy }, db);
+      await enrollStudent({ studentId, circleId: args.circleId, programId: row.resolved.programId, actorId: args.decidedBy }, db);
       outcomes.push({ index: row.index, name: row.name, maskedId: row.maskedId, ok: true });
     } catch (e) {
       const reasonKey = (e as { key?: string }).key ?? "importRowFailed";
