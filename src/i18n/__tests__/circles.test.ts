@@ -25,6 +25,7 @@ describe("قاموس شاشات الحلقات (العربيّة)", () => {
       errLoadMap: "تعذّر جلب الخريطة.",
       listTitle: "الحلقات",
       colName: "الاسم",
+      colStudents: "الطلاب",
       colDefaultProgram: "البرنامج الافتراضيّ",
       colSlot: "الوقت",
       colGender: "الجنس",

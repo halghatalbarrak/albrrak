@@ -7,7 +7,18 @@ import { makkahDayDate } from "@/lib/makkah-day";
 import { useMe } from "@/lib/useMe";
 import { arNum, hijri, formatAyah } from "@/lib/format";
 import { tSession as t } from "@/i18n/ar/session";
+import { navAr } from "@/i18n/ar/nav";
 import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, TodayTargetView, type TTData, type TTBound, ui, sp } from "@/components/ui";
+
+// شارة البرنامج + عدّاده (الحلقة قد تجمع برامج مختلفة). النصوص من i18n، والأرقام مشرقية.
+const PROGRAM_AR: Record<string, string> = {
+  QAIDAH_MADANIYYAH: navAr.civilBase, MARAQI: navAr.maraqi, MUDDAKIR: navAr.grpMuddakir, WEEKLY: navAr.weekly,
+};
+function programCounts(students: { program: string | null }[]): string {
+  const by = new Map<string, number>();
+  for (const s of students) { const k = s.program ?? ""; if (k) by.set(k, (by.get(k) ?? 0) + 1); }
+  return [...by.entries()].map(([k, n]) => `${PROGRAM_AR[k] ?? k} ${arNum(n)}`).join(" · ");
+}
 
 // شاشة الجلسة اليومية (م٦ — التشغيل الذكيّ): كل طلاب الحلقة معروضون فوراً بلا اختيار
 // تاريخٍ ولا حلقة (الافتراض: حلقة المعلّم واليوم). كلٌّ بحاله (حفظ أمس · المطلوب اليوم ·
@@ -160,7 +171,10 @@ export default function DailySessionPage() {
       )}
       {current && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(3), flexWrap: "wrap", margin: `0 0 ${sp(4)}` }}>
-          <p style={{ color: ui.color.muted, margin: 0, fontSize: ui.text.base }}>{current.nameAr}{t("circleHeaderSuffix")}</p>
+          <p style={{ color: ui.color.muted, margin: 0, fontSize: ui.text.base }}>
+            {current.nameAr}{t("circleHeaderSuffix")}
+            {board && board.length > 0 && programCounts(board) ? ` — ${programCounts(board)}` : ""}
+          </p>
           <a href={`/admin/circles/${circleId}/weakness`} style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.primary, textDecoration: "none", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, padding: `${sp(1.5)} ${sp(3)}` }}>{t("weaknessMapLink")}</a>
         </div>
       )}
@@ -187,7 +201,10 @@ export default function DailySessionPage() {
             style={{ width: "100%", textAlign: "start", background: "transparent", border: "none", cursor: "pointer", fontFamily: ui.font, color: ui.color.text, padding: sp(4), display: "flex", flexDirection: "column", gap: sp(2) }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), flexWrap: "wrap" }}>
-              <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
+              <span style={{ display: "flex", gap: sp(2), alignItems: "center", minWidth: 0 }}>
+                <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
+                {s.program && <Badge tone="neutral">{PROGRAM_AR[s.program] ?? s.program}</Badge>}
+              </span>
               <div style={{ display: "flex", gap: sp(2), alignItems: "center" }}>
                 {s.deferredToday && <Badge tone="bronze">{t("deferredToday")}</Badge>}
                 <Badge tone={stepTone(s.nextStep)}>{s.nextStep}</Badge>
