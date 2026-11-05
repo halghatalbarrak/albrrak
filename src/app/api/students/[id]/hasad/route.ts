@@ -2,7 +2,7 @@ import { Role } from "@prisma/client";
 import { recordHasad, type HasadErrorInput, type HasadHesitationInput } from "@/server/hasad";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // POST /api/students/[id]/hasad — المُسمِّع يسجّل الحصاد: أخطاءً عند آياتٍ وتردّداتٍ للأوجه (الحكم ٧).
 // قاعدة مطلقة: المُسمِّع ليس معلم الطالب (يُتحقَّق في الخادم). غير الكادر ← 403.
@@ -11,13 +11,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const actor = await requireRoles(req, [Role.RECITER, Role.CIRCLE_MANAGER, Role.SUPER_ADMIN]);
     const { id } = await ctx.params;
     const b = (await req.json()) as { stageId?: unknown; errors?: unknown; hesitations?: unknown };
-    if (typeof b.stageId !== "string") throw new ValidationError("المرحلة مطلوبة.");
-    if (!Array.isArray(b.errors)) throw new ValidationError("قائمة الأخطاء مطلوبة.");
+    if (typeof b.stageId !== "string") throw verr("stageRequired");
+    if (!Array.isArray(b.errors)) throw verr("hasadErrorsListRequired");
 
     const errors: HasadErrorInput[] = b.errors.map((raw) => {
       const e = raw as { pageNo?: unknown; errorType?: unknown; surah?: unknown; ayah?: unknown };
       if (typeof e.pageNo !== "number" || typeof e.errorType !== "string") {
-        throw new ValidationError("خطأٌ غير صالح (يلزم صفحة ونوع).");
+        throw verr("invalidErrorNeedsPageType");
       }
       return {
         pageNo: e.pageNo,
@@ -30,7 +30,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const hesitations: HasadHesitationInput[] = Array.isArray(b.hesitations)
       ? b.hesitations.map((raw) => {
           const h = raw as { faceNo?: unknown };
-          if (typeof h.faceNo !== "number") throw new ValidationError("تردّدٌ غير صالح (يلزم رقم وجه).");
+          if (typeof h.faceNo !== "number") throw verr("invalidHesitationNeedsFace");
           return { faceNo: h.faceNo };
         })
       : [];

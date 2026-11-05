@@ -1,6 +1,6 @@
 import { completeActivation, getActivationStatus } from "@/server/user-management";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // مسار التفعيل العامّ — **بلا تسجيل دخول**. الرمز نفسه هو الإثبات (عشوائيّ قويّ، لمرّةٍ واحدة).
 
@@ -8,7 +8,7 @@ import { ValidationError } from "@/server/errors";
 export async function GET(req: Request) {
   try {
     const token = new URL(req.url).searchParams.get("token");
-    if (!token) throw new ValidationError("لا رمز.");
+    if (!token) throw verr("activateNoToken");
     return Response.json(await getActivationStatus(token));
   } catch (e) {
     return errorResponse(e);
@@ -19,8 +19,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const b = (await req.json()) as Record<string, unknown>;
-    if (typeof b.token !== "string") throw new ValidationError("لا رمز.");
-    if (typeof b.password !== "string") throw new ValidationError("كلمة السرّ مطلوبة.");
+    if (typeof b.token !== "string") throw verr("activateNoToken");
+    if (typeof b.password !== "string") throw verr("passwordRequired");
     await completeActivation(b.token, b.password);
     return Response.json({ ok: true });
   } catch (e) {

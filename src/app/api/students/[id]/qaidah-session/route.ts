@@ -3,7 +3,7 @@ import { QaidahEvalResult, Role } from "@prisma/client";
 import { recordQaidahSession, getQaidahPosition } from "@/server/qaidah-session";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 const ROLES = [Role.TEACHER, Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
 
@@ -30,7 +30,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const position = await recordQaidahSession({ studentId: id, actorId: actor.id, result: QaidahEvalResult.DEFERRED });
       return Response.json({ ok: true, position }, { status: 201 });
     }
-    if (typeof b.mastered !== "boolean") throw new ValidationError("حقل «متقن» أو «مؤجَّل» مطلوب.");
+    if (typeof b.mastered !== "boolean") throw verr("masteredOrDeferredRequired");
     const position = await recordQaidahSession({ studentId: id, actorId: actor.id, mastered: b.mastered });
     return Response.json({ ok: true, position }, { status: 201 });
   } catch (e) {

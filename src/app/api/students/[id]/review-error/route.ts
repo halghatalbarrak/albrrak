@@ -1,7 +1,7 @@
 import { recordReviewError } from "@/server/daily-session";
 import { requireAuth } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // POST /api/students/[id]/review-error — رصد أخطاء مراجعة مقطعٍ (الحكم ٥).
 // خطآن ⟵ يعود المقطع حفظًا جديدًا. تسميعٌ مرن (الأحكام ٦، ٨: المعلّم أو عريفٌ مُسنَد).
@@ -11,9 +11,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const actor = await requireAuth(req);
     const { id } = await ctx.params;
     const b = (await req.json()) as { sessionId?: unknown; errorCount?: unknown; date?: unknown };
-    if (typeof b.sessionId !== "string") throw new ValidationError("المقطع مطلوب.");
-    if (typeof b.errorCount !== "number") throw new ValidationError("عدد الأخطاء مطلوب.");
-    if (typeof b.date !== "string") throw new ValidationError("تاريخ المراجعة مطلوب.");
+    if (typeof b.sessionId !== "string") throw verr("segmentRequired");
+    if (typeof b.errorCount !== "number") throw verr("errorsCountRequired");
+    if (typeof b.date !== "string") throw verr("reviewDateRequired");
     const result = await recordReviewError({
       studentId: id,
       sessionId: b.sessionId,

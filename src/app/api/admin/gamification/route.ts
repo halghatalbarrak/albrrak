@@ -4,7 +4,7 @@ import { requireRoles } from "@/server/auth";
 import { listBadgeDefinitions } from "@/server/gamification/badges";
 import { listMotivationTemplates, updateBadgeDefinition, updateMotivationTemplate } from "@/server/gamification/admin";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 const ADMIN: Role[] = [Role.SUPER_ADMIN, Role.CIRCLE_MANAGER];
 
@@ -25,16 +25,16 @@ export async function POST(req: Request) {
     const actor = await requireRoles(req, ADMIN);
     const b = (await req.json()) as { action?: unknown; id?: unknown; kind?: unknown; patch?: Record<string, unknown> };
     if (b.action === "badge") {
-      if (typeof b.id !== "string") throw new ValidationError("التعريف مطلوب.");
+      if (typeof b.id !== "string") throw verr("definitionRequired");
       await updateBadgeDefinition(actor.id, b.id, (b.patch ?? {}) as never);
       return Response.json({ ok: true });
     }
     if (b.action === "template") {
-      if (typeof b.kind !== "string" || !(Object.values(MotivationKind) as string[]).includes(b.kind)) throw new ValidationError("نوع القالب مطلوب.");
+      if (typeof b.kind !== "string" || !(Object.values(MotivationKind) as string[]).includes(b.kind)) throw verr("templateKindRequired");
       await updateMotivationTemplate(actor.id, b.kind as MotivationKind, (b.patch ?? {}) as { textAr?: string; active?: boolean });
       return Response.json({ ok: true });
     }
-    throw new ValidationError("الإجراء مطلوب (badge/template).");
+    throw verr("actionRequiredBadgeTemplate");
   } catch (e) {
     return errorResponse(e);
   }

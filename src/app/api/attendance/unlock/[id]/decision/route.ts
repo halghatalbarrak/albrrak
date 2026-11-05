@@ -1,7 +1,7 @@
 import { decideAttendanceUnlock } from "@/server/attendance-lock";
 import { requireAuth } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // POST /api/attendance/unlock/[id]/decision — بتّ طلب فتحٍ (id = معرّف الاعتماد).
 // الجسم: { decision: APPROVED|REJECTED, note? }. صلاحية ATTENDANCE_UNLOCK تُتحقَّق في الخادم.
@@ -11,7 +11,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const { id } = await ctx.params;
     const b = (await req.json()) as { decision?: unknown; note?: unknown };
     if (b.decision !== "APPROVED" && b.decision !== "REJECTED") {
-      throw new ValidationError("القرار مطلوب (APPROVED/REJECTED).");
+      throw verr("decisionRequiredApprovedRejected");
     }
     const decided = await decideAttendanceUnlock({
       approvalId: id,

@@ -2,7 +2,7 @@ import { Role } from "@prisma/client";
 import { recordPaceTest } from "@/server/maraqi";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // POST /api/students/[id]/pace-test — تسجيل اختبار المقطع وإسناد المسار (§٨٫٥).
 // قاعدة مطلقة: المُختبِر ليس معلم الطالب (يُتحقَّق في الخادم). غير الكادر ← 403.
@@ -16,7 +16,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const { id } = await ctx.params;
     const b = (await req.json()) as { linesMemorized?: unknown };
     if (typeof b.linesMemorized !== "number") {
-      throw new ValidationError("قدر الحفظ (بالأسطر) مطلوب.");
+      throw verr("hifzLinesRequired");
     }
     const result = await recordPaceTest({
       studentId: id,

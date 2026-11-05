@@ -2,7 +2,7 @@ import { AttendanceStatus, Role } from "@prisma/client";
 import { markStudentAttendance } from "@/server/attendance";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 const ROLES = [Role.TEACHER, Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
 
@@ -13,10 +13,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const actor = await requireRoles(req, ROLES);
     const { id } = await ctx.params;
     const b = (await req.json()) as { studentId?: unknown; status?: unknown; date?: unknown };
-    if (typeof b.studentId !== "string") throw new ValidationError("الطالب مطلوب.");
-    if (typeof b.date !== "string") throw new ValidationError("التاريخ مطلوب.");
+    if (typeof b.studentId !== "string") throw verr("studentRequired");
+    if (typeof b.date !== "string") throw verr("dateRequired");
     if (typeof b.status !== "string" || !Object.values(AttendanceStatus).includes(b.status as AttendanceStatus)) {
-      throw new ValidationError("حالة حضورٍ غير معروفة.");
+      throw verr("unknownAttendanceStatus");
     }
     const res = await markStudentAttendance({ circleId: id, studentId: b.studentId, status: b.status as AttendanceStatus, date: b.date, recorderId: actor.id });
     return Response.json(res, { status: 201 });

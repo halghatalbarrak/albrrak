@@ -2,7 +2,7 @@ import { Role } from "@prisma/client";
 import { getLockGraceDays, setLockGraceDays } from "@/server/attendance-lock";
 import { requireRoles, requireAuth } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 const ROLES = [Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
 
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     const actor = await requireAuth(req);
     const b = (await req.json()) as { graceDays?: unknown };
     if (typeof b.graceDays !== "number" || !Number.isInteger(b.graceDays) || b.graceDays < 0) {
-      throw new ValidationError("مهلة القفل عددٌ صحيحٌ ≥ ٠.");
+      throw verr("lockGraceNonNegative");
     }
     await setLockGraceDays(b.graceDays, actor.id);
     return Response.json({ graceDays: b.graceDays });

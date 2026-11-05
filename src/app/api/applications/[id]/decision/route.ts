@@ -6,7 +6,7 @@ import {
 } from "@/server/application";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // POST /api/applications/[id]/decision — القبول/الرفض/الانتظار (المدير فقط).
 // كل قرار يمرّ عبر دالّة خدمة. غير المخوّل ← 403.
@@ -46,7 +46,7 @@ export async function POST(
         return Response.json({ id: r.id, status: r.status });
       }
       default:
-        throw new ValidationError("قرار غير معروف (accept | reject | waitlist).");
+        throw verr("unknownAppDecision");
     }
   } catch (e) {
     return errorResponse(e);

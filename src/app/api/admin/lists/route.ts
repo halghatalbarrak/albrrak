@@ -7,7 +7,7 @@ import {
 } from "@/server/list-values";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 const MANAGER = [Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
 
@@ -26,8 +26,8 @@ export async function POST(req: Request) {
   try {
     await requireRoles(req, MANAGER);
     const body = (await req.json()) as { kind?: unknown; nameAr?: unknown };
-    if (!isListKind(body.kind)) throw new ValidationError("نوع قائمة غير معروف.");
-    if (typeof body.nameAr !== "string") throw new ValidationError("الاسم مطلوب.");
+    if (!isListKind(body.kind)) throw verr("unknownListKind");
+    if (typeof body.nameAr !== "string") throw verr("nameRequired");
     const item = await addReferenceValue({ kind: body.kind, nameAr: body.nameAr });
     return Response.json(item, { status: 201 });
   } catch (e) {
@@ -40,9 +40,9 @@ export async function PATCH(req: Request) {
   try {
     await requireRoles(req, MANAGER);
     const body = (await req.json()) as { kind?: unknown; id?: unknown; isActive?: unknown };
-    if (!isListKind(body.kind)) throw new ValidationError("نوع قائمة غير معروف.");
-    if (typeof body.id !== "string") throw new ValidationError("المعرّف مطلوب.");
-    if (typeof body.isActive !== "boolean") throw new ValidationError("الحالة مطلوبة.");
+    if (!isListKind(body.kind)) throw verr("unknownListKind");
+    if (typeof body.id !== "string") throw verr("idRequired");
+    if (typeof body.isActive !== "boolean") throw verr("statusRequired");
     const item = await setReferenceValueActive({
       kind: body.kind,
       id: body.id,

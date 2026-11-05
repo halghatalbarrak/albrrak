@@ -2,7 +2,7 @@ import { Role } from "@prisma/client";
 
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 import { listAllReferenceValues } from "@/server/list-values";
 import { listPrograms } from "@/server/circles";
 import {
@@ -24,11 +24,11 @@ export async function POST(req: Request) {
       defaultProgramId?: unknown;
       overrides?: Record<number, { nationalityId?: string; guardianRelationId?: string; emergencyRelationId?: string }>;
     } | null;
-    if (!body || typeof body.csv !== "string") throw new ValidationError("الملفّ مطلوب.");
-    if (typeof body.circleId !== "string" || !body.circleId) throw new ValidationError("الحلقة مطلوبة.");
+    if (!body || typeof body.csv !== "string") throw verr("displayFileRequired");
+    if (typeof body.circleId !== "string" || !body.circleId) throw verr("circleRequiredField");
 
     const parsed = parseStudentsCsv(body.csv);
-    if (!parsed.ok) throw new ValidationError("أعمدةٌ ناقصةٌ في الملفّ.");
+    if (!parsed.ok) throw verr("importMissingColumns");
 
     const lists = await listAllReferenceValues();
     const nationalities = lists.nationalities.filter((n) => n.isActive).map((n) => ({ id: n.id, nameAr: n.nameAr }));
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
 
     // تُحفظ السطور الصالحة (صالح/تحذير) فقط — ويُستثنى الخطأ والمتخطّى (المستورَد سابقًا).
     const committable = results.filter((r) => (r.level === "valid" || r.level === "warning") && r.resolved);
-    if (committable.length === 0) throw new ValidationError("لا سطور صالحةٌ للاعتماد.");
+    if (committable.length === 0) throw verr("importNoValidRows");
 
     const report = await commitImport({ rows: committable, circleId: body.circleId, decidedBy: actor.id });
     return Response.json(report);

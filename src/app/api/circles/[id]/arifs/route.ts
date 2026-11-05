@@ -7,7 +7,7 @@ import {
 } from "@/server/arif";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 const ROLES = [Role.TEACHER, Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
 
@@ -33,7 +33,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const actor = await requireRoles(req, ROLES);
     const { id } = await ctx.params;
     const b = (await req.json()) as { arifUserId?: unknown; action?: unknown };
-    if (typeof b.arifUserId !== "string") throw new ValidationError("العريف مطلوب.");
+    if (typeof b.arifUserId !== "string") throw verr("arifRequired");
     if (b.action === "appoint") {
       const appt = await appointArif({ circleId: id, arifUserId: b.arifUserId, teacherId: actor.id });
       return Response.json({ appointmentId: appt.id }, { status: 201 });
@@ -42,7 +42,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       await dismissArif({ circleId: id, arifUserId: b.arifUserId, teacherId: actor.id });
       return Response.json({ ok: true });
     }
-    throw new ValidationError("الإجراء مطلوب (appoint/dismiss).");
+    throw verr("actionRequiredAppointDismiss");
   } catch (e) {
     return errorResponse(e);
   }

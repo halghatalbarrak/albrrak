@@ -10,7 +10,7 @@ import {
 import { setMuddakirStaffRoles } from "@/server/muddakir-requests";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // إدارة المستخدمين (المرحلة أ) — للمشرف العام والمدير التقنيّ فقط (ROLES.md).
 // الحرّاس المطلقة (الوصول + التصعيد + آخر مدير تقنيّ) في طبقة الخادم (user-management.ts).
@@ -37,9 +37,9 @@ export async function POST(req: Request) {
   try {
     const actor = await requireRoles(req, ADMINS);
     const b = (await req.json()) as Record<string, unknown>;
-    if (typeof b.name !== "string") throw new ValidationError("الاسم مطلوب.");
-    if (typeof b.phone !== "string") throw new ValidationError("الجوال مطلوب.");
-    if (!isRoleArray(b.roles)) throw new ValidationError("الأدوار مطلوبة.");
+    if (typeof b.name !== "string") throw verr("nameRequired");
+    if (typeof b.phone !== "string") throw verr("phoneRequired");
+    if (!isRoleArray(b.roles)) throw verr("rolesRequired");
     // حصر الوظائف (و١): وظيفة المدّكر تُسنَد ضمن الإنشاء (الأدوار العامّة فارغةٌ حينها)، ذرّيّاً.
     const newStaff = isMuddakirRoleArray(b.muddakirRoles) ? b.muddakirRoles : [];
     const res = await createStaff(actor.id, { name: b.name, phone: b.phone, roles: b.roles, muddakirStaff: newStaff });
@@ -54,7 +54,7 @@ export async function PATCH(req: Request) {
   try {
     const actor = await requireRoles(req, ADMINS);
     const b = (await req.json()) as Record<string, unknown>;
-    if (typeof b.userId !== "string") throw new ValidationError("المعرّف مطلوب.");
+    if (typeof b.userId !== "string") throw verr("idRequired");
     if (typeof b.active === "boolean") {
       return Response.json(await setActive(actor.id, b.userId, b.active));
     }
@@ -63,7 +63,7 @@ export async function PATCH(req: Request) {
     // حفظ الأدوار العامّة. ويبقى شرط «دورٌ واحدٌ على الأقلّ من النوعين» في setRoles.
     const hasRoles = isRoleArray(b.roles);
     const hasMuddakir = isMuddakirRoleArray(b.muddakirRoles);
-    if (!hasRoles && !hasMuddakir) throw new ValidationError("لا تغيير معروف (active أو roles أو muddakirRoles).");
+    if (!hasRoles && !hasMuddakir) throw verr("unknownUserChange");
     const out: Record<string, unknown> = {};
     if (hasRoles && hasMuddakir) {
       // الحفظ الموحّد (و١): يفرض الحصر على الحالة النهائيّة ويطبّق ذرّيّاً (يحلّ تبديل العامّ↔الوظيفة).

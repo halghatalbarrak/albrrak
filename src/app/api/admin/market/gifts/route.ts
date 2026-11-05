@@ -7,7 +7,7 @@ import {
 } from "@/server/market";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // إدارة ثمرات الوليّ المعلّقة (م٦ب-٢) — للإدارة وحدها. الحرّاس في market.ts.
 const MANAGER = [Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
@@ -27,17 +27,17 @@ export async function PATCH(req: Request) {
   try {
     const actor = await requireRoles(req, MANAGER);
     const body = (await req.json()) as Record<string, unknown>;
-    if (typeof body.id !== "string") throw new ValidationError("المعرّف مطلوب.");
+    if (typeof body.id !== "string") throw verr("idRequired");
     if (body.action === "reject") {
       const item = await rejectGuardianGift(actor.id, body.id);
       return Response.json(item);
     }
     if (body.action === "approve") {
-      if (typeof body.pricePoints !== "number") throw new ValidationError("القيمة المعتمَدة مطلوبة.");
+      if (typeof body.pricePoints !== "number") throw verr("approvedValueRequired");
       const item = await approveGuardianGift(actor.id, body.id, body.pricePoints);
       return Response.json(item);
     }
-    throw new ValidationError("إجراءٌ غير معروف (approve/reject).");
+    throw verr("unknownActionApproveReject");
   } catch (e) {
     return errorResponse(e);
   }

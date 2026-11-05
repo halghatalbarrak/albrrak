@@ -3,7 +3,7 @@ import { Role } from "@prisma/client";
 import { requireRoles } from "@/server/auth";
 import { getPlacementView } from "@/server/placement-view";
 import { placeQaidahLessons, placeMaraqi, changeStudentProgram } from "@/server/placement-actions";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 import { errorResponse } from "@/server/http";
 
 // تسكين الطالب وتغيير برنامجه (ق٢/ق٣/ق٧) — المشرف/المدير/المدير التقنيّ (الحارس المطلق في الخادم).
@@ -28,11 +28,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const b = (await req.json()) as Record<string, unknown>;
     switch (b.action) {
       case "change-program": {
-        if (typeof b.programId !== "string") throw new ValidationError("البرنامج مطلوب.");
+        if (typeof b.programId !== "string") throw verr("programFieldRequired");
         return Response.json(await changeStudentProgram({ actorId: actor.id, studentId: id, programId: b.programId }));
       }
       case "place-qaidah": {
-        if (typeof b.currentLessonId !== "string") throw new ValidationError("الدرس الحاليّ مطلوب.");
+        if (typeof b.currentLessonId !== "string") throw verr("currentLessonRequired");
         return Response.json(await placeQaidahLessons({ actorId: actor.id, studentId: id, currentLessonId: b.currentLessonId }));
       }
       case "place-maraqi": {
@@ -42,7 +42,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         return Response.json(await placeMaraqi({ actorId: actor.id, studentId: id, reachedSurah, reachedAyah, outOfOrder }));
       }
       default:
-        throw new ValidationError("فعلٌ غير معروف.");
+        throw verr("unknownVerb");
     }
   } catch (e) {
     return errorResponse(e);
