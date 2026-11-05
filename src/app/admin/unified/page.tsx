@@ -9,6 +9,7 @@ import { arNum, formatAyah } from "@/lib/format";
 import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
 import { attendanceLockAr as tLock } from "@/i18n/ar/attendance-lock";
 import { navAr } from "@/i18n/ar/nav";
+import { tUnified as tu } from "@/i18n/ar/unified";
 
 // تسمية البرنامج (شارةٌ لكلّ طالب + عدّادٌ في الترويسة — الحلقة قد تجمع برامج مختلفة). النصوص من i18n.
 const PROGRAM_AR: Record<string, string> = {
@@ -134,9 +135,9 @@ export default function UnifiedPage() {
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/unified" title="الشاشة الموحّدة" crumbs={CRUMBS}>{children}</AppShell>
   );
 
-  if (status === "unauth") return <Shell><p>تحتاج دخولًا كمعلّم/إدارة.</p></Shell>;
+  if (status === "unauth") return <Shell><p>{tu("needLoginTeacherAdmin")}</p></Shell>;
   if (status === "loading") return <Shell><Skeleton height={80} /></Shell>;
-  if (status === "error") return <Shell><p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" onClick={() => void load(circleId)}>إعادة</Button></p></Shell>;
+  if (status === "error") return <Shell><p style={{ color: ui.color.danger }}>{tu("loadFailed")}<Button variant="ghost" size="sm" onClick={() => void load(circleId)}>{tu("retry")}</Button></p></Shell>;
   if (circles.length === 0) return <Shell><EmptyState title="لا حلقات تَرصدها" /></Shell>;
 
   return (
@@ -147,7 +148,7 @@ export default function UnifiedPage() {
         </div>
       )}
       {dayLock && <DayLockBar lock={dayLock} circleId={circleId} date={date} post={post} />}
-      {absentDefault && <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginBottom: sp(2) }}>الأصل اليوم «غياب»: من لم تَرفعه حاضرًا يُحسب غائبًا. أشِّر الحاضرين من اللوحة.</p>}
+      {absentDefault && <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginBottom: sp(2) }}>{tu("absentDefaultNote")}</p>}
       {students && students.length > 0 && programCounts(students) && (
         <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginBottom: sp(2) }}>{programCounts(students)}</p>
       )}
@@ -167,8 +168,8 @@ export default function UnifiedPage() {
                 </span>
                 <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
                   {done ? <Badge tone="success">{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>
-                    : absentDefault ? <Badge tone="danger">غياب (لم يُرفَع)</Badge> : <Badge tone="neutral">لم يُرفَع</Badge>}
-                  {s.todayHifzDone && <Badge tone="bronze">حفظ ✓</Badge>}
+                    : absentDefault ? <Badge tone="danger">{tu("absentNotRaised")}</Badge> : <Badge tone="neutral">{tu("notRaised")}</Badge>}
+                  {s.todayHifzDone && <Badge tone="bronze">{tu("hifzDone")}</Badge>}
                 </span>
               </button>
             );
@@ -178,7 +179,7 @@ export default function UnifiedPage() {
 
         {/* لوحة الطالب */}
         <div style={{ flex: "2 1 420px", minWidth: 300 }}>
-          {!cur ? <Card><p style={{ margin: 0, color: ui.color.muted }}>اختر طالبًا من القائمة.</p></Card>
+          {!cur ? <Card><p style={{ margin: 0, color: ui.color.muted }}>{tu("pickStudent")}</p></Card>
             : <StudentPanel s={cur} circleId={circleId} date={date} items={items} post={post} />}
         </div>
       </div>
@@ -246,32 +247,32 @@ function StudentPanel({ s, circleId, date, items, post }: {
         <h3 style={H3}>الحضور{s.attendanceStatus ? ` — ${ATT_LABEL[s.attendanceStatus] ?? s.attendanceStatus}` : ""}</h3>
         <div style={row}>
           {ATT_BUTTONS.map((b) => <Button key={b.status} size="sm" variant={b.tone} onClick={() => void markAtt(b.status)}>{b.label}</Button>)}
-          <Button size="sm" variant="ghost" onClick={excuse}>مستأذن…</Button>
+          <Button size="sm" variant="ghost" onClick={excuse}>{tu("excused")}</Button>
         </div>
       </div>
 
       {/* ٢) القاعدة: الدرس الحاليّ (م ج) · أو وجهة اليوم (مراقي) · أو رسالةٌ لغيرهما */}
       {s.qaidah ? <QaidahPanel q={s.qaidah} onEval={qaidahEval} onDefer={qaidahDefer} />
-        : s.today.status === "ON_LEAVE" ? <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: 0 }}>في إجازة اختبار المرحلة — لا وجهةَ حفظٍ اليوم.</p>
-        : s.today.status !== "ACTIVE" ? <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: 0 }}>لا مهامّ يوميّة لهذا الطالب (ليس في مراقي ولا القاعدة المدنية).</p>
+        : s.today.status === "ON_LEAVE" ? <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: 0 }}>{tu("onStageLeave")}</p>
+        : s.today.status !== "ACTIVE" ? <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: 0 }}>{tu("noDailyTasks")}</p>
         : (
           <>
             <div>
-              <h3 style={H3}>الحفظ الجديد</h3>
-              {s.today.newHifz?.kind === "COMPLETED" ? <p style={{ color: ui.color.success, margin: 0 }}>أتمّ محفوظ مساره 🎉</p>
-                : s.today.newHifz?.kind === "NO_TRACK" ? <p style={{ color: ui.color.muted, margin: 0 }}>لم يُحدَّد مساره بعد.</p>
+              <h3 style={H3}>{tu("newHifz")}</h3>
+              {s.today.newHifz?.kind === "COMPLETED" ? <p style={{ color: ui.color.success, margin: 0 }}>{tu("trackCompleted")}</p>
+                : s.today.newHifz?.kind === "NO_TRACK" ? <p style={{ color: ui.color.muted, margin: 0 }}>{tu("trackNotSet")}</p>
                 : <>
-                    {s.today.newHifz?.kind === "REPEAT" && <p style={{ color: ui.color.danger, fontSize: ui.text.xs, margin: `0 0 ${sp(2)}` }}>الحكم ١: يعيد مقطع أمس.</p>}
+                    {s.today.newHifz?.kind === "REPEAT" && <p style={{ color: ui.color.danger, fontSize: ui.text.xs, margin: `0 0 ${sp(2)}` }}>{tu("rule1RepeatYesterday")}</p>}
                     <div style={{ ...row, marginBottom: sp(2), fontSize: ui.text.xs }}>
-                      <span>من</span><Input style={num} type="number" value={hifz.fromSurah} onChange={(e) => setHifz({ ...hifz, fromSurah: e.target.value })} />:
+                      <span>{tu("from")}</span><Input style={num} type="number" value={hifz.fromSurah} onChange={(e) => setHifz({ ...hifz, fromSurah: e.target.value })} />:
                       <Input style={num} type="number" value={hifz.fromAyah} onChange={(e) => setHifz({ ...hifz, fromAyah: e.target.value })} />
-                      <span>إلى</span><Input style={num} type="number" value={hifz.toSurah} onChange={(e) => setHifz({ ...hifz, toSurah: e.target.value })} />:
+                      <span>{tu("to")}</span><Input style={num} type="number" value={hifz.toSurah} onChange={(e) => setHifz({ ...hifz, toSurah: e.target.value })} />:
                       <Input style={num} type="number" value={hifz.toAyah} onChange={(e) => setHifz({ ...hifz, toAyah: e.target.value })} />
                     </div>
                     <div style={row}>
-                      <Button size="sm" variant="primary" onClick={() => void saveHifz(true)}>أتقن</Button>
-                      <Button size="sm" variant="danger" onClick={() => void saveHifz(false)}>لم يُتقن</Button>
-                      <Button size="sm" variant="ghost" onClick={() => void extra("hifz")}>+ زيادة</Button>
+                      <Button size="sm" variant="primary" onClick={() => void saveHifz(true)}>{tu("mastered")}</Button>
+                      <Button size="sm" variant="danger" onClick={() => void saveHifz(false)}>{tu("notMastered")}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => void extra("hifz")}>{tu("addMore")}</Button>
                     </div>
                   </>}
             </div>
@@ -280,9 +281,9 @@ function StudentPanel({ s, circleId, date, items, post }: {
               <h3 style={H3}>الترسيخ{s.today.tarseekh.length ? ` (${s.today.tarseekh.length} وحدة)` : ""}</h3>
               {s.today.tarseekh.length > 0 && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `0 0 ${sp(2)}` }}>{s.today.tarseekh.slice(0, 4).map(boundStr).join(" · ")}{s.today.tarseekh.length > 4 ? " …" : ""}</p>}
               <div style={row}>
-                <Button size="sm" variant="primary" onClick={() => void task("tarseekh", true)}>تمّ</Button>
-                <Button size="sm" variant="danger" onClick={() => void task("tarseekh", false)}>لم يتمّ</Button>
-                <Button size="sm" variant="ghost" onClick={() => void extra("tarseekh")}>+ زيادة</Button>
+                <Button size="sm" variant="primary" onClick={() => void task("tarseekh", true)}>{tu("done")}</Button>
+                <Button size="sm" variant="danger" onClick={() => void task("tarseekh", false)}>{tu("notDone")}</Button>
+                <Button size="sm" variant="ghost" onClick={() => void extra("tarseekh")}>{tu("addMore")}</Button>
               </div>
             </div>
 
@@ -290,9 +291,9 @@ function StudentPanel({ s, circleId, date, items, post }: {
               <h3 style={H3}>المراجعة{s.today.murajaah?.todaySlice.length ? " — حصّة اليوم" : ""}</h3>
               {s.today.murajaah && s.today.murajaah.todaySlice.length > 0 && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `0 0 ${sp(2)}` }}>{s.today.murajaah.todaySlice.slice(0, 4).map(boundStr).join(" · ")}</p>}
               <div style={row}>
-                <Button size="sm" variant="primary" onClick={() => void task("murajaah", true)}>تمّت</Button>
-                <Button size="sm" variant="danger" onClick={() => void task("murajaah", false)}>لم تتمّ</Button>
-                <Button size="sm" variant="ghost" onClick={() => void extra("murajaah")}>+ زيادة</Button>
+                <Button size="sm" variant="primary" onClick={() => void task("murajaah", true)}>{tu("doneF")}</Button>
+                <Button size="sm" variant="danger" onClick={() => void task("murajaah", false)}>{tu("notDoneF")}</Button>
+                <Button size="sm" variant="ghost" onClick={() => void extra("murajaah")}>{tu("addMore")}</Button>
               </div>
             </div>
           </>)}
@@ -300,7 +301,7 @@ function StudentPanel({ s, circleId, date, items, post }: {
       {/* ٤) تقدير يدويّ */}
       {items.length > 0 && (
         <div>
-          <h3 style={H3}>تقدير</h3>
+          <h3 style={H3}>{tu("estimate")}</h3>
           <div style={row}>
             {items.map((it) => <Button key={it.id} size="sm" variant="bronze" onClick={() => void grant(it.id)}>{it.nameAr} (+{it.value})</Button>)}
           </div>
@@ -319,7 +320,7 @@ function QaidahPanel({ q, onEval, onDefer }: { q: Qaidah; onEval: (mastered: boo
   if (q.graduated || q.locked) {
     return (
       <div>
-        <h3 style={H3}>القاعدة المدنية</h3>
+        <h3 style={H3}>{tu("civilBase")}</h3>
         <Badge tone="success">{q.locked ? "تخرّج — التقييم مقفل" : "أتمّ القاعدة المدنية ✓"}</Badge>
       </div>
     );
@@ -331,19 +332,19 @@ function QaidahPanel({ q, onEval, onDefer }: { q: Qaidah; onEval: (mastered: boo
 
   return (
     <div>
-      <h3 style={H3}>القاعدة المدنية — الدرس الحاليّ</h3>
+      <h3 style={H3}>{tu("qaidahCurrentLesson")}</h3>
       <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `0 0 ${sp(2)}` }}>
-        {q.chapterName ? <>الباب: <strong style={{ color: ui.color.text }}>{q.chapterName}</strong> · </> : null}
+        {q.chapterName ? <>{tu("chapterPrefix")}<strong style={{ color: ui.color.text }}>{q.chapterName}</strong> · </> : null}
         الدرس: <strong style={{ color: ui.color.text }}>{q.lessonName ?? "—"}</strong>
         {q.lessonIndexInChapter && q.lessonsInChapter ? ` (${arNum(q.lessonIndexInChapter)}/${arNum(q.lessonsInChapter)})` : ""}
         {" · "}{arNum(q.percent)}٪
         {q.consecutiveDeferrals > 0 ? <> · <Badge tone="bronze">تأجيلات متتالية: {arNum(q.consecutiveDeferrals)}</Badge></> : null}
-        {resultLabel ? <> · اليوم: <strong style={{ color: ui.color.text }}>{resultLabel}</strong></> : null}
+        {resultLabel ? <>{tu("todayPrefix")}<strong style={{ color: ui.color.text }}>{resultLabel}</strong></> : null}
       </p>
       <div style={row}>
-        <Button size="sm" variant="primary" onClick={() => onEval(true)}>متقن</Button>
-        <Button size="sm" variant="danger" onClick={() => onEval(false)}>غير متقن</Button>
-        <Button size="sm" variant="ghost" onClick={onDefer} title="حاضرٌ لم يُقيَّم لضيق الوقت — لا ينقل الموضع">مؤجَّل</Button>
+        <Button size="sm" variant="primary" onClick={() => onEval(true)}>{tu("qaidahMastered")}</Button>
+        <Button size="sm" variant="danger" onClick={() => onEval(false)}>{tu("qaidahNotMastered")}</Button>
+        <Button size="sm" variant="ghost" onClick={onDefer} title="حاضرٌ لم يُقيَّم لضيق الوقت — لا ينقل الموضع">{tu("qaidahDeferred")}</Button>
       </div>
     </div>
   );
