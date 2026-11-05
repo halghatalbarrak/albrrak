@@ -15,7 +15,7 @@ import { autoTransitionSubStage } from "./promotion";
 import { gradeHizbHarvest } from "./hasad-grading";
 import { facePagesInRange } from "./mushaf";
 import { emitEvent } from "./events";
-import { ValidationError } from "./errors";
+import { verr } from "./errors";
 
 // ═══════════════ الحصاد (م٤ج + الحكم ٧ — DESIGN §٨٫٧–٨٫٩) ═══════════════
 //
@@ -51,12 +51,12 @@ async function requireMaraqiSubStage(db: PrismaClient, stageId: string) {
       program: { select: { key: true } },
     },
   });
-  if (!stage) throw new ValidationError("مرحلة غير موجودة.");
+  if (!stage) throw verr("stageNotFound");
   if (stage.kind !== StageKind.SUB_STAGE || stage.program.key !== ProgramKey.MARAQI) {
-    throw new ValidationError("الحصاد لمرحلةٍ فرعية في مراقي.");
+    throw verr("hasadSubStageMaraqiOnly");
   }
   if (stage.fromSurah == null || stage.fromAyah == null || stage.toSurah == null || stage.toAyah == null) {
-    throw new ValidationError("حدود المرحلة الفرعية ناقصة.");
+    throw verr("hasadSubStageBoundsMissing");
   }
   return stage;
 }
@@ -78,7 +78,7 @@ export async function subStageHarvestRange(
   db: PrismaClient = prisma,
 ): Promise<HarvestRange> {
   const sub = await requireMaraqiSubStage(db, stageId);
-  if (!sub.parentId) throw new ValidationError("المرحلة الفرعية بلا مرحلةٍ أصلية.");
+  if (!sub.parentId) throw verr("hasadSubStageNoParent");
 
   const siblings = await db.stage.findMany({
     where: { parentId: sub.parentId, kind: StageKind.SUB_STAGE },
@@ -171,18 +171,18 @@ export async function recordHasad(
     select: { state: true },
   });
   if (progress?.state !== ProgressState.AWAITING_HASAD) {
-    throw new ValidationError("لم تُعلَن جاهزية هذا الطالب لهذا الحصاد.");
+    throw verr("hasadReadinessNotDeclared");
   }
-  if (!Array.isArray(args.errors)) throw new ValidationError("قائمة الأخطاء مطلوبة.");
+  if (!Array.isArray(args.errors)) throw verr("hasadErrorsListRequired");
   for (const e of args.errors) {
-    if (!Number.isInteger(e.pageNo) || e.pageNo < 1) throw new ValidationError("رقم صفحةٍ غير صالح.");
+    if (!Number.isInteger(e.pageNo) || e.pageNo < 1) throw verr("hasadInvalidPageNo");
     if (!["WORD", "LETTER", "FORGOTTEN_AYAH"].includes(e.errorType)) {
-      throw new ValidationError("نوع خطأٍ غير معروف.");
+      throw verr("hasadUnknownErrorType");
     }
   }
   const hesitations = args.hesitations ?? [];
   for (const h of hesitations) {
-    if (!Number.isInteger(h.faceNo) || h.faceNo < 1) throw new ValidationError("رقم وجهٍ غير صالح للتردّد.");
+    if (!Number.isInteger(h.faceNo) || h.faceNo < 1) throw verr("hasadInvalidFaceNo");
   }
 
   const range = await subStageHarvestRange(args.stageId, db);
@@ -192,7 +192,7 @@ export async function recordHasad(
     const validFaces = await facePagesInRange(range, db);
     for (const h of hesitations) {
       if (!validFaces.has(h.faceNo)) {
-        throw new ValidationError(`الوجه ${h.faceNo} خارج نطاق الحصاد (لا ينتمي للحزب المُختبَر).`);
+        throw verr("hasadFaceOutOfRange");
       }
     }
   }
@@ -330,10 +330,10 @@ export async function getHizbFaces(stageId: string, db: PrismaClient = prisma): 
     },
   });
   if (!stage || stage.kind !== StageKind.SUB_STAGE || stage.program.key !== ProgramKey.MARAQI) {
-    throw new ValidationError("أوجه الحزب لمرحلةٍ فرعيّة في مراقي فقط.");
+    throw verr("hasadHizbFacesMaraqiSubOnly");
   }
   if (stage.fromSurah == null || stage.fromAyah == null || stage.toSurah == null || stage.toAyah == null) {
-    throw new ValidationError("حدود المرحلة الفرعية ناقصة.");
+    throw verr("hasadSubStageBoundsMissing");
   }
   const set = await facePagesInRange(
     { fromSurah: stage.fromSurah, fromAyah: stage.fromAyah, toSurah: stage.toSurah, toAyah: stage.toAyah },
