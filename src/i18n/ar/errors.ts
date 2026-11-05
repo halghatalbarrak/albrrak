@@ -177,6 +177,32 @@ export const errorsAr = {
   trackNotAllowed: "مسارٌ غير مسموح.",
   reviewCyclePositiveInt: "دورة المراجعة عددٌ صحيحٌ موجب.",
   muddakirSingleFunction: "موظّف المدّكر لا يحمل أدواراً أخرى: لا دورَ عامّاً في المنصّة ولا وظيفة مدّكرٍ ثانية (وظيفةٌ واحدةٌ فقط).",
+
+  // البيدر والثمار (market.ts — م٦ب)
+  marketManageAdminsOnly: "إدارة الثمار للإدارة وحدها (ECONOMY_RULES الركن ٢).",
+  marketPickSellerOnly: "الجَنْي لأمين البيدر وحده (Role.SELLER).",
+  marketItemNameRequired: "اسم الثمرة مطلوب.",
+  marketValuePositiveInt: "قيمة الثمرة عددٌ صحيحٌ موجب (١ فأكثر).",
+  marketStockNonNegOrEmpty: "المتوفّر عددٌ صحيحٌ غير سالب، أو اتركه فارغًا (بلا حدّ).",
+  marketItemNotFound: "ثمرة غير موجودة.",
+  marketNoCodeRequestForStudent: "لا تملك طلب كودٍ لهذا الطالب.",
+  marketNoStudentRecord: "لا سجلّ طالبٍ مرتبطٌ بحسابك.",
+  marketCodeGenFailed: "تعذّر توليد رمزٍ فريد — أعِد المحاولة.",
+  marketEnterCode: "أدخل الرمز.",
+  marketCodeInvalid: "رمز غير صالح.",
+  marketCodeUsed: "رمزٌ مستعمَل من قبل.",
+  marketCodeExpired: "انتهت صلاحيّة الرمز — اطلب رمزًا جديدًا.",
+  marketItemDisabled: "الثمرة معطّلة — لا تُجنى.",
+  marketItemNotApproved: "الثمرة غير معتمَدة بعد — لا تُجنى.",
+  marketItemNotInStudentBaydar: "هذه الثمرة ليست في بيدر هذا الطالب.",
+  marketStockOut: "المتوفّر نفد.",
+  marketInsufficientBalance: "الرصيد لا يكفي قيمة الثمرة.",
+  marketAddByGuardian: "إضافة الثمرة لوليّ الأمر (Role.GUARDIAN).",
+  marketProposedValuePositiveInt: "القيمة المقترحة عددٌ صحيحٌ موجب (١ فأكثر).",
+  marketNoAddForStudent: "لا تملك إضافة ثمرةٍ لهذا الطالب.",
+  marketApprovedValuePositiveInt: "القيمة المعتمَدة عددٌ صحيحٌ موجب (١ فأكثر).",
+  marketApproveOnlyPending: "لا تُعتمَد إلّا ثمرةٌ بانتظار الموافقة.",
+  marketRejectOnlyPending: "لا تُرفَض إلّا ثمرةٌ بانتظار الموافقة.",
 } as const;
 
 /** مفاتيح أخطاء الخادم المُرحَّلة (تنمو كلّما رُحِّل مجال). */
