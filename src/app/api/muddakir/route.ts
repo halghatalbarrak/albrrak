@@ -13,7 +13,7 @@ import { MuddakirRequestType } from "@prisma/client";
 import { requireMuddakir } from "@/server/muddakir-staff";
 import { performOrRequest } from "@/server/muddakir-requests";
 import { errorResponse } from "@/server/http";
-import { AuthorizationError, ValidationError } from "@/server/errors";
+import { verr, aerr } from "@/server/errors";
 
 // GET /api/muddakir — المدير (منصّةٌ أو برنامجٌ): الحفّاظ + المشرفون + المتاحون للإلحاق. المشرف:
 // حفّاظه فقط للقراءة. (يقبل أدوار المدّكر المُحصَّرة كما الأدوار العامّة.)
@@ -41,9 +41,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const actor = await requireMuddakir(req, "view");
-    if (!actor.caps.manage && !actor.caps.admin) throw new AuthorizationError("هذا الإجراء لمدير البرنامج أو الإداريّ.");
+    if (!actor.caps.manage && !actor.caps.admin) throw aerr("actionManagerOrAdmin");
     const b = (await req.json()) as { action?: unknown; studentId?: unknown; supervisorId?: unknown; deliveryMode?: unknown };
-    if (typeof b.studentId !== "string") throw new ValidationError("الحافظ مطلوب.");
+    if (typeof b.studentId !== "string") throw verr("hafizRequired");
     const studentId = b.studentId;
 
     if (b.action === "enroll") {
@@ -52,12 +52,12 @@ export async function POST(req: Request) {
       return Response.json(r, { status: r.executed ? 201 : 202 });
     }
     if (b.action === "assign") {
-      if (typeof b.supervisorId !== "string") throw new ValidationError("المشرف مطلوب.");
+      if (typeof b.supervisorId !== "string") throw verr("supervisorRequired");
       const supervisorId = b.supervisorId;
       const r = await performOrRequest(actor, { type: MuddakirRequestType.ASSIGN_SUPERVISOR, payload: { studentId, supervisorId }, studentId, direct: () => assignSupervisor({ studentId, supervisorId, actorId: actor.id }) });
       return Response.json(r, { status: r.executed ? 201 : 202 });
     }
-    throw new ValidationError("الإجراء مطلوب (enroll/assign).");
+    throw verr("actionRequiredEnrollAssign");
   } catch (e) {
     return errorResponse(e);
   }

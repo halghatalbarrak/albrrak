@@ -4,7 +4,7 @@ import { assertReadyForStageExam } from "@/server/stage-exam-leave";
 import type { HasadErrorInput, HasadHesitationInput } from "@/server/hasad";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // POST /api/students/[id]/stage-exam — المختبِر المحايد يسجّل اختبار المرحلة على كامل المحفوظ
 // (حزبًا حزبًا: أخطاء + ترددات). البوّابة المطلقة (assertReadyForStageExam) قبل recordStageExam
@@ -15,18 +15,18 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const actor = await requireRoles(req, [Role.RECITER, Role.CIRCLE_MANAGER, Role.SUPER_ADMIN]);
     const { id } = await ctx.params;
     const b = (await req.json()) as { mainStageId?: unknown; startedOn?: unknown; hizbs?: unknown };
-    if (typeof b.mainStageId !== "string") throw new ValidationError("المرحلة الأصلية مطلوبة.");
-    if (typeof b.startedOn !== "string") throw new ValidationError("تاريخ البدء مطلوب.");
-    if (!Array.isArray(b.hizbs) || b.hizbs.length === 0) throw new ValidationError("قائمة الأحزاب مطلوبة.");
+    if (typeof b.mainStageId !== "string") throw verr("parentStageRequired");
+    if (typeof b.startedOn !== "string") throw verr("startDateRequired");
+    if (!Array.isArray(b.hizbs) || b.hizbs.length === 0) throw verr("hizbListRequired");
 
     const hizbs: HizbExamInput[] = b.hizbs.map((rawHizb) => {
       const h = rawHizb as { stageId?: unknown; errors?: unknown; hesitations?: unknown };
-      if (typeof h.stageId !== "string") throw new ValidationError("حزبٌ بلا مرحلة.");
-      if (!Array.isArray(h.errors)) throw new ValidationError("قائمة أخطاء الحزب مطلوبة.");
+      if (typeof h.stageId !== "string") throw verr("hizbWithoutStage");
+      if (!Array.isArray(h.errors)) throw verr("hizbErrorsListRequired");
       const errors: HasadErrorInput[] = h.errors.map((raw) => {
         const e = raw as { pageNo?: unknown; errorType?: unknown; surah?: unknown; ayah?: unknown };
         if (typeof e.pageNo !== "number" || typeof e.errorType !== "string") {
-          throw new ValidationError("خطأٌ غير صالح (يلزم صفحة ونوع).");
+          throw verr("invalidErrorNeedsPageType");
         }
         return {
           pageNo: e.pageNo,
@@ -38,7 +38,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const hesitations: HasadHesitationInput[] = Array.isArray(h.hesitations)
         ? h.hesitations.map((raw) => {
             const x = raw as { faceNo?: unknown };
-            if (typeof x.faceNo !== "number") throw new ValidationError("تردّدٌ غير صالح (يلزم رقم وجه).");
+            if (typeof x.faceNo !== "number") throw verr("invalidHesitationNeedsFace");
             return { faceNo: x.faceNo };
           })
         : [];

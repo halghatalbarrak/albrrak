@@ -2,7 +2,7 @@ import { Gender, Role, TimeSlot } from "@prisma/client";
 import { createCircle, listCircles, listPrograms } from "@/server/circles";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 const MANAGER = [Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
 // القراءة تشمل المُسجِّل — يحتاج قائمة الحلقات لإسناد الطالب عند التحديد.
@@ -25,12 +25,12 @@ export async function POST(req: Request) {
     await requireRoles(req, MANAGER);
     const b = (await req.json()) as Record<string, unknown>;
     if (b.timeSlot !== TimeSlot.ASR && b.timeSlot !== TimeSlot.MAGHRIB) {
-      throw new ValidationError("وقت الحلقة غير صالح (عصر/مغرب).");
+      throw verr("circleTimeSlotInvalid");
     }
     if (b.gender !== Gender.MALE && b.gender !== Gender.FEMALE) {
-      throw new ValidationError("جنس الحلقة غير صالح.");
+      throw verr("circleGenderInvalid");
     }
-    if (typeof b.nameAr !== "string") throw new ValidationError("اسم الحلقة مطلوب.");
+    if (typeof b.nameAr !== "string") throw verr("circleNameRequired");
     // البرنامج اختياريّ (الحلقة لا تتبع برنامجاً — قرار المدير).
     const circle = await createCircle({
       nameAr: b.nameAr,

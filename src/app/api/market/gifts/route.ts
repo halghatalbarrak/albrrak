@@ -1,7 +1,7 @@
 import { addGuardianGift } from "@/server/market";
 import { requireAuth } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // POST /api/market/gifts — وليّ الأمر يضيف ثمرةً (م٦ب-٢): تبدأ PENDING بقيمةٍ مقترحة.
 // الحرّاس المطلقة في market.addGuardianGift (GUARDIAN وحده، ولأبنائه المرتبطين فقط).
@@ -9,8 +9,8 @@ export async function POST(req: Request) {
   try {
     const actor = await requireAuth(req);
     const body = (await req.json()) as Record<string, unknown>;
-    if (typeof body.nameAr !== "string") throw new ValidationError("اسم الثمرة مطلوب.");
-    if (typeof body.proposedPricePoints !== "number") throw new ValidationError("القيمة المقترحة مطلوبة.");
+    if (typeof body.nameAr !== "string") throw verr("marketItemNameRequired");
+    if (typeof body.proposedPricePoints !== "number") throw verr("proposedValueRequired");
     const item = await addGuardianGift(actor.id, {
       nameAr: body.nameAr,
       proposedPricePoints: body.proposedPricePoints,

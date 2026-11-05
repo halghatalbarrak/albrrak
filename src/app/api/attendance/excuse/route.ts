@@ -1,7 +1,7 @@
 import { requestAbsenceExcuse, requestPreExcuse } from "@/server/attendance";
 import { requireAuth } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // POST /api/attendance/excuse — الطالب/الولي يقدّم طلب عذرٍ أو استئذانٍ مسبق (§١٠٫٢).
 //   kind: "PRE"    ⟵ مستأذن مسبقًا (تاريخٌ لم يأتِ بعد)
@@ -16,13 +16,13 @@ export async function POST(req: Request) {
       reason?: unknown;
       kind?: unknown;
     };
-    if (typeof b.studentId !== "string") throw new ValidationError("الطالب مطلوب.");
-    if (typeof b.date !== "string") throw new ValidationError("التاريخ مطلوب.");
+    if (typeof b.studentId !== "string") throw verr("studentRequired");
+    if (typeof b.date !== "string") throw verr("dateRequired");
     if (typeof b.reason !== "string" || !b.reason.trim()) {
-      throw new ValidationError("سبب العذر مطلوب.");
+      throw verr("excuseReasonRequired");
     }
     if (b.kind !== "PRE" && b.kind !== "EXCUSE") {
-      throw new ValidationError("نوع الطلب غير معروف.");
+      throw verr("unknownRequestType");
     }
 
     const args = {

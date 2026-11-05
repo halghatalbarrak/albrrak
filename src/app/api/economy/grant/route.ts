@@ -8,7 +8,7 @@ import {
 } from "@/server/economy";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // منح النقاط (م٦أ): المعلّم والإدارة. الحرّاس المطلقة (مصدر البند + نطاق الطالب + الحدّ)
 // في طبقة الخادم (economy.ts) — الواجهة تعرض المسموح فقط، والخادم يرفض ما عداه.
@@ -38,8 +38,8 @@ export async function POST(req: Request) {
   try {
     const actor = await requireRoles(req, GRANTERS);
     const body = (await req.json()) as Record<string, unknown>;
-    if (typeof body.studentId !== "string") throw new ValidationError("الطالب مطلوب.");
-    if (typeof body.pointItemId !== "string") throw new ValidationError("البند مطلوب.");
+    if (typeof body.studentId !== "string") throw verr("studentRequired");
+    if (typeof body.pointItemId !== "string") throw verr("pointItemRequired");
     const txn = await grantPoints({
       studentId: body.studentId,
       pointItemId: body.pointItemId,

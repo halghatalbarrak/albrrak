@@ -2,7 +2,7 @@ import { Role } from "@prisma/client";
 import { decideRetake } from "@/server/stage-transition";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // POST /api/stage-exams/[id]/retake — المدير يقرّر إعادة اختبارٍ راسبٍ ونطاقها ومهلتها.
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -11,7 +11,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const { id } = await ctx.params;
     const b = (await req.json()) as { scopeNote?: unknown; deadline?: unknown; note?: unknown };
     if (typeof b.scopeNote !== "string" || !b.scopeNote.trim()) {
-      throw new ValidationError("نطاق الإعادة مطلوب.");
+      throw verr("retakeRangeRequired");
     }
     const result = await decideRetake({
       examId: id,

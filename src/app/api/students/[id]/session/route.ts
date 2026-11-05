@@ -8,7 +8,7 @@ import {
 import { deferSession } from "@/server/session-deferral";
 import { requireAuth, requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 const ROLES = [Role.TEACHER, Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
 
@@ -18,7 +18,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const actor = await requireRoles(req, ROLES);
     const { id } = await ctx.params;
     const date = new URL(req.url).searchParams.get("date");
-    if (!date) throw new ValidationError("التاريخ مطلوب.");
+    if (!date) throw verr("dateRequired");
     const view = await getSessionView(actor.id, id, date);
     return Response.json(view);
   } catch (e) {
@@ -35,7 +35,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const actor = await requireAuth(req);
     const { id } = await ctx.params;
     const b = (await req.json()) as Record<string, unknown>;
-    if (typeof b.date !== "string") throw new ValidationError("التاريخ مطلوب.");
+    if (typeof b.date !== "string") throw verr("dateRequired");
 
     // «مؤجَّل» (حاضرٌ لم يُسمَّع لضيق الوقت): لا يحرّك الموضع ولا يمنح — سطرٌ محايد.
     if (b.kind === "defer") {
@@ -46,9 +46,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (b.kind === "hifz") {
       const nums = ["fromSurah", "fromAyah", "toSurah", "toAyah", "attempts"] as const;
       for (const k of nums) {
-        if (typeof b[k] !== "number") throw new ValidationError(`الحقل ${k} مطلوب.`);
+        if (typeof b[k] !== "number") throw verr("fieldRequiredGeneric");
       }
-      if (typeof b.mastered !== "boolean") throw new ValidationError("حقل «أتقن» مطلوب.");
+      if (typeof b.mastered !== "boolean") throw verr("masteredFieldRequired");
       await recordHifz({
         studentId: id,
         date: b.date,
@@ -67,19 +67,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const listener = typeof b.listenerId === "string" ? { listenerId: b.listenerId } : {};
 
     if (b.kind === "tarseekh") {
-      if (typeof b.done !== "boolean") throw new ValidationError("حقل «تمّ» مطلوب.");
+      if (typeof b.done !== "boolean") throw verr("doneFieldRequired");
       await recordTarseekh({ studentId: id, date: b.date, done: b.done, actorId: actor.id, ...listener });
       return Response.json({ ok: true }, { status: 201 });
     }
 
     if (b.kind === "murajaah") {
       // الحكم ٤ الموسّع: يُرصد مقدار ما رُوجِع اليوم (عدد المقاطع).
-      if (typeof b.count !== "number") throw new ValidationError("مقدار المراجعة مطلوب.");
+      if (typeof b.count !== "number") throw verr("murajaahAmountRequired");
       await recordMurajaah({ studentId: id, date: b.date, count: b.count, actorId: actor.id, ...listener });
       return Response.json({ ok: true }, { status: 201 });
     }
 
-    throw new ValidationError("نوع الرصد غير معروف (hifz/tarseekh/murajaah).");
+    throw verr("unknownSessionKind");
   } catch (e) {
     return errorResponse(e);
   }

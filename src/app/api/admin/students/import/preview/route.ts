@@ -2,7 +2,7 @@ import { Role } from "@prisma/client";
 
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 import { listAllReferenceValues } from "@/server/list-values";
 import { listPrograms } from "@/server/circles";
 import {
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       defaultProgramId?: unknown;
       overrides?: Record<number, { nationalityId?: string; guardianRelationId?: string; emergencyRelationId?: string }>;
     } | null;
-    if (!body || typeof body.csv !== "string") throw new ValidationError("الملفّ مطلوب.");
+    if (!body || typeof body.csv !== "string") throw verr("displayFileRequired");
 
     const parsed = parseStudentsCsv(body.csv);
     if (!parsed.ok) {

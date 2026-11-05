@@ -9,7 +9,7 @@ import {
 } from "@/server/economy";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // إدارة بنود النقاط (م٦أ) — للإدارة وحدها. الحرّاس المطلقة في طبقة الخادم (economy.ts).
 const MANAGER = [Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
@@ -62,7 +62,7 @@ export async function PATCH(req: Request) {
   try {
     const actor = await requireRoles(req, MANAGER);
     const body = (await req.json()) as Record<string, unknown>;
-    if (typeof body.id !== "string") throw new ValidationError("المعرّف مطلوب.");
+    if (typeof body.id !== "string") throw verr("idRequired");
     if (typeof body.active === "boolean" && body.nameAr === undefined) {
       const item = await setPointItemActive(actor.id, body.id, body.active);
       return Response.json(item);

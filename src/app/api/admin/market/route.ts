@@ -9,7 +9,7 @@ import {
 } from "@/server/market";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // إدارة السلع (م٦ب) — للإدارة وحدها (كإدارة بنود م٦أ). الحرّاس المطلقة في market.ts.
 const MANAGER = [Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
@@ -56,7 +56,7 @@ export async function PATCH(req: Request) {
   try {
     const actor = await requireRoles(req, MANAGER);
     const body = (await req.json()) as Record<string, unknown>;
-    if (typeof body.id !== "string") throw new ValidationError("المعرّف مطلوب.");
+    if (typeof body.id !== "string") throw verr("idRequired");
     if (typeof body.active === "boolean" && body.nameAr === undefined) {
       const item = await setMarketItemActive(actor.id, body.id, body.active);
       return Response.json(item);

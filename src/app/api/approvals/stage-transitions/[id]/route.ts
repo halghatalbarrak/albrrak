@@ -2,7 +2,7 @@ import { Role } from "@prisma/client";
 import { decideStageTransition } from "@/server/stage-transition";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // POST /api/approvals/stage-transitions/[id] — المدير يعتمد/يرفض الانتقال ([id] = معرّف الاعتماد).
 // الاعتماد ← إتمام المرحلة الأصلية (الانتقال). غير المدير ← 403.
@@ -12,7 +12,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const { id } = await ctx.params;
     const b = (await req.json()) as { decision?: unknown; note?: unknown };
     if (b.decision !== "APPROVED" && b.decision !== "REJECTED") {
-      throw new ValidationError("قرار غير معروف (APPROVED | REJECTED).");
+      throw verr("unknownApprovedRejected");
     }
     const result = await decideStageTransition({
       approvalId: id,

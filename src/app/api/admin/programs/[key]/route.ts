@@ -2,14 +2,14 @@ import { ProgramKey, Role } from "@prisma/client";
 
 import { requireRoles } from "@/server/auth";
 import { getProgramSettings, setProgramTransition } from "@/server/placement-actions";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 import { errorResponse } from "@/server/http";
 
 // إعدادات انتقال البرنامج (ق٤/ق٥): البرنامج التالي + المسار الافتراضيّ للمنتقلين.
 const ROLES = [Role.SUPER_ADMIN, Role.CIRCLE_MANAGER, Role.TECH_ADMIN];
 
 function toKey(raw: string): ProgramKey {
-  if (!(raw in ProgramKey)) throw new ValidationError("برنامج غير معروف.");
+  if (!(raw in ProgramKey)) throw verr("unknownProgram");
   return ProgramKey[raw as keyof typeof ProgramKey];
 }
 

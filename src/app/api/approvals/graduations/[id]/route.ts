@@ -2,7 +2,7 @@ import { Role } from "@prisma/client";
 import { decideGraduation } from "@/server/graduation";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // POST /api/approvals/graduations/[id] — المدير يعتمد/يرفض التخرّج ([id] = معرّف الاعتماد).
 // الاعتماد ← الحالة GRADUATED ثمّ شهادة KHATM. غير المدير ← 403.
@@ -12,7 +12,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const { id } = await ctx.params;
     const b = (await req.json()) as { decision?: unknown; note?: unknown };
     if (b.decision !== "APPROVED" && b.decision !== "REJECTED") {
-      throw new ValidationError("قرار غير معروف (APPROVED | REJECTED).");
+      throw verr("unknownApprovedRejected");
     }
     const result = await decideGraduation({
       approvalId: id,

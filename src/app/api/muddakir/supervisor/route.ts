@@ -15,7 +15,7 @@ import {
 import { setStageMode } from "@/server/muddakir-stages";
 import { requireMuddakir } from "@/server/muddakir-staff";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 // GET /api/muddakir/supervisor — لوحة المشرف (حفّاظه ومؤشّراتهم). ?studentId=… ⟵ تفصيل حافظٍ للقاء.
 export async function GET(req: Request) {
@@ -34,15 +34,15 @@ export async function POST(req: Request) {
   try {
     const actor = await requireMuddakir(req, "supervise");
     const b = (await req.json()) as { action?: unknown; studentId?: unknown; page?: unknown; lineNo?: unknown; track?: unknown; days?: unknown; mode?: unknown };
-    if (typeof b.studentId !== "string") throw new ValidationError("الحافظ مطلوب.");
+    if (typeof b.studentId !== "string") throw verr("hafizRequired");
     const studentId = b.studentId;
 
     switch (b.action) {
       case "markHeard":
-        if (typeof b.page !== "number") throw new ValidationError("الوجه مطلوب.");
+        if (typeof b.page !== "number") throw verr("faceRequired");
         return Response.json(await markHeard({ actorUserId: actor.id, studentId, page: b.page }));
       case "recordError":
-        if (typeof b.page !== "number" || typeof b.lineNo !== "number") throw new ValidationError("الصفحة والسطر مطلوبان.");
+        if (typeof b.page !== "number" || typeof b.lineNo !== "number") throw verr("pageAndLineRequired");
         return Response.json(await recordSupervisorError({ actorUserId: actor.id, studentId, page: b.page, lineNo: b.lineNo }));
       case "confirmWeek":
         return Response.json(await confirmWeekRegularity({ actorUserId: actor.id, studentId }));
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
       case "approveTrack":
         return Response.json(await approveTrackChange({ actorUserId: actor.id, studentId, track: typeof b.track === "number" ? b.track : undefined }));
       case "setReviewCycle":
-        if (typeof b.days !== "number") throw new ValidationError("دورة المراجعة مطلوبة.");
+        if (typeof b.days !== "number") throw verr("reviewCycleRequiredField");
         return Response.json(await setReviewCycleDays({ actorUserId: actor.id, studentId, days: b.days }));
       case "setMode": {
         const mode = b.mode === MuddakirMode.REVIEW_ONLY ? MuddakirMode.REVIEW_ONLY : MuddakirMode.ACTIVE;
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       case "approveTathbit":
         return Response.json(await approveTathbit({ actorUserId: actor.id, studentId }));
       default:
-        throw new ValidationError("إجراءٌ غير معروف.");
+        throw verr("displayUnknownAction");
     }
   } catch (e) {
     return errorResponse(e);

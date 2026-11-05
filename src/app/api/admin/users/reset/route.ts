@@ -3,7 +3,7 @@ import { Role } from "@prisma/client";
 import { resetPassword } from "@/server/user-management";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { ValidationError } from "@/server/errors";
+import { verr } from "@/server/errors";
 
 const ADMINS = [Role.SUPER_ADMIN, Role.TECH_ADMIN];
 
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   try {
     const actor = await requireRoles(req, ADMINS);
     const b = (await req.json()) as Record<string, unknown>;
-    if (typeof b.userId !== "string") throw new ValidationError("المعرّف مطلوب.");
+    if (typeof b.userId !== "string") throw verr("idRequired");
     return Response.json(await resetPassword(actor.id, b.userId));
   } catch (e) {
     return errorResponse(e);
