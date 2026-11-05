@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { tPrograms as tpr } from "@/i18n/ar/programs-page";
 import { useMe } from "@/lib/useMe";
 import { AppShell, EmptyState, ui, sp } from "@/components/ui";
 
@@ -96,19 +97,19 @@ export default function CivilBaseLadderPage() {
     void load();
   }, [load]);
 
-  if (status === "loading") return <main dir="rtl" style={centered}>جارٍ التحميل…</main>;
+  if (status === "loading") return <main dir="rtl" style={centered}>{tpr("loading")}</main>;
   if (status === "unauth")
     return (
       <main dir="rtl" style={centered}>
-        <p>تحتاج دخولًا لعرض السلّم.</p>
-        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>تسجيل الدخول</a>
+        <p>{tpr("needLoginLadder")}</p>
+        <a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>{tpr("login")}</a>
       </main>
     );
   if (status === "error")
     return (
       <main dir="rtl" style={centered}>
-        <p style={{ color: ui.color.danger }}>تعذّر تحميل السلّم.</p>
-        <button type="button" onClick={() => void load()}>إعادة المحاولة</button>
+        <p style={{ color: ui.color.danger }}>{tpr("loadLadderFailed")}</p>
+        <button type="button" onClick={() => void load()}>{tpr("retryFull")}</button>
       </main>
     );
 
@@ -126,23 +127,23 @@ export default function CivilBaseLadderPage() {
       title="القاعدة المدنية — السلّم البياني" crumbs={CRUMBS}>
       {(me?.roles ?? []).some((r) => ["CIRCLE_MANAGER", "SUPER_ADMIN", "TECH_ADMIN"].includes(r)) && (
         <div style={{ marginBottom: sp(3) }}>
-          <a href="/admin/programs/QAIDAH_MADANIYYAH/settings" style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.primary, textDecoration: "none", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, padding: `${sp(1.5)} ${sp(2.5)}` }}>⚙ إعدادات الانتقال إلى مراقي</a>
+          <a href="/admin/programs/QAIDAH_MADANIYYAH/settings" style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.primary, textDecoration: "none", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, padding: `${sp(1.5)} ${sp(2.5)}` }}>{tpr("transitionSettingsToMaraqi")}</a>
         </div>
       )}
       {position?.seeded && (
         <div style={{ padding: `${sp(3)} ${sp(4)}`, marginBottom: sp(4), background: ui.color.surface, border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, borderInlineStart: `4px solid ${ui.color.primary}` }}>
           {position.graduated ? (
-            <strong style={{ color: ui.color.success }}>أتممتَ دروس القاعدة المدنية — بارك الله فيك ✓</strong>
+            <strong style={{ color: ui.color.success }}>{tpr("qaidahCompleted")}</strong>
           ) : position.current ? (
             <>
-              <strong>موضعك الآن:</strong>{" "}
+              <strong>{tpr("yourPositionNow")}</strong>{" "}
               {position.current.chapterName ? <>الباب «{position.current.chapterName}» — </> : null}
               الدرس «{position.current.lessonName}» (الدرس {position.current.lessonIndexInChapter} من {position.current.lessonsInChapter})
               {" · "}أتممتَ {position.completedLessons} من {position.totalLessons} ({position.percent}٪)
-              {position.deferredIsLatest ? <> · <strong style={{ color: ui.color.bronze }}>آخر جلسة: مؤجَّل</strong></> : null}
+              {position.deferredIsLatest ? <> · <strong style={{ color: ui.color.bronze }}>{tpr("lastSessionDeferred")}</strong></> : null}
             </>
           ) : (
-            <span style={{ color: ui.color.muted }}>لم تبدأ الدروس بعد.</span>
+            <span style={{ color: ui.color.muted }}>{tpr("lessonsNotStarted")}</span>
           )}
         </div>
       )}
@@ -188,7 +189,7 @@ export default function CivilBaseLadderPage() {
                 <div style={{ padding: `${sp(2)} ${sp(3)}`, fontSize: ui.text.xs }}>
                   {s.objective && (
                     <p style={{ margin: "0 0 6px" }}>
-                      <strong>الهدف:</strong> {s.objective}
+                      <strong>{tpr("goal")}</strong> {s.objective}
                     </p>
                   )}
                   {s.teacherNotes && (
@@ -202,7 +203,7 @@ export default function CivilBaseLadderPage() {
                     </details>
                   )}
                   {!s.objective && !s.teacherNotes && (
-                    <p style={{ color: ui.color.muted, margin: 0 }}>لا تفاصيل مبذورة لهذا الباب بعد.</p>
+                    <p style={{ color: ui.color.muted, margin: 0 }}>{tpr("noChapterDetails")}</p>
                   )}
                 </div>
               )}
