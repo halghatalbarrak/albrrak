@@ -27,33 +27,33 @@ function Chips({ items }: { items: TTBound[] }) {
 
 /** بطاقةُ «وجهة اليوم» — تُعرض داخل حاوٍ (Card) خارجيّ. forStudent يبدّل نبرة الرسائل. */
 export function TodayTargetView({ t, forStudent = false }: { t: TTData; forStudent?: boolean }) {
-  if (t.status === "ON_LEAVE") return <p style={{ margin: 0, color: ui.color.muted, fontSize: ui.text.xs }}>في إجازة اختبار المرحلة — لا وجهةَ اليوم.</p>;
-  if (t.status !== "ACTIVE") return <p style={{ margin: 0, color: ui.color.muted, fontSize: ui.text.xs }}>لا وجهةَ اليوم.</p>;
+  if (t.status === "ON_LEAVE") return <p style={{ margin: 0, color: ui.color.muted, fontSize: ui.text.xs }}>{tMaraqi("onLeaveNoTarget")}</p>;
+  if (t.status !== "ACTIVE") return <p style={{ margin: 0, color: ui.color.muted, fontSize: ui.text.xs }}>{tMaraqi("noTargetToday")}</p>;
 
   return (
     <div style={{ fontSize: ui.text.xs }}>
       {/* ١) الحفظ الجديد */}
       <div style={line}>
-        <Badge tone="primary">احفظ</Badge>
+        <Badge tone="primary">{tMaraqi("memorize")}</Badge>
         {t.newHifz?.kind === "NEW" && t.newHifz.bound && <strong style={{ color: ui.color.text }}>{bound(t.newHifz.bound)}</strong>}
-        {t.newHifz?.kind === "REPEAT" && t.newHifz.bound && <span style={{ color: ui.color.danger }}>أعِد مقطع أمس (لم يُتقن): <strong>{bound(t.newHifz.bound)}</strong></span>}
+        {t.newHifz?.kind === "REPEAT" && t.newHifz.bound && <span style={{ color: ui.color.danger }}>{tMaraqi("repeatYesterdayPrefix")}<strong>{bound(t.newHifz.bound)}</strong></span>}
         {t.newHifz?.kind === "COMPLETED" && <span style={{ color: ui.color.success }}>{tMaraqi(forStudent ? "trackCompletedStudent" : "trackCompletedTeacher")}</span>}
         {t.newHifz?.kind === "NO_TRACK" && <span style={{ color: ui.color.muted }}>{tMaraqi("noTrackYet")}</span>}
       </div>
 
       {/* ٢) الترسيخ */}
       <div style={line}>
-        <Badge tone="bronze">رسّخ</Badge>
-        {t.tarseekh.length === 0 ? <span style={{ color: ui.color.muted }}>لا ترسيخَ بعد</span>
-          : <span><span style={{ color: ui.color.muted }}>آخر {t.tarseekh.length} وحدة: </span><Chips items={t.tarseekh} /></span>}
+        <Badge tone="bronze">{tMaraqi("consolidate")}</Badge>
+        {t.tarseekh.length === 0 ? <span style={{ color: ui.color.muted }}>{tMaraqi("noConsolidationYet")}</span>
+          : <span><span style={{ color: ui.color.muted }}>{tMaraqi("lastUnitsPrefix")}{t.tarseekh.length}{tMaraqi("lastUnitsSuffix")}</span><Chips items={t.tarseekh} /></span>}
       </div>
 
       {/* ٣) المراجعة */}
       <div style={{ ...line, marginBottom: 0 }}>
-        <Badge tone="bronze">راجِع</Badge>
+        <Badge tone="bronze">{tMaraqi("review")}</Badge>
         {!t.murajaah || t.murajaah.todaySlice.length === 0
-          ? <span style={{ color: ui.color.muted }}>{t.murajaah?.dayNo == null ? "لا مراجعةَ اليوم (عطلة)" : "لا راسخَ للمراجعة بعد"}</span>
-          : <span><span style={{ color: ui.color.muted }}>حصّة اليوم (الأضعف أوّلاً): </span><Chips items={t.murajaah.todaySlice} /></span>}
+          ? <span style={{ color: ui.color.muted }}>{t.murajaah?.dayNo == null ? tMaraqi("noReviewTodayHoliday") : tMaraqi("noConsolidatedForReview")}</span>
+          : <span><span style={{ color: ui.color.muted }}>{tMaraqi("todaySharePrefix")}</span><Chips items={t.murajaah.todaySlice} /></span>}
       </div>
     </div>
   );
