@@ -6,6 +6,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { arNum } from "@/lib/format";
 import { AppShell, Button, Badge, Card, ui, sp } from "@/components/ui";
+import { tMarket } from "@/i18n/ar/market";
 
 interface Guarded { studentId: string; name: string }
 interface BidderItem { id: string; nameAr: string; imageUrl: string | null; pricePoints: number; stock: number | null }
@@ -61,19 +62,16 @@ export default function BidderPage() {
 
       {/* بطاقة تسويقيّة دائمة — تحثّ الوليّ على المشاركة. */}
       <Card style={{ marginBottom: sp(6), borderInlineStart: `4px solid ${ui.color.bronze}` }}>
-        <div style={{ fontWeight: 700, marginBottom: sp(1) }}>كن شريكًا في تحفيز ابنك 🌱</div>
-        <p style={{ margin: 0, color: ui.color.muted }}>
-          أضِف ثمرةً (جائزة) إلى البيدر يجنيها ابنك بنقاطه التي يكسبها بجدّه. تقترح قيمتها،
-          وتتكفّل بها وتُحضِرها للحلقة، وتعتمدها الإدارة. ثمرتك تُشجّعه على المثابرة.
-        </p>
+        <div style={{ fontWeight: 700, marginBottom: sp(1) }}>{tMarket("guardianMotivateTitle")}</div>
+        <p style={{ margin: 0, color: ui.color.muted }}>{tMarket("guardianMotivateDesc")}</p>
       </Card>
 
       {ok && <p style={{ color: ui.color.success, fontWeight: 600 }}>{ok}</p>}
 
       {guarded == null ? (
-        <p style={{ color: ui.color.muted }}>جارٍ التحميل…</p>
+        <p style={{ color: ui.color.muted }}>{tMarket("loading")}</p>
       ) : guarded.length === 0 ? (
-        <Card style={{ maxWidth: 520 }}><p style={{ margin: 0 }}>لا أبناء مرتبطون بحسابك.</p></Card>
+        <Card style={{ maxWidth: 520 }}><p style={{ margin: 0 }}>{tMarket("noGuardianChildren")}</p></Card>
       ) : (
         <>
           {/* تبويبات الأبناء */}
@@ -88,7 +86,7 @@ export default function BidderPage() {
           {/* عرض بيدر الابن (نافذة) */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), marginBottom: sp(3) }}>
             <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, margin: 0 }}>بيدر {activeName}</h2>
-            <Button onClick={() => router.push(`/bidder/new?studentId=${encodeURIComponent(active)}`)}>+ جديد</Button>
+            <Button onClick={() => router.push(`/bidder/new?studentId=${encodeURIComponent(active)}`)}>{tMarket("newBtn")}</Button>
           </div>
           <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: sp(3), marginBottom: sp(6) }}>
             {items.map((i) => (
@@ -101,7 +99,7 @@ export default function BidderPage() {
                 <Badge tone="bronze">{arNum(i.pricePoints)} نقطة</Badge>
               </div>
             ))}
-            {items.length === 0 && <p style={{ color: ui.color.muted }}>لا ثمار في بيدره الآن.</p>}
+            {items.length === 0 && <p style={{ color: ui.color.muted }}>{tMarket("bidderNoItems")}</p>}
           </section>
         </>
       )}
