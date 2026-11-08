@@ -22,6 +22,13 @@ export const programsPageAr = {
   retry: "إعادة",
   intro: "تمهيد:",
   noHarvest: " · بلا حصاد",
+
+  // لوحة المسارات المُجهَّزة (PreparedTracksPanel.tsx)
+  tracksHint: "كل مسارٍ مقسّمٌ مسبقًا إلى وحداتٍ بمقداره (اتّجاه مراقي: الفاتحة ثمّ الناس نزولاً). اضغط «الوحدات» لعرض حدودها.",
+  tracksBack: "◀ المسارات",
+  tracksLoadingUnits: "…جارٍ تحميل الوحدات",
+  tracksSave: "حفظ",
+  tracksShowUnits: "الوحدات",
 } as const;
 
 export type ProgramsPageKey = keyof typeof programsPageAr;

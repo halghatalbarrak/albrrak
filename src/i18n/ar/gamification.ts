@@ -44,6 +44,14 @@ export const gamificationAr = {
   motiveStationProgress: "أنجزتَ {done} من {total} في {station} — واصِل ✨",
   motiveFirstStep: "أتمّ يومك الأوّل لتبدأ سلسلتك 🌱",
 
+  // حالات صفحة رحلتي (me/journey/page.tsx)
+  journeyLoading: "…جارٍ التحميل",
+  journeyNotStudent: "هذه الصفحة للطالب.",
+  journeyErrLoad: "تعذّر التحميل.",
+  journeyRetry: "إعادة",
+  journeyNeedLogin: "تحتاج دخولًا.",
+  journeyLogin: "دخول",
+
   // شاشة المدير (ل٦)
   adminTitle: "التلعيب",
   adminBadges: "الأوسمة",

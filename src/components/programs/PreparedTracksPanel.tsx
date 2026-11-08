@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { arNum, formatAyah, count, linesPerDay } from "@/lib/format";
 import { Button, Badge, Table, Input, ui, sp, type Column } from "@/components/ui";
+import { tPrograms } from "@/i18n/ar/programs-page";
 
 // لوحة «المسارات المُجهَّزة» (البند ٢) — مكوّنٌ قابلٌ للإدماج بلا AppShell، لتُعرَض داخل
 // صفحة برنامج مراقي (تبويب). نفس المنطق والـAPI القائمين (/api/admin/tracks, unitsForTrack…)
@@ -84,8 +85,8 @@ export function PreparedTracksPanel() {
     {
       key: "id", header: "", cell: (t) => (
         <span style={{ display: "flex", gap: sp(2), justifyContent: "flex-end" }}>
-          <Button size="sm" type="button" disabled={!edit[t.id]} onClick={() => void savePolicy(t)}>حفظ</Button>
-          <Button size="sm" variant="ghost" type="button" onClick={() => void showUnits(t)}>الوحدات</Button>
+          <Button size="sm" type="button" disabled={!edit[t.id]} onClick={() => void savePolicy(t)}>{tPrograms("tracksSave")}</Button>
+          <Button size="sm" variant="ghost" type="button" onClick={() => void showUnits(t)}>{tPrograms("tracksShowUnits")}</Button>
           <Button size="sm" variant="ghost" type="button" onClick={() => void toggle(t)}>{t.isActive ? "تعطيل" : "تفعيل"}</Button>
         </span>
       ),
@@ -105,7 +106,7 @@ export function PreparedTracksPanel() {
       {!open && tracks && (
         <>
           <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginBottom: sp(3) }}>
-            كل مسارٍ مقسّمٌ مسبقًا إلى وحداتٍ بمقداره (اتّجاه مراقي: الفاتحة ثمّ الناس نزولاً). اضغط «الوحدات» لعرض حدودها.
+            {tPrograms("tracksHint")}
           </p>
           <Table columns={trackCols} rows={tracks} />
         </>
@@ -114,15 +115,15 @@ export function PreparedTracksPanel() {
       {open && (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: sp(3), marginBottom: sp(3), flexWrap: "wrap" }}>
-            <Button size="sm" variant="ghost" type="button" onClick={() => { setOpen(null); setUnits(null); }}>◀ المسارات</Button>
+            <Button size="sm" variant="ghost" type="button" onClick={() => { setOpen(null); setUnits(null); }}>{tPrograms("tracksBack")}</Button>
             <strong>{open.nameAr}</strong>
             <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}>{linesPerDay(open.linesPerDay)} · {count(open.unitCount, "وحدة", "وحدتان", "وحدات", "وحدة")}</span>
           </div>
-          {units ? <Table columns={unitCols} rows={units} /> : <p style={{ color: ui.color.muted }}>…جارٍ تحميل الوحدات</p>}
+          {units ? <Table columns={unitCols} rows={units} /> : <p style={{ color: ui.color.muted }}>{tPrograms("tracksLoadingUnits")}</p>}
         </>
       )}
 
-      {!tracks && !err && <p style={{ color: ui.color.muted }}>…جارٍ التحميل</p>}
+      {!tracks && !err && <p style={{ color: ui.color.muted }}>{tPrograms("loading")}</p>}
     </>
   );
 }

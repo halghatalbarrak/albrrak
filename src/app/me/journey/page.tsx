@@ -53,9 +53,9 @@ export default function JourneyPage() {
   useEffect(() => { void load(); }, [load]);
 
   const body = () => {
-    if (status === "loading") return <p style={{ color: ui.color.muted }}>…جارٍ التحميل</p>;
-    if (status === "notstudent") return <p style={{ color: ui.color.muted }}>هذه الصفحة للطالب.</p>;
-    if (status === "error") return <p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" onClick={() => void load()}>إعادة</Button></p>;
+    if (status === "loading") return <p style={{ color: ui.color.muted }}>{t("journeyLoading")}</p>;
+    if (status === "notstudent") return <p style={{ color: ui.color.muted }}>{t("journeyNotStudent")}</p>;
+    if (status === "error") return <p style={{ color: ui.color.danger }}>{t("journeyErrLoad")} <Button variant="ghost" size="sm" onClick={() => void load()}>{t("journeyRetry")}</Button></p>;
     if (status !== "ready" || !data) return null;
     return (
       <>
@@ -129,7 +129,7 @@ export default function JourneyPage() {
   if (status === "unauth")
     return (
       <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(3) }}>
-        <p>تحتاج دخولًا.</p><a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a>
+        <p>{t("journeyNeedLogin")}</p><a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>{t("journeyLogin")}</a>
       </main>
     );
 
