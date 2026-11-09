@@ -88,7 +88,7 @@ export default function AdminCirclesPage() {
   useEffect(() => { void load(); }, [load]);
 
   const cols: Column<Circle>[] = [
-    { key: "name", header: t("colName"), cell: (c) => <strong>{c.nameAr}</strong> },
+    { key: "name", header: t("colName"), cell: (c) => <Link href={`/admin/circles/${c.id}`} style={{ fontWeight: 700, color: ui.color.text, textDecoration: "none" }}>{c.nameAr}</Link> },
     { key: "students", header: t("colStudents"), cell: (c) => (
       c.programCounts.length
         ? c.programCounts.map((pc) => `${PROGRAM_AR[pc.programKey] ?? pc.programKey} ${arNum(pc.n)}`).join(" · ")
@@ -100,7 +100,12 @@ export default function AdminCirclesPage() {
     ...(isManager && tok ? [{
       key: "actions" as const,
       header: t("colActions"),
-      cell: (c: Circle) => <DeleteCell circle={c} tok={tok} onDeleted={(id) => setCircles((prev) => prev?.filter((x) => x.id !== id) ?? null)} />,
+      cell: (c: Circle) => (
+        <div style={{ display: "flex", gap: sp(1), flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <Link href={`/admin/circles/${c.id}/edit`} style={linkBtn}>{t("editBtn")}</Link>
+          <DeleteCell circle={c} tok={tok} onDeleted={(id) => setCircles((prev) => prev?.filter((x) => x.id !== id) ?? null)} />
+        </div>
+      ),
     }] : []),
   ];
 

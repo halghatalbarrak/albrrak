@@ -126,6 +126,109 @@ export async function softDeleteCircle(actorId: string, circleId: string, db: Pr
   ]);
 }
 
+export interface CircleEditData {
+  id: string;
+  nameAr: string;
+  timeSlot: TimeSlot;
+  gender: Gender;
+  location: string | null;
+  teacherId: string | null;
+  teacherName: string | null;
+}
+
+/** يُرجع بيانات الحلقة لنموذج التعديل (الاسم، الوقت، الجنس، المعلّم الحاليّ). */
+export async function getCircleForEdit(circleId: string, db: PrismaClient = prisma): Promise<CircleEditData> {
+  const circle = await db.circle.findUnique({
+    where: { id: circleId, deletedAt: null },
+    select: { id: true, nameAr: true, timeSlot: true, gender: true, location: true },
+  });
+  if (!circle) throw verr("circleNotFound");
+  const link = await db.circleTeacher.findFirst({
+    where: { circleId, endedAt: null },
+    select: { teacherId: true, teacher: { select: { nameAsInId: true } } },
+  });
+  return {
+    id: circle.id,
+    nameAr: circle.nameAr,
+    timeSlot: circle.timeSlot,
+    gender: circle.gender,
+    location: circle.location,
+    teacherId: link?.teacherId ?? null,
+    teacherName: link?.teacher.nameAsInId ?? null,
+  };
+}
+
+export interface UpdateCircleInput {
+  nameAr: string;
+  timeSlot: TimeSlot;
+  gender: Gender;
+  location?: string | null;
+  teacherId?: string | null;
+}
+
+/** يُحدِّث الحلقة. يرمي إن تعارض الجنس مع طلابٍ نشطين، أو اسمٌ مكرَّر. */
+export async function updateCircle(
+  actorId: string,
+  circleId: string,
+  input: UpdateCircleInput,
+  db: PrismaClient = prisma,
+): Promise<void> {
+  const nameAr = input.nameAr.trim();
+  if (!nameAr) throw verr("circleNameRequired");
+
+  const circle = await db.circle.findUnique({ where: { id: circleId, deletedAt: null }, select: { id: true, nameAr: true, timeSlot: true, gender: true, location: true } });
+  if (!circle) throw verr("circleNotFound");
+
+  // تحقّق من تكرار الاسم (بلا هذه الحلقة)
+  const dup = await db.circle.findFirst({ where: { nameAr, id: { not: circleId }, deletedAt: null }, select: { id: true } });
+  if (dup) throw verr("circleNameDuplicate");
+
+  // تحقّق من تعارض الجنس مع الطلاب النشطين
+  if (input.gender !== circle.gender) {
+    const conflictCount = await db.enrollment.count({
+      where: { circleId, endedAt: null, student: { user: { gender: { not: input.gender } } } },
+    });
+    if (conflictCount > 0) throw verr("circleGenderConflict");
+  }
+
+  if (input.teacherId) {
+    const teacher = await db.user.findUnique({ where: { id: input.teacherId }, select: { roles: true, isActive: true } });
+    if (!teacher || !teacher.roles.includes(Role.TEACHER) || !teacher.isActive) throw verr("teacherNotFound");
+  }
+
+  const before = JSON.stringify({ nameAr: circle.nameAr, timeSlot: circle.timeSlot, gender: circle.gender, location: circle.location });
+  const after = JSON.stringify({ nameAr, timeSlot: input.timeSlot, gender: input.gender, location: input.location ?? null });
+
+  const currentTeacher = await db.circleTeacher.findFirst({ where: { circleId, endedAt: null }, select: { teacherId: true } });
+  const newTeacherId = input.teacherId ?? null;
+  const teacherChanged = (currentTeacher?.teacherId ?? null) !== newTeacherId;
+
+  await db.$transaction(async (tx) => {
+    await tx.circle.update({
+      where: { id: circleId },
+      data: { nameAr, timeSlot: input.timeSlot, gender: input.gender, location: input.location ?? null },
+    });
+    if (teacherChanged) {
+      if (currentTeacher) {
+        await tx.circleTeacher.updateMany({
+          where: { circleId, teacherId: currentTeacher.teacherId, endedAt: null },
+          data: { endedAt: new Date() },
+        });
+      }
+      if (newTeacherId) {
+        await tx.circleTeacher.upsert({
+          where: { circleId_teacherId: { circleId, teacherId: newTeacherId } },
+          update: { startedAt: new Date(), endedAt: null },
+          create: { circleId, teacherId: newTeacherId },
+        });
+      }
+    }
+    await tx.auditLog.create({
+      data: { action: "UPDATE", entity: "Circle", entityId: circleId, actorId, label: `${before} → ${after}` },
+    });
+  });
+}
+
 /** يرمي AuthorizationError إن لم يكن المعلّم مرتبطاً بالحلقة (endedAt = null). */
 export async function assertTeacherOwnsCircle(teacherId: string, circleId: string, db: PrismaClient = prisma): Promise<void> {
   const link = await db.circleTeacher.findFirst({

@@ -447,6 +447,8 @@ export const errorsAr = {
   circleGenderMismatch: "جنس الحلقة المستهدفة لا يطابق جنس الطالب.",
   suspendReasonRequired: "سبب التعليق إلزاميّ.",
   expelReasonRequired: "سبب الفصل إلزاميّ.",
+  circleGenderConflict: "لا يمكن تغيير جنس الحلقة؛ فيها طلاب نشطون من الجنس الآخر.",
+  circleNameDuplicate: "اسم الحلقة موجودٌ فعلاً في حلقةٍ أخرى.",
 } as const;
 
 /** مفاتيح أخطاء الخادم المُرحَّلة (تنمو كلّما رُحِّل مجال). */
