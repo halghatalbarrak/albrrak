@@ -440,6 +440,7 @@ export const errorsAr = {
   teacherCircleForbidden: "لا تَصل إلا لحلقاتك (§٣٫٢).",
   teacherNotFound: "معلّمٌ غير موجودٍ أو ليس لديه دور معلّم.",
   circleAlreadyDeleted: "الحلقة محذوفةٌ فعلاً.",
+  circleHasActiveStudents: "لا يمكن حذف الحلقة: فيها طلاب نشطون.",
 } as const;
 
 /** مفاتيح أخطاء الخادم المُرحَّلة (تنمو كلّما رُحِّل مجال). */
