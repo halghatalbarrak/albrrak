@@ -8,6 +8,7 @@ import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Button, Select, Input, Badge, EmptyState, Skeleton, Tabs, attendanceTabs, ui, sp } from "@/components/ui";
 import { attendanceLockAr as tLock } from "@/i18n/ar/attendance-lock";
 import { navAr } from "@/i18n/ar/nav";
+import { tAttendance } from "@/i18n/ar/attendance";
 
 // تسمية البرنامج (شارةٌ لكلّ طالب — الحلقة قد تجمع برامج مختلفة). النصوص من i18n.
 const PROGRAM_AR: Record<string, string> = {
@@ -264,12 +265,12 @@ export default function AttendancePage() {
       title="رصد الحضور" crumbs={[{ label: "الرئيسة", href: "/" }, { label: "التشغيل" }, { label: "الحضور" }]}>
       {(me?.roles ?? []).some((r) => r === "SUPER_ADMIN" || r === "CIRCLE_MANAGER") && <Tabs items={attendanceTabs} />}
       <p style={{ color: ui.color.muted, margin: `0 0 ${sp(4)}`, fontSize: ui.text.base }}>
-        الجميع حاضرون افتراضًا — أشِّر الغائب فقط.
+        {tAttendance("everyonePresent")}
       </p>
 
       <div style={{ display: "flex", gap: sp(3), flexWrap: "wrap", alignItems: "center", marginBottom: sp(4) }}>
         <Select value={circleId} onChange={(e) => setCircleId(e.target.value)} style={{ width: "auto", minWidth: 200 }}>
-          <option value="">— اختر حلقة —</option>
+          <option value="">{tAttendance("selectCircle")}</option>
           {circles.map((c) => (
             <option key={c.id} value={c.id}>{c.nameAr}</option>
           ))}
@@ -277,7 +278,7 @@ export default function AttendancePage() {
         <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ width: "auto" }} />
         {pending > 0 && (
           <Button variant="bronze" size="sm" type="button" onClick={() => void flush()}>
-            مزامنة ({pending}) مؤجَّل
+            {tAttendance("sync")} ({pending}) مؤجَّل
           </Button>
         )}
       </div>
@@ -336,7 +337,7 @@ export default function AttendancePage() {
 
       {!loading && roster.length > 0 && (
         <Button type="button" onClick={() => void save()} style={{ marginTop: sp(4) }}>
-          حفظ الرصد
+          {tAttendance("saveBtn")}
         </Button>
       )}
     </AppShell>

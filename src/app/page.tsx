@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { muddakirLanding } from "@/lib/muddakir-landing";
 import { AppShell, Button, Card, NabawiBackdrop, Stat, Skeleton, BrandStar, ui, sp } from "@/components/ui";
+import { tHome } from "@/i18n/ar/home";
 
 // الصفحة الرئيسة: للزائر واجهةٌ ترحيبيّة، وللداخل ملخّصٌ حسب دوره داخل اللوحة (الشريط الجانبيّ).
 // المنطق (جلب الجلسة و/api/me و/api/summary) بلا مساسٍ بأي قاعدة عمل — قراءةٌ فقط.
@@ -63,10 +64,10 @@ export default function Home() {
           border: `1px solid ${ui.color.goldLine}`, boxShadow: `0 0 0 4px rgba(201,160,99,0.12), ${ui.shadowCard}` }}>
           <h1 style={{ fontSize: ui.text.xxl, fontWeight: 700, margin: 0 }}>منصّة {BRAND}</h1>
           <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", justifyContent: "center", marginTop: sp(5) }}>
-            <Link href="/apply"><Button variant="primary">تقديم طلب</Button></Link>
-            <Link href="/login"><Button variant="ghost">دخول</Button></Link>
+            <Link href="/apply"><Button variant="primary">{tHome("applyBtn")}</Button></Link>
+            <Link href="/login"><Button variant="ghost">{tHome("loginBtn")}</Button></Link>
           </div>
-          {ready && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, opacity: 0.8, marginTop: sp(4), marginBottom: 0 }}>سجّل الدخول لعرض لوحتك.</p>}
+          {ready && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, opacity: 0.8, marginTop: sp(4), marginBottom: 0 }}>{tHome("loginPrompt")}</p>}
         </Card>
       </main>
     );
@@ -76,7 +77,7 @@ export default function Home() {
   if (redirecting) {
     return (
       <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.muted, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p>…جارٍ التحويل إلى المدّكر</p>
+        <p>{tHome("muddakirRedirect")}</p>
       </main>
     );
   }
@@ -121,7 +122,7 @@ function WelcomeCard({ name, greeting }: { name: string; greeting: string }) {
       <div style={{ flex: 1, padding: sp(5), display: "flex", flexDirection: "column", justifyContent: "center", gap: sp(2), minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: sp(2) }}>
           <BrandStar size={22} />
-          <h2 style={{ margin: 0, fontSize: ui.text.xl, fontWeight: 700, color: ui.color.text }}>مرحبًا، {name}</h2>
+          <h2 style={{ margin: 0, fontSize: ui.text.xl, fontWeight: 700, color: ui.color.text }}>{tHome("greetingPrefix")}{name}</h2>
         </div>
         <p style={{ margin: 0, color: ui.color.muted, fontSize: ui.text.base }}>{greeting}</p>
       </div>
@@ -138,7 +139,7 @@ function NextStepBanner({ step }: { step: NextStep }) {
   return (
     <Card style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(4), flexWrap: "wrap", borderInlineStart: `4px solid ${accent}` }}>
       <div>
-        <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: 2 }}>الخطوة التالية</div>
+        <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: 2 }}>{tHome("nextStepLabel")}</div>
         <div style={{ fontSize: ui.text.lg, fontWeight: 700, color: ui.color.text }}>{step.title}</div>
       </div>
       <Link href={step.href}><Button variant={step.tone === "bronze" ? "bronze" : "primary"}>{step.cta}</Button></Link>

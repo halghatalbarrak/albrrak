@@ -82,9 +82,9 @@ export default function AttendanceLockPage() {
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/attendance-lock" title={t.adminTitle} crumbs={CRUMBS}>{children}</AppShell>
   );
 
-  if (status === "unauth") return <Shell><p>تحتاج دخولًا كإدارة.</p></Shell>;
+  if (status === "unauth") return <Shell><p>{t.needLoginAdmin}</p></Shell>;
   if (status === "loading") return <Shell><Skeleton height={80} /></Shell>;
-  if (status === "error") return <Shell><p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" onClick={() => void load()}>إعادة</Button></p></Shell>;
+  if (status === "error") return <Shell><p style={{ color: ui.color.danger }}>{t.loadErr} <Button variant="ghost" size="sm" onClick={() => void load()}>{t.retry}</Button></p></Shell>;
 
   const th: React.CSSProperties = { textAlign: "start", fontWeight: 700, fontSize: ui.text.xs, color: ui.color.muted, padding: sp(2) };
   const td: React.CSSProperties = { padding: sp(2), fontSize: ui.text.base, borderTop: `1px solid ${ui.color.border}` };

@@ -43,4 +43,9 @@ export const attendanceLockAr = {
   graceHint: "اليوم يُقفل تلقائيّاً بعد انقضاء هذه المهلة بتوقيت مكّة.",
   graceSave: "حفظ المهلة",
   graceSaved: "حُفظت المهلة.",
+
+  // حالات الصفحة
+  needLoginAdmin: "تحتاج دخولًا كإدارة.",
+  loadErr: "تعذّر التحميل.",
+  retry: "إعادة",
 } as const;
