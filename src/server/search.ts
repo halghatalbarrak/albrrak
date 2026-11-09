@@ -1,7 +1,9 @@
-import { ProgramKey, StageKind, type PrismaClient } from "@prisma/client";
+import { Role, ProgramKey, StageKind, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { facePagesInRange } from "./mushaf";
+import { NATIONAL_ID_VIEWER_ROLES } from "./capabilities";
+import { decryptNationalId } from "./national-id";
 
 // البحث الموحّد (الفكرة ٨): أسماء الطلاب · الحلقات · أرقام الأحزاب · السور والآيات —
 // كلٌّ ينقل مباشرةً لصفحته. أداةٌ للكادر (لا يبحث الطالب في غيره). قراءةٌ فقط.
@@ -12,6 +14,8 @@ export interface SearchResults {
   circles: SearchHit[];
   mushaf: SearchHit[];
 }
+
+export interface SearchActor { id: string; roles: Role[] }
 
 /** يحلّ (سورة، آية) إلى رقم الوجه الذي يحويها. */
 async function faceOfAyah(surah: number, ayah: number, db: PrismaClient): Promise<number | null> {
@@ -46,22 +50,60 @@ async function faceOfHizb(hizb: number, db: PrismaClient): Promise<number | null
   return [...pages].sort((a, b) => a - b)[0] ?? null;
 }
 
-export async function searchAll(q: string, db: PrismaClient = prisma): Promise<SearchResults> {
+export async function searchAll(
+  q: string,
+  actor: SearchActor,
+  db: PrismaClient = prisma,
+): Promise<SearchResults> {
   const query = q.trim();
   const empty: SearchResults = { students: [], circles: [], mushaf: [] };
   if (query.length < 2) return empty;
 
+  // المعلّم يرى طلابه فقط (حلقاته النشطة).
+  const managerRoles: Role[] = [Role.SUPER_ADMIN, Role.CIRCLE_MANAGER, Role.REGISTRAR];
+  const isTeacherOnly = actor.roles.includes(Role.TEACHER) && !actor.roles.some((r) => managerRoles.includes(r));
+  const circleIds = isTeacherOnly
+    ? (await db.circleTeacher.findMany({ where: { teacherId: actor.id, endedAt: null }, select: { circleId: true } })).map((c) => c.circleId)
+    : null;
+
   // أسماء الطلاب.
   const students = await db.student.findMany({
-    where: { user: { nameAsInId: { contains: query, mode: "insensitive" } } },
-    select: { id: true, user: { select: { nameAsInId: true } } },
+    where: {
+      deletedAt: null,
+      user: { nameAsInId: { contains: query, mode: "insensitive" } },
+      ...(circleIds ? { enrollments: { some: { endedAt: null, circleId: { in: circleIds } } } } : {}),
+    },
+    select: {
+      id: true,
+      user: { select: { nameAsInId: true } },
+      enrollments: { where: { endedAt: null }, take: 1, select: { circle: { select: { nameAr: true } } } },
+    },
     take: 6,
   });
 
-  // الحلقات.
+  // بحث الهوية الوطنيّة (POST فقط — الاستعلام لا يخرج للـURL).
+  const isNidQuery = /^[12]\d{9}$/.test(query);
+  const nidHits: SearchHit[] = [];
+  if (isNidQuery && actor.roles.some((r) => (NATIONAL_ID_VIEWER_ROLES as Role[]).includes(r))) {
+    const all = await db.student.findMany({
+      where: { deletedAt: null, user: { nationalId: { not: null } } },
+      select: { id: true, user: { select: { nationalId: true, nameAsInId: true } } },
+    });
+    for (const s of all) {
+      if (!s.user.nationalId) continue;
+      try {
+        if (decryptNationalId(s.user.nationalId) === query) {
+          nidHits.push({ label: s.user.nameAsInId, sub: "نتيجة هوية", href: `/admin/students/${s.id}` });
+        }
+      } catch { /* هوية تالفة — نتجاوزها */ }
+    }
+  }
+
+  // الحلقات (غير المحذوفة فقط).
   const circles = await db.circle.findMany({
-    where: { nameAr: { contains: query, mode: "insensitive" } },
-    select: { id: true, nameAr: true }, take: 6,
+    where: { deletedAt: null, nameAr: { contains: query, mode: "insensitive" } },
+    select: { id: true, nameAr: true },
+    take: 6,
   });
 
   // المصحف: «سورة:آية» أو «حزب N» أو رقمٌ (سورة).
@@ -85,8 +127,15 @@ export async function searchAll(q: string, db: PrismaClient = prisma): Promise<S
   }
 
   return {
-    students: students.map((s) => ({ label: s.user.nameAsInId, sub: "طالب — خريطة الضعف", href: `/admin/students/${s.id}/weakness` })),
-    circles: circles.map((c) => ({ label: c.nameAr, sub: "حلقة — خريطة الضعف", href: `/admin/circles/${c.id}/weakness` })),
+    students: [
+      ...nidHits,
+      ...students.map((s) => ({
+        label: s.user.nameAsInId,
+        sub: s.enrollments[0]?.circle.nameAr ?? "طالب",
+        href: `/admin/students/${s.id}`,
+      })),
+    ],
+    circles: circles.map((c) => ({ label: c.nameAr, sub: "حلقة", href: `/admin/circles/${c.id}` })),
     mushaf,
   };
 }

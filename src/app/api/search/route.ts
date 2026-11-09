@@ -10,9 +10,21 @@ const ROLES = [Role.TEACHER, Role.CIRCLE_MANAGER, Role.SUPER_ADMIN, Role.RECITER
 // GET /api/search?q=... — نتائج مصنّفة (طلاب/حلقات/مصحف). قراءةٌ فقط.
 export async function GET(req: Request) {
   try {
-    await requireRoles(req, ROLES);
+    const actor = await requireRoles(req, ROLES);
     const q = new URL(req.url).searchParams.get("q") ?? "";
-    return Response.json(await searchAll(q));
+    return Response.json(await searchAll(q, { id: actor.id, roles: actor.roles }));
+  } catch (e) {
+    return errorResponse(e);
+  }
+}
+
+// POST /api/search — نفس المنطق لكن الاستعلام في الجسم (يحمي الهوية الوطنيّة من سجلات الـURL).
+export async function POST(req: Request) {
+  try {
+    const actor = await requireRoles(req, ROLES);
+    const body = (await req.json()) as { q?: unknown };
+    const q = typeof body?.q === "string" ? body.q : "";
+    return Response.json(await searchAll(q, { id: actor.id, roles: actor.roles }));
   } catch (e) {
     return errorResponse(e);
   }
