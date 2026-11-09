@@ -80,6 +80,10 @@ export const displayAr = {
   prayerAdjust: "تعديل المواقيت (دقائق)",
   savePrayerAdjust: "حفظ التعديل",
 
+  // حالات الصفحة
+  needLogin: "تحتاج دخولًا.",
+  loginLink: "دخول",
+
   // صفحة العرض (ش٤)
   pointsWord: "نقطة",
   rankWord: "الترتيب",
