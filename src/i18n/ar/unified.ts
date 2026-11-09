@@ -33,6 +33,8 @@ export const unifiedAr = {
   qaidahMastered: "متقن",
   qaidahNotMastered: "غير متقن",
   qaidahDeferred: "مؤجَّل",
+  noRasikhYet: "لا محفوظ راسخ بعد.",
+  setPath: "تحديد المسار",
 } as const;
 
 export type UnifiedKey = keyof typeof unifiedAr;
