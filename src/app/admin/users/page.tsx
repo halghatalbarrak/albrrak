@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { formatPhoneForDisplay } from "@/lib/phone";
@@ -13,7 +13,7 @@ import { normalizeArabic } from "@/lib/normalize-arabic";
 import {
   type Role, type MuddakirStaffRole, STAFF_ROLES, ROLE_AR, toggleIn,
   MUDDAKIR_STAFF, MUDDAKIR_STAFF_AR, MUDDAKIR_SECTION, MUDDAKIR_NO_PERM, MUDDAKIR_SENT,
-  MUDDAKIR_EXCLUSIVE, MUDDAKIR_NONE, MUDDAKIR_EXCESS, violatesExclusivity,
+  MUDDAKIR_EXCLUSIVE, MUDDAKIR_NONE, violatesExclusivity,
   muddakirStaffCaps, LinkBox, linkBoxCard,
 } from "./shared";
 
@@ -36,11 +36,35 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"all" | "staff" | "guardians" | "students">("all");
 
-  // role editing (platform + muddakir)
+  // role editing modal (platform + muddakir)
   const [editUser, setEditUser] = useState<UserRow | null>(null);
   const [editRoles, setEditRoles] = useState<Role[]>([]);
   const [editStaff, setEditStaff] = useState<MuddakirStaffRole[]>([]);
   const caps = muddakirStaffCaps(me?.roles ?? [], me?.muddakirStaff ?? []);
+
+  // edit data modal (name + phone)
+  const [editDataUser, setEditDataUser] = useState<UserRow | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editIsActive, setEditIsActive] = useState(true);
+
+  // delete confirmation
+  const [deleteUser, setDeleteUser] = useState<UserRow | null>(null);
+
+  // ⋯ menu
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // close menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const load = useCallback(async () => {
     const tok = await token();
@@ -53,32 +77,34 @@ export default function AdminUsersPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  // انتحال الشخصيّة: يظهر لـTECH_ADMIN فقط، ولا يظهر عند مديرٍ تقنيٍّ آخر (ولا عند نفسه — فهو تقنيّ).
   const canImpersonate = (u: UserRow) => (me?.roles?.includes("TECH_ADMIN") ?? false) && !u.roles.includes("TECH_ADMIN");
 
   async function startImpersonate(u: UserRow) {
+    setOpenMenuId(null);
     const tok = await token();
     if (!tok) return;
     const res = await fetch("/api/impersonate/start", {
       method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
       body: JSON.stringify({ targetUserId: u.id }),
     });
-    if (res.ok) { window.location.href = "/"; } // يرى المنصّة بعينه
+    if (res.ok) { window.location.href = "/"; }
     else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("errImpersonate")); }
   }
 
   async function toggleActive(u: UserRow) {
+    setOpenMenuId(null);
     const tok = await token();
     if (!tok) return;
-    const res = await fetch("/api/admin/users", {
+    const res = await fetch(`/api/admin/users/${u.id}`, {
       method: "PATCH", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
-      body: JSON.stringify({ userId: u.id, active: !u.isActive }),
+      body: JSON.stringify({ isActive: !u.isActive }),
     });
     if (res.ok) void load();
     else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("errToggleActive")); }
   }
 
   async function reset(u: UserRow) {
+    setOpenMenuId(null);
     const tok = await token();
     if (!tok) return;
     const res = await fetch("/api/admin/users/reset", {
@@ -95,10 +121,9 @@ export default function AdminUsersPage() {
     if (!editUser) return;
     const tok = await token();
     if (!tok) return;
-    // حفظٌ واحد: الأدوار العامّة + أدوار المدّكر معاً.
-    const body: Record<string, unknown> = { userId: editUser.id, roles: editRoles };
+    const body: Record<string, unknown> = { roles: editRoles };
     if (caps.canEdit) body.muddakirRoles = editStaff;
-    const res = await fetch("/api/admin/users", {
+    const res = await fetch(`/api/admin/users/${editUser.id}`, {
       method: "PATCH", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
       body: JSON.stringify(body),
     });
@@ -126,23 +151,82 @@ export default function AdminUsersPage() {
     return true;
   }) ?? null;
 
+  async function saveEditData() {
+    if (!editDataUser) return;
+    const tok = await token();
+    if (!tok) return;
+    const body: Record<string, unknown> = {};
+    if (editName.trim() !== editDataUser.name) body.name = editName.trim();
+    const displayPhone = editDataUser.phone ? formatPhoneForDisplay(editDataUser.phone) : "";
+    const rawPhone = editPhone.trim();
+    if (rawPhone && rawPhone !== displayPhone) body.phone = rawPhone;
+    if (editIsActive !== editDataUser.isActive) body.isActive = editIsActive;
+    if (Object.keys(body).length === 0) { setEditDataUser(null); return; }
+    const res = await fetch(`/api/admin/users/${editDataUser.id}`, {
+      method: "PATCH", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) { setEditDataUser(null); void load(); }
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("errEdit")); }
+  }
+
+  async function confirmDelete() {
+    if (!deleteUser) return;
+    const tok = await token();
+    if (!tok) return;
+    const res = await fetch(`/api/admin/users/${deleteUser.id}`, {
+      method: "DELETE", headers: { authorization: `Bearer ${tok}` },
+    });
+    if (res.ok) { setDeleteUser(null); void load(); }
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("errDelete")); setDeleteUser(null); }
+  }
+
   const cols: Column<UserRow>[] = [
     { key: "name", header: t("colName"), cell: (u) => <span style={{ opacity: u.isActive ? 1 : 0.5 }}>{u.name}{u.isStudent ? <Badge tone="neutral">{t("badgeStudent")}</Badge> : null}</span> },
     { key: "phone", header: t("colPhone"), cell: (u) => <span style={{ direction: "ltr", color: ui.color.muted }}>{u.phone ? formatPhoneForDisplay(u.phone) : "—"}</span> },
     { key: "roles", header: t("colRoles"), cell: (u) => (
-      <span style={{ display: "flex", gap: sp(1), flexWrap: "wrap" }}>
+      <span style={{ display: "flex", gap: sp(1), flexWrap: "wrap", alignItems: "center" }}>
         {u.roles.map((r) => <Badge key={r} tone="primary">{ROLE_AR[r]}</Badge>)}
         {u.muddakirStaff.map((r) => <Badge key={r} tone="bronze">{MUDDAKIR_STAFF_AR[r]}</Badge>)}
-        {violatesExclusivity(u.roles, u.muddakirStaff) && <Badge tone="danger">{MUDDAKIR_EXCESS}</Badge>}
+        {violatesExclusivity(u.roles, u.muddakirStaff) && (
+          <span title={t("conflictTooltip")} style={{ cursor: "help", color: ui.color.danger, fontSize: ui.text.xs }}>⚠</span>
+        )}
       </span>
     ) },
     { key: "state", header: t("colState"), cell: (u) => (u.isActive ? <Badge tone="success">{t("stateActive")}</Badge> : <Badge tone="neutral">{t("stateDisabled")}</Badge>) },
     { key: "act", header: t("colAction"), cell: (u) => (
-      <div style={{ display: "flex", gap: sp(2), justifyContent: "flex-end", flexWrap: "wrap" }}>
-        {canImpersonate(u) && <Button variant="bronze" size="sm" onClick={() => void startImpersonate(u)}>{t("btnImpersonate")}</Button>}
+      <div style={{ display: "flex", gap: sp(2), justifyContent: "flex-end", flexWrap: "wrap", alignItems: "center" }}>
+        {/* زر تعديل البيانات — ظاهر دائماً */}
+        <Button variant="ghost" size="sm" onClick={() => {
+          setEditDataUser(u);
+          setEditName(u.name);
+          setEditPhone(u.phone ? formatPhoneForDisplay(u.phone) : "");
+          setEditIsActive(u.isActive);
+        }}>{t("btnEdit")}</Button>
+
+        {/* زر الأدوار — للتعديل السريع لأدوار المدّكر */}
         <Button variant="ghost" size="sm" onClick={() => { setEditUser(u); setEditRoles(u.roles.filter((r) => STAFF_ROLES.includes(r))); setEditStaff(u.muddakirStaff); }}>{t("btnRoles")}</Button>
-        <Button variant="ghost" size="sm" onClick={() => void reset(u)}>{t("btnReset")}</Button>
-        <Button variant="ghost" size="sm" onClick={() => void toggleActive(u)}>{u.isActive ? t("btnDisable") : t("btnEnable")}</Button>
+
+        {/* قائمة ⋯ */}
+        <div style={{ position: "relative" }} ref={openMenuId === u.id ? menuRef : null}>
+          <Button variant="ghost" size="sm" onClick={() => setOpenMenuId(openMenuId === u.id ? null : u.id)}>{t("menuMore")}</Button>
+          {openMenuId === u.id && (
+            <div style={{
+              position: "absolute", top: "100%", insetInlineEnd: 0, zIndex: 50,
+              background: ui.color.surface, border: `1px solid ${ui.color.border}`,
+              borderRadius: 6, padding: `${sp(1)} 0`, minWidth: 140,
+              boxShadow: "0 4px 12px rgba(0,0,0,.12)",
+            }}>
+              {canImpersonate(u) && (
+                <button style={menuItemStyle} onClick={() => void startImpersonate(u)}>{t("btnImpersonate")}</button>
+              )}
+              <button style={menuItemStyle} onClick={() => { setOpenMenuId(null); void reset(u); }}>{t("btnReset")}</button>
+              <button style={menuItemStyle} onClick={() => { void toggleActive(u); }}>{u.isActive ? t("btnDisable") : t("btnEnable")}</button>
+              <div style={{ borderTop: `1px solid ${ui.color.border}`, margin: `${sp(1)} 0` }} />
+              <button style={{ ...menuItemStyle, color: ui.color.danger }} onClick={() => { setOpenMenuId(null); setDeleteUser(u); }}>{t("btnDelete")}</button>
+            </div>
+          )}
+        </div>
       </div>
     ) },
   ];
@@ -182,9 +266,9 @@ export default function AdminUsersPage() {
         </>
       )}
 
+      {/* نافذة تعديل الأدوار (أدوار المدّكر) */}
       <Modal open={editUser !== null} onClose={() => setEditUser(null)} title={editUser ? `${t("rolesModalTitlePrefix")}${editUser.name}` : ""}
         footer={<><Button onClick={() => void saveRoles()}>{t("btnSave")}</Button><Button variant="ghost" onClick={() => setEditUser(null)}>{t("btnCancel")}</Button></>}>
-        {/* الأدوار العامّة — تُعطَّل إن اختيرت وظيفة مدّكر (و١: حصر الوظائف). */}
         <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
           {STAFF_ROLES.map((r) => {
             const blocked = editStaff.length > 0;
@@ -197,8 +281,6 @@ export default function AdminUsersPage() {
             );
           })}
         </div>
-
-        {/* وظيفة المدّكر (و١): اختيارٌ واحدٌ (radio) مع «لا شيء». تُعطَّل إن حُدّد دورٌ عامّ. */}
         <div style={{ marginTop: sp(4), paddingTop: sp(3), borderTop: `1px solid ${ui.color.border}` }}>
           <div style={{ fontWeight: 700, fontSize: ui.text.xs, marginBottom: sp(2), color: ui.color.bronze }}>{MUDDAKIR_SECTION}</div>
           <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
@@ -230,6 +312,49 @@ export default function AdminUsersPage() {
           {!caps.canEdit && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `${sp(2)} 0 0` }}>{MUDDAKIR_NO_PERM}</p>}
         </div>
       </Modal>
+
+      {/* نافذة تعديل البيانات */}
+      <Modal open={editDataUser !== null} onClose={() => setEditDataUser(null)}
+        title={editDataUser ? `${t("editModalTitlePrefix")}${editDataUser.name}` : ""}
+        footer={<><Button onClick={() => void saveEditData()}>{t("btnSaveEdit")}</Button><Button variant="ghost" onClick={() => setEditDataUser(null)}>{t("btnCancel")}</Button></>}>
+        <div style={{ display: "flex", flexDirection: "column", gap: sp(3) }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
+            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{t("fieldNameLabel")}</span>
+            <input style={inputStyle} value={editName} onChange={(e) => setEditName(e.target.value)} />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
+            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{t("fieldPhoneLabel")}</span>
+            <input style={{ ...inputStyle, direction: "ltr" }} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+          </label>
+          <label style={{ display: "flex", gap: sp(2), alignItems: "center" }}>
+            <input type="checkbox" checked={editIsActive} onChange={(e) => setEditIsActive(e.target.checked)} />
+            <span style={{ fontSize: ui.text.xs }}>{editIsActive ? t("stateActiveLabel") : t("stateDisabledLabel")}</span>
+          </label>
+        </div>
+      </Modal>
+
+      {/* نافذة تأكيد الحذف */}
+      <Modal open={deleteUser !== null} onClose={() => setDeleteUser(null)}
+        title={deleteUser ? `${t("btnDelete")}: ${deleteUser.name}` : ""}
+        footer={
+          <>
+            <Button variant="danger" onClick={() => void confirmDelete()}>{t("btnConfirmDelete")}</Button>
+            <Button variant="ghost" onClick={() => setDeleteUser(null)}>{t("btnCancel")}</Button>
+          </>
+        }>
+        <p>{t("deleteConfirmMsg")}</p>
+      </Modal>
     </AppShell>
   );
 }
+
+const menuItemStyle: React.CSSProperties = {
+  display: "block", width: "100%", textAlign: "right", padding: `${sp(2)} ${sp(3)}`,
+  background: "none", border: "none", cursor: "pointer", fontSize: ui.text.xs,
+  color: ui.color.text,
+};
+
+const inputStyle: React.CSSProperties = {
+  padding: `${sp(2)} ${sp(3)}`, borderRadius: 6, border: `1px solid ${ui.color.border}`,
+  fontSize: ui.text.xs, background: ui.color.surface, color: ui.color.text, width: "100%",
+};

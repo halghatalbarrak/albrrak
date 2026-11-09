@@ -56,6 +56,29 @@ export const usersAr = {
   tabGuardians: "الأولياء",
   tabStudents: "الطلاب",
 
+  // تعديل البيانات (edit modal)
+  btnEdit: "تعديل",
+  errEdit: "تعذّر تعديل بيانات المستخدم.",
+  editModalTitlePrefix: "تعديل: ",
+  fieldNameLabel: "الاسم",
+  fieldPhoneLabel: "الجوال",
+  fieldStateLabel: "الحالة",
+  stateActiveLabel: "مُفعَّل",
+  stateDisabledLabel: "معطَّل",
+  btnSaveEdit: "حفظ التعديلات",
+
+  // حذف المستخدم
+  btnDelete: "حذف",
+  errDelete: "تعذّر حذف المستخدم.",
+  deleteConfirmMsg: "سيُحذف المستخدم حذفاً ناعماً ولن يظهر في القائمة. هل تريد المتابعة؟",
+  btnConfirmDelete: "تأكيد الحذف",
+
+  // ⋯ قائمة
+  menuMore: "⋯",
+
+  // أيقونة تعارض الأدوار
+  conflictTooltip: "تعارض في الأدوار",
+
   // صفحة إضافة كادر (new/page.tsx)
   errCreate: "تعذّر إنشاء الكادر.",
   createRolesPartialPrefix: "أُنشئ الحساب، وتعذّر تعيين أدوار مدّكر: ", // يليه الخطأ

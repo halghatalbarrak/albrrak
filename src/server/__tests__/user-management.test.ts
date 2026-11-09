@@ -9,6 +9,8 @@ import {
   resetPassword,
   setActive,
   setRoles,
+  softDeleteUser,
+  updateUser,
 } from "../user-management";
 import { AuthorizationError, ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
@@ -198,3 +200,92 @@ describe("إعادة تعيين كلمة السرّ + التفعيل العام�
     await expect(getActivationStatus(token, prisma)).rejects.toBeInstanceOf(ValidationError);
   });
 });
+
+describe("تعديل بيانات المستخدم (updateUser)", () => {
+  it("تعديل الاسم ← يُحفَظ", async () => {
+    const t = await tech();
+    const staff = await createUser(prisma, { roles: [Role.TEACHER] });
+    await updateUser(t.id, staff.id, { name: "اسمٌ جديد" }, prisma);
+    const updated = await prisma.user.findUniqueOrThrow({ where: { id: staff.id } });
+    expect(updated.nameAsInId).toBe("اسمٌ جديد");
+  });
+
+  it("جوالٌ مكرّرٌ من مستخدمٍ آخر ← يُرفض", async () => {
+    const t = await tech();
+    await createStaff(t.id, { name: "أ", phone: "0555100001", roles: [Role.TEACHER] }, prisma, fakeAuthProvider);
+    const staff2 = await createUser(prisma, { roles: [Role.RECITER] });
+    await expect(updateUser(t.id, staff2.id, { phone: "0555100001" }, prisma)).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("فاعلٌ بلا صلاحية (معلّم) ← يُرفض", async () => {
+    const teacher = await createUser(prisma, { roles: [Role.TEACHER] });
+    const other = await createUser(prisma, { roles: [Role.RECITER] });
+    await expect(updateUser(teacher.id, other.id, { name: "ب" }, prisma)).rejects.toBeInstanceOf(AuthorizationError);
+  });
+
+  it("مستخدمٌ محذوف ← يُرفض", async () => {
+    const t = await tech();
+    const staff = await createUser(prisma, { roles: [Role.TEACHER] });
+    await prisma.user.update({ where: { id: staff.id }, data: { deletedAt: new Date() } });
+    await expect(updateUser(t.id, staff.id, { name: "ج" }, prisma)).rejects.toBeInstanceOf(ValidationError);
+  });
+});
+
+describe("الحذف الناعم (softDeleteUser)", () => {
+  it("حذف كادرٍ عاديّ ← يضبط deletedAt/isActive=false", async () => {
+    const t = await tech();
+    const staff = await createUser(prisma, { roles: [Role.TEACHER] });
+    await softDeleteUser(t.id, staff.id, prisma);
+    const deleted = await prisma.user.findUniqueOrThrow({ where: { id: staff.id } });
+    expect(deleted.deletedAt).not.toBeNull();
+    expect(deleted.isActive).toBe(false);
+    expect(deleted.deletedById).toBe(t.id);
+  });
+
+  it("لا يحذف الفاعل نفسه ← يُرفض", async () => {
+    const t = await tech();
+    await expect(softDeleteUser(t.id, t.id, prisma)).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("مستخدمٌ بدور STUDENT ← يُرفض", async () => {
+    const t = await tech();
+    const student = await createUser(prisma, { roles: [Role.STUDENT] });
+    await expect(softDeleteUser(t.id, student.id, prisma)).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("آخر مشرف عام فعّال ← يُرفض", async () => {
+    const t = await tech();
+    const s = await superAdmin(); // الوحيد
+    await expect(softDeleteUser(t.id, s.id, prisma)).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("لديه حلقة نشطة ← يُرفض", async () => {
+    const t = await tech();
+    const teacher = await createUser(prisma, { roles: [Role.TEACHER] });
+    const circle = await prisma.circle.create({ data: { nameAr: `حلقة-${Date.now()}`, timeSlot: "ASR", gender: "MALE" } });
+    await prisma.circleTeacher.create({ data: { circleId: circle.id, teacherId: teacher.id } });
+    await expect(softDeleteUser(t.id, teacher.id, prisma)).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("مستخدمٌ محذوفٌ فعلاً ← يُرفض بـ userAlreadyDeleted", async () => {
+    const t = await tech();
+    const staff = await createUser(prisma, { roles: [Role.TEACHER] });
+    await softDeleteUser(t.id, staff.id, prisma);
+    await expect(softDeleteUser(t.id, staff.id, prisma)).rejects.toBeInstanceOf(ValidationError);
+  });
+});
+
+describe("إصلاح تعارض الأدوار في setRoles", () => {
+  it("مستخدمٌ متعارضٌ (أدوار + مدّكر) — تقليص الأدوار ← مسموح", async () => {
+    const t = await tech();
+    // نبني الحالة المتعارضة مباشرةً في قاعدة البيانات (تجاوز الحرّاس).
+    const staff = await createUser(prisma, { roles: [Role.TEACHER, Role.CIRCLE_MANAGER] });
+    // نضيف طاقم مدّكر مباشرةً (لأنّ assignStaff يفرض الحصر — نحاكيه يدويّاً).
+    await prisma.muddakirStaff.create({ data: { userId: staff.id, role: "MANAGER", assignedBy: t.id } });
+    // الحالة الآن: [TEACHER, CIRCLE_MANAGER] + مدّكر = تعارض
+    // التعديل: نُبقي دوراً واحداً (أقل تعارضاً) ← يجب أن ينجح
+    const res = await setRoles(t.id, staff.id, [Role.TEACHER], prisma);
+    expect(res.roles).toEqual([Role.TEACHER]);
+  });
+});
+
