@@ -89,8 +89,7 @@ export default function MaraqiProgramPage() {
       </main>
     );
 
-  // حجبٌ في الواجهة: غير الإداريّ لا يفتح تبويب المسارات ولو طلبه بالرابط ⟵ يعود للسلّم.
-  const activeTab: Tab = tab === "tracks" && isAdmin ? "tracks" : "ladder";
+  const activeTab: Tab = tab === "tracks" && isAdmin ? "tracks" : "ladder"; // admin-only tab guard
   const mains = ladder?.mainStages ?? [];
 
   return (
@@ -113,7 +112,7 @@ export default function MaraqiProgramPage() {
       ) : (
         <>
           <p style={{ color: ui.color.muted, fontSize: ui.text.base, margin: `0 0 ${sp(4)}` }}>
-            تنازليّ: من الفاتحة والناس صعودًا إلى البقرة.
+            {tpr("maraqdDir")}
           </p>
 
           {/* التمهيد أولاً */}

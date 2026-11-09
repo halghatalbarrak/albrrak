@@ -195,7 +195,7 @@ export default function CivilBaseLadderPage() {
                   {s.teacherNotes && (
                     <details>
                       <summary style={{ cursor: "pointer", color: ui.color.primary }}>
-                        للمعلم — طريقة المؤلف
+                        {tpr("teacherMethod")}
                       </summary>
                       <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", color: ui.color.muted }}>
                         {s.teacherNotes}

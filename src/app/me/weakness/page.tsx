@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, EmptyState, Skeleton, FaceHeatmap, ui, sp } from "@/components/ui";
+import { tMe } from "@/i18n/ar/me";
 
 interface WAyah { surah: number; ayah: number; count: number; level: number }
 interface WFace { pageNo: number; imageUrl: string; polygonsUrl: string; viewBox: { width: number; height: number }; ayahs: WAyah[] }
@@ -39,7 +40,7 @@ export default function MyWeaknessPage() {
       {map && map.faces.length > 0 && (
         <>
           <Card style={{ marginBottom: sp(5), borderInlineStart: `4px solid ${ui.color.bronze}` }}>
-            هذه مواضعُ تحتاج شيئًا من مراجعتك — كلّما اشتدّ لونها فأولِها مزيدَ عناية. اجعلها ورد يومك القادم بإذن الله.
+            {tMe("weaknessHint")}
           </Card>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: sp(4) }}>
             {map.faces.map((f) => (

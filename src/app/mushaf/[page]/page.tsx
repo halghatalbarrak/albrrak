@@ -9,6 +9,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { formatAyah } from "@/lib/format";
 import { AppShell, Card, Button, Skeleton, ui, sp } from "@/components/ui";
+import { tMushaf } from "@/i18n/ar/mushaf";
 
 interface FaceView { page: number; fromSurah: number; fromAyah: number; toSurah: number; toAyah: number; imageUrl: string }
 
@@ -42,8 +43,8 @@ export default function MushafPage() {
           <Card style={{ marginBottom: sp(4), display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(3), flexWrap: "wrap" }}>
             <span>{formatAyah(face.fromSurah, face.fromAyah, face.toSurah, face.toAyah)}</span>
             <div style={{ display: "flex", gap: sp(2) }}>
-              <Link href={`/mushaf/${Math.max(1, page - 1)}`}><Button variant="ghost" size="sm">الوجه السابق</Button></Link>
-              <Link href={`/mushaf/${Math.min(604, page + 1)}`}><Button variant="ghost" size="sm">الوجه التالي</Button></Link>
+              <Link href={`/mushaf/${Math.max(1, page - 1)}`}><Button variant="ghost" size="sm">{tMushaf("prevFace")}</Button></Link>
+              <Link href={`/mushaf/${Math.min(604, page + 1)}`}><Button variant="ghost" size="sm">{tMushaf("nextFace")}</Button></Link>
             </div>
           </Card>
           <div style={{ width: "min(92vw, 400px)", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, overflow: "hidden", background: ui.color.surface }}>

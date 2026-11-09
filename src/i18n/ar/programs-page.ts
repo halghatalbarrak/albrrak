@@ -29,6 +29,8 @@ export const programsPageAr = {
   tracksLoadingUnits: "…جارٍ تحميل الوحدات",
   tracksSave: "حفظ",
   tracksShowUnits: "الوحدات",
+  maraqdDir: "تنازليّ: من الفاتحة والناس صعودًا إلى البقرة.",
+  teacherMethod: "للمعلم — طريقة المؤلف",
 } as const;
 
 export type ProgramsPageKey = keyof typeof programsPageAr;
