@@ -118,10 +118,7 @@ export async function softDeleteCircle(actorId: string, circleId: string, db: Pr
   if (!circle) throw verr("circleNotFound");
   if (circle.deletedAt) throw verr("circleAlreadyDeleted");
   const activeCount = await db.enrollment.count({ where: { circleId, endedAt: null } });
-  if (activeCount > 0) {
-    const { ValidationError } = await import("./errors");
-    throw new ValidationError(`لا يمكن حذف الحلقة: فيها ${activeCount} طالب نشط.`, "circleHasActiveStudents");
-  }
+  if (activeCount > 0) throw verr("circleHasActiveStudents");
   const now = new Date();
   await db.$transaction([
     db.circle.update({ where: { id: circleId }, data: { deletedAt: now, deletedById: actorId } }),
