@@ -238,3 +238,21 @@ export async function expelStudent(
     }),
   ]);
 }
+
+/** ينقل الطالب إلى حلقةٍ أخرى مع التحقّق من مطابقة الجنس. */
+export async function transferStudent(
+  actorId: string,
+  studentId: string,
+  circleId: string,
+  db: PrismaClient = prisma,
+): Promise<{ enrollmentId: string }> {
+  const [student, circle] = await Promise.all([
+    db.student.findUnique({ where: { id: studentId }, select: { user: { select: { gender: true } } } }),
+    db.circle.findUnique({ where: { id: circleId, deletedAt: null }, select: { gender: true } }),
+  ]);
+  if (!student) throw verr("studentNotFound");
+  if (!circle) throw verr("circleNotFound");
+  if (student.user.gender !== circle.gender) throw verr("circleGenderMismatch");
+  const enrollment = await enrollStudent({ studentId, circleId, actorId }, db);
+  return { enrollmentId: enrollment.id };
+}
