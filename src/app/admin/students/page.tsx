@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Card, Button, Select, Badge, EmptyState, Skeleton, Modal, Field, inputStyle, Table, ui, sp, type Column } from "@/components/ui";
+import { AppShell, Card, Button, Select, Badge, EmptyState, Skeleton, Modal, Field, inputStyle, Table, ListToolbar, ui, sp, type Column } from "@/components/ui";
+import { normalizeArabic } from "@/lib/normalize-arabic";
 import { tStudents as t } from "@/i18n/ar/students";
 
 // رابطٌ بمظهر زرٍّ خفيف (للتنقّل — Button زرٌّ لا رابط).
@@ -232,6 +233,10 @@ export default function AdminStudentsPage() {
   const [testFor, setTestFor] = useState<Row | null>(null);
   const [actionFor, setActionFor] = useState<(Row & { _modal: "transfer" | "suspend" | "expel" }) | null>(null);
   const [showExpelled, setShowExpelled] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filterState, setFilterState] = useState("");
+  const [filterCircle, setFilterCircle] = useState("");
+  const [filterGuardian, setFilterGuardian] = useState("");
 
   const load = useCallback(async () => {
     const tok = await token();
@@ -310,7 +315,18 @@ export default function AdminStudentsPage() {
   const qaidahCircles = circles;
   const pendingCount = rows?.filter((r) => r.pendingPlacementId).length ?? 0;
 
-  const visibleRows = rows?.filter((r) => showExpelled ? r.state === "WITHDRAWN" : r.state !== "WITHDRAWN") ?? null;
+  const visibleRows = rows?.filter((r) => {
+    if (showExpelled ? r.state !== "WITHDRAWN" : r.state === "WITHDRAWN") return false;
+    if (filterState && r.state !== filterState) return false;
+    if (filterCircle && r.circle !== filterCircle) return false;
+    if (filterGuardian === "has" && !r.guardian) return false;
+    if (filterGuardian === "none" && r.guardian) return false;
+    if (search) {
+      const q = normalizeArabic(search);
+      if (!normalizeArabic(r.name).includes(q)) return false;
+    }
+    return true;
+  }) ?? null;
 
   const cols: Column<Row>[] = [
     { key: "name", header: t("colName"), cell: (r) => <strong>{r.name}</strong> },
@@ -382,11 +398,24 @@ export default function AdminStudentsPage() {
               <Badge tone="bronze">{t("pendingDecisionsBadge")}</Badge>
             </Card>
           )}
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: sp(3) }}>
+          <ListToolbar value={search} onChange={setSearch} placeholder={t("searchPlaceholder")}>
+            <Select value={filterState} onChange={(e) => setFilterState(e.target.value)} style={{ flex: "0 0 auto" }}>
+              <option value="">{t("allStates")}</option>
+              {Object.entries(STATE_AR).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </Select>
+            <Select value={filterCircle} onChange={(e) => setFilterCircle(e.target.value)} style={{ flex: "0 0 auto" }}>
+              <option value="">{t("allCircles")}</option>
+              {circles.map((c) => <option key={c.id} value={c.nameAr}>{c.nameAr}</option>)}
+            </Select>
+            <Select value={filterGuardian} onChange={(e) => setFilterGuardian(e.target.value)} style={{ flex: "0 0 auto" }}>
+              <option value="">{t("allGuardians")}</option>
+              <option value="has">{t("hasGuardian")}</option>
+              <option value="none">{t("noGuardian")}</option>
+            </Select>
             <Button size="sm" variant="ghost" onClick={() => setShowExpelled((v) => !v)}>
               {showExpelled ? t("hideExpelled") : t("showExpelled")}
             </Button>
-          </div>
+          </ListToolbar>
           {visibleRows && visibleRows.length > 0
             ? <Table columns={cols} rows={visibleRows} />
             : <EmptyState title={t("noAcceptedStudents")} />}
