@@ -295,11 +295,17 @@ export async function setRoles(
   const target = await db.user.findUnique({ where: { id: userId }, select: { roles: true, isActive: true } });
   if (!target) throw verr("userNotFound");
 
-  // حصر الوظائف (و١): من يحمل وظيفة مدّكرٍ لا يحمل دوراً عامّاً. ودورٌ واحدٌ على الأقلّ من النوعين
-  // معاً (لا يُحفظ مستخدمٌ بلا أيّ دور). opts.allowEmpty للمنسّق (setRolesAndStaff) حين تُسنَد وظيفةٌ
-  // في الحفظ نفسه بعد تصفير الأدوار العامّة.
+  // حصر الوظائف (و١) مع قاعدة الخلل: إن كانت الحالة الراهنة متعارضةً يُقبَل أيّ تعديلٍ
+  // لا يزيد التعارض (يستوي أو يتقلّص). التعارض = عدد الأدوار العامّة حين يوجد طاقم مدّكر.
   const currentStaff = await activeStaffRoles(db, userId);
-  assertMuddakirExclusivity(next, currentStaff);
+  const conflictScore = (roles: Role[], staff: MuddakirStaffRole[]) =>
+    staff.length > 0 ? roles.length : 0;
+  const prevScore = conflictScore(target.roles, currentStaff);
+  const nextScore = conflictScore(next, currentStaff);
+  if (nextScore > prevScore) {
+    // يزيد التعارض — نطبّق الحصر كاملاً (يرمي)
+    assertMuddakirExclusivity(next, currentStaff);
+  }
   if (!opts.allowEmpty && next.length === 0 && currentStaff.length === 0) {
     throw verr("atLeastOneRoleOrStaff");
   }
@@ -349,6 +355,112 @@ export async function setRolesAndStaff(
   const updated = await setRoles(actorId, userId, finalRoles, db, { allowEmpty: finalStaff.length > 0 });
   for (const role of toAssign) await assignStaff({ actorUserId: actorId, targetUserId: userId, role }, db);
   return { roles: updated.roles, muddakirApplied: finalStaff };
+}
+
+// ═══════════════ تعديل بيانات المستخدم ═══════════════
+
+export interface UpdateUserArgs {
+  name?: string;
+  phone?: string;
+}
+
+/**
+ * يعدّل الاسم و/أو الجوال. يتحقّق من تفرّد الجوال (عدا نفس المستخدم) ويُطبّع الصيغة.
+ * الأدوار/الحالة تُعدَّل عبر setRoles / setActive.
+ */
+export async function updateUser(
+  actorId: string,
+  userId: string,
+  data: UpdateUserArgs,
+  db: PrismaClient = prisma,
+): Promise<void> {
+  await assertUserAdmin(actorId, db);
+  const target = await db.user.findUnique({ where: { id: userId }, select: { id: true, phone: true, deletedAt: true } });
+  if (!target) throw verr("userNotFound");
+  if (target.deletedAt) throw verr("userAlreadyDeleted");
+
+  const patch: Partial<{ nameAsInId: string; phone: string; email: string }> = {};
+
+  if (data.name !== undefined) {
+    const name = data.name.trim();
+    if (!name) throw verr("staffNameRequired");
+    patch.nameAsInId = name;
+  }
+
+  if (data.phone !== undefined) {
+    const rawPhone = data.phone.trim();
+    const canon = normalizeSaudiPhone(rawPhone);
+    const phoneStored = canon.startsWith("966") ? `+${canon}` : rawPhone;
+    const email = syntheticEmail(canon);
+    const phoneVariants = [...new Set([rawPhone, canon, `+${canon}`, canon.startsWith("966") ? "0" + canon.slice(3) : canon])];
+    const clash = await db.user.findFirst({
+      where: {
+        id: { not: userId },
+        OR: [{ email }, { phone: { in: phoneVariants } }],
+      },
+      select: { id: true },
+    });
+    if (clash) throw verr("phoneTakenByAnother");
+    patch.phone = phoneStored;
+    patch.email = email;
+  }
+
+  if (Object.keys(patch).length === 0) return;
+
+  await db.$transaction([
+    db.user.update({ where: { id: userId }, data: patch }),
+    db.auditLog.create({ data: { action: "UPDATE", entity: "User", entityId: userId, actorId } }),
+  ]);
+  await emitEvent(db, { type: "USER_UPDATED", subjectType: "User", subjectId: userId, actorId });
+}
+
+// ═══════════════ الحذف الناعم للمستخدم ═══════════════
+
+/**
+ * يحذف المستخدم حذفاً ناعماً: يضبط deletedAt/deletedById/isActive=false.
+ * موانع: لا يحذف نفسه، لا آخر مشرف عام، لا مستخدم بدور STUDENT،
+ * لا من له حلقات نشطة، لا من له روابط ولاية نشطة.
+ */
+export async function softDeleteUser(
+  actorId: string,
+  userId: string,
+  db: PrismaClient = prisma,
+): Promise<void> {
+  await assertUserAdmin(actorId, db);
+  if (userId === actorId) throw verr("cannotDeleteSelf");
+
+  const target = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, roles: true, isActive: true, deletedAt: true },
+  });
+  if (!target) throw verr("userNotFound");
+  if (target.deletedAt) throw verr("userAlreadyDeleted");
+  if (target.roles.includes(Role.STUDENT)) throw verr("cannotDeleteStudentRole");
+
+  // آخر مشرف عام فعّال
+  if (target.isActive && target.roles.includes(Role.SUPER_ADMIN)) {
+    const count = await db.user.count({ where: { isActive: true, roles: { has: Role.SUPER_ADMIN }, deletedAt: null } });
+    if (count <= 1) throw verr("noRemoveLastSuperAdmin");
+  }
+
+  // حلقات نشطة (معلّم)
+  const activeCircles = await db.circleTeacher.count({
+    where: { teacherId: userId, circle: { deletedAt: null } },
+  });
+  if (activeCircles > 0) throw verr("userHasActiveCircles");
+
+  // روابط ولاية نشطة
+  const activeLinks = await db.guardianLink.count({
+    where: { guardianId: userId, status: { not: "UNLINKED" } },
+  });
+  if (activeLinks > 0) throw verr("userHasActiveGuardianLinks");
+
+  const now = new Date();
+  await db.$transaction([
+    db.user.update({ where: { id: userId }, data: { deletedAt: now, deletedById: actorId, isActive: false } }),
+    db.auditLog.create({ data: { action: "DELETE", entity: "User", entityId: userId, actorId } }),
+  ]);
+  await emitEvent(db, { type: "USER_DELETED", subjectType: "User", subjectId: userId, actorId });
 }
 
 // ═══════════════ إعادة تعيين كلمة السرّ ═══════════════

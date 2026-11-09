@@ -56,10 +56,16 @@ model User {
   locale      Locale? // لغة الواجهة المختارة (null ⟵ العربية افتراضيّاً)
   createdAt   DateTime  @default(now())
 
+  // الحذف الناعم
+  deletedAt   DateTime?
+  deletedById String?
+
   student              Student?
   teaching             CircleTeacher[]
   guardianOf           GuardianLink[]        @relation("Guardian")
   nationalIdAccessLogs NationalIdAccessLog[]
+
+  @@index([deletedAt])
 }
 
 // سجل الاطّلاع على رقم الهوية — م٥
