@@ -37,5 +37,6 @@ export { applyAr as apply } from "@/i18n/ar/apply";
 export { activateAr as activate } from "@/i18n/ar/activate";
 // server error messages (PR-1e) — fall back to Arabic until translated.
 export { errorsAr as errors } from "@/i18n/ar/errors";
+export { appshellAr as appshell } from "@/i18n/ar/appshell";
 export { mushafAr as mushaf } from "@/i18n/ar/mushaf";
 export { messagesAr as messages } from "@/i18n/ar/messages";

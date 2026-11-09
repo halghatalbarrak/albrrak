@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { tAppshell } from "@/i18n/ar/appshell";
 import { ui, sp } from "./tokens";
 
 interface Hit { label: string; sub?: string; href: string }
@@ -77,8 +78,8 @@ export function CommandPalette() {
           style={{ border: "none", borderBottom: `1px solid ${ui.color.border}`, padding: `${sp(4)} ${sp(5)}`, fontSize: ui.text.lg, fontFamily: ui.font, color: ui.color.text, outline: "none" }}
         />
         <div style={{ overflowY: "auto" }}>
-          {q.trim().length >= 2 && flat.length === 0 && <p style={{ color: ui.color.muted, padding: sp(5), margin: 0 }}>لا نتائج.</p>}
-          {q.trim().length < 2 && <p style={{ color: ui.color.muted, padding: sp(5), margin: 0, fontSize: ui.text.xs }}>اكتب حرفين فأكثر. جرّب: اسم طالب، أو «حزب ٦٠»، أو «١١٤:١».</p>}
+          {q.trim().length >= 2 && flat.length === 0 && <p style={{ color: ui.color.muted, padding: sp(5), margin: 0 }}>{tAppshell("noResults")}</p>}
+          {q.trim().length < 2 && <p style={{ color: ui.color.muted, padding: sp(5), margin: 0, fontSize: ui.text.xs }}>{tAppshell("searchHint")}</p>}
           {groups.map((g) => (
             <div key={g.title}>
               <div style={{ fontSize: ui.text.xs, fontWeight: 700, color: ui.color.muted, padding: `${sp(2)} ${sp(5)} 0` }}>{g.title}</div>
