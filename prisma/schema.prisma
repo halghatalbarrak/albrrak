@@ -214,12 +214,17 @@ model Enrollment {
   // ق١: البرنامج صفةٌ في القيد (لا في الحلقة). مبذورٌ من برنامج الحلقة للقيود القائمة.
   programId String?
   program   Program?  @relation(fields: [programId], references: [id])
-  startedAt DateTime  @default(now())
-  endedAt   DateTime? // النشط = null
+  startedAt       DateTime  @default(now())
+  endedAt         DateTime? // النشط = null
+  // حقول التعليق — يُعلَّق الطالب مؤقّتاً بسببٍ ووقت عودةٍ اختياريّ
+  suspendedAt     DateTime? @db.Timestamp(3)
+  suspendedReason String?
+  suspendReturnAt DateTime? @db.Date
   // ⚠️ قيد: انتساب نشط واحد لكل طالب — partial unique index (يُضاف في م١ مع منطق الأعمار)
 
   @@index([studentId, endedAt])
   @@index([programId])
+  @@index([suspendedAt])
 }
 
 enum GuardianLinkStatus {
