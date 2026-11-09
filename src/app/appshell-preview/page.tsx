@@ -15,7 +15,7 @@ const ROLES: Record<string, string[]> = {
 };
 
 export default function AppShellPreview() {
-  const [role, setRole] = useState<keyof typeof ROLES>("المدير");
+  const [role, setRole] = useState<keyof typeof ROLES>(Object.keys(ROLES)[0] as keyof typeof ROLES);
   const [modal, setModal] = useState(false);
 
   return (

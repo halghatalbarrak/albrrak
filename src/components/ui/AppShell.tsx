@@ -4,6 +4,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 
+import { tAppshell } from "@/i18n/ar/appshell";
 import { ui, sp } from "./tokens";
 import { navSections } from "./nav";
 import { Skeleton } from "./Skeleton";
@@ -52,8 +53,8 @@ export function AppShell({ roles, muddakirStaff, userName, activeHref, title, cr
   const [drawer, setDrawer] = useState(false); // درج الجوّال
   // القسم الذي فيه الصفحة الحاليّة يبدأ مفتوحاً؛ إن لم يُعرف فالأوّل.
   const activeKey = sections.find((s) => s.items.some((it) => it.href === activeHref))?.key ?? sections[0]?.key;
-  // القسم النشط مفتوحٌ افتراضاً، وتوجيه المستخدم يتجاوز الافتراض — **ويُحفَظ في المتصفّح**
-  // (يتذكّر المستخدم طيَّه لكلّ مجموعة بين الزيارات). يتفاعل مع تأخّر وصول الأدوار (useMe).
+  // Active section defaults open; user override persists in localStorage between visits.
+  // Reacts to delayed role arrival (useMe).
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   useEffect(() => {
     try { const raw = localStorage.getItem("albrrak.nav.open"); if (raw) setOverrides(JSON.parse(raw) as Record<string, boolean>); } catch { /* لا بأس */ }
@@ -71,7 +72,7 @@ export function AppShell({ roles, muddakirStaff, userName, activeHref, title, cr
       <div style={{ padding: sp(4), borderBottom: `1px solid rgba(255,255,255,.12)`, display: "flex", alignItems: "center", gap: sp(2) }}>
         <Link href="/" aria-label={BRAND} onClick={() => setDrawer(false)} style={{ display: "flex", alignItems: "center", gap: sp(2), textDecoration: "none" }}>
           <img src="/png/logo.png" alt={BRAND} style={{ height: 44, width: "auto" }} />
-          <span style={{ fontWeight: 700, fontSize: ui.text.base, color: ui.color.sidebarText, lineHeight: 1.2 }}>حلقات الشيخ<br />محمد البراك</span>
+          <span style={{ fontWeight: 700, fontSize: ui.text.base, color: ui.color.sidebarText, lineHeight: 1.2 }}>{tAppshell("brandLine1")}<br />{tAppshell("brandLine2")}</span>
         </Link>
       </div>
 
@@ -171,7 +172,7 @@ export function AppShell({ roles, muddakirStaff, userName, activeHref, title, cr
               aria-label="بحث"
               style={{ display: "flex", alignItems: "center", gap: sp(2), border: `1px solid ${ui.color.border}`, background: ui.color.surface, borderRadius: ui.radius.md, padding: `${sp(1.5)} ${sp(3)}`, cursor: "pointer", color: ui.color.muted, fontFamily: ui.font, fontSize: ui.text.xs, whiteSpace: "nowrap" }}
             >
-              بحث <kbd style={{ border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.sm, padding: "0 4px", fontSize: 12 }}>Ctrl K</kbd>
+              {tAppshell("search")}<kbd style={{ border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.sm, padding: "0 4px", fontSize: 12 }}>Ctrl K</kbd>
             </button>
           )}
           <ThemeToggle />
