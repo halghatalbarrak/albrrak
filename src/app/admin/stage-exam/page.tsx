@@ -47,7 +47,7 @@ export default function StageExamPage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
   const [msg, setMsg] = useState<string | null>(null);
 
-  // حالة الاختبار الجارية
+  // current exam state
   const [pick, setPick] = useState<Ready | null>(null);
   const [hizbIdx, setHizbIdx] = useState(0);
   const [errorsByHizb, setErrorsByHizb] = useState<Record<string, Err[]>>({});
@@ -192,7 +192,7 @@ export default function StageExamPage() {
   if (status === "loading") return <Shell><p style={{ color: ui.color.muted }}>{t("loading")}</p></Shell>;
   if (status === "error") return <Shell><p style={{ color: ui.color.danger }}>{t("loadFailed")} <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>{t("retry")}</Button></p></Shell>;
 
-  // نتيجة نهائية
+  // final outcome
   if (outcome) return (
     <Shell>
       <Card style={{ background: RANK_BG[outcome.finalRank], color: "#fff", marginBottom: sp(3) }}>
@@ -207,7 +207,7 @@ export default function StageExamPage() {
     </Shell>
   );
 
-  // ── القائمة (الجاهزون + في الإجازة) ──
+  // list: ready students + on-leave
   if (!pick) return (
     <Shell>
       {msg && <p style={{ color: ui.color.danger }}>{msg}</p>}

@@ -92,7 +92,7 @@ export default function AttendancePage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, setPending] = useState(0);
   const [ready, setReady] = useState(false);
-  // أيّامٌ مقفلةٌ رُفض رصدها (بلا إنترنت أو مباشرةً) — تبقى في الطابور بعلامةٍ وزرّ «طلب فتح» (§٨).
+  // days rejected due to lock (offline or direct) — kept in queue with unlock-request button (§8).
   const [lockedDays, setLockedDays] = useState<{ circleId: string; date: string }[]>([]);
   const markLocked = useCallback((cid: string, d: string) => {
     setLockedDays((prev) => (prev.some((x) => x.circleId === cid && x.date === d) ? prev : [...prev, { circleId: cid, date: d }]));

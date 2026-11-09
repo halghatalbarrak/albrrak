@@ -32,7 +32,7 @@ export default function DisplayAdminPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error" | "unauth">("idle");
   const [msg, setMsg] = useState<string | null>(null);
   const [linkOnce, setLinkOnce] = useState<string | null>(null);
-  // نموذج إنشاء شاشة
+  // new display form
   const [kind, setKind] = useState<"MOSQUE" | "HOME">("MOSQUE");
   const [nameAr, setNameAr] = useState("");
   const [sonQuery, setSonQuery] = useState("");
@@ -270,7 +270,7 @@ function Schedules({ detail, programs, act }: { detail: Detail; programs: Progra
 
   const startLabel = (sc: ScheduleRow) => sc.startMode === "PRAYER" && sc.prayer && sc.rel ? `${t(sc.rel === "AFTER" ? "relAfter" : "relBefore")} ${t(PRAYER_LABEL[sc.prayer])} ${arNum(sc.offsetMin)}د` : (sc.fixedTime ?? "");
   const contentLabel = (sc: ScheduleRow) => sc.contentMode === "PROGRAM" ? (sc.programNameAr ?? t("contentProgram")) : `${t("contentSlides")} (${arNum(sc.slideIds.length)})`;
-  const daysLabel = (mask: number) => mask === 127 ? t("allDays") : DAY_LABEL.filter((_, bit) => mask & (1 << bit)).map((k) => t(k)).join("، ");
+  const daysLabel = (mask: number) => mask === 127 ? t("allDays") : DAY_LABEL.filter((_, bit) => mask & (1 << bit)).map((k) => t(k)).join("\u060C ");
 
   return (
     <div style={{ borderTop: `1px solid ${ui.color.border}`, paddingTop: sp(2), marginTop: sp(2), display: "flex", flexDirection: "column", gap: sp(2) }}>

@@ -131,7 +131,7 @@ export default function HasadPage() {
   if (status === "loading") return <Shell><p style={{ color: ui.color.muted }}>{t("loading")}</p></Shell>;
   if (status === "error") return <Shell><p style={{ color: ui.color.danger }}>{t("loadFailed")} <Button variant="ghost" size="sm" type="button" onClick={() => void load()}>{t("retry")}</Button></p></Shell>;
 
-  // نتيجة نهائية
+  // final outcome
   if (outcome) return (
     <Shell>
       <Card style={{ background: RANK_BG[outcome.rank], color: "#fff", marginBottom: sp(3) }}>
@@ -141,7 +141,7 @@ export default function HasadPage() {
     </Shell>
   );
 
-  // اختيار الطالب
+  // student picker
   if (!pick) return (
     <Shell>
       {msg && <p style={{ color: ui.color.danger }}>{msg}</p>}
