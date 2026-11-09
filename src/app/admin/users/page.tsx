@@ -33,7 +33,7 @@ export default function AdminUsersPage() {
   const [err, setErr] = useState<string | null>(null);
   const [linkBox, setLinkBox] = useState<{ title: string; url: string } | null>(null);
 
-  // تعديل أدوار (عامّة + مدّكر)
+  // role editing (platform + muddakir)
   const [editUser, setEditUser] = useState<UserRow | null>(null);
   const [editRoles, setEditRoles] = useState<Role[]>([]);
   const [editStaff, setEditStaff] = useState<MuddakirStaffRole[]>([]);

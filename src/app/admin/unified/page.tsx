@@ -74,7 +74,7 @@ const ATT_BUTTONS: { status: string; label: string; tone: "primary" | "bronze" |
 ];
 
 const boundStr = (b: Bound) => formatAyah(b.fromSurah, b.fromAyah, b.toSurah, b.toAyah);
-const todayISO = () => makkahDayDate(new Date()); // يوم مكّة لا UTC
+const todayISO = () => makkahDayDate(new Date()); // Makkah day, not UTC
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
   return session?.access_token ?? null;

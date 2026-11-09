@@ -76,7 +76,7 @@ export default function MuddakirAdminPage() {
       </main>
     );
 
-  // أعمدة المدير: المرحلة، المشرف (اختيارٌ بحمله، ممتلئٌ معطَّل إلا الحاليّ)، نمط اللقاء.
+  // manager columns: stage, supervisor (lazy-loaded, full=disabled except current), meeting mode.
   const manageColumns: Column<Hafiz>[] = [
     { key: "name", header: tMuddakir("colHafiz"), cell: (h) => <strong>{h.name}</strong> },
     { key: "stage", header: tMuddakir("colStage"), cell: (h) => stageLabel(h.stage) },

@@ -65,7 +65,7 @@ export default function ApplyPage() {
 
   const age = useMemo(() => ageFrom(birthDate), [birthDate]);
   const isChild = age !== null && age < 13; // دون ١٣: جوال الطالب اختياري
-  const phoneRequired = age !== null && age >= 13; // ١٣+: الجوال شرط الحساب
+  const phoneRequired = age !== null && age >= 13; // 13+: phone required for account
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

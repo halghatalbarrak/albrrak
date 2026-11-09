@@ -37,7 +37,7 @@ export default function MuddakirTathbitAdminPage() {
   const [data, setData] = useState<Payload | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error" | "unauth">("idle");
   const [msg, setMsg] = useState<string | null>(null);
-  // مسوّدات التحرير المحلّيّة (معرّف → قيمة).
+  // local edit drafts (id → value).
   const [ladderDraft, setLadderDraft] = useState<Record<number, Partial<LadderRow>>>({});
   const [settingDraft, setSettingDraft] = useState<Record<string, string>>({});
   const [pointDraft, setPointDraft] = useState<Record<string, number>>({});

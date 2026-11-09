@@ -21,7 +21,8 @@ const LOCK_LABEL: Record<LockState, string> = {
 const LOCK_TONE: Record<LockState, "success" | "danger" | "bronze" | "neutral"> = {
   OPEN: "success", APPROVED: "bronze", AUTO_LOCKED: "danger", TEMP_OPEN: "bronze",
 };
-const arDate = (iso: string) => iso.replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)]);
+const AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
+const arDate = (iso: string) => iso.replace(/\d/g, (d) => AR_DIGITS[Number(d)]);
 
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();

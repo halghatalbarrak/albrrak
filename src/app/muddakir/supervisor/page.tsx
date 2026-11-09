@@ -118,7 +118,7 @@ export default function MuddakirSupervisorPage() {
             </Card>
           ))
       ) : (
-        // ── تفصيل الحافظ واللقاء الأسبوعيّ ──
+        // hafiz detail + weekly session
         <>
           <Button variant="ghost" size="sm" style={{ alignSelf: "flex-start" }} onClick={() => void loadList()}>← {t("backToList")}</Button>
           <Card style={{ padding: sp(3) }}>

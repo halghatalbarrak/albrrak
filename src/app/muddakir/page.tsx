@@ -388,7 +388,7 @@ function WardHome({ ward, doneToday, online, onComplete }: { ward: WardView; don
         <Muted>{t("wardNone")}</Muted>
       ) : ward.wards.map((w, i) => {
         const done = doneToday > i;
-        const missed = ward.wards.length > 1 && i === 0; // الفائت يُعرض أوّلاً (تعويض)
+        const missed = ward.wards.length > 1 && i === 0; // missed ward shown first (make-up)
         return (
           <Card key={i} style={{ padding: sp(3) }}>
             <div style={{ display: "flex", alignItems: "center", gap: sp(2) }}>
