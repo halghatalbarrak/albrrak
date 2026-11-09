@@ -10,6 +10,41 @@ import { tStudents as t } from "@/i18n/ar/students";
 // رابطٌ بمظهر زرٍّ خفيف (للتنقّل — Button زرٌّ لا رابط).
 const linkBtn: React.CSSProperties = { fontSize: ui.text.xs, fontWeight: 600, color: ui.color.primary, textDecoration: "none", border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, padding: `${sp(1.5)} ${sp(2.5)}` };
 
+function DeleteStudentCell({ studentId, onDeleted }: { studentId: string; onDeleted: (id: string) => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [rowErr, setRowErr] = useState<string | null>(null);
+
+  async function doDelete() {
+    setDeleting(true);
+    const tok = await token();
+    if (!tok) { setDeleting(false); return; }
+    const res = await fetch(`/api/admin/students/${studentId}`, {
+      method: "DELETE", headers: { authorization: `Bearer ${tok}` },
+    });
+    if (res.status === 204) { onDeleted(studentId); return; }
+    const j = (await res.json().catch(() => ({}))) as { error?: string };
+    setRowErr(j.error ?? t("errDeleteStudent"));
+    setDeleting(false);
+    setConfirming(false);
+  }
+
+  if (confirming) {
+    return (
+      <div style={{ display: "flex", gap: sp(1), alignItems: "center" }}>
+        <Button size="sm" variant="danger" disabled={deleting} onClick={() => void doDelete()}>
+          {deleting ? "…" : t("deleteConfirmBtn")}
+        </Button>
+        <Button size="sm" variant="ghost" disabled={deleting} onClick={() => { setConfirming(false); setRowErr(null); }}>
+          {t("deleteCancelBtn")}
+        </Button>
+        {rowErr && <span style={{ fontSize: ui.text.xs, color: ui.color.danger }}>{rowErr}</span>}
+      </div>
+    );
+  }
+  return <Button size="sm" variant="ghost" onClick={() => setConfirming(true)}>{t("deleteBtn")}</Button>;
+}
+
 interface Row {
   id: string;
   name: string;
@@ -318,6 +353,9 @@ export default function AdminStudentsPage() {
           <Link href={`/admin/students/${r.id}/weakness`} style={linkBtn}>{t("weaknessMap")}</Link>
           <Link href={`/admin/students/${r.id}/placement`} style={linkBtn}>{t("placement")}</Link>
           {canReveal && <Button variant="ghost" size="sm" onClick={() => revealId(r.id)}>{revealed[r.id] ? `${t("idPrefix")} ${revealed[r.id]}` : t("revealId")}</Button>}
+          {canAct && !r.enrollmentId && r.state === "WITHDRAWN" && (
+            <DeleteStudentCell studentId={r.id} onDeleted={(id) => setRows((prev) => prev?.filter((s) => s.id !== id) ?? null)} />
+          )}
         </div>
       ),
     },

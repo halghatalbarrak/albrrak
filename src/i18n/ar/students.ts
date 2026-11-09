@@ -52,6 +52,12 @@ export const studentsAr = {
   placement: "تسكين",
   revealId: "كشف الهوية",
   idPrefix: "الهوية:", // لِـ«الهوية: ٠٠٠»
+  deleteBtn: "حذف",
+  deleteConfirmBtn: "تأكيد الحذف",
+  deleteCancelBtn: "إلغاء",
+  errDeleteStudent: "تعذّر الحذف.",
+  showDeleted: "عرض المحذوفين",
+  hideDeleted: "إخفاء المحذوفين",
 
   // عناوين ومسار التنقّل
   acceptedStudents: "الطلاب المقبولون",

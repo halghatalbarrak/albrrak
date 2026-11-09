@@ -2,7 +2,7 @@ import { type PrismaClient, type Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { computeAge } from "./age-policy";
 import { readNationalId } from "./national-id";
-import { aerr } from "./errors";
+import { aerr, verr } from "./errors";
 
 // عرضٌ آمن للطلاب — **بلا رقم الهوية** (م٥: لا يظهر في تقرير) و**بلا جوال الطوارئ**.
 // من يحتاج الرقم الصريح يمرّ عبر readNationalId (مخوّل + مُسجَّل).
@@ -100,6 +100,23 @@ export async function listStudentsForAdmin(
       suspendedAt: activeEnrollment?.suspendedAt ?? null,
     };
   });
+}
+
+/** يحذف الطالب ناعماً (deletedAt). يرمي إن كان محذوفاً أو لديه انتساب نشط. */
+export async function softDeleteStudent(actorId: string, studentId: string, db: PrismaClient = prisma): Promise<void> {
+  const student = await db.student.findUnique({
+    where: { id: studentId },
+    select: { id: true, deletedAt: true, user: { select: { nameAsInId: true } } },
+  });
+  if (!student) throw verr("studentNotFound");
+  if (student.deletedAt) throw verr("studentAlreadyDeleted");
+  const activeCount = await db.enrollment.count({ where: { studentId, endedAt: null } });
+  if (activeCount > 0) throw verr("studentHasActiveEnrollment");
+  const now = new Date();
+  await db.$transaction([
+    db.student.update({ where: { id: studentId }, data: { deletedAt: now, deletedById: actorId } }),
+    db.auditLog.create({ data: { action: "DELETE", entity: "Student", entityId: studentId, actorId, label: student.user.nameAsInId } }),
+  ]);
 }
 
 /**

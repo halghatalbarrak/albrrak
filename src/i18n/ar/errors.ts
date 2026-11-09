@@ -441,6 +441,8 @@ export const errorsAr = {
   teacherNotFound: "معلّمٌ غير موجودٍ أو ليس لديه دور معلّم.",
   circleAlreadyDeleted: "الحلقة محذوفةٌ فعلاً.",
   circleHasActiveStudents: "لا يمكن حذف الحلقة: فيها طلاب نشطون.",
+  studentAlreadyDeleted: "الطالب محذوفٌ فعلاً.",
+  studentHasActiveEnrollment: "لا يمكن حذف الطالب: لديه انتساب نشط.",
   enrollmentNotFound: "لا انتساب نشط لهذا الطالب.",
   enrollmentAlreadySuspended: "الطالب معلَّق فعلاً.",
   enrollmentNotSuspended: "الطالب غير معلَّق.",
