@@ -37,6 +37,7 @@ export const circlesAr = {
   // أوقات الصلاة (تسميات عرضٍ لرموز الخادم)
   slotAsr: "العصر",
   slotMaghrib: "المغرب",
+  slotIsha: "العشاء",
 
   // الجنس (تسميات عرض)
   genderMale: "بنون",

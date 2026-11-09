@@ -91,6 +91,7 @@ model EmergencyAccessLog {
 enum TimeSlot {
   ASR
   MAGHRIB
+  ISHA
 }
 
 enum ProgramKey {
