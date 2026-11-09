@@ -5,6 +5,7 @@ import {
   enrollStudent,
   getActiveEnrollment,
   getEnrollmentHistory,
+  transferStudent,
 } from "../enrollment";
 import { ValidationError } from "../errors";
 import { createCircle, createProgram, createStudent, createUser } from "../testing/factories";
@@ -93,5 +94,76 @@ describe("إسناد الطلاب للحلقات (م١)", () => {
       where: { studentId: student.id, endedAt: null },
     });
     expect(activeCount).toBe(1);
+  });
+});
+
+describe("transferStudent — النقل الصحيح", () => {
+  it("ينقل طالباً في حالة AWAITING_READING_TEST بلا برنامج — الحالة لا تتغيّر", async () => {
+    const program = await createProgram(prisma, ProgramKey.MARAQI);
+    const c1 = await createCircle(prisma, null); // بلا برنامج
+    const c2 = await createCircle(prisma, null);
+    const { student } = await createStudent(prisma);
+    const manager = await createUser(prisma);
+    // انتساب مباشر بلا برنامج (تجاوز enrollStudent المُقيَّد)
+    await prisma.enrollment.create({ data: { studentId: student.id, circleId: c1.id } });
+    await prisma.student.update({ where: { id: student.id }, data: { state: "AWAITING_READING_TEST" } });
+
+    const { enrollmentId } = await transferStudent(manager.id, student.id, c2.id, prisma);
+
+    const updated = await prisma.enrollment.findUnique({ where: { id: enrollmentId }, select: { circleId: true } });
+    expect(updated?.circleId).toBe(c2.id);
+    // انتساب نشط واحد فقط
+    expect(await prisma.enrollment.count({ where: { studentId: student.id, endedAt: null } })).toBe(1);
+    // الحالة لم تتغيّر
+    const s = await prisma.student.findUnique({ where: { id: student.id }, select: { state: true } });
+    expect(s?.state).toBe("AWAITING_READING_TEST");
+    // سُجِّل في AuditLog
+    expect(await prisma.auditLog.count({ where: { entity: "Student", entityId: student.id, action: "TRANSFER" } })).toBe(1);
+    void program; // مُنشأ للبيئة
+  });
+
+  it("ينقل طالباً له انتساب نشط — تُحدَّث الحلقة ويبقى البرنامج", async () => {
+    const program = await createProgram(prisma, ProgramKey.MARAQI);
+    const c1 = await createCircle(prisma, program.id);
+    const c2 = await createCircle(prisma, program.id);
+    const { student } = await createStudent(prisma);
+    const manager = await createUser(prisma);
+    await enrollStudent({ studentId: student.id, circleId: c1.id, programId: program.id, actorId: manager.id }, prisma);
+
+    const before = await prisma.enrollment.findFirst({ where: { studentId: student.id, endedAt: null }, select: { programId: true } });
+    const { enrollmentId } = await transferStudent(manager.id, student.id, c2.id, prisma);
+
+    const after = await prisma.enrollment.findUnique({ where: { id: enrollmentId }, select: { circleId: true, programId: true } });
+    expect(after?.circleId).toBe(c2.id);
+    expect(after?.programId).toBe(before?.programId); // البرنامج لم يتغيّر
+    expect(await prisma.enrollment.count({ where: { studentId: student.id, endedAt: null } })).toBe(1); // لم يُنشأ انتساب جديد
+  });
+
+  it("يرمي circleNotFound عند حلقة غير موجودة", async () => {
+    const c1 = await createCircle(prisma, null);
+    const { student } = await createStudent(prisma);
+    const manager = await createUser(prisma);
+    await prisma.enrollment.create({ data: { studentId: student.id, circleId: c1.id } });
+    await expect(transferStudent(manager.id, student.id, "nonexistent", prisma))
+      .rejects.toMatchObject({ key: "circleNotFound" });
+  });
+
+  it("يرمي studentAlreadyInThisCircle عند النقل للحلقة الحالية", async () => {
+    const c1 = await createCircle(prisma, null);
+    const { student } = await createStudent(prisma);
+    const manager = await createUser(prisma);
+    await prisma.enrollment.create({ data: { studentId: student.id, circleId: c1.id } });
+    await expect(transferStudent(manager.id, student.id, c1.id, prisma))
+      .rejects.toMatchObject({ key: "studentAlreadyInThisCircle" });
+  });
+
+  it("النقل لحلقة بجنسٍ مختلف ينجح (تنبيهٌ للواجهة فقط)", async () => {
+    const c1 = await createCircle(prisma, null); // MALE
+    const c2 = await prisma.circle.create({ data: { nameAr: "حلقة-بنات", timeSlot: "MAGHRIB", gender: "FEMALE" } });
+    const { student } = await createStudent(prisma);
+    const manager = await createUser(prisma);
+    await prisma.enrollment.create({ data: { studentId: student.id, circleId: c1.id } });
+    // يجب أن ينجح بلا رمي
+    await expect(transferStudent(manager.id, student.id, c2.id, prisma)).resolves.toBeDefined();
   });
 });
