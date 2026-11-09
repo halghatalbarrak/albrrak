@@ -9,6 +9,7 @@ import { AppShell, Button, EmptyState, Skeleton, Table, ui, sp, type Column } fr
 import { tCircles as t } from "@/i18n/ar/circles";
 import { navAr } from "@/i18n/ar/nav";
 import { arNum } from "@/lib/format";
+import { Role } from "@prisma/client";
 
 const PROGRAM_AR: Record<string, string> = {
   QAIDAH_MADANIYYAH: navAr.civilBase, MARAQI: navAr.maraqi, MUDDAKIR: navAr.grpMuddakir, WEEKLY: navAr.weekly,
@@ -31,16 +32,53 @@ async function token(): Promise<string | null> {
 
 const SLOT_AR: Record<string, string> = { ASR: t("slotAsr"), MAGHRIB: t("slotMaghrib"), ISHA: t("slotIsha") };
 
+function DeleteCell({ circle, tok, onDeleted }: { circle: Circle; tok: string; onDeleted: (id: string) => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [rowErr, setRowErr] = useState<string | null>(null);
+
+  async function doDelete() {
+    setDeleting(true);
+    const res = await fetch(`/api/admin/circles/${circle.id}`, {
+      method: "DELETE", headers: { authorization: `Bearer ${tok}` },
+    });
+    if (res.status === 204) { onDeleted(circle.id); return; }
+    const j = (await res.json().catch(() => ({}))) as { error?: string };
+    setRowErr(j.error ?? t("errCreateCircle"));
+    setDeleting(false);
+    setConfirming(false);
+  }
+
+  if (confirming) {
+    return (
+      <div style={{ display: "flex", gap: sp(1), alignItems: "center" }}>
+        <Button size="sm" variant="danger" disabled={deleting} onClick={doDelete}>
+          {deleting ? t("savingBtn") : t("deleteConfirmBtn")}
+        </Button>
+        <Button size="sm" variant="ghost" disabled={deleting} onClick={() => { setConfirming(false); setRowErr(null); }}>
+          {t("deleteCancelBtn")}
+        </Button>
+        {rowErr && <span style={{ fontSize: ui.text.xs, color: ui.color.danger }}>{rowErr}</span>}
+      </div>
+    );
+  }
+  return <Button size="sm" variant="ghost" onClick={() => setConfirming(true)}>{t("deleteBtn")}</Button>;
+}
+
 export default function AdminCirclesPage() {
   const { me } = useMe();
   const router = useRouter();
   const [circles, setCircles] = useState<Circle[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [tok, setTok] = useState<string | null>(null);
+
+  const isManager = me?.roles.some((r) => r === Role.CIRCLE_MANAGER || r === Role.SUPER_ADMIN) ?? false;
 
   const load = useCallback(async () => {
-    const tok = await token();
-    if (!tok) { window.location.href = "/login"; return; }
-    const res = await fetch("/api/admin/circles", { headers: { authorization: `Bearer ${tok}` } });
+    const t_ = await token();
+    if (!t_) { window.location.href = "/login"; return; }
+    setTok(t_);
+    const res = await fetch("/api/admin/circles", { headers: { authorization: `Bearer ${t_}` } });
     if (res.status === 403) { setErr(t("errForbidden")); return; }
     if (!res.ok) { setErr(t("errLoadCircles")); return; }
     const data = (await res.json().catch(() => ({}))) as { circles?: Circle[] };
@@ -59,6 +97,11 @@ export default function AdminCirclesPage() {
     { key: "slot", header: t("colSlot"), cell: (c) => SLOT_AR[c.timeSlot] ?? c.timeSlot },
     { key: "gender", header: t("colGender"), cell: (c) => (c.gender === "MALE" ? t("genderMale") : t("genderFemale")) },
     { key: "map", header: t("colMap"), cell: (c) => <div style={{ display: "flex", justifyContent: "flex-end" }}><Link href={`/admin/circles/${c.id}/weakness`} style={linkBtn}>{t("weaknessMapLink")}</Link></div> },
+    ...(isManager && tok ? [{
+      key: "actions" as const,
+      header: t("colActions"),
+      cell: (c: Circle) => <DeleteCell circle={c} tok={tok} onDeleted={(id) => setCircles((prev) => prev?.filter((x) => x.id !== id) ?? null)} />,
+    }] : []),
   ];
 
   return (

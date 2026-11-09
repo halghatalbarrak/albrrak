@@ -439,6 +439,7 @@ export const errorsAr = {
   genderInvalidField: "جنسٌ غير صالح.",
   teacherCircleForbidden: "لا تَصل إلا لحلقاتك (§٣٫٢).",
   teacherNotFound: "معلّمٌ غير موجودٍ أو ليس لديه دور معلّم.",
+  circleAlreadyDeleted: "الحلقة محذوفةٌ فعلاً.",
 } as const;
 
 /** مفاتيح أخطاء الخادم المُرحَّلة (تنمو كلّما رُحِّل مجال). */
