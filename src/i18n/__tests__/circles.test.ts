@@ -37,6 +37,7 @@ describe("قاموس شاشات الحلقات (العربيّة)", () => {
       emptyDescription: "أنشئ الأولى بزرّ «+ جديد».",
       slotAsr: "العصر",
       slotMaghrib: "المغرب",
+      slotIsha: "العشاء",
       genderMale: "بنون",
       genderFemale: "بنات",
       newTitle: "حلقة جديدة",

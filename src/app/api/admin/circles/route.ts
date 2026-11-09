@@ -24,20 +24,17 @@ export async function POST(req: Request) {
   try {
     await requireRoles(req, MANAGER);
     const b = (await req.json()) as Record<string, unknown>;
-    if (b.timeSlot !== TimeSlot.ASR && b.timeSlot !== TimeSlot.MAGHRIB) {
+    if (b.timeSlot !== TimeSlot.ASR && b.timeSlot !== TimeSlot.MAGHRIB && b.timeSlot !== TimeSlot.ISHA) {
       throw verr("circleTimeSlotInvalid");
     }
     if (b.gender !== Gender.MALE && b.gender !== Gender.FEMALE) {
       throw verr("circleGenderInvalid");
     }
     if (typeof b.nameAr !== "string") throw verr("circleNameRequired");
-    // البرنامج اختياريّ (الحلقة لا تتبع برنامجاً — قرار المدير).
     const circle = await createCircle({
-      nameAr: b.nameAr,
-      timeSlot: b.timeSlot,
-      gender: b.gender,
-      programId: typeof b.programId === "string" ? b.programId : null,
-      location: typeof b.location === "string" ? b.location : null,
+      nameAr: b.nameAr as string,
+      timeSlot: b.timeSlot as import("@prisma/client").TimeSlot,
+      gender: b.gender as import("@prisma/client").Gender,
     });
     return Response.json(circle, { status: 201 });
   } catch (e) {

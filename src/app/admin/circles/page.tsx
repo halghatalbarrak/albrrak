@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Button, Select, EmptyState, Skeleton, Table, ui, sp, type Column } from "@/components/ui";
+import { AppShell, Button, EmptyState, Skeleton, Table, ui, sp, type Column } from "@/components/ui";
 import { tCircles as t } from "@/i18n/ar/circles";
 import { navAr } from "@/i18n/ar/nav";
 import { arNum } from "@/lib/format";
@@ -21,25 +21,20 @@ interface Circle {
   nameAr: string;
   timeSlot: string;
   gender: string;
-  location: string | null;
-  programKey: string | null;
-  programNameAr: string | null;
   programCounts: { programKey: string; n: number }[];
 }
-interface Program { id: string; key: string; nameAr: string }
 
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
   return session?.access_token ?? null;
 }
 
-const SLOT_AR: Record<string, string> = { ASR: t("slotAsr"), MAGHRIB: t("slotMaghrib") };
+const SLOT_AR: Record<string, string> = { ASR: t("slotAsr"), MAGHRIB: t("slotMaghrib"), ISHA: t("slotIsha") };
 
 export default function AdminCirclesPage() {
   const { me } = useMe();
   const router = useRouter();
   const [circles, setCircles] = useState<Circle[] | null>(null);
-  const [programs, setPrograms] = useState<Program[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -48,31 +43,14 @@ export default function AdminCirclesPage() {
     const res = await fetch("/api/admin/circles", { headers: { authorization: `Bearer ${tok}` } });
     if (res.status === 403) { setErr(t("errForbidden")); return; }
     if (!res.ok) { setErr(t("errLoadCircles")); return; }
-    const data = (await res.json().catch(() => ({}))) as { circles?: Circle[]; programs?: Program[] };
+    const data = (await res.json().catch(() => ({}))) as { circles?: Circle[] };
     setCircles(Array.isArray(data.circles) ? data.circles : []);
-    setPrograms(Array.isArray(data.programs) ? data.programs : []);
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
-  // البرنامج الافتراضيّ للحلقة (للمنضمّ الجديد، ق١) — لا يمسّ برامج القيود القائمة.
-  async function changeProgram(circleId: string, programId: string) {
-    const tok = await token(); if (!tok) return;
-    const res = await fetch(`/api/admin/circles/${circleId}/program`, {
-      method: "PATCH", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` }, body: JSON.stringify({ programId }),
-    });
-    if (res.ok) void load(); else setErr(t("errChangeProgram"));
-  }
-
   const cols: Column<Circle>[] = [
     { key: "name", header: t("colName"), cell: (c) => <strong>{c.nameAr}</strong> },
-    { key: "program", header: t("colDefaultProgram"), cell: (c) => (
-      programs.length ? (
-        <Select value={programs.find((p) => p.key === c.programKey)?.id ?? ""} onChange={(e) => void changeProgram(c.id, e.target.value)} style={{ minWidth: 150 }}>
-          {programs.map((p) => <option key={p.id} value={p.id}>{p.nameAr}</option>)}
-        </Select>
-      ) : c.programNameAr
-    ) },
     { key: "students", header: t("colStudents"), cell: (c) => (
       c.programCounts.length
         ? c.programCounts.map((pc) => `${PROGRAM_AR[pc.programKey] ?? pc.programKey} ${arNum(pc.n)}`).join(" · ")
@@ -80,7 +58,6 @@ export default function AdminCirclesPage() {
     ) },
     { key: "slot", header: t("colSlot"), cell: (c) => SLOT_AR[c.timeSlot] ?? c.timeSlot },
     { key: "gender", header: t("colGender"), cell: (c) => (c.gender === "MALE" ? t("genderMale") : t("genderFemale")) },
-    { key: "location", header: t("colLocation"), cell: (c) => c.location ?? "—" },
     { key: "map", header: t("colMap"), cell: (c) => <div style={{ display: "flex", justifyContent: "flex-end" }}><Link href={`/admin/circles/${c.id}/weakness`} style={linkBtn}>{t("weaknessMapLink")}</Link></div> },
   ];
 
