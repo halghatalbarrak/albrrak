@@ -66,7 +66,7 @@ export function hijri(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   try {
     return new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura", { day: "numeric", month: "long", year: "numeric" })
-      .format(new Date(Date.UTC(y, m - 1, d))) + " هـ";
+      .format(new Date(Date.UTC(y, m - 1, d)));
   } catch {
     return arNum(iso);
   }
