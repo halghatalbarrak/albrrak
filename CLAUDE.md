@@ -24,15 +24,15 @@
 - **الحارس قبل كلّ `push` أو دمج** — تحقّق أنّ الحساب النشط اسمه `halghatalbarrak` **تحديداً**، وإلّا فتوقّف:
   ```
   export GH_CONFIG_DIR="C:\Users\mmosa\.gh-albrrak"
-  gh auth switch --user halghatalbarrak
-  test "$(gh api user -q .login)" = "halghatalbarrak"   # يجب أن يُرجع halghatalbarrak بالضبط، وإلّا توقّف
+  gh api user -q .login   # يجب أن يُرجع halghatalbarrak بالضبط، وإلّا توقّف
   ```
-  (لا تكتفِ بـ`gh auth status | grep "Active account: true"` — فهو يمرّ بأيّ حساب؛ وقد مرّ فعلاً بحساب `istedama-creator` خطأً.)
+  (لا تستعمل `gh auth switch` ولا `gh auth status` — استعمل `gh api user -q .login` حصراً.)
 - لا تغيّر إعدادات gh الافتراضيّة (`~/.config/gh`)، ولا تُسجّل خروج أيّ حسابٍ منها.
 - لا دمج بلا إذنٍ صريح.
 
 ## أسلوب العمل
 
+- **ممنوع `gh auth` بكل أوامره (switch/login/logout/token).** للتحقّق من الحساب استعمل `gh api user -q .login` فقط.
 - **نفّذ بلا استئذان، ولا تنتظر موافقة على الخطط.**
 - اعرض الحصر أو الخطة ثم ابدأ فوراً، في سطرٍ واحد.
 - **لا تسأل «هل أبدأ؟» أو «أيّ مسار؟».** اختر الأنسب، واذكر ما اخترته في سطر.
