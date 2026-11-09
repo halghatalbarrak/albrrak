@@ -239,7 +239,12 @@ export async function expelStudent(
   ]);
 }
 
-/** ينقل الطالب إلى حلقةٍ أخرى مع التحقّق من مطابقة الجنس. */
+/**
+ * ينقل الطالب إلى حلقةٍ أخرى: يُحدِّث circleId في انتساباته النشطة مباشرةً.
+ * لا ينشئ انتساباً جديداً، ولا يمرّ بمنطق التسكين أو البرنامج.
+ * التحقّقان الوحيدان: الحلقة موجودة وغير محذوفة، وليست الحلقة الحالية.
+ * اختلاف الجنس: تنبيهٌ للواجهة، لا رفضٌ هنا.
+ */
 export async function transferStudent(
   actorId: string,
   studentId: string,
@@ -247,12 +252,35 @@ export async function transferStudent(
   db: PrismaClient = prisma,
 ): Promise<{ enrollmentId: string }> {
   const [student, circle] = await Promise.all([
-    db.student.findUnique({ where: { id: studentId }, select: { user: { select: { gender: true } } } }),
-    db.circle.findUnique({ where: { id: circleId, deletedAt: null }, select: { gender: true } }),
+    db.student.findUnique({ where: { id: studentId }, select: { id: true } }),
+    db.circle.findUnique({ where: { id: circleId, deletedAt: null }, select: { id: true, nameAr: true } }),
   ]);
   if (!student) throw verr("studentNotFound");
   if (!circle) throw verr("circleNotFound");
-  if (student.user.gender !== circle.gender) throw verr("circleGenderMismatch");
-  const enrollment = await enrollStudent({ studentId, circleId, actorId }, db);
-  return { enrollmentId: enrollment.id };
+
+  const active = await db.enrollment.findFirst({
+    where: { studentId, endedAt: null },
+    select: { id: true, circleId: true, circle: { select: { nameAr: true } } },
+  });
+  if (!active) throw verr("noActiveEnrollmentForStudent");
+  if (active.circleId === circleId) throw verr("studentAlreadyInThisCircle");
+
+  const fromName = active.circle.nameAr;
+  await db.$transaction([
+    db.enrollment.updateMany({
+      where: { studentId, endedAt: null },
+      data: { circleId },
+    }),
+    db.auditLog.create({
+      data: {
+        action: "TRANSFER",
+        entity: "Student",
+        entityId: studentId,
+        actorId,
+        label: `من ${fromName} إلى ${circle.nameAr}`,
+      },
+    }),
+  ]);
+
+  return { enrollmentId: active.id };
 }
