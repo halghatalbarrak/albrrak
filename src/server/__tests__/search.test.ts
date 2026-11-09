@@ -64,4 +64,20 @@ describe("searchAll (الفكرة ٨) — طلاب/حلقات/مصحف", () => {
     expect(r.students).toHaveLength(1);
     expect(r.students[0].href).toBe(`/admin/students/${mine.id}`);
   });
+
+  it("الحلقة المحذوفة لا تظهر في نتائج البحث", async () => {
+    const program = await createProgram(prisma, ProgramKey.MARAQI);
+    const circle = await prisma.circle.create({ data: { nameAr: "حلقة المحذوفة", timeSlot: "MAGHRIB", gender: "MALE", programId: program.id } });
+    await prisma.circle.update({ where: { id: circle.id }, data: { deletedAt: new Date() } });
+    const r = await searchAll("المحذوفة", adminActor, prisma);
+    expect(r.circles).toHaveLength(0);
+  });
+
+  it("الطالب المحذوف لا يظهر في نتائج البحث", async () => {
+    const { student } = await createStudent(prisma);
+    await prisma.user.update({ where: { id: (await prisma.student.findUniqueOrThrow({ where: { id: student.id }, select: { userId: true } })).userId }, data: { nameAsInId: "طالب محذوف" } });
+    await prisma.student.update({ where: { id: student.id }, data: { deletedAt: new Date() } });
+    const r = await searchAll("محذوف", adminActor, prisma);
+    expect(r.students).toHaveLength(0);
+  });
 });

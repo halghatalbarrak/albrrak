@@ -27,6 +27,15 @@ async function acceptedStudent() {
 }
 
 describe("قائمة الطلاب للمدير", () => {
+  it("لا تظهر الطلاب المحذوفون ناعمًا في قائمة المدير", async () => {
+    const { student } = await acceptedStudent();
+    // إنهاء الانتساب ثم حذف
+    await prisma.enrollment.updateMany({ where: { studentId: student.id, endedAt: null }, data: { endedAt: new Date() } });
+    await prisma.student.update({ where: { id: student.id }, data: { deletedAt: new Date() } });
+    const rows = await listStudentsForAdmin(prisma, new Date("2026-01-01"));
+    expect(rows.find((r) => r.id === student.id)).toBeUndefined();
+  });
+
   it("كل سطر يحمل العمر (محسوب) والحلقة والولي، وبلا رقم هوية", async () => {
     const { student, circle } = await acceptedStudent();
     const rows = await listStudentsForAdmin(prisma, new Date("2026-01-01"));
