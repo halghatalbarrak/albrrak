@@ -424,6 +424,7 @@ export async function listRecordableCircles(
   if (!actor) return [];
   if (actor.roles.some((r) => r === Role.SUPER_ADMIN || r === Role.CIRCLE_MANAGER)) {
     return db.circle.findMany({
+      where: { deletedAt: null },
       select: { id: true, nameAr: true },
       orderBy: { nameAr: "asc" },
     });

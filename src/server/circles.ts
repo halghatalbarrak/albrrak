@@ -69,9 +69,27 @@ export interface CreateCircleInput {
   teacherId?: string | null;
 }
 
+/** ينزّه النصّ لمقارنة أسماء الحلقات: يُزيل التشكيل والتطويل ويوحّد همزات الألف. */
+export function normalizeCircleName(s: string): string {
+  return s
+    .replace(/[ً-ْٰ]/g, "")  // تشكيل
+    .replace(/ـ/g, "")                       // تطويل
+    .replace(/[أإآٱ]/g, "ا")                // همزات الألف
+    .trim();
+}
+
 export async function createCircle(input: CreateCircleInput, db: PrismaClient = prisma) {
   const nameAr = input.nameAr.trim();
   if (!nameAr) throw verr("circleNameRequired");
+
+  // تحقّق من تكرار الاسم (بعد تنزيه التشكيل والهمزات).
+  const normalizedInput = normalizeCircleName(nameAr);
+  const allCircles = await db.circle.findMany({ select: { nameAr: true, deletedAt: true } });
+  const dupActive = allCircles.find((c) => c.deletedAt === null && normalizeCircleName(c.nameAr) === normalizedInput);
+  if (dupActive) throw verr("circleNameDuplicate");
+  const dupDeleted = allCircles.find((c) => c.deletedAt !== null && normalizeCircleName(c.nameAr) === normalizedInput);
+  if (dupDeleted) throw verr("circleNameInTrash");
+
   if (input.programId) {
     const program = await db.program.findUnique({ where: { id: input.programId }, select: { id: true } });
     if (!program) throw verr("programNotFound");
@@ -179,9 +197,10 @@ export async function updateCircle(
   const circle = await db.circle.findUnique({ where: { id: circleId, deletedAt: null }, select: { id: true, nameAr: true, timeSlot: true, gender: true, location: true } });
   if (!circle) throw verr("circleNotFound");
 
-  // تحقّق من تكرار الاسم (بلا هذه الحلقة)
-  const dup = await db.circle.findFirst({ where: { nameAr, id: { not: circleId }, deletedAt: null }, select: { id: true } });
-  if (dup) throw verr("circleNameDuplicate");
+  // تحقّق من تكرار الاسم (بعد تنزيه التشكيل والهمزات، بلا هذه الحلقة)
+  const normalizedInput = normalizeCircleName(nameAr);
+  const others = await db.circle.findMany({ where: { deletedAt: null, id: { not: circleId } }, select: { nameAr: true } });
+  if (others.some((c) => normalizeCircleName(c.nameAr) === normalizedInput)) throw verr("circleNameDuplicate");
 
   // تحقّق من تعارض الجنس مع الطلاب النشطين
   if (input.gender !== circle.gender) {

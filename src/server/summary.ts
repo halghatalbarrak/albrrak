@@ -84,8 +84,8 @@ export async function getSummary(actor: Pick<Actor, "id" | "roles">, db: PrismaC
 
 async function managerSummary(db: PrismaClient, today: Date): Promise<Summary> {
   const [students, circlesTotal, pendingApps, pendingApprovals, recordedRows] = await Promise.all([
-    db.student.count({ where: { state: { in: ACTIVE_STUDENT_STATES } } }),
-    db.circle.count(),
+    db.student.count({ where: { deletedAt: null, state: { in: ACTIVE_STUDENT_STATES } } }),
+    db.circle.count({ where: { deletedAt: null } }),
     db.application.count({ where: { status: ApplicationStatus.PENDING } }),
     db.approval.count({ where: { status: ApprovalStatus.PENDING } }),
     db.attendance.findMany({ where: { date: today }, select: { circleId: true }, distinct: ["circleId"] }),

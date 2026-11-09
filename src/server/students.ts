@@ -17,6 +17,7 @@ export async function listStudentsSafe(
   db: PrismaClient = prisma,
 ): Promise<StudentListItem[]> {
   const rows = await db.student.findMany({
+    where: { deletedAt: null },
     select: {
       id: true,
       state: true,
@@ -56,6 +57,7 @@ export async function listStudentsForAdmin(
 ): Promise<AdminStudentRow[]> {
   const [rows, pendings] = await Promise.all([
     db.student.findMany({
+      where: { deletedAt: null },
       select: {
         id: true,
         state: true,
