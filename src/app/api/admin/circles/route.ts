@@ -1,5 +1,5 @@
 import { Gender, Role, TimeSlot } from "@prisma/client";
-import { createCircle, listCircles, listPrograms } from "@/server/circles";
+import { createCircle, listCircles, listPrograms, listTeachers } from "@/server/circles";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
 import { verr } from "@/server/errors";
@@ -8,12 +8,12 @@ const MANAGER = [Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
 // القراءة تشمل المُسجِّل — يحتاج قائمة الحلقات لإسناد الطالب عند التحديد.
 const READERS = [Role.CIRCLE_MANAGER, Role.SUPER_ADMIN, Role.REGISTRAR];
 
-// GET /api/admin/circles — الحلقات + البرامج (لنموذج الإنشاء وللإسناد).
+// GET /api/admin/circles — الحلقات + البرامج + المعلّمون (لنموذج الإنشاء وللإسناد).
 export async function GET(req: Request) {
   try {
     await requireRoles(req, READERS);
-    const [circles, programs] = await Promise.all([listCircles(), listPrograms()]);
-    return Response.json({ circles, programs });
+    const [circles, programs, teachers] = await Promise.all([listCircles(), listPrograms(), listTeachers()]);
+    return Response.json({ circles, programs, teachers });
   } catch (e) {
     return errorResponse(e);
   }
@@ -31,10 +31,12 @@ export async function POST(req: Request) {
       throw verr("circleGenderInvalid");
     }
     if (typeof b.nameAr !== "string") throw verr("circleNameRequired");
+    const teacherId = typeof b.teacherId === "string" && b.teacherId ? b.teacherId : null;
     const circle = await createCircle({
       nameAr: b.nameAr as string,
       timeSlot: b.timeSlot as import("@prisma/client").TimeSlot,
       gender: b.gender as import("@prisma/client").Gender,
+      teacherId,
     });
     return Response.json(circle, { status: 201 });
   } catch (e) {

@@ -437,6 +437,8 @@ export const errorsAr = {
   faceNotFound: "وجهٌ غير موجود.",
   fieldRequiredOrInvalid: "حقلٌ مطلوبٌ أو غير صالح.",
   genderInvalidField: "جنسٌ غير صالح.",
+  teacherCircleForbidden: "لا تَصل إلا لحلقاتك (§٣٫٢).",
+  teacherNotFound: "معلّمٌ غير موجودٍ أو ليس لديه دور معلّم.",
 } as const;
 
 /** مفاتيح أخطاء الخادم المُرحَّلة (تنمو كلّما رُحِّل مجال). */

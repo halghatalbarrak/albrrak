@@ -1,5 +1,6 @@
 import { Role, type AttendanceStatus } from "@prisma/client";
 import { getSessionRoster, recordSession, type AttendanceMark } from "@/server/attendance";
+import { assertTeacherOwnsCircle } from "@/server/circles";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
 import { verr } from "@/server/errors";
@@ -9,8 +10,11 @@ const RECORDER_ROLES = [Role.TEACHER, Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
 // GET /api/circles/[id]/attendance?date=YYYY-MM-DD — قائمة الرصد ليوم (حاضر افتراضًا).
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    await requireRoles(req, RECORDER_ROLES);
+    const actor = await requireRoles(req, RECORDER_ROLES);
     const { id } = await ctx.params;
+    if (actor.roles.includes(Role.TEACHER) && !actor.roles.some((r) => r === Role.CIRCLE_MANAGER || r === Role.SUPER_ADMIN)) {
+      await assertTeacherOwnsCircle(actor.id, id);
+    }
     const date = new URL(req.url).searchParams.get("date");
     if (!date) throw verr("dateRequired");
     const roster = await getSessionRoster(id, date);
@@ -41,6 +45,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       };
     });
 
+    if (actor.roles.includes(Role.TEACHER) && !actor.roles.some((r) => r === Role.CIRCLE_MANAGER || r === Role.SUPER_ADMIN)) {
+      await assertTeacherOwnsCircle(actor.id, id);
+    }
     const result = await recordSession({
       circleId: id,
       date: b.date,

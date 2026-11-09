@@ -1,6 +1,6 @@
-import { type Gender, type PrismaClient, type ProgramKey, type TimeSlot } from "@prisma/client";
+import { Role, type Gender, type PrismaClient, type ProgramKey, type TimeSlot } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { verr } from "./errors";
+import { aerr, verr } from "./errors";
 
 // إدارة الحلقات الأدنى: المدير يُنشئ الحلقات تحت برنامجٍ قائم (لا يُنشئ البرامج).
 // الحلقة كيانٌ عندنا (§٦٫١) — إليها يُسنَد الطالب عند التحديد.
@@ -65,6 +65,7 @@ export interface CreateCircleInput {
   /** البرنامج اختياريّ ومهجور (قرار المدير): الحلقة لا تتبع برنامجاً. */
   programId?: string | null;
   location?: string | null;
+  teacherId?: string | null;
 }
 
 export async function createCircle(input: CreateCircleInput, db: PrismaClient = prisma) {
@@ -74,14 +75,47 @@ export async function createCircle(input: CreateCircleInput, db: PrismaClient = 
     const program = await db.program.findUnique({ where: { id: input.programId }, select: { id: true } });
     if (!program) throw verr("programNotFound");
   }
-  return db.circle.create({
-    data: {
-      nameAr,
-      timeSlot: input.timeSlot,
-      gender: input.gender,
-      programId: input.programId ?? null,
-      location: input.location?.trim() || null,
-    },
-    select: { id: true, nameAr: true },
+  if (input.teacherId) {
+    const teacher = await db.user.findUnique({ where: { id: input.teacherId }, select: { roles: true } });
+    if (!teacher || !teacher.roles.includes(Role.TEACHER)) throw verr("teacherNotFound");
+  }
+  const circleData = {
+    nameAr,
+    timeSlot: input.timeSlot,
+    gender: input.gender,
+    programId: input.programId ?? null,
+    location: input.location?.trim() || null,
+  };
+  if (!input.teacherId) {
+    return db.circle.create({ data: circleData, select: { id: true, nameAr: true } });
+  }
+  const teacherId = input.teacherId;
+  return db.$transaction(async (tx) => {
+    const circle = await tx.circle.create({ data: circleData, select: { id: true, nameAr: true } });
+    await tx.circleTeacher.create({ data: { circleId: circle.id, teacherId } });
+    return circle;
   });
+}
+
+export interface TeacherRow {
+  id: string;
+  name: string;
+}
+
+export async function listTeachers(db: PrismaClient = prisma): Promise<TeacherRow[]> {
+  const rows = await db.user.findMany({
+    where: { roles: { has: Role.TEACHER }, isActive: true },
+    select: { id: true, nameAsInId: true },
+    orderBy: { nameAsInId: "asc" },
+  });
+  return rows.map((r) => ({ id: r.id, name: r.nameAsInId }));
+}
+
+/** يرمي AuthorizationError إن لم يكن المعلّم مرتبطاً بالحلقة (endedAt = null). */
+export async function assertTeacherOwnsCircle(teacherId: string, circleId: string, db: PrismaClient = prisma): Promise<void> {
+  const link = await db.circleTeacher.findFirst({
+    where: { circleId, teacherId, endedAt: null },
+    select: { circleId: true },
+  });
+  if (!link) throw aerr("teacherCircleForbidden");
 }
