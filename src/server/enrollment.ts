@@ -1,4 +1,4 @@
-import { ProgramHistoryReason, type ProgramKey, type PrismaClient } from "@prisma/client";
+import { StudentState, ProgramHistoryReason, type ProgramKey, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 
@@ -161,4 +161,80 @@ export async function enrollStudent(
       endedAt: created.endedAt,
     };
   });
+}
+
+/** يعلّق انتساب الطالب مؤقّتاً بسببٍ ووقتِ عودةٍ اختياريّ. */
+export async function suspendEnrollment(
+  actorId: string,
+  studentId: string,
+  reason: string,
+  returnAt: Date | null,
+  db: PrismaClient = prisma,
+): Promise<void> {
+  const enrollment = await db.enrollment.findFirst({
+    where: { studentId, endedAt: null },
+    select: { id: true, suspendedAt: true },
+  });
+  if (!enrollment) throw verr("enrollmentNotFound");
+  if (enrollment.suspendedAt) throw verr("enrollmentAlreadySuspended");
+  await db.$transaction([
+    db.enrollment.update({
+      where: { id: enrollment.id },
+      data: { suspendedAt: new Date(), suspendedReason: reason, suspendReturnAt: returnAt },
+    }),
+    db.auditLog.create({
+      data: { action: "SUSPEND", entity: "Enrollment", entityId: enrollment.id, actorId, label: reason },
+    }),
+  ]);
+}
+
+/** يرفع تعليق انتساب الطالب. */
+export async function resumeEnrollment(
+  actorId: string,
+  studentId: string,
+  db: PrismaClient = prisma,
+): Promise<void> {
+  const enrollment = await db.enrollment.findFirst({
+    where: { studentId, endedAt: null },
+    select: { id: true, suspendedAt: true },
+  });
+  if (!enrollment) throw verr("enrollmentNotFound");
+  if (!enrollment.suspendedAt) throw verr("enrollmentNotSuspended");
+  await db.$transaction([
+    db.enrollment.update({
+      where: { id: enrollment.id },
+      data: { suspendedAt: null, suspendedReason: null, suspendReturnAt: null },
+    }),
+    db.auditLog.create({
+      data: { action: "RESUME", entity: "Enrollment", entityId: enrollment.id, actorId, label: null },
+    }),
+  ]);
+}
+
+/** يفصل الطالب: يُنهي انتسابه النشط ويضبط حالته WITHDRAWN. */
+export async function expelStudent(
+  actorId: string,
+  studentId: string,
+  reason: string,
+  db: PrismaClient = prisma,
+): Promise<void> {
+  const enrollment = await db.enrollment.findFirst({
+    where: { studentId, endedAt: null },
+    select: { id: true },
+  });
+  if (!enrollment) throw verr("enrollmentNotFound");
+  const now = new Date();
+  await db.$transaction([
+    db.enrollment.update({
+      where: { id: enrollment.id },
+      data: { endedAt: now },
+    }),
+    db.student.update({
+      where: { id: studentId },
+      data: { state: StudentState.WITHDRAWN },
+    }),
+    db.auditLog.create({
+      data: { action: "EXPEL", entity: "Enrollment", entityId: enrollment.id, actorId, label: reason },
+    }),
+  ]);
 }
