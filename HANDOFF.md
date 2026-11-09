@@ -204,4 +204,7 @@
 
 | PR | المحتوى | الحالة |
 |---|---|---|
-| #179 | P1: أعمدة deletedAt/deletedById لـCircle وStudent + جدول AuditLog | يتطلّب Migrate (deploy) ثم دمج يدويّ |
+| #179 | P1: أعمدة deletedAt/deletedById لـCircle وStudent + جدول AuditLog | مدموج |
+| #180 | P2: ربط المعلّم بالحلقة عبر CircleTeacher + صلاحية TEACHER | مدموج |
+| #181 | P3 circles: حذف ناعم للحلقة (زرّ حذف + تأكيد + AuditLog) | مدموج |
+| #188 | P3 students: حذف ناعم للطالب (بلا انتساب نشط) | auto-merge بانتظار CI |
