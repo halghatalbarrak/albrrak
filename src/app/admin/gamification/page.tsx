@@ -57,15 +57,15 @@ export default function GamificationAdminPage() {
   }
 
   if (status === "unauth")
-    return <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(3) }}><p>تحتاج دخولًا.</p><a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>دخول</a></main>;
+    return <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: sp(3) }}><p>{t("journeyNeedLogin")}</p><a href="/login" style={{ color: ui.color.primary, fontWeight: 600 }}>{t("journeyLogin")}</a></main>;
 
   return (
     <AppShell roles={me?.roles ?? []} muddakirStaff={me?.muddakirStaff ?? []} userName={me?.name} activeHref="/admin/gamification"
       title={t("adminTitle")} crumbs={[{ label: "الرئيسة", href: "/" }, { label: "الإدارة" }, { label: t("adminTitle") }]}>
 
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
-      {status === "loading" && <p style={{ color: ui.color.muted }}>…جارٍ التحميل</p>}
-      {status === "error" && <p style={{ color: ui.color.danger }}>تعذّر التحميل. <Button variant="ghost" size="sm" onClick={() => void load()}>إعادة</Button></p>}
+      {status === "loading" && <p style={{ color: ui.color.muted }}>{t("journeyLoading")}</p>}
+      {status === "error" && <p style={{ color: ui.color.danger }}>{t("journeyErrLoad")} <Button variant="ghost" size="sm" onClick={() => void load()}>{t("journeyRetry")}</Button></p>}
 
       {status === "ready" && data && (
         <>

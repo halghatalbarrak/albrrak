@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Button, Input, Field, Select, ui, sp } from "@/components/ui";
+import { tMarket } from "@/i18n/ar/market";
 
 interface Guarded { studentId: string; name: string }
 
@@ -69,9 +70,9 @@ export default function NewGiftPage() {
       crumbs={[{ label: "الرئيسة", href: "/" }, { label: "البيدر", href: LIST }, { label: "ثمرة جديدة" }]}>
 
       {guarded == null ? (
-        <p style={{ color: ui.color.muted }}>جارٍ التحميل…</p>
+        <p style={{ color: ui.color.muted }}>{tMarket("loading")}</p>
       ) : guarded.length === 0 ? (
-        <Card style={{ maxWidth: 520 }}><p style={{ margin: 0 }}>لا أبناء مرتبطون بحسابك.</p></Card>
+        <Card style={{ maxWidth: 520 }}><p style={{ margin: 0 }}>{tMarket("noGuardianChildren")}</p></Card>
       ) : (
         <Card style={{ maxWidth: 640 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: sp(3) }}>
@@ -87,16 +88,16 @@ export default function NewGiftPage() {
             <Field label="رابط الصورة (اختياريّ)"><Input value={form.imageUrl} onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))} placeholder="https://…" style={{ direction: "ltr" }} /></Field>
             <Field label="لمن؟">
               <Select value={form.scope} onChange={(e) => setForm((f) => ({ ...f, scope: e.target.value as "child" | "public" }))}>
-                <option value="child">خاصّة بـ {activeName}</option>
-                <option value="public">عامّة لكلّ البيدر</option>
+                <option value="child">{tMarket("giftScopeChild")} {activeName}</option>
+                <option value="public">{tMarket("giftGeneral")}</option>
               </Select>
             </Field>
           </div>
-          <p style={{ fontSize: ui.text.xs, color: ui.color.muted, marginTop: sp(2) }}>تُعرَض بعد اعتماد الإدارة للقيمة.</p>
+          <p style={{ fontSize: ui.text.xs, color: ui.color.muted, marginTop: sp(2) }}>{tMarket("giftPendingApproval")}</p>
           {err && <p style={{ color: ui.color.danger }}>{err}</p>}
           <div style={{ display: "flex", gap: sp(2), marginTop: sp(2) }}>
             <Button onClick={() => void addGift()} disabled={saving}>{saving ? "جارٍ…" : "أرسِل للاعتماد"}</Button>
-            <Button variant="ghost" onClick={() => router.push(LIST)}>إلغاء</Button>
+            <Button variant="ghost" onClick={() => router.push(LIST)}>{tMarket("formCancel")}</Button>
           </div>
         </Card>
       )}

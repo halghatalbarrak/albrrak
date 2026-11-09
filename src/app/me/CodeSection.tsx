@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { arNum } from "@/lib/format";
 import { Button, Card, ui, sp } from "@/components/ui";
+import { tMarket } from "@/i18n/ar/market";
 
 interface Guarded { studentId: string; name: string }
 interface Issued { code: string; qrDataUrl: string; expiresAt: string }
@@ -61,9 +62,9 @@ export function CodeSection({ hasOwnStudent }: { hasOwnStudent: boolean }) {
 
   return (
     <section style={{ marginBottom: sp(6) }}>
-      <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>رمز الحاصد</div>
+      <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: sp(2) }}>{tMarket("codeLabel")}</div>
       <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", marginBottom: sp(3) }}>
-        {hasOwnStudent && <Button variant="bronze" onClick={() => void generate()} disabled={busy}>أظهر رمزي</Button>}
+        {hasOwnStudent && <Button variant="bronze" onClick={() => void generate()} disabled={busy}>{tMarket("codeShowMine")}</Button>}
         {guarded.map((g) => (
           <Button key={g.studentId} variant="ghost" onClick={() => void generate(g.studentId)} disabled={busy}>
             رمز {g.name}
@@ -81,12 +82,12 @@ export function CodeSection({ hasOwnStudent }: { hasOwnStudent: boolean }) {
               <img src={issued.qrDataUrl} alt="رمز الاستجابة السريعة" width={220} height={220} style={{ maxWidth: "100%", height: "auto" }} />
               <div style={{ fontSize: ui.text.xl, fontWeight: 700, letterSpacing: 4, direction: "ltr", marginTop: sp(2) }}>{issued.code}</div>
               <div style={{ color: ui.color.muted, marginTop: sp(1) }}>ينتهي بعد {arNum(mmss)}</div>
-              <p style={{ fontSize: ui.text.xs, color: ui.color.muted, marginTop: sp(2) }}>أظهِر هذا الرمز لأمين البيدر.</p>
+              <p style={{ fontSize: ui.text.xs, color: ui.color.muted, marginTop: sp(2) }}>{tMarket("codeShowSteward")}</p>
             </>
           ) : (
             <>
-              <p style={{ margin: 0, color: ui.color.muted }}>انتهت صلاحيّة الرمز.</p>
-              <div style={{ marginTop: sp(2) }}><Button variant="bronze" size="sm" onClick={() => void generate(lastTarget)} disabled={busy}>أعد الطلب</Button></div>
+              <p style={{ margin: 0, color: ui.color.muted }}>{tMarket("codeExpired")}</p>
+              <div style={{ marginTop: sp(2) }}><Button variant="bronze" size="sm" onClick={() => void generate(lastTarget)} disabled={busy}>{tMarket("codeReRequest")}</Button></div>
             </>
           )}
         </Card>

@@ -39,6 +39,17 @@ export const marketAr = {
   guardianMotivateDesc: "أضِف ثمرةً (جائزة) إلى البيدر يجنيها ابنك بنقاطه التي يكسبها بجدّه. تقترح قيمتها، وتتكفّل بها وتُحضِرها للحلقة، وتعتمدها الإدارة. ثمرتك تُشجّعه على المثابرة.",
   noGuardianChildren: "لا أبناء مرتبطون بحسابك.",
   bidderNoItems: "لا ثمار في بيدره الآن.",
+  giftPendingApproval: "تُعرَض بعد اعتماد الإدارة للقيمة.",
+  giftScopeChild: "خاصّة بـ",
+
+  // كود الحاصد (CodeSection.tsx)
+  codeLabel: "رمز الحاصد",
+  codeShowMine: "أظهر رمزي",
+  codeShowChild: "رمز",
+  codeExpiry: "ينتهي بعد",
+  codeShowSteward: "أظهِر هذا الرمز لأمين البيدر.",
+  codeExpired: "انتهت صلاحيّة الرمز.",
+  codeReRequest: "أعد الطلب",
 
   // قسم ثمرات الوليّ المعلّقة (page.tsx)
   giftsTitle: "ثمرات بانتظار الموافقة",
