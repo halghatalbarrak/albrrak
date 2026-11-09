@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { formatPhoneForDisplay } from "@/lib/phone";
 import { useMe } from "@/lib/useMe";
 import { tApplications as t } from "@/i18n/ar/applications";
-import { AppShell, Card, Button, Badge, EmptyState, Skeleton, Table, Tabs, intakeTabs, ui, sp, type Column } from "@/components/ui";
+import { AppShell, Card, Button, Badge, EmptyState, ListToolbar, Skeleton, Table, Tabs, intakeTabs, ui, sp, type Column } from "@/components/ui";
+import { normalizeArabic } from "@/lib/normalize-arabic";
 
 interface Row {
   id: string;
@@ -103,6 +104,28 @@ export default function AdminApplicationsPage() {
 
   const canReveal = roles.includes("REGISTRAR") || roles.includes("SUPER_ADMIN");
 
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!rows) return null;
+    const q = normalizeArabic(search);
+    return rows.filter((r) => {
+      if (q && !normalizeArabic(r.name).includes(q)) return false;
+      if (filterStatus && r.status !== filterStatus) return false;
+      return true;
+    });
+  }, [rows, search, filterStatus]);
+
+  const selectStyle: React.CSSProperties = {
+    border: `1px solid ${ui.color.border}`,
+    borderRadius: ui.radius.md,
+    padding: `${sp(1.5)} ${sp(2)}`,
+    fontSize: ui.text.xs,
+    background: ui.color.surface,
+    color: ui.color.text,
+  };
+
   // النظام يقترح: أقدم طلبٍ معلّق (بالأيام) ليُبدأ به.
   const oldestDays = rows && rows.length
     ? Math.floor((Date.now() - Date.parse(rows[0].createdAt)) / 86_400_000)
@@ -138,9 +161,18 @@ export default function AdminApplicationsPage() {
           {[0, 1, 2].map((i) => <Skeleton key={i} height={44} />)}
         </div>
       )}
-      {rows && rows.length === 0 && <EmptyState title={t("emptyTitle")} description={t("emptyDescription")} />}
+      {rows && (
+        <ListToolbar value={search} onChange={setSearch} placeholder={t("searchPlaceholder")}>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={selectStyle}>
+            <option value="">{t("filterAllStatuses")}</option>
+            <option value="WAITLISTED">{t("statusWaitlisted")}</option>
+          </select>
+        </ListToolbar>
+      )}
 
-      {rows && rows.length > 0 && (
+      {rows && filtered!.length === 0 && <EmptyState title={t("emptyTitle")} description={t("emptyDescription")} />}
+
+      {rows && filtered!.length > 0 && (
         <>
           {oldestDays != null && oldestDays >= 1 && (
             <Card style={{ marginBottom: sp(4), borderInlineStart: `4px solid ${ui.color.bronze}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: sp(3), flexWrap: "wrap" }}>
@@ -148,7 +180,7 @@ export default function AdminApplicationsPage() {
               <Badge tone="bronze">{rows.length}{t("pendingReviewSuffix")}</Badge>
             </Card>
           )}
-          <Table columns={cols} rows={rows} />
+          <Table columns={cols} rows={filtered!} />
         </>
       )}
     </AppShell>

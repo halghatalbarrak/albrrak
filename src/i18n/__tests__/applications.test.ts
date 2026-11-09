@@ -41,6 +41,8 @@ describe("قاموس طلبات القيد (العربيّة)", () => {
     expect(tApplications("oldestPendingPrefix")).toBe("أقدم طلبٍ معلّق منذ ");
     expect(tApplications("oldestPendingSuffix")).toBe(" يومًا — ابدأ به.");
     expect(tApplications("pendingReviewSuffix")).toBe(" بانتظار المراجعة");
+    expect(tApplications("searchPlaceholder")).toBe("ابحث بالاسم…");
+    expect(tApplications("filterAllStatuses")).toBe("كل الحالات");
   });
 
   it("لا مفتاحٍ بقيمةٍ فارغة", () => {

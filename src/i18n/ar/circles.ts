@@ -53,6 +53,11 @@ export const circlesAr = {
   genderMale: "بنون",
   genderFemale: "بنات",
 
+  // بحث وتصفية القائمة
+  searchPlaceholder: "ابحث بالاسم…",
+  filterAllSlots: "كل الأوقات",
+  filterAllGenders: "كل الجنسين",
+
   // شاشة إضافة حلقة
   newTitle: "حلقة جديدة",
   fieldName: "الاسم",
