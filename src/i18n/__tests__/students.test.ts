@@ -151,6 +151,12 @@ describe("قاموس شاشات الطلاب (العربيّة)", () => {
       showExpelled: "المفصولون",
       hideExpelled: "إخفاء المفصولين",
       filterActive: "النشطون فقط",
+      deleteBtn: "حذف",
+      deleteConfirmBtn: "تأكيد الحذف",
+      deleteCancelBtn: "إلغاء",
+      errDeleteStudent: "تعذّر الحذف.",
+      showDeleted: "عرض المحذوفين",
+      hideDeleted: "إخفاء المحذوفين",
       // خريطة الضعف
       weaknessNoPermission: "لا صلاحية — لا تَرى إلا خرائط طلابك.",
       fetchMapFailed: "تعذّر جلب الخريطة.",

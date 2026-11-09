@@ -1,8 +1,8 @@
 import { Role } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { listStudentsForAdmin, revealStudentNationalId } from "../students";
+import { listStudentsForAdmin, revealStudentNationalId, softDeleteStudent } from "../students";
 import { encryptNationalId } from "../national-id";
-import { AuthorizationError } from "../errors";
+import { AuthorizationError, ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
 import { createCircle, createProgram, createUser } from "../testing/factories";
 
@@ -63,5 +63,45 @@ describe("كشف رقم هوية طالبٍ مقبول — للمُسجِّل ف
       }),
     ).rejects.toBeInstanceOf(AuthorizationError);
     expect(await prisma.nationalIdAccessLog.count()).toBe(0);
+  });
+});
+
+describe("softDeleteStudent — الحذف الناعم", () => {
+  it("يرمي studentNotFound إن لم يوجد الطالب", async () => {
+    await expect(softDeleteStudent("actor", "nonexistent-id", prisma))
+      .rejects.toMatchObject({ key: "studentNotFound" });
+  });
+
+  it("يرمي studentHasActiveEnrollment إن كان لديه انتساب نشط", async () => {
+    const { student } = await acceptedStudent();
+    await expect(softDeleteStudent("actor", student.id, prisma))
+      .rejects.toMatchObject({ key: "studentHasActiveEnrollment" });
+  });
+
+  it("يحذف ناعماً طالباً بلا انتساب نشط ويكتب AuditLog", async () => {
+    const { student } = await acceptedStudent();
+    // إنهاء الانتساب النشط
+    await prisma.enrollment.updateMany({ where: { studentId: student.id, endedAt: null }, data: { endedAt: new Date() } });
+    const actor = await createUser(prisma, { roles: [Role.CIRCLE_MANAGER] });
+    await softDeleteStudent(actor.id, student.id, prisma);
+    const updated = await prisma.student.findUnique({ where: { id: student.id }, select: { deletedAt: true, deletedById: true } });
+    expect(updated?.deletedAt).not.toBeNull();
+    expect(updated?.deletedById).toBe(actor.id);
+    const log = await prisma.auditLog.findFirst({ where: { entity: "Student", entityId: student.id } });
+    expect(log?.action).toBe("DELETE");
+  });
+
+  it("يرمي studentAlreadyDeleted إن كان محذوفاً فعلاً", async () => {
+    const { student } = await acceptedStudent();
+    await prisma.enrollment.updateMany({ where: { studentId: student.id, endedAt: null }, data: { endedAt: new Date() } });
+    const actor = await createUser(prisma, { roles: [Role.CIRCLE_MANAGER] });
+    await softDeleteStudent(actor.id, student.id, prisma);
+    await expect(softDeleteStudent(actor.id, student.id, prisma))
+      .rejects.toMatchObject({ key: "studentAlreadyDeleted" });
+  });
+
+  it("يستعمل ValidationError لأخطاء القاعدة", async () => {
+    await expect(softDeleteStudent("actor", "nonexistent-id", prisma))
+      .rejects.toBeInstanceOf(ValidationError);
   });
 });
