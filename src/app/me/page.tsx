@@ -121,8 +121,8 @@ export default function MePage() {
       ) : !sess.hasStudent ? (
         <Card style={{ maxWidth: 520 }}><p style={{ margin: 0 }}>{tm("noStudentRecord")}</p></Card>
       ) : sess.program !== "MARAQI" ? (
-        // قاعدة مدنية أو لم يبدأ مراقي
         <>
+          {/* قاعدة مدنية أو لم يبدأ مراقي */}
           <Card style={{ marginBottom: sp(6), maxWidth: 640 }}>
             <div style={{ fontSize: ui.text.xs, fontWeight: 600, color: ui.color.muted, marginBottom: 2 }}>{tm("yourStatus")}</div>
             <div style={{ fontSize: ui.text.lg, fontWeight: 700 }}>{STATE_AR[sess.state ?? ""] ?? sess.state}</div>
@@ -133,8 +133,8 @@ export default function MePage() {
           )}
         </>
       ) : (
-        // لوحة مراقي: موضعه · رسوخه · اليوم · الدورة + اقتراحات
         <>
+          {/* لوحة مراقي: موضعه · رسوخه · اليوم · الدورة + اقتراحات */}
           {sess.target && (
             <Card style={{ marginBottom: sp(6), borderInlineStart: `4px solid ${ui.color.goldLine}` }}>
               <div style={{ fontSize: ui.text.base, fontWeight: 700, color: ui.color.primary, marginBottom: sp(3) }}>{tm("todayTask")}</div>
@@ -162,7 +162,7 @@ export default function MePage() {
 
           {sess.today?.mustRepeat && sess.today.repeatRange && (
             <Card style={{ marginBottom: sp(6), background: "var(--color-warn-bg)" }}>
-              ⚠️ عليك إعادة مقطع أمس (لم يُتقن): <strong>{sess.today.repeatRange}</strong> — لا حفظ جديد قبله.
+              {tm("repeatWarnPrefix")}<strong>{sess.today.repeatRange}</strong>{tm("repeatWarnSuffix")}
             </Card>
           )}
 

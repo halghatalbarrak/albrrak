@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
+import { tMessages } from "@/i18n/ar/messages";
 import { hijri } from "@/lib/format";
 
 interface Msg { id: string; studentName: string; kind: string; subject: string; body: string; createdAt: string; read: boolean }
@@ -50,8 +51,8 @@ export default function MessagesPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), flexWrap: "wrap" }}>
               <strong style={{ fontSize: ui.text.base }}>{m.subject}</strong>
               <div style={{ display: "flex", gap: sp(2), alignItems: "center" }}>
-                {!m.read && <Badge tone="bronze">جديدة</Badge>}
-                {m.kind === "ABSENCE_UNEXCUSED" && <Badge tone="danger">غياب</Badge>}
+                {!m.read && <Badge tone="bronze">{tMessages("badgeNew")}</Badge>}
+                {m.kind === "ABSENCE_UNEXCUSED" && <Badge tone="danger">{tMessages("badgeAbsence")}</Badge>}
               </div>
             </div>
             <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{m.studentName} · {hijri(m.createdAt.slice(0, 10))}</span>

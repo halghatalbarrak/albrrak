@@ -18,6 +18,9 @@ export const meAr = {
   needReview: "مواضع تحتاج مراجعة",
   openMaraqiLadder: "افتح سلّم مراقي",
   logout: "خروج",
+  weaknessHint: "هذه مواضعُ تحتاج شيئًا من مراجعتك — كلّما اشتدّ لونها فأولِها مزيدَ عناية. اجعلها ورد يومك القادم بإذن الله.",
+  repeatWarnPrefix: "⚠️ عليك إعادة مقطع أمس (لم يُتقن): ",
+  repeatWarnSuffix: " — لا حفظ جديد قبله.",
 } as const;
 
 export type MeKey = keyof typeof meAr;

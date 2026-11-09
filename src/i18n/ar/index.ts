@@ -36,3 +36,5 @@ export { applyAr as apply } from "./apply";
 export { activateAr as activate } from "./activate";
 // رسائل أخطاء الخادم (PR-1e)
 export { errorsAr as errors } from "./errors";
+export { mushafAr as mushaf } from "./mushaf";
+export { messagesAr as messages } from "./messages";
