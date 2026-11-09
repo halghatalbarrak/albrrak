@@ -35,6 +35,10 @@ export interface TodayTarget {
   newHifz: NewHifzSuggestion | null;
   tarseekh: AyahBound[]; // آخر ١٠ وحداتٍ سابقة، بحدودها
   murajaah: { dayNo: number | null; totalStock: number; todaySlice: AyahBound[] } | null;
+  /** خطّة اليوم تتضمّن الترسيخ (نافذة ترسيخٍ غير فارغة). */
+  hasTarsikh: boolean;
+  /** خطّة اليوم تتضمّن المراجعة (يومٌ مخصَّصٌ ضمن reviewDaysPerWeek). */
+  hasMuraja: boolean;
 }
 
 function toDateOnly(input: string | Date): Date {
@@ -88,7 +92,7 @@ export async function todayTarget(
   db: PrismaClient = prisma,
 ): Promise<TodayTarget> {
   const today = toDateOnly(date);
-  const empty: TodayTarget = { status: "INACTIVE", newHifz: null, tarseekh: [], murajaah: null };
+  const empty: TodayTarget = { status: "INACTIVE", newHifz: null, tarseekh: [], hasTarsikh: false, murajaah: null, hasMuraja: false };
 
   let position;
   try {
@@ -155,7 +159,9 @@ export async function todayTarget(
     status: "ACTIVE",
     newHifz,
     tarseekh: tarseekhUnits.map(unitBound),
+    hasTarsikh: tarseekhUnits.length > 0,
     murajaah: { dayNo: sliceIndex === null ? null : sliceIndex + 1, totalStock: rasikhUnits.length, todaySlice },
+    hasMuraja: sliceIndex !== null,
   };
 }
 

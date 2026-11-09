@@ -33,6 +33,8 @@ interface Target {
   newHifz: NewHifz | null;
   tarseekh: Bound[];
   murajaah: { dayNo: number | null; totalStock: number; todaySlice: Bound[] } | null;
+  hasTarsikh: boolean;
+  hasMuraja: boolean;
 }
 interface Qaidah {
   started: boolean; graduated: boolean; deferred: boolean;
@@ -277,6 +279,7 @@ function StudentPanel({ s, circleId, date, items, post }: {
                   </>}
             </div>
 
+            {s.today.hasTarsikh && (
             <div>
               <h3 style={H3}>الترسيخ{s.today.tarseekh.length ? ` (${s.today.tarseekh.length} وحدة)` : ""}</h3>
               {s.today.tarseekh.length > 0 && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `0 0 ${sp(2)}` }}>{s.today.tarseekh.slice(0, 4).map(boundStr).join(" · ")}{s.today.tarseekh.length > 4 ? " …" : ""}</p>}
@@ -286,16 +289,23 @@ function StudentPanel({ s, circleId, date, items, post }: {
                 <Button size="sm" variant="ghost" onClick={() => void extra("tarseekh")}>{tu("addMore")}</Button>
               </div>
             </div>
+            )}
 
+            {s.today.hasMuraja && (
             <div>
               <h3 style={H3}>المراجعة{s.today.murajaah?.todaySlice.length ? " — حصّة اليوم" : ""}</h3>
-              {s.today.murajaah && s.today.murajaah.todaySlice.length > 0 && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `0 0 ${sp(2)}` }}>{s.today.murajaah.todaySlice.slice(0, 4).map(boundStr).join(" · ")}</p>}
+              {s.today.murajaah && s.today.murajaah.todaySlice.length > 0
+                ? <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `0 0 ${sp(2)}` }}>{s.today.murajaah.todaySlice.slice(0, 4).map(boundStr).join(" · ")}</p>
+                : s.today.murajaah?.totalStock === 0
+                  ? <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `0 0 ${sp(2)}` }}>{tu("noRasikhYet")} <Button size="sm" variant="ghost" onClick={() => { window.location.href = "/admin/tracks"; }}>{tu("setPath")}</Button></p>
+                  : null}
               <div style={row}>
                 <Button size="sm" variant="primary" onClick={() => void task("murajaah", true)}>{tu("doneF")}</Button>
                 <Button size="sm" variant="danger" onClick={() => void task("murajaah", false)}>{tu("notDoneF")}</Button>
                 <Button size="sm" variant="ghost" onClick={() => void extra("murajaah")}>{tu("addMore")}</Button>
               </div>
             </div>
+            )}
           </>)}
 
       {/* ٤) تقدير يدويّ */}

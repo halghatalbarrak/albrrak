@@ -94,4 +94,24 @@ describe("getUnifiedBoard — اللوحة الموحّدة (م ج)", () => {
     board = await getUnifiedBoard(teacher.id, circle.id, DATE, prisma);
     expect(board.students.find((s) => s.studentId === student.id)?.attendanceStatus).toBe(AttendanceStatus.PRESENT);
   });
+
+  it("hasTarsikh=false وhasMuraja=false لطالبٍ بلا مسار (NO_TRACK)", async () => {
+    // بلا track: لا ترسيخ ولا مراجعة في الخطّة.
+    const { circle, teacher, student } = await scaffold();
+    const board = await getUnifiedBoard(teacher.id, circle.id, DATE, prisma);
+    const row = board.students.find((s) => s.studentId === student.id);
+    expect(row?.today.hasTarsikh).toBe(false);
+    expect(row?.today.hasMuraja).toBe(false);
+    expect(row?.today.tarseekh).toHaveLength(0);
+  });
+
+  it("hasTarsikh=false لطالبٍ بمسارٍ لم يحفظ وحداتٍ بعد", async () => {
+    const { program, circle, teacher, student } = await scaffold();
+    await withTrack(program.id, student.id); // مسارٌ بوحدتين، الطالب لم يُسجَّل له حفظ
+    const board = await getUnifiedBoard(teacher.id, circle.id, DATE, prisma);
+    const row = board.students.find((s) => s.studentId === student.id);
+    // reached=0 ⟶ نافذة الترسيخ فارغة ⟶ hasTarsikh=false
+    expect(row?.today.hasTarsikh).toBe(false);
+    expect(row?.today.tarseekh).toHaveLength(0);
+  });
 });
