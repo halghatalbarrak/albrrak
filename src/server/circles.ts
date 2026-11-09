@@ -16,10 +16,12 @@ export interface CircleRow {
   programNameAr: string | null;
   /** عدد الطلاب النشطين لكلّ برنامج في الحلقة (عدّاد الترويسة: «مراقي ٢٠ · القاعدة ٩»). */
   programCounts: { programKey: ProgramKey; n: number }[];
+  /** اسم المعلّم الحاليّ — null تعني أنّ الحلقة بلا معلّمٍ مُسنَد. */
+  teacherName: string | null;
 }
 
 export async function listCircles(db: PrismaClient = prisma): Promise<CircleRow[]> {
-  const [rows, grouped, programs] = await Promise.all([
+  const [rows, grouped, programs, teachers] = await Promise.all([
     db.circle.findMany({
       where: { deletedAt: null },
       select: { id: true, nameAr: true, timeSlot: true, gender: true, location: true, program: { select: { key: true, nameAr: true } } },
@@ -27,6 +29,7 @@ export async function listCircles(db: PrismaClient = prisma): Promise<CircleRow[
     }),
     db.enrollment.groupBy({ by: ["circleId", "programId"], where: { endedAt: null }, _count: { _all: true } }),
     db.program.findMany({ select: { id: true, key: true } }),
+    db.circleTeacher.findMany({ where: { endedAt: null }, select: { circleId: true, teacher: { select: { nameAsInId: true } } } }),
   ]);
   const keyById = new Map(programs.map((p) => [p.id, p.key]));
   const countsByCircle = new Map<string, { programKey: ProgramKey; n: number }[]>();
@@ -37,6 +40,7 @@ export async function listCircles(db: PrismaClient = prisma): Promise<CircleRow[
     list.push({ programKey: key, n: g._count._all });
     countsByCircle.set(g.circleId, list);
   }
+  const teacherByCircle = new Map(teachers.map((t) => [t.circleId, t.teacher.nameAsInId]));
   return rows.map((r) => ({
     id: r.id,
     nameAr: r.nameAr,
@@ -46,6 +50,7 @@ export async function listCircles(db: PrismaClient = prisma): Promise<CircleRow[
     programKey: r.program?.key ?? null,
     programNameAr: r.program?.nameAr ?? null,
     programCounts: countsByCircle.get(r.id) ?? [],
+    teacherName: teacherByCircle.get(r.id) ?? null,
   }));
 }
 

@@ -15,6 +15,7 @@ export const unifiedAr = {
   newHifz: "الحفظ الجديد",
   trackCompleted: "أتمّ محفوظ مساره 🎉",
   trackNotSet: "لم يُحدَّد مساره بعد.",
+  setTrackBtn: "تحديد المسار",
   rule1RepeatYesterday: "الحكم ١: يعيد مقطع أمس.",
   from: "من",
   to: "إلى",

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Card, Button, Select, Badge, EmptyState, Skeleton, Modal, Field, inputStyle, Table, ListToolbar, ui, sp, type Column } from "@/components/ui";
+import { AppShell, Card, Button, Select, Badge, EmptyState, EmptyAction, Skeleton, Modal, Field, inputStyle, Table, ListToolbar, ui, sp, type Column } from "@/components/ui";
 import { normalizeArabic } from "@/lib/normalize-arabic";
 import { tStudents as t } from "@/i18n/ar/students";
 
@@ -339,8 +339,20 @@ export default function AdminStudentsPage() {
       ),
     },
     { key: "age", header: t("colAge"), cell: (r) => (r.age != null ? String(r.age) : "—") },
-    { key: "circle", header: t("colCircle"), cell: (r) => r.circle ?? t("notAssigned") },
-    { key: "guardian", header: t("colGuardian"), cell: (r) => r.guardian ?? "—" },
+    {
+      key: "circle", header: t("colCircle"), cell: (r) => (
+        r.circle
+          ? r.circle
+          : <EmptyAction message={t("notAssigned")} actionLabel={t("enrollActionBtn")} href={`/admin/students/${r.id}/placement`} />
+      ),
+    },
+    {
+      key: "guardian", header: t("colGuardian"), cell: (r) => (
+        r.guardian
+          ? r.guardian
+          : <EmptyAction message={t("noGuardianMsg")} actionLabel={t("linkGuardianBtn")} href="/admin/users/new" />
+      ),
+    },
     {
       key: "actions", header: t("colActions"), cell: (r) => (
         <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", justifyContent: "flex-end" }}>
