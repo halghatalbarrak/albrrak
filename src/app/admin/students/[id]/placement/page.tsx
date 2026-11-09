@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
+import { useRouter } from "next/navigation";
 import { AppShell, Card, Button, Input, Select, Field, Badge, Table, ui, sp, type Column } from "@/components/ui";
 import { hijri, arNum, formatAyah } from "@/lib/format";
 import { SURAH_NAMES, surahName } from "@/lib/surah-names";
@@ -34,27 +35,31 @@ const PROG_AR: Record<string, string> = { QAIDAH_MADANIYYAH: t("progQaidah"), MA
 export default function StudentPlacementPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { me } = useMe();
+  const router = useRouter();
   const [v, setV] = useState<View | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [fieldErr, setFieldErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const tok = await token(); if (!tok) { window.location.href = "/login"; return; }
     const res = await fetch(`/api/students/${id}/placement`, { headers: { authorization: `Bearer ${tok}` } });
-    if (res.status === 403) { setErr(t("placementNoPermission")); return; }
-    if (!res.ok) { setErr(t("fetchPlacementFailed")); return; }
-    setV((await res.json()) as View); setErr(null);
+    if (res.status === 403) { setLoadErr(t("placementNoPermission")); return; }
+    if (!res.ok) { setLoadErr(t("fetchPlacementFailed")); return; }
+    setV((await res.json()) as View); setLoadErr(null);
   }, [id]);
   useEffect(() => { void load(); }, [load]);
 
-  async function post(body: Record<string, unknown>, ok: string) {
-    setMsg(null); setErr(null);
-    const tok = await token(); if (!tok) return;
+  async function post(body: Record<string, unknown>, onSuccess: () => void) {
+    setSaving(true); setMsg(null); setFieldErr(null);
+    const tok = await token(); if (!tok) { setSaving(false); return; }
     const res = await fetch(`/api/students/${id}/placement`, {
       method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` }, body: JSON.stringify(body),
     });
-    if (res.ok) { setMsg(ok); await load(); }
-    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("executeFailed")); }
+    setSaving(false);
+    if (res.ok) { onSuccess(); }
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setFieldErr(j.error ?? t("executeFailed")); }
   }
 
   const Shell = ({ children }: { children: React.ReactNode }) => (
@@ -63,23 +68,22 @@ export default function StudentPlacementPage({ params }: { params: Promise<{ id:
       crumbs={[{ label: t("crumbHome"), href: "/" }, { label: t("crumbAdmin") }, { label: t("crumbStudents"), href: "/admin/students" }, { label: t("crumbPlacement") }]}>{children}</AppShell>
   );
 
-  if (err && !v) return <Shell><p style={{ color: ui.color.danger }}>{err}</p></Shell>;
+  if (loadErr && !v) return <Shell><p style={{ color: ui.color.danger }}>{loadErr}</p></Shell>;
   if (!v) return <Shell><p style={{ color: ui.color.muted }}>{t("loading")}</p></Shell>;
 
   return (
     <Shell>
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
-      {err && <p style={{ color: ui.color.danger, fontSize: ui.text.xs }}>{err}</p>}
 
       {/* البرنامج الحاليّ + المعلّق + تغييره */}
-      <ChangeProgram v={v} onSave={(programId) => post({ action: "change-program", programId }, t("programChanged"))} />
+      <ChangeProgram v={v} saving={saving} fieldErr={fieldErr} onSave={(programId) => post({ action: "change-program", programId }, () => { setMsg(t("programChanged")); void load(); })} />
 
       {/* التسكين بحسب البرنامج */}
       {v.programKey === "QAIDAH_MADANIYYAH" && v.qaidah && (
-        <QaidahPlacement q={v.qaidah} onSave={(currentLessonId) => post({ action: "place-qaidah", currentLessonId }, t("placedOnQaidah"))} />
+        <QaidahPlacement q={v.qaidah} saving={saving} fieldErr={fieldErr} onSave={(currentLessonId) => post({ action: "place-qaidah", currentLessonId }, () => router.push("/admin/students"))} />
       )}
       {v.programKey === "MARAQI" && v.maraqi && (
-        <MaraqiPlacement m={v.maraqi} onSave={(p) => post({ action: "place-maraqi", ...p }, t("placedOnMaraqi"))} />
+        <MaraqiPlacement m={v.maraqi} saving={saving} fieldErr={fieldErr} onSave={(p) => post({ action: "place-maraqi", ...p }, () => router.push("/admin/students"))} />
       )}
 
       {/* ق٦: تاريخ البرامج — قراءةٌ فقط */}
@@ -105,7 +109,7 @@ function ProgramHistory({ rows }: { rows: HistoryRow[] }) {
   );
 }
 
-function ChangeProgram({ v, onSave }: { v: View; onSave: (programId: string) => void }) {
+function ChangeProgram({ v, saving, fieldErr, onSave }: { v: View; saving: boolean; fieldErr: string | null; onSave: (programId: string) => void }) {
   const current = v.programs.find((p) => p.key === v.programKey);
   const [sel, setSel] = useState(current?.id ?? "");
   useEffect(() => { setSel(current?.id ?? ""); }, [current?.id]);
@@ -116,18 +120,21 @@ function ChangeProgram({ v, onSave }: { v: View; onSave: (programId: string) => 
         <Badge tone="primary">{v.programKey ? PROG_AR[v.programKey] : t("noProgram")}</Badge>
         {v.pending && <Badge tone="bronze">{t("movesToPrefix")}{PROG_AR[v.pending.programKey]}{t("movesToIn")}{v.pending.from}</Badge>}
       </div>
-      <div style={{ display: "flex", gap: sp(2), marginTop: sp(3), flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: sp(2), marginTop: sp(3), flexWrap: "wrap", alignItems: "center" }}>
         <Select value={sel} onChange={(e) => setSel(e.target.value)} style={{ minWidth: 180 }}>
           {v.programs.map((p) => <option key={p.id} value={p.id}>{p.nameAr}</option>)}
         </Select>
-        <Button variant="bronze" size="sm" disabled={!sel || sel === current?.id} onClick={() => onSave(sel)}>{t("changeProgram")}</Button>
+        <Button variant="bronze" size="sm" disabled={!sel || sel === current?.id || saving} onClick={() => onSave(sel)}>
+          {saving ? t("savingBtn") : t("changeProgram")}
+        </Button>
+        {fieldErr && <span style={{ fontSize: ui.text.xs, color: ui.color.danger }}>{fieldErr}</span>}
       </div>
       {v.pending && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, marginBottom: 0 }}>{t("changeCancelsPending")}</p>}
     </Card>
   );
 }
 
-function QaidahPlacement({ q, onSave }: { q: NonNullable<View["qaidah"]>; onSave: (lessonId: string) => void }) {
+function QaidahPlacement({ q, saving, fieldErr, onSave }: { q: NonNullable<View["qaidah"]>; saving: boolean; fieldErr: string | null; onSave: (lessonId: string) => void }) {
   const [sel, setSel] = useState(q.currentLessonId ?? q.lessons[0]?.id ?? "");
   const idx = q.lessons.findIndex((l) => l.id === sel);
   return (
@@ -141,7 +148,10 @@ function QaidahPlacement({ q, onSave }: { q: NonNullable<View["qaidah"]>; onSave
       <p style={{ fontSize: ui.text.xs, color: ui.color.muted }}>
         {t("lessonsBeforePrefix")}<strong>{idx < 0 ? 0 : idx}</strong>{t("lessonsBeforeSuffix")}
       </p>
-      <Button onClick={() => sel && onSave(sel)} disabled={!sel}>{t("savePlacement")}</Button>
+      {fieldErr && <p style={{ color: ui.color.danger, fontSize: ui.text.xs, margin: "4px 0" }}>{fieldErr}</p>}
+      <Button onClick={() => sel && onSave(sel)} disabled={!sel || saving}>
+        {saving ? t("savingBtn") : t("savePlacement")}
+      </Button>
     </Card>
   );
 }
@@ -149,7 +159,7 @@ function QaidahPlacement({ q, onSave }: { q: NonNullable<View["qaidah"]>; onSave
 // تسكين مراقي بالقرار (أ): شبكة الأجزاء الثلاثين للمحفوظ كاملاً + منتقي موضع الوصول
 // بأسماء السور + تأشير سورٍ مفردة بأسمائها (قابلة للبحث) + نطاقاتٌ دقيقة (متقدّم) + معاينةٌ
 // بالأسماء. تُترجَم كلّها عبر gridToPlacement إلى MaraqiPlacement القائم بلا تغييرٍ في الخادم.
-function MaraqiPlacement({ m, onSave }: { m: NonNullable<View["maraqi"]>; onSave: (p: { reachedSurah: number | null; reachedAyah: number | null; outOfOrder: Range[] }) => void }) {
+function MaraqiPlacement({ m, saving, fieldErr, onSave }: { m: NonNullable<View["maraqi"]>; saving: boolean; fieldErr: string | null; onSave: (p: { reachedSurah: number | null; reachedAyah: number | null; outOfOrder: Range[] }) => void }) {
   const [juz, setJuz] = useState<Set<number>>(new Set());
   const [rs, setRs] = useState(m.reachedSurah?.toString() ?? "");
   const [ra, setRa] = useState(m.reachedAyah?.toString() ?? "");
@@ -228,7 +238,7 @@ function MaraqiPlacement({ m, onSave }: { m: NonNullable<View["maraqi"]>; onSave
       <div>
         <div style={{ fontSize: ui.text.base, fontWeight: 600, marginBottom: sp(2) }}>{t("singleSurahsTitle")}</div>
         <Input placeholder={t("surahSearchPlaceholder")} value={q} onChange={(e) => setQ(e.target.value)} style={{ marginBottom: sp(2) }} />
-        <div style={{ display: "flex", flexWrap: "wrap", gap: sp(2), maxHeight: 168, overflowY: "auto", padding: sp(1) }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: sp(2), maxHeight: 168, overflowY: "auto", padding: sp(2), paddingBottom: sp(5) }}>
           {filtered.map(({ s, name }) => {
             const on = singles.has(s);
             return (
@@ -282,7 +292,10 @@ function MaraqiPlacement({ m, onSave }: { m: NonNullable<View["maraqi"]>; onSave
         <div style={{ color: ui.color.muted }}>{t("previewFootnote")}</div>
       </div>
 
-      <Button onClick={() => onSave(preview)}>{t("savePlacement")}</Button>
+      {fieldErr && <p style={{ color: ui.color.danger, fontSize: ui.text.xs, margin: "4px 0" }}>{fieldErr}</p>}
+      <Button onClick={() => onSave(preview)} disabled={saving}>
+        {saving ? t("savingBtn") : t("savePlacement")}
+      </Button>
     </Card>
   );
 }

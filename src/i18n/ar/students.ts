@@ -111,6 +111,7 @@ export const studentsAr = {
   lessonsBeforePrefix: "ستُكمَّل ",
   lessonsBeforeSuffix: " درسًا قبله (تسكينًا، بلا نقاط)، ويبدأ من هذا الدرس.",
   savePlacement: "حفظ التسكين",
+  savingBtn: "جارٍ…",
 
   // تسكين مراقي
   maraqiPlacementTitle: "تسكين مراقي — تأشير المحفوظ",
