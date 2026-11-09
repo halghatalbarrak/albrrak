@@ -92,7 +92,8 @@ jobs:
           fetch-depth: 0
       - name: تأكّد أن كل commits في الـPR من thmny88@gmail.com
         run: |
-          bad=$(git log origin/${{ github.base_ref }}..HEAD --format="%ae" \
+          bad=$(git log ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} \
+            --no-merges --format="%ae" \
             | grep -v "^thmny88@gmail\.com$" \
             | grep -v "^noreply@anthropic\.com$" \
             || true)
