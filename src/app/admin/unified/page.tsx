@@ -6,7 +6,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { makkahDayDate } from "@/lib/makkah-day";
 import { useMe } from "@/lib/useMe";
 import { arNum, formatAyah } from "@/lib/format";
-import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
+import { AppShell, Card, Button, Input, Badge, EmptyState, EmptyAction, Skeleton, ui, sp } from "@/components/ui";
 import { attendanceLockAr as tLock } from "@/i18n/ar/attendance-lock";
 import { navAr } from "@/i18n/ar/nav";
 import { tUnified as tu } from "@/i18n/ar/unified";
@@ -262,7 +262,7 @@ function StudentPanel({ s, circleId, date, items, post }: {
             <div>
               <h3 style={H3}>{tu("newHifz")}</h3>
               {s.today.newHifz?.kind === "COMPLETED" ? <p style={{ color: ui.color.success, margin: 0 }}>{tu("trackCompleted")}</p>
-                : s.today.newHifz?.kind === "NO_TRACK" ? <p style={{ color: ui.color.muted, margin: 0 }}>{tu("trackNotSet")}</p>
+                : s.today.newHifz?.kind === "NO_TRACK" ? <EmptyAction message={tu("trackNotSet")} actionLabel={tu("setTrackBtn")} href={`/admin/students/${sid}/placement`} returnTo="/admin/unified" />
                 : <>
                     {s.today.newHifz?.kind === "REPEAT" && <p style={{ color: ui.color.danger, fontSize: ui.text.xs, margin: `0 0 ${sp(2)}` }}>{tu("rule1RepeatYesterday")}</p>}
                     <div style={{ ...row, marginBottom: sp(2), fontSize: ui.text.xs }}>

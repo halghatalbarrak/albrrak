@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Button, EmptyState, ListToolbar, Skeleton, Table, ui, sp, type Column } from "@/components/ui";
+import { AppShell, Button, EmptyState, EmptyAction, ListToolbar, Skeleton, Table, ui, sp, type Column } from "@/components/ui";
 import { normalizeArabic } from "@/lib/normalize-arabic";
 import { tCircles as t } from "@/i18n/ar/circles";
 import { navAr } from "@/i18n/ar/nav";
@@ -24,6 +24,7 @@ interface Circle {
   timeSlot: string;
   gender: string;
   programCounts: { programKey: string; n: number }[];
+  teacherName: string | null;
 }
 
 async function token(): Promise<string | null> {
@@ -120,6 +121,13 @@ export default function AdminCirclesPage() {
     ) },
     { key: "slot", header: t("colSlot"), cell: (c) => SLOT_AR[c.timeSlot] ?? c.timeSlot },
     { key: "gender", header: t("colGender"), cell: (c) => (c.gender === "MALE" ? t("genderMale") : t("genderFemale")) },
+    {
+      key: "teacher", header: t("colTeacher"), cell: (c) => (
+        c.teacherName
+          ? <span>{c.teacherName}</span>
+          : <EmptyAction message={t("noTeacherMsg")} actionLabel={t("assignTeacherBtn")} href={`/admin/circles/${c.id}/edit`} />
+      ),
+    },
     { key: "map", header: t("colMap"), cell: (c) => <div style={{ display: "flex", justifyContent: "flex-end" }}><Link href={`/admin/circles/${c.id}/weakness`} style={linkBtn}>{t("weaknessMapLink")}</Link></div> },
     ...(isManager && tok ? [{
       key: "actions" as const,

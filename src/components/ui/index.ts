@@ -11,6 +11,7 @@ export { Tabs, type TabItem } from "./Tabs";
 export { intakeTabs, attendanceTabs, muddakirTabs } from "./page-tabs";
 export { Select } from "./Select";
 export { EmptyState } from "./EmptyState";
+export { EmptyAction } from "./EmptyAction";
 export { Stat } from "./Stat";
 export { Skeleton } from "./Skeleton";
 export { Modal } from "./Modal";
