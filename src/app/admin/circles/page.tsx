@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
-import { AppShell, Button, EmptyState, Skeleton, Table, ui, sp, type Column } from "@/components/ui";
+import { AppShell, Button, EmptyState, ListToolbar, Skeleton, Table, ui, sp, type Column } from "@/components/ui";
+import { normalizeArabic } from "@/lib/normalize-arabic";
 import { tCircles as t } from "@/i18n/ar/circles";
 import { navAr } from "@/i18n/ar/nav";
 import { arNum } from "@/lib/format";
@@ -71,6 +72,9 @@ export default function AdminCirclesPage() {
   const [circles, setCircles] = useState<Circle[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [tok, setTok] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterSlot, setFilterSlot] = useState("");
+  const [filterGender, setFilterGender] = useState("");
 
   const isManager = me?.roles.some((r) => r === Role.CIRCLE_MANAGER || r === Role.SUPER_ADMIN) ?? false;
 
@@ -86,6 +90,26 @@ export default function AdminCirclesPage() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  const filtered = useMemo(() => {
+    if (!circles) return null;
+    const q = normalizeArabic(search);
+    return circles.filter((c) => {
+      if (q && !normalizeArabic(c.nameAr).includes(q)) return false;
+      if (filterSlot && c.timeSlot !== filterSlot) return false;
+      if (filterGender && c.gender !== filterGender) return false;
+      return true;
+    });
+  }, [circles, search, filterSlot, filterGender]);
+
+  const selectStyle: React.CSSProperties = {
+    border: `1px solid ${ui.color.border}`,
+    borderRadius: ui.radius.md,
+    padding: `${sp(1.5)} ${sp(2)}`,
+    fontSize: ui.text.xs,
+    background: ui.color.surface,
+    color: ui.color.text,
+  };
 
   const cols: Column<Circle>[] = [
     { key: "name", header: t("colName"), cell: (c) => <Link href={`/admin/circles/${c.id}`} style={{ fontWeight: 700, color: ui.color.text, textDecoration: "none" }}>{c.nameAr}</Link> },
@@ -123,12 +147,25 @@ export default function AdminCirclesPage() {
 
       {circles && (
         <>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: sp(4) }}>
-            <Button onClick={() => router.push("/admin/circles/new")}>{t("newBtn")}</Button>
-          </div>
+          <ListToolbar value={search} onChange={setSearch} placeholder={t("searchPlaceholder")}>
+            <select value={filterSlot} onChange={(e) => setFilterSlot(e.target.value)} style={selectStyle}>
+              <option value="">{t("filterAllSlots")}</option>
+              <option value="ASR">{t("slotAsr")}</option>
+              <option value="MAGHRIB">{t("slotMaghrib")}</option>
+              <option value="ISHA">{t("slotIsha")}</option>
+            </select>
+            <select value={filterGender} onChange={(e) => setFilterGender(e.target.value)} style={selectStyle}>
+              <option value="">{t("filterAllGenders")}</option>
+              <option value="MALE">{t("genderMale")}</option>
+              <option value="FEMALE">{t("genderFemale")}</option>
+            </select>
+            <div style={{ marginRight: "auto" }}>
+              <Button onClick={() => router.push("/admin/circles/new")}>{t("newBtn")}</Button>
+            </div>
+          </ListToolbar>
 
-          {circles.length === 0 ? <EmptyState title={t("emptyTitle")} description={t("emptyDescription")} />
-            : <Table columns={cols} rows={circles} />}
+          {filtered!.length === 0 ? <EmptyState title={t("emptyTitle")} description={t("emptyDescription")} />
+            : <Table columns={cols} rows={filtered!} />}
         </>
       )}
     </AppShell>

@@ -47,6 +47,10 @@ export const applicationsAr = {
   oldestPendingPrefix: "أقدم طلبٍ معلّق منذ ", // يليه العدد
   oldestPendingSuffix: " يومًا — ابدأ به.",
   pendingReviewSuffix: " بانتظار المراجعة", // يسبقه العدد
+
+  // بحث وتصفية القائمة
+  searchPlaceholder: "ابحث بالاسم…",
+  filterAllStatuses: "كل الحالات",
 } as const;
 
 /** مفاتيح قاموس طلبات القيد (للتحقّق الثابت عند الاستدعاء). */
