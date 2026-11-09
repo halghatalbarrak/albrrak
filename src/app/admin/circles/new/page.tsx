@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { AppShell, Card, Button, Select, Field, inputStyle, ui, sp } from "@/components/ui";
 import { tCircles as t } from "@/i18n/ar/circles";
+import type { TeacherRow } from "@/server/circles";
 
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
@@ -21,16 +22,28 @@ export default function NewCirclePage() {
   const router = useRouter();
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [teachers, setTeachers] = useState<TeacherRow[]>([]);
+
+  useEffect(() => {
+    token().then((tok) => {
+      if (!tok) return;
+      fetch("/api/admin/circles", { headers: { authorization: `Bearer ${tok}` } })
+        .then((r) => r.json())
+        .then((j: { teachers?: TeacherRow[] }) => { if (j.teachers) setTeachers(j.teachers); })
+        .catch(() => setErr(t("errLoadTeachers")));
+    });
+  }, []);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const body = Object.fromEntries(new FormData(e.currentTarget).entries());
+    const data = Object.fromEntries(new FormData(e.currentTarget).entries());
+    if (data.teacherId === "") delete data.teacherId;
     const tok = await token();
     if (!tok) return;
     setSaving(true);
     const res = await fetch("/api/admin/circles", {
       method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
-      body: JSON.stringify(body),
+      body: JSON.stringify(data),
     });
     if (res.status === 201) { router.push(LIST); }
     else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("errCreateCircle")); setSaving(false); }
@@ -55,6 +68,14 @@ export default function NewCirclePage() {
             <Select name="gender" required defaultValue="MALE">
               <option value="MALE">{t("genderMale")}</option>
               <option value="FEMALE">{t("genderFemale")}</option>
+            </Select>
+          </Field>
+          <Field label={t("fieldTeacher")}>
+            <Select name="teacherId" defaultValue="">
+              <option value="">{t("teacherPlaceholder")}</option>
+              {teachers.length === 0
+                ? <option disabled>{t("noTeachers")}</option>
+                : teachers.map((tc) => <option key={tc.id} value={tc.id}>{tc.name}</option>)}
             </Select>
           </Field>
           {err && <p style={{ color: ui.color.danger }}>{err}</p>}
