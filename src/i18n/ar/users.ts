@@ -49,6 +49,13 @@ export const usersAr = {
   btnCancel: "إلغاء",
   adminActorNote: "إجراؤك يُرسَل للاعتماد.",
 
+  // بحث وتبويبات (page.tsx)
+  searchPlaceholder: "ابحث بالاسم أو الجوال…",
+  tabAll: "الكل",
+  tabStaff: "الكادر",
+  tabGuardians: "الأولياء",
+  tabStudents: "الطلاب",
+
   // صفحة إضافة كادر (new/page.tsx)
   errCreate: "تعذّر إنشاء الكادر.",
   createRolesPartialPrefix: "أُنشئ الحساب، وتعذّر تعيين أدوار مدّكر: ", // يليه الخطأ

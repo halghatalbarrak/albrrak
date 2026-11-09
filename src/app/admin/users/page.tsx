@@ -7,8 +7,9 @@ import { formatPhoneForDisplay } from "@/lib/phone";
 import { useMe } from "@/lib/useMe";
 import { tUsers as t } from "@/i18n/ar/users";
 import {
-  AppShell, Button, Badge, Table, Modal, ui, sp, type Column,
+  AppShell, Button, Badge, Table, Modal, ListToolbar, ui, sp, type Column,
 } from "@/components/ui";
+import { normalizeArabic } from "@/lib/normalize-arabic";
 import {
   type Role, type MuddakirStaffRole, STAFF_ROLES, ROLE_AR, toggleIn,
   MUDDAKIR_STAFF, MUDDAKIR_STAFF_AR, MUDDAKIR_SECTION, MUDDAKIR_NO_PERM, MUDDAKIR_SENT,
@@ -32,6 +33,8 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [linkBox, setLinkBox] = useState<{ title: string; url: string } | null>(null);
+  const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<"all" | "staff" | "guardians" | "students">("all");
 
   // role editing (platform + muddakir)
   const [editUser, setEditUser] = useState<UserRow | null>(null);
@@ -108,6 +111,21 @@ export default function AdminUsersPage() {
     } else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("errSaveRoles")); }
   }
 
+  const STAFF_ROLE_SET = new Set<string>(["SUPER_ADMIN", "TECH_ADMIN", "CIRCLE_MANAGER", "TEACHER", "REGISTRAR", "ATTENDANCE_MARKER"]);
+  const visibleUsers = users?.filter((u) => {
+    if (tab === "staff" && !u.roles.some((r) => STAFF_ROLE_SET.has(r))) return false;
+    if (tab === "guardians" && !u.roles.includes("GUARDIAN" as (typeof u.roles)[number])) return false;
+    if (tab === "students" && !u.isStudent) return false;
+    if (search) {
+      const q = normalizeArabic(search);
+      const nameMatch = normalizeArabic(u.name).includes(q);
+      const phoneMatch = u.phone ? u.phone.includes(search) : false;
+      const emailMatch = u.email ? u.email.toLowerCase().includes(search.toLowerCase()) : false;
+      if (!nameMatch && !phoneMatch && !emailMatch) return false;
+    }
+    return true;
+  }) ?? null;
+
   const cols: Column<UserRow>[] = [
     { key: "name", header: t("colName"), cell: (u) => <span style={{ opacity: u.isActive ? 1 : 0.5 }}>{u.name}{u.isStudent ? <Badge tone="neutral">{t("badgeStudent")}</Badge> : null}</span> },
     { key: "phone", header: t("colPhone"), cell: (u) => <span style={{ direction: "ltr", color: ui.color.muted }}>{u.phone ? formatPhoneForDisplay(u.phone) : "—"}</span> },
@@ -151,7 +169,16 @@ export default function AdminUsersPage() {
             </div>
           )}
 
-          <Table columns={cols} rows={users} empty={t("tableEmpty")} />
+          <div style={{ display: "flex", gap: sp(1), marginBottom: sp(3), flexWrap: "wrap" }}>
+            {(["all", "staff", "guardians", "students"] as const).map((k) => (
+              <button key={k} onClick={() => setTab(k)}
+                style={{ padding: `${sp(1.5)} ${sp(3)}`, borderRadius: ui.radius.full, border: `1px solid ${ui.color.border}`, cursor: "pointer", fontSize: ui.text.xs, fontFamily: ui.font, background: tab === k ? ui.color.primary : ui.color.surface, color: tab === k ? "#fff" : ui.color.text }}>
+                {t(k === "all" ? "tabAll" : k === "staff" ? "tabStaff" : k === "guardians" ? "tabGuardians" : "tabStudents")}
+              </button>
+            ))}
+          </div>
+          <ListToolbar value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
+          <Table columns={cols} rows={visibleUsers ?? []} empty={t("tableEmpty")} />
         </>
       )}
 
