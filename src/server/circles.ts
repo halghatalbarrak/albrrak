@@ -21,6 +21,7 @@ export interface CircleRow {
 export async function listCircles(db: PrismaClient = prisma): Promise<CircleRow[]> {
   const [rows, grouped, programs] = await Promise.all([
     db.circle.findMany({
+      where: { deletedAt: null },
       select: { id: true, nameAr: true, timeSlot: true, gender: true, location: true, program: { select: { key: true, nameAr: true } } },
       orderBy: { nameAr: "asc" },
     }),
@@ -109,6 +110,23 @@ export async function listTeachers(db: PrismaClient = prisma): Promise<TeacherRo
     orderBy: { nameAsInId: "asc" },
   });
   return rows.map((r) => ({ id: r.id, name: r.nameAsInId }));
+}
+
+/** يحذف الحلقة ناعماً (deletedAt). يرمي إن كانت محذوفةً أو فيها طلابٌ نشطون. */
+export async function softDeleteCircle(actorId: string, circleId: string, db: PrismaClient = prisma): Promise<void> {
+  const circle = await db.circle.findUnique({ where: { id: circleId }, select: { id: true, nameAr: true, deletedAt: true } });
+  if (!circle) throw verr("circleNotFound");
+  if (circle.deletedAt) throw verr("circleAlreadyDeleted");
+  const activeCount = await db.enrollment.count({ where: { circleId, endedAt: null } });
+  if (activeCount > 0) {
+    const { ValidationError } = await import("./errors");
+    throw new ValidationError(`لا يمكن حذف الحلقة: فيها ${activeCount} طالب نشط.`, "circleHasActiveStudents");
+  }
+  const now = new Date();
+  await db.$transaction([
+    db.circle.update({ where: { id: circleId }, data: { deletedAt: now, deletedById: actorId } }),
+    db.auditLog.create({ data: { action: "DELETE", entity: "Circle", entityId: circleId, actorId, label: circle.nameAr } }),
+  ]);
 }
 
 /** يرمي AuthorizationError إن لم يكن المعلّم مرتبطاً بالحلقة (endedAt = null). */
