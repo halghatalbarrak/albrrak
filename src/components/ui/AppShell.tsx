@@ -168,11 +168,14 @@ export function AppShell({ roles, muddakirStaff, userName, activeHref, title, cr
           </div>
           {isStaff && (
             <button
+              className="appshell-searchbtn"
               onClick={() => window.dispatchEvent(new Event("albrrak:search"))}
               aria-label="بحث"
               style={{ display: "flex", alignItems: "center", gap: sp(2), border: `1px solid ${ui.color.border}`, background: ui.color.surface, borderRadius: ui.radius.md, padding: `${sp(1.5)} ${sp(3)}`, cursor: "pointer", color: ui.color.muted, fontFamily: ui.font, fontSize: ui.text.xs, whiteSpace: "nowrap" }}
             >
-              {tAppshell("search")}<kbd style={{ border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.sm, padding: "0 4px", fontSize: 12 }}>Ctrl K</kbd>
+              <span className="appshell-searchbtn-text">{tAppshell("search")}</span>
+              <svg className="appshell-searchbtn-icon" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx={11} cy={11} r={8} /><line x1={21} y1={21} x2={16.65} y2={16.65} /></svg>
+              <kbd className="appshell-searchbtn-text" style={{ border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.sm, padding: "0 4px", fontSize: 12 }}>Ctrl K</kbd>
             </button>
           )}
           <ThemeToggle />

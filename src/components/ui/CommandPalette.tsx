@@ -42,7 +42,11 @@ export function CommandPalette() {
       try {
         const { data: { session } } = await supabaseBrowser().auth.getSession();
         if (!session) return;
-        const r = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { headers: { authorization: `Bearer ${session.access_token}` } });
+        const r = await fetch("/api/search", {
+          method: "POST",
+          headers: { authorization: `Bearer ${session.access_token}`, "content-type": "application/json" },
+          body: JSON.stringify({ q }),
+        });
         if (r.ok) { setRes((await r.json()) as Results); setActive(0); }
       } catch { /* تجاهل */ }
     }, 200);
