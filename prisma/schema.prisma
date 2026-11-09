@@ -130,6 +130,12 @@ model Circle {
   program     Program?        @relation(fields: [programId], references: [id])
   teachers    CircleTeacher[] // متعدد لمتعدد
   enrollments Enrollment[]
+
+  // الحذف الناعم
+  deletedAt   DateTime? @db.Timestamp(3)
+  deletedById String?
+
+  @@index([deletedAt])
 }
 
 model CircleTeacher {
@@ -191,6 +197,12 @@ model Student {
   trackAssignments    TrackAssignment[]
   certificates        Certificate[]
   emergencyAccessLogs EmergencyAccessLog[]
+
+  // الحذف الناعم
+  deletedAt   DateTime? @db.Timestamp(3)
+  deletedById String?
+
+  @@index([deletedAt])
 }
 
 model Enrollment {
@@ -1584,4 +1596,19 @@ model DisplaySchedule {
   createdAt   DateTime               @default(now())
 
   @@index([screenId, active])
+}
+
+// ═══════════════ سجل العمليات (الحذف الناعم) ═══════════════
+model AuditLog {
+  id       String   @id @default(cuid())
+  action   String   // DELETE | RESTORE | PURGE
+  entity   String   // Circle | Student | ...
+  entityId String
+  actorId  String
+  at       DateTime @default(now()) @db.Timestamp(3)
+  label    String?
+
+  @@index([entity, entityId])
+  @@index([actorId])
+  @@index([at])
 }
