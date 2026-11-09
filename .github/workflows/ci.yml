@@ -82,6 +82,27 @@ jobs:
           export SUPABASE_JWT_SECRET="$(openssl rand -base64 32)"
           npm test
 
+  author-check:
+    name: تحقّق من بريد المؤلف (thmny88 فقط)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: تأكّد أن كل commits في الـPR من thmny88@gmail.com
+        run: |
+          bad=$(git log origin/${{ github.base_ref }}..HEAD --format="%ae" \
+            | grep -v "^thmny88@gmail\.com$" \
+            | grep -v "^noreply@anthropic\.com$" \
+            || true)
+          if [ -n "$bad" ]; then
+            echo "::error::commits من بريد غير مصرَّح به:"
+            printf '%s\n' "$bad"
+            exit 1
+          fi
+          echo "✅ كل commits من thmny88@gmail.com"
+
   prod-schema-sync:
     name: prod schema in sync (migrate status)
     # الكود يُنشَر تلقائيًّا، والمخطط ينتظر زرًّا بشريًّا (Migrate). بينهما فجوةٌ يعمل
