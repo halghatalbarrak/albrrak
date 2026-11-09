@@ -441,6 +441,12 @@ export const errorsAr = {
   teacherNotFound: "معلّمٌ غير موجودٍ أو ليس لديه دور معلّم.",
   circleAlreadyDeleted: "الحلقة محذوفةٌ فعلاً.",
   circleHasActiveStudents: "لا يمكن حذف الحلقة: فيها طلاب نشطون.",
+  enrollmentNotFound: "لا انتساب نشط لهذا الطالب.",
+  enrollmentAlreadySuspended: "الطالب معلَّق فعلاً.",
+  enrollmentNotSuspended: "الطالب غير معلَّق.",
+  circleGenderMismatch: "جنس الحلقة المستهدفة لا يطابق جنس الطالب.",
+  suspendReasonRequired: "سبب التعليق إلزاميّ.",
+  expelReasonRequired: "سبب الفصل إلزاميّ.",
 } as const;
 
 /** مفاتيح أخطاء الخادم المُرحَّلة (تنمو كلّما رُحِّل مجال). */

@@ -39,10 +39,15 @@ export interface AdminStudentRow {
   name: string;
   age: number | null;
   state: string;
+  gender: string;
   circle: string | null;
   guardian: string | null;
   /** قرار تحديدٍ معلّقٌ لهذا الطالب (بانتظار اعتماد المدير)، أو null. */
   pendingPlacementId: string | null;
+  /** معرِّف الانتساب النشط (لإجراءات النقل/التعليق/الفصل). */
+  enrollmentId: string | null;
+  /** هل الطالب معلَّق؟ (تاريخ التعليق). */
+  suspendedAt: Date | null;
 }
 
 export async function listStudentsForAdmin(
@@ -54,10 +59,10 @@ export async function listStudentsForAdmin(
       select: {
         id: true,
         state: true,
-        user: { select: { nameAsInId: true, birthDate: true } },
+        user: { select: { nameAsInId: true, birthDate: true, gender: true } },
         enrollments: {
           where: { endedAt: null },
-          select: { circle: { select: { nameAr: true } } },
+          select: { id: true, suspendedAt: true, circle: { select: { nameAr: true } } },
           take: 1,
         },
         guardians: {
@@ -81,14 +86,18 @@ export async function listStudentsForAdmin(
   const pendingByStudent = new Map(pendings.map((a) => [a.subjectId, a.id]));
   return rows.map((r) => {
     const g = r.guardians[0]?.guardian;
+    const activeEnrollment = r.enrollments[0];
     return {
       id: r.id,
       name: r.user.nameAsInId,
       age: r.user.birthDate ? computeAge(r.user.birthDate, asOf) : null,
       state: r.state,
-      circle: r.enrollments[0]?.circle.nameAr ?? null,
+      gender: r.user.gender,
+      circle: activeEnrollment?.circle.nameAr ?? null,
       guardian: g ? (g.phone ? `${g.nameAsInId} (${g.phone})` : g.nameAsInId) : null,
       pendingPlacementId: pendingByStudent.get(r.id) ?? null,
+      enrollmentId: activeEnrollment?.id ?? null,
+      suspendedAt: activeEnrollment?.suspendedAt ?? null,
     };
   });
 }

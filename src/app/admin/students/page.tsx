@@ -15,14 +15,18 @@ interface Row {
   name: string;
   age: number | null;
   state: string;
+  gender: string;
   circle: string | null;
   guardian: string | null;
   pendingPlacementId: string | null;
+  enrollmentId: string | null;
+  suspendedAt: string | null;
 }
 interface Circle {
   id: string;
   nameAr: string;
   programKey: string;
+  gender?: string;
 }
 
 const STATE_AR: Record<string, string> = {
@@ -86,6 +90,103 @@ function ReadingTestForm({ studentId, qaidahCircles, onDone }: { studentId: stri
   );
 }
 
+function ActionModals({
+  row,
+  circles,
+  onClose,
+  onDone,
+}: {
+  row: Row & { _modal: "transfer" | "suspend" | "expel" };
+  circles: Circle[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [circleId, setCircleId] = useState("");
+  const [reason, setReason] = useState("");
+  const [returnAt, setReturnAt] = useState("");
+  const [expelConfirmed, setExpelConfirmed] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function execute(body: Record<string, unknown>) {
+    setBusy(true);
+    setErr(null);
+    const tok = await token();
+    if (!tok) return;
+    const res = await fetch(`/api/admin/students/${row.id}/actions`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
+      body: JSON.stringify(body),
+    });
+    setBusy(false);
+    if (res.ok || res.status === 204) { onClose(); onDone(); return; }
+    const j = (await res.json().catch(() => ({}))) as { error?: string };
+    setErr(j.error ?? t("actionFailed"));
+  }
+
+  const compatibleCircles = circles.filter((c) => !c.gender || c.gender === row.gender);
+
+  if (row._modal === "transfer") {
+    return (
+      <Modal open onClose={onClose} title={`${t("transferModalTitle")} — ${row.name}`}>
+        <Field label={t("transferCircleLabel")}>
+          <Select value={circleId} onChange={(e) => setCircleId(e.target.value)}>
+            <option value="">{t("chooseEllipsis")}</option>
+            {compatibleCircles.map((c) => <option key={c.id} value={c.id}>{c.nameAr}</option>)}
+          </Select>
+        </Field>
+        {err && <p style={{ color: ui.color.danger, margin: "4px 0" }}>{err}</p>}
+        <div style={{ display: "flex", gap: sp(2), marginTop: sp(3) }}>
+          <Button disabled={busy || !circleId} onClick={() => void execute({ action: "transfer", circleId })}>
+            {busy ? "…" : t("transferConfirmBtn")}
+          </Button>
+          <Button variant="ghost" onClick={onClose}>{t("modalCancelBtn")}</Button>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (row._modal === "suspend") {
+    return (
+      <Modal open onClose={onClose} title={`${t("suspendModalTitle")} — ${row.name}`}>
+        <Field label={t("suspendReasonLabel")}>
+          <textarea style={{ ...inputStyle, minHeight: 64 }} value={reason} onChange={(e) => setReason(e.target.value)} />
+        </Field>
+        <Field label={t("suspendReturnLabel")}>
+          <input type="date" style={inputStyle} value={returnAt} onChange={(e) => setReturnAt(e.target.value)} />
+        </Field>
+        {err && <p style={{ color: ui.color.danger, margin: "4px 0" }}>{err}</p>}
+        <div style={{ display: "flex", gap: sp(2), marginTop: sp(3) }}>
+          <Button disabled={busy || !reason.trim()} onClick={() => void execute({ action: "suspend", reason, returnAt: returnAt || undefined })}>
+            {busy ? "…" : t("suspendConfirmBtn")}
+          </Button>
+          <Button variant="ghost" onClick={onClose}>{t("modalCancelBtn")}</Button>
+        </div>
+      </Modal>
+    );
+  }
+
+  // expel
+  return (
+    <Modal open onClose={onClose} title={`${t("expelModalTitle")} — ${row.name}`}>
+      <Field label={t("expelReasonLabel")}>
+        <textarea style={{ ...inputStyle, minHeight: 64 }} value={reason} onChange={(e) => setReason(e.target.value)} />
+      </Field>
+      <label style={{ display: "flex", alignItems: "center", gap: sp(2), marginTop: sp(2) }}>
+        <input type="checkbox" checked={expelConfirmed} onChange={(e) => setExpelConfirmed(e.target.checked)} />
+        {t("expelConfirmLabel")}
+      </label>
+      {err && <p style={{ color: ui.color.danger, margin: "4px 0" }}>{err}</p>}
+      <div style={{ display: "flex", gap: sp(2), marginTop: sp(3) }}>
+        <Button variant="danger" disabled={busy || !reason.trim() || !expelConfirmed} onClick={() => void execute({ action: "expel", reason })}>
+          {busy ? "…" : t("expelConfirmBtn")}
+        </Button>
+        <Button variant="ghost" onClick={onClose}>{t("modalCancelBtn")}</Button>
+      </div>
+    </Modal>
+  );
+}
+
 export default function AdminStudentsPage() {
   const { me } = useMe();
   const [rows, setRows] = useState<Row[] | null>(null);
@@ -94,6 +195,8 @@ export default function AdminStudentsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [testFor, setTestFor] = useState<Row | null>(null);
+  const [actionFor, setActionFor] = useState<(Row & { _modal: "transfer" | "suspend" | "expel" }) | null>(null);
+  const [showExpelled, setShowExpelled] = useState(false);
 
   const load = useCallback(async () => {
     const tok = await token();
@@ -153,16 +256,37 @@ export default function AdminStudentsPage() {
     else setErr(t("decideFailed"));
   }
 
+  async function resumeAction(studentId: string) {
+    const tok = await token();
+    if (!tok) return;
+    const res = await fetch(`/api/admin/students/${studentId}/actions`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ action: "resume" }),
+    });
+    if (res.ok || res.status === 204) void load();
+    else setErr(t("actionFailed"));
+  }
+
   const canReveal = roles.includes("REGISTRAR") || roles.includes("SUPER_ADMIN");
   const canRecord = roles.includes("REGISTRAR") || roles.includes("SUPER_ADMIN");
   const canApprove = roles.includes("CIRCLE_MANAGER") || roles.includes("SUPER_ADMIN");
-  // الحلقة لا تتبع برنامجاً — أيّ حلقةٍ تصلح للقاعدة (البرنامج يُحمَل على القيد بالنتيجة).
+  const canAct = roles.includes("CIRCLE_MANAGER") || roles.includes("SUPER_ADMIN");
   const qaidahCircles = circles;
   const pendingCount = rows?.filter((r) => r.pendingPlacementId).length ?? 0;
 
+  const visibleRows = rows?.filter((r) => showExpelled ? r.state === "WITHDRAWN" : r.state !== "WITHDRAWN") ?? null;
+
   const cols: Column<Row>[] = [
     { key: "name", header: t("colName"), cell: (r) => <strong>{r.name}</strong> },
-    { key: "state", header: t("colState"), cell: (r) => <Badge tone={r.pendingPlacementId ? "bronze" : "neutral"}>{STATE_AR[r.state] ?? r.state}</Badge> },
+    {
+      key: "state", header: t("colState"), cell: (r) => (
+        <div style={{ display: "flex", gap: sp(1), flexWrap: "wrap" }}>
+          <Badge tone={r.pendingPlacementId ? "bronze" : "neutral"}>{STATE_AR[r.state] ?? r.state}</Badge>
+          {r.suspendedAt && <Badge tone="bronze">{t("stateSuspended")}</Badge>}
+        </div>
+      ),
+    },
     { key: "age", header: t("colAge"), cell: (r) => (r.age != null ? String(r.age) : "—") },
     { key: "circle", header: t("colCircle"), cell: (r) => r.circle ?? t("notAssigned") },
     { key: "guardian", header: t("colGuardian"), cell: (r) => r.guardian ?? "—" },
@@ -177,6 +301,19 @@ export default function AdminStudentsPage() {
           )}
           {r.state === "AWAITING_READING_TEST" && !r.pendingPlacementId && canRecord && (
             <Button variant="bronze" size="sm" onClick={() => setTestFor(r)}>{t("readingTest")}</Button>
+          )}
+          {canAct && r.enrollmentId && r.state !== "WITHDRAWN" && (
+            <>
+              {!r.suspendedAt ? (
+                <>
+                  <Button size="sm" variant="ghost" onClick={() => setActionFor({ ...r, _modal: "transfer" })}>{t("transferBtn")}</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setActionFor({ ...r, _modal: "suspend" })}>{t("suspendBtn")}</Button>
+                  <Button size="sm" variant="danger" onClick={() => setActionFor({ ...r, _modal: "expel" })}>{t("expelBtn")}</Button>
+                </>
+              ) : (
+                <Button size="sm" variant="ghost" onClick={() => void resumeAction(r.id)}>{t("resumeBtn")}</Button>
+              )}
+            </>
           )}
           <Link href={`/admin/students/${r.id}/weakness`} style={linkBtn}>{t("weaknessMap")}</Link>
           <Link href={`/admin/students/${r.id}/placement`} style={linkBtn}>{t("placement")}</Link>
@@ -207,13 +344,29 @@ export default function AdminStudentsPage() {
               <Badge tone="bronze">{t("pendingDecisionsBadge")}</Badge>
             </Card>
           )}
-          <Table columns={cols} rows={rows} />
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: sp(3) }}>
+            <Button size="sm" variant="ghost" onClick={() => setShowExpelled((v) => !v)}>
+              {showExpelled ? t("hideExpelled") : t("showExpelled")}
+            </Button>
+          </div>
+          {visibleRows && visibleRows.length > 0
+            ? <Table columns={cols} rows={visibleRows} />
+            : <EmptyState title={t("noAcceptedStudents")} />}
         </>
       )}
 
       <Modal open={testFor !== null} onClose={() => setTestFor(null)} title={`${t("readingTestModalPrefix")}${testFor?.name ?? ""}`}>
         {testFor && <ReadingTestForm studentId={testFor.id} qaidahCircles={qaidahCircles} onDone={() => { setTestFor(null); void load(); }} />}
       </Modal>
+
+      {actionFor && (
+        <ActionModals
+          row={actionFor}
+          circles={circles}
+          onClose={() => setActionFor(null)}
+          onDone={() => void load()}
+        />
+      )}
     </AppShell>
   );
 }
