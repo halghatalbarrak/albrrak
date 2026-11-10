@@ -376,7 +376,7 @@ function TrackSection({ studentId, track, onSaved }: { studentId: string; track:
       <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginTop: 0 }}>{t("trackSectionTitle")}</h2>
       {!track ? (
         <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
-          <p style={{ color: ui.color.muted, fontSize: ui.text.sm, margin: 0 }}>{t("trackNoTrack")}</p>
+          <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: 0 }}>{t("trackNoTrack")}</p>
           <div style={{ display: "flex", alignItems: "center", gap: sp(2) }}>
             <Button size="sm" variant="primary" disabled={recalcing} onClick={() => void recalc()}>
               {recalcing ? t("savingBtn") : t("trackRecalcBtn")}

@@ -60,7 +60,8 @@ export async function assignMaraqiTrack(
     },
   });
   if (!student) throw verr("studentNotFound");
-  const isMaraqiState = [StudentState.IN_MARAQI, StudentState.AWAITING_PACE_TEST, StudentState.PACE_RETEST_SCHEDULED].includes(student.state);
+  const MARAQI_STATES: string[] = [StudentState.IN_MARAQI, StudentState.AWAITING_PACE_TEST, StudentState.PACE_RETEST_SCHEDULED];
+  const isMaraqiState = MARAQI_STATES.includes(student.state);
   if (!isMaraqiState) throw verr("trackAssignmentMaraqiOnly");
   const enrollment = student.enrollments[0];
   if (!enrollment || enrollment.program?.key !== ProgramKey.MARAQI) throw verr("trackAssignmentMaraqiOnly");
@@ -69,7 +70,7 @@ export async function assignMaraqiTrack(
   if (!_skipAuth) {
     const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
     if (!actor) throw aerr("unauthorized");
-    const isManager = actor.roles.some((r) => MANAGER_ROLES.has(r));
+    const isManager = actor.roles.some((r) => (MANAGER_ROLES as Set<string>).has(r));
     if (!isManager) {
       // المعلّم: يعيَّن فقط لطلاب حلقته.
       const teaches = await (db as PrismaClient).circleTeacher.findFirst({

@@ -173,7 +173,7 @@ describe("حالة أويس — جبهة المطففين:٣٦ (سورة ٨٣ آ
   }
 
   it("تسكين المطففين:٣٦ → مسار ordinal=1 (٣ أسطر/يوم) AUTO_FROM_FRONTIER", async () => {
-    const { tracks, manager, student } = await scaffold();
+    const { manager, student } = await scaffold();
     await placeMaraqi({ actorId: manager.id, studentId: student.id, reachedSurah: 83, reachedAyah: 36 });
     const a = await prisma.trackAssignment.findFirst({ where: { studentId: student.id, endedAt: null } });
     expect(a).not.toBeNull();
@@ -241,7 +241,7 @@ describe("حالة أويس — جبهة المطففين:٣٦ (سورة ٨٣ آ
   });
 
   it("assignMissingTrackForStudent يعيَّن من التسكين؛ إن كان للطالب مسار يُعيد assigned=false", async () => {
-    const { tracks, manager, student } = await scaffold();
+    const { manager, student } = await scaffold();
     // بلا مسار أوّلاً
     const r1 = await assignMissingTrackForStudent(student.id, manager.id, prisma);
     expect(r1.assigned).toBe(true);
