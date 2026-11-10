@@ -5,8 +5,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { makkahDayDate } from "@/lib/makkah-day";
 import { useMe } from "@/lib/useMe";
-import { arNum, formatAyah } from "@/lib/format";
+import { arNum } from "@/lib/format";
 import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
+import { HifzInput } from "@/components/session/HifzInput";
+import { TarseekhInput, MurajaahInput } from "@/components/session/ConsolidationInput";
 import { attendanceLockAr as tLock } from "@/i18n/ar/attendance-lock";
 import { navAr } from "@/i18n/ar/nav";
 import { tSetup } from "@/i18n/ar/setup";
@@ -83,7 +85,6 @@ const ATT_BUTTONS: { status: string; label: string; tone: "primary" | "bronze" |
   { status: "LEFT_NO_PERMISSION", label: "خرج بلا إذن", tone: "danger" },
 ];
 
-const boundStr = (b: Bound) => formatAyah(b.fromSurah, b.fromAyah, b.toSurah, b.toAyah);
 const todayISO = () => makkahDayDate(new Date()); // Makkah day, not UTC
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
@@ -131,6 +132,22 @@ export default function UnifiedPage() {
     })();
   }, []);
   useEffect(() => { if (circleId) void load(circleId); }, [circleId, load]);
+
+  async function markAllPresent() {
+    if (!students) return;
+    const tok = await token(); if (!tok) return;
+    const unmark = students.filter((s) => s.attendanceStatus == null);
+    if (!unmark.length) return;
+    await Promise.all(unmark.map((s) =>
+      fetch(`/api/circles/${circleId}/mark-attendance`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
+        body: JSON.stringify({ studentId: s.studentId, status: "PRESENT", date }),
+      }),
+    ));
+    setMsg(tu("markAllPresent") + " — سُجِّل.");
+    await load(circleId);
+  }
 
   async function post(url: string, body: Record<string, unknown>, okMsg: string) {
     setMsg(null);
@@ -187,6 +204,9 @@ export default function UnifiedPage() {
       <div style={{ display: "flex", gap: sp(4), alignItems: "flex-start", flexWrap: "wrap" }}>
         {/* اللوحة الجانبيّة: قائمة الطلاب (من أُنجز/بقي) */}
         <div style={{ flex: "1 1 260px", minWidth: 240, maxWidth: 360, display: "flex", flexDirection: "column", gap: sp(2) }}>
+          {students && students.some((s) => s.attendanceStatus == null) && (
+            <Button size="sm" variant="primary" onClick={() => void markAllPresent()}>{tu("markAllPresent")}</Button>
+          )}
           {filtered.map((s) => {
             const done = s.attendanceStatus != null;
             return (
@@ -245,12 +265,7 @@ function StudentPanel({ s, circleId, date, items, post }: {
   s: Student; circleId: string; date: string; items: GrantItem[];
   post: (url: string, body: Record<string, unknown>, okMsg: string) => Promise<void>;
 }) {
-  const sug = s.today.newHifz?.kind === "NEW" || s.today.newHifz?.kind === "REPEAT" ? s.today.newHifz.bound! : null;
-  const [hifz, setHifz] = useState({ fromSurah: "", fromAyah: "", toSurah: "", toAyah: "" });
-  useEffect(() => {
-    setHifz(sug ? { fromSurah: String(sug.fromSurah), fromAyah: String(sug.fromAyah), toSurah: String(sug.toSurah), toAyah: String(sug.toAyah) }
-      : { fromSurah: "", fromAyah: "", toSurah: "", toAyah: "" });
-  }, [s.studentId, sug?.fromSurah, sug?.fromAyah, sug?.toSurah, sug?.toAyah]); // eslint-disable-line react-hooks/exhaustive-deps
+  const hifzBound = (s.today.newHifz?.kind === "NEW" || s.today.newHifz?.kind === "REPEAT") ? (s.today.newHifz.bound ?? null) : null;
 
   const sid = s.studentId;
   const markAtt = (st: string) => post(`/api/circles/${circleId}/mark-attendance`, { studentId: sid, status: st, date }, "سُجِّل الحضور.");
@@ -258,15 +273,12 @@ function StudentPanel({ s, circleId, date, items, post }: {
     const reason = window.prompt("سبب الاستئذان/العذر:");
     if (reason?.trim()) void post("/api/attendance/excuse", { studentId: sid, date, reason, kind: "EXCUSE" }, "قُدِّم طلب العذر — بانتظار اعتماد صاحب الصلاحية.");
   };
-  const saveHifz = (mastered: boolean) => post(`/api/students/${sid}/session`, { kind: "hifz", date, fromSurah: Number(hifz.fromSurah), fromAyah: Number(hifz.fromAyah), toSurah: Number(hifz.toSurah), toAyah: Number(hifz.toAyah), attempts: 1, mastered }, "سُجِّل الحفظ.");
-  const task = (kind: "tarseekh" | "murajaah", done: boolean) => post(`/api/students/${sid}/session`, kind === "tarseekh" ? { kind, date, done } : { kind, date, count: done ? 1 : 0 }, "سُجِّلت المهمّة.");
   const extra = (kind: string) => post(`/api/students/${sid}/extra`, { kind, date }, "سُجِّلت الزيادة.");
   const grant = (pointItemId: string) => post("/api/economy/grant", { studentId: sid, pointItemId }, "مُنح التقدير.");
   // القاعدة المدنية (م ج): تقييم درس الطالب الحاليّ — يُعاد استعمال مسار جلسة القاعدة القائم.
   const qaidahEval = (mastered: boolean) => post(`/api/students/${sid}/qaidah-session`, { mastered }, "سُجِّل التقييم.");
   const qaidahDefer = () => post(`/api/students/${sid}/qaidah-session`, { defer: true }, "سُجِّل التأجيل.");
 
-  const num: React.CSSProperties = { width: 60 };
   const H3: React.CSSProperties = { fontSize: ui.text.base, fontWeight: 700, margin: `0 0 ${sp(2)}` };
   const row: React.CSSProperties = { display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center" };
 
@@ -294,16 +306,12 @@ function StudentPanel({ s, circleId, date, items, post }: {
               {s.today.newHifz?.kind === "COMPLETED" ? <p style={{ color: ui.color.success, margin: 0 }}>{tu("trackCompleted")}</p>
                 : s.today.newHifz?.kind === "NO_TRACK" ? <TrackAssignInline studentId={sid} post={post} />
                 : <>
-                    {s.today.newHifz?.kind === "REPEAT" && <p style={{ color: ui.color.danger, fontSize: ui.text.xs, margin: `0 0 ${sp(2)}` }}>{tu("rule1RepeatYesterday")}</p>}
-                    <div style={{ ...row, marginBottom: sp(2), fontSize: ui.text.xs }}>
-                      <span>{tu("from")}</span><Input style={num} type="number" value={hifz.fromSurah} onChange={(e) => setHifz({ ...hifz, fromSurah: e.target.value })} />:
-                      <Input style={num} type="number" value={hifz.fromAyah} onChange={(e) => setHifz({ ...hifz, fromAyah: e.target.value })} />
-                      <span>{tu("to")}</span><Input style={num} type="number" value={hifz.toSurah} onChange={(e) => setHifz({ ...hifz, toSurah: e.target.value })} />:
-                      <Input style={num} type="number" value={hifz.toAyah} onChange={(e) => setHifz({ ...hifz, toAyah: e.target.value })} />
-                    </div>
-                    <div style={row}>
-                      <Button size="sm" variant="primary" onClick={() => void saveHifz(true)}>{tu("mastered")}</Button>
-                      <Button size="sm" variant="danger" onClick={() => void saveHifz(false)}>{tu("notMastered")}</Button>
+                    <HifzInput
+                      bound={hifzBound}
+                      hifzKind={s.today.newHifz?.kind ?? null}
+                      onSave={(st) => void post(`/api/students/${sid}/session`, { kind: "hifz", date, ...st }, "سُجِّل الحفظ.")}
+                    />
+                    <div style={{ ...row, marginTop: sp(2) }}>
                       <Button size="sm" variant="ghost" onClick={() => void extra("hifz")}>{tu("addMore")}</Button>
                     </div>
                   </>}
@@ -312,10 +320,8 @@ function StudentPanel({ s, circleId, date, items, post }: {
             {s.today.hasTarsikh && (
             <div>
               <h3 style={H3}>الترسيخ{s.today.tarseekh.length ? ` (${s.today.tarseekh.length} وحدة)` : ""}</h3>
-              {s.today.tarseekh.length > 0 && <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `0 0 ${sp(2)}` }}>{s.today.tarseekh.slice(0, 4).map(boundStr).join(" · ")}{s.today.tarseekh.length > 4 ? " …" : ""}</p>}
-              <div style={row}>
-                <Button size="sm" variant="primary" onClick={() => void task("tarseekh", true)}>{tu("done")}</Button>
-                <Button size="sm" variant="danger" onClick={() => void task("tarseekh", false)}>{tu("notDone")}</Button>
+              <TarseekhInput bounds={s.today.tarseekh} onDone={(done) => void post(`/api/students/${sid}/session`, { kind: "tarseekh", date, done }, "سُجِّل الترسيخ.")} />
+              <div style={{ ...row, marginTop: sp(2) }}>
                 <Button size="sm" variant="ghost" onClick={() => void extra("tarseekh")}>{tu("addMore")}</Button>
               </div>
             </div>
@@ -324,14 +330,10 @@ function StudentPanel({ s, circleId, date, items, post }: {
             {s.today.hasMuraja && (
             <div>
               <h3 style={H3}>المراجعة{s.today.murajaah?.todaySlice.length ? " — حصّة اليوم" : ""}</h3>
-              {s.today.murajaah && s.today.murajaah.todaySlice.length > 0
-                ? <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `0 0 ${sp(2)}` }}>{s.today.murajaah.todaySlice.slice(0, 4).map(boundStr).join(" · ")}</p>
-                : s.today.murajaah?.totalStock === 0
-                  ? <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `0 0 ${sp(2)}` }}>{tu("noRasikhYet")}</p>
-                  : null}
-              <div style={row}>
-                <Button size="sm" variant="primary" onClick={() => void task("murajaah", true)}>{tu("doneF")}</Button>
-                <Button size="sm" variant="danger" onClick={() => void task("murajaah", false)}>{tu("notDoneF")}</Button>
+              {s.today.murajaah?.totalStock === 0
+                ? <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `0 0 ${sp(2)}` }}>{tu("noRasikhYet")} <Button size="sm" variant="ghost" onClick={() => { window.location.href = "/admin/tracks"; }}>{tu("setPath")}</Button></p>
+                : <MurajaahInput todaySlice={s.today.murajaah?.todaySlice ?? []} onRecord={(count) => void post(`/api/students/${sid}/session`, { kind: "murajaah", date, count }, "سُجِّلت المراجعة.")} />}
+              <div style={{ ...row, marginTop: sp(2) }}>
                 <Button size="sm" variant="ghost" onClick={() => void extra("murajaah")}>{tu("addMore")}</Button>
               </div>
             </div>

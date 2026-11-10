@@ -8,7 +8,9 @@ import { useMe } from "@/lib/useMe";
 import { arNum, hijri, formatAyah } from "@/lib/format";
 import { tSession as t } from "@/i18n/ar/session";
 import { navAr } from "@/i18n/ar/nav";
-import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, TodayTargetView, type TTData, type TTBound, ui, sp } from "@/components/ui";
+import { AppShell, Card, Button, Badge, EmptyState, Skeleton, TodayTargetView, type TTData, ui, sp } from "@/components/ui";
+import { HifzInput } from "@/components/session/HifzInput";
+import { TarseekhInput, MurajaahInput } from "@/components/session/ConsolidationInput";
 
 // شارة البرنامج + عدّاده (الحلقة قد تجمع برامج مختلفة). النصوص من i18n، والأرقام مشرقية.
 const PROGRAM_AR: Record<string, string> = {
@@ -52,19 +54,12 @@ async function token(): Promise<string | null> {
 
 const range = (r: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }) => formatAyah(r.fromSurah, r.fromAyah, r.toSurah, r.toAyah);
 
-// المقترح لملء حقل الحفظ تلقائيًّا: الوحدة التالية أو إعادة أمس (مرن — المعلّم يعدّل).
-function suggestedBound(t: TTData): TTBound | null {
-  const n = t.newHifz;
-  return n && (n.kind === "NEW" || n.kind === "REPEAT") && n.bound ? n.bound : null;
-}
-
 function stepTone(step: string): "success" | "danger" | "bronze" | "primary" {
   if (step.includes("اكتملت")) return "success";
   if (step.includes("يعيد")) return "danger";
   if (step.includes("لم يبدأ") || step.includes("القاعدة")) return "bronze";
   return "primary";
 }
-const num: React.CSSProperties = { width: 72 };
 
 // ── العمل بلا إنترنت (الفكرة ١١) — كنمط الحضور م٢ ──
 // الرصد الأساسيّ (حفظ/ترسيخ/مراجعة) يُوجَّه لنقطةٍ واحدة تُحدِّث بمفتاح (الطالب+اليوم)،
@@ -226,7 +221,7 @@ export default function DailySessionPage() {
           )}
           {expanded === s.studentId && (
             <div style={{ borderTop: `1px solid ${ui.color.border}`, padding: sp(4), background: ui.color.bg }}>
-              <StudentDetail studentId={s.studentId} date={date} suggestion={suggestedBound(s.today)} onSaved={() => { refreshPending(); void loadBoard(); }} />
+              <StudentDetail studentId={s.studentId} date={date} today={s.today} onSaved={() => { refreshPending(); void loadBoard(); }} />
             </div>
           )}
         </Card>
@@ -235,20 +230,13 @@ export default function DailySessionPage() {
   );
 }
 
-// ═══════════════ تفاصيل الطالب (التسجيل) — منطق الجلسة السابق كما هو ═══════════════
+// ═══════════════ تفاصيل الطالب (التسجيل) ═══════════════
 interface Forecast { hasPace: boolean; pacePerDay: number | null; hizbDoneDate: string | null; graduationDate: string | null }
-function StudentDetail({ studentId, date, suggestion, onSaved }: { studentId: string; date: string; suggestion: TTBound | null; onSaved: () => void }) {
+function StudentDetail({ studentId, date, today, onSaved }: { studentId: string; date: string; today: TTData; onSaved: () => void }) {
   const [view, setView] = useState<SessionView | null>(null);
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [msg, setMsg] = useState<string | null>(null);
-  // حقل الحفظ مملوءٌ بالمقترح (وجهة اليوم) وقابلٌ للتعديل — المعلّم يؤكّد أو يغيّر.
-  const [hifz, setHifz] = useState({
-    fromSurah: suggestion ? String(suggestion.fromSurah) : "", fromAyah: suggestion ? String(suggestion.fromAyah) : "",
-    toSurah: suggestion ? String(suggestion.toSurah) : "", toAyah: suggestion ? String(suggestion.toAyah) : "",
-    attempts: "1", mastered: false,
-  });
-  const [reviewCount, setReviewCount] = useState("");
 
   const load = useCallback(async () => {
     setStatus("loading");
@@ -280,9 +268,6 @@ function StudentDetail({ studentId, date, suggestion, onSaved }: { studentId: st
       setMsg(t("offlineSavedMsg"));
       onSaved();
     }
-  }
-  function saveHifz() {
-    void post({ kind: "hifz", fromSurah: Number(hifz.fromSurah), fromAyah: Number(hifz.fromAyah), toSurah: Number(hifz.toSurah), toAyah: Number(hifz.toAyah), attempts: Number(hifz.attempts), mastered: hifz.mastered });
   }
   // الترميم وإعلان الجاهزية: رصدٌ غير idempotent (يُلحِق/يغيّر حالة) — لا يُصفّ محليّاً
   // لئلّا يتضاعف؛ يتطلّب اتصالاً، وإلا يُرشَد المعلّم للإعادة متّصلاً.
@@ -321,6 +306,10 @@ function StudentDetail({ studentId, date, suggestion, onSaved }: { studentId: st
   const s = view.session;
   const label: React.CSSProperties = { fontSize: ui.text.base, fontWeight: 700, margin: `0 0 ${sp(2)}` };
 
+  const hifzBound = (today.newHifz?.kind === "NEW" || today.newHifz?.kind === "REPEAT") ? (today.newHifz.bound ?? null) : null;
+  const tarseekhBounds = view.consolidation?.tarseekh.segments ?? [];
+  const murajaahSlice = today.murajaah?.todaySlice ?? [];
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: sp(3) }}>
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs, margin: 0 }}>{msg}</p>}
@@ -343,35 +332,25 @@ function StudentDetail({ studentId, date, suggestion, onSaved }: { studentId: st
         {t("deferBtn")}
       </Button>
 
-      {/* الحفظ */}
+      {/* الحفظ — المعلّم يؤكّد ولا يكتب */}
       <div>
         <h3 style={label}>{t("hifzTitle")}</h3>
-        {suggestion && !view.hifzGate?.mustRepeat && (
-          <p style={{ margin: `0 0 ${sp(2)}`, fontSize: ui.text.xs, color: ui.color.muted }}>
-            {t("hifzSuggestionPrefix")}{range(suggestion)}{t("hifzSuggestionSuffix")}
-          </p>
-        )}
-        {view.hifzGate?.mustRepeat && view.hifzGate.range && (
-          <p style={{ margin: `0 0 ${sp(2)}`, padding: `${sp(2)} ${sp(3)}`, background: "var(--color-warn-bg)", borderRadius: ui.radius.md, fontSize: ui.text.xs }}>
-            {t("hifzGatePrefix")}<strong>{t("hifzGateSameSegment")}</strong>{t("hifzGateRangeOpen")}{range(view.hifzGate.range)}{t("hifzGateSuffix")}
-            <Button variant="ghost" size="sm" style={{ marginInlineStart: sp(2) }} onClick={() => setHifz((h) => ({ ...h, fromSurah: String(view.hifzGate!.range!.fromSurah), fromAyah: String(view.hifzGate!.range!.fromAyah), toSurah: String(view.hifzGate!.range!.toSurah), toAyah: String(view.hifzGate!.range!.toAyah) }))}>{t("fillSegment")}</Button>
-          </p>
-        )}
-        <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center", fontSize: ui.text.xs }}>
-          <span>{t("fromSurah")}</span><Input style={num} type="number" value={hifz.fromSurah} onChange={(e) => setHifz({ ...hifz, fromSurah: e.target.value })} />
-          <span>{t("ayah")}</span><Input style={num} type="number" value={hifz.fromAyah} onChange={(e) => setHifz({ ...hifz, fromAyah: e.target.value })} />
-          <span>{t("toSurah")}</span><Input style={num} type="number" value={hifz.toSurah} onChange={(e) => setHifz({ ...hifz, toSurah: e.target.value })} />
-          <span>{t("ayah")}</span><Input style={num} type="number" value={hifz.toAyah} onChange={(e) => setHifz({ ...hifz, toAyah: e.target.value })} />
-          <span>{t("attempts")}</span><Input style={num} type="number" min={1} value={hifz.attempts} onChange={(e) => setHifz({ ...hifz, attempts: e.target.value })} />
-          <label style={{ display: "flex", alignItems: "center", gap: 4 }}><input type="checkbox" checked={hifz.mastered} onChange={(e) => setHifz({ ...hifz, mastered: e.target.checked })} /> {t("mastered")}</label>
-          <Button size="sm" onClick={saveHifz}>{t("save")}</Button>
-        </div>
+        <HifzInput
+          bound={hifzBound}
+          hifzKind={today.newHifz?.kind ?? null}
+          mustRepeat={view.hifzGate?.mustRepeat}
+          mustRepeatBound={view.hifzGate?.range ?? null}
+          savedToday={s?.hifzFromSurah != null ? { toSurah: s.hifzToSurah!, toAyah: s.hifzToAyah!, attempts: s.hifzAttempts!, mastered: s.hifzMastered! } : null}
+          onSave={(st) => void post({ kind: "hifz", ...st })}
+        />
         {s?.hifzFromSurah != null && (
-          <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: `${sp(2)} 0 0` }}>{t("recordedTodayPrefix")}{s.hifzFromSurah}:{s.hifzFromAyah} ← {s.hifzToSurah}:{s.hifzToAyah}{t("attemptsMid")}{s.hifzAttempts}{t("masteredSep")}{s.hifzMastered ? t("mastered") : t("notMastered")}</p>
+          <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: `${sp(2)} 0 0` }}>
+            {t("recordedTodayPrefix")}{s.hifzFromSurah}:{s.hifzFromAyah} ← {s.hifzToSurah}:{s.hifzToAyah}{t("attemptsMid")}{s.hifzAttempts}{t("masteredSep")}{s.hifzMastered ? t("mastered") : t("notMastered")}
+          </p>
         )}
       </div>
 
-      {/* ما يُسمَّع اليوم */}
+      {/* ما يُسمَّع اليوم — نوافذ الترسيخ والمراجعة الأسبوعية */}
       {view.consolidation && (
         <div>
           <h3 style={label}>{t("heardTodayTitle")}</h3>
@@ -408,22 +387,29 @@ function StudentDetail({ studentId, date, suggestion, onSaved }: { studentId: st
         </div>
       )}
 
-      {/* الترسيخ والمراجعة (تمّ/لم يتم) */}
+      {/* الترسيخ — المعلّم يؤكّد */}
       <div>
         <h3 style={label}>{t("consolidationTitle")}</h3>
-        <div style={{ display: "flex", gap: sp(5), flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: sp(2) }}>
-            <span>{t("tarseekhInlineLabel")}{s?.tarseekhDone == null ? "—" : s.tarseekhDone ? <Badge tone="success">{t("done")}</Badge> : <Badge tone="neutral">{t("notDone")}</Badge>}</span>
-            <Button variant="ghost" size="sm" onClick={() => void post({ kind: "tarseekh", done: true })}>{t("done")}</Button>
-            <Button variant="ghost" size="sm" onClick={() => void post({ kind: "tarseekh", done: false })}>{t("notDone")}</Button>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: sp(2) }}>
-            <span>{t("murajaahInlinePrefix")}{s?.murajaahCount ?? "—"}</span>
-            <Input type="number" min={0} value={reviewCount} style={num} onChange={(e) => setReviewCount(e.target.value)} />
-            <Button size="sm" onClick={() => void post({ kind: "murajaah", count: Number(reviewCount || 0) })}>{t("recordAmount")}</Button>
-          </div>
+        <span style={{ fontSize: ui.text.xs }}>
+          {t("tarseekhInlineLabel")}{s?.tarseekhDone == null ? "—" : s.tarseekhDone ? <Badge tone="success">{t("done")}</Badge> : <Badge tone="neutral">{t("notDone")}</Badge>}
+        </span>
+        <div style={{ marginTop: sp(2) }}>
+          <TarseekhInput bounds={tarseekhBounds} onDone={(done) => void post({ kind: "tarseekh", done })} />
         </div>
       </div>
+
+      {/* المراجعة — المعلّم يؤكّد */}
+      {today.murajaah != null && (
+        <div>
+          <h3 style={label}>{t("murajaahSectionTitle")}</h3>
+          {s?.murajaahCount != null && (
+            <p style={{ margin: `0 0 ${sp(2)}`, fontSize: ui.text.xs, color: ui.color.muted }}>
+              {t("murajaahRecordedPrefix")}{s.murajaahCount}
+            </p>
+          )}
+          <MurajaahInput todaySlice={murajaahSlice} onRecord={(count) => void post({ kind: "murajaah", count })} />
+        </div>
+      )}
     </div>
   );
 }
