@@ -36,6 +36,16 @@ export const unifiedAr = {
   qaidahDeferred: "مؤجَّل",
   noRasikhYet: "لا محفوظ راسخ بعد.",
   setPath: "تحديد المسار",
+  assignTrackTitle: "تعيين المسار",
+  suggestedTrack: "المقترح",
+  selectTrack: "اختر المسار",
+  saveTrack: "حفظ المسار",
+  cancelBtn: "إلغاء",
+  noteOptional: "ملاحظة (اختياريّة)",
+  noteRequired: "السبب (مطلوب لمسارٍ أدنى من المقترح)",
+  bulkAssignTracks: "تعيين جماعيّ",
+  trackAssigned: "تمّ تعيين المسار.",
+  trackAssignFailed: "تعذّر تعيين المسار.",
 } as const;
 
 export type UnifiedKey = keyof typeof unifiedAr;

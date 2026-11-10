@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { assertCanExamine } from "./examiner-eligibility";
 import { emitEvent } from "./events";
 import { verr } from "./errors";
+import { assignMaraqiTrackInTx } from "./track-assignment";
 
 // ═══════════════ مراقي — المراحل والمسارات (م٤أ، DESIGN §٨) ═══════════════
 //
@@ -111,9 +112,7 @@ export async function recordPaceTest(
       },
     });
     if (assigned) {
-      await tx.trackAssignment.create({
-        data: { studentId: args.studentId, trackId: assigned.id, reason: "PACE_TEST" },
-      });
+      await assignMaraqiTrackInTx(tx, { studentId: args.studentId, trackId: assigned.id, source: "PACE_TEST", actorId: args.administeredBy });
     }
     await tx.student.update({ where: { id: args.studentId }, data: { state: nextState } });
     await emitEvent(tx, {

@@ -6,6 +6,7 @@ import { assertCapability } from "./authz";
 import { emitEvent } from "./events";
 import { maraqiFrontierKey } from "./maraqi-phase";
 import { verr } from "./errors";
+import { assignMaraqiTrackInTx } from "./track-assignment";
 
 // ═══════════════ سلّم المسارات — الانتقال الإجباريّ (مراقي ٢، القرار ب) ═══════════════
 //
@@ -125,6 +126,6 @@ export async function raiseMaraqiTrack(args: RaiseTrackArgs, db: PrismaClient = 
     const assignment = await currentAssignment(tx, args.studentId);
     const curIdx = assignment ? ladder.findIndex((t) => t.id === assignment.trackId) : -1;
     if (curIdx >= 0 && targetIdx <= curIdx) throw verr("manualRaiseHigherOnly");
-    await switchTrack(tx, { studentId: args.studentId, fromAssignmentId: assignment?.id ?? null, fromTrackId: assignment?.trackId ?? null, toTrackId: args.targetTrackId, reason: "MANUAL_RAISE", note: reason, actorId: args.actorId, auto: false });
+    await assignMaraqiTrackInTx(tx, { studentId: args.studentId, trackId: args.targetTrackId, source: "RAISE", actorId: args.actorId });
   });
 }

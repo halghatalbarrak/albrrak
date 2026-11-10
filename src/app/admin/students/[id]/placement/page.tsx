@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
@@ -21,7 +21,7 @@ interface View {
   pending: { programKey: string; from: string } | null;
   programs: { id: string; key: string; nameAr: string }[];
   qaidah: { currentLessonId: string | null; lessons: { id: string; nameAr: string; chapterName: string | null }[] } | null;
-  maraqi: { reachedSurah: number | null; reachedAyah: number | null; outOfOrder: Range[] } | null;
+  maraqi: { reachedSurah: number | null; reachedAyah: number | null; outOfOrder: Range[]; track: { id: string; nameAr: string; source: string | null; startedAt: string } | null } | null;
   history: HistoryRow[];
 }
 const REASON_AR: Record<string, string> = { ASSIGNMENT: t("reasonAssignment"), READING_TEST: t("reasonReadingTest"), GRADUATION: t("reasonGraduation"), CHANGE: t("reasonChange") };
@@ -83,7 +83,10 @@ export default function StudentPlacementPage({ params }: { params: Promise<{ id:
         <QaidahPlacement q={v.qaidah} saving={saving} fieldErr={fieldErr} onSave={(currentLessonId) => post({ action: "place-qaidah", currentLessonId }, () => router.push("/admin/students"))} />
       )}
       {v.programKey === "MARAQI" && v.maraqi && (
-        <MaraqiPlacement m={v.maraqi} saving={saving} fieldErr={fieldErr} onSave={(p) => post({ action: "place-maraqi", ...p }, () => router.push("/admin/students"))} />
+        <>
+          <MaraqiPlacement m={v.maraqi} saving={saving} fieldErr={fieldErr} onSave={(p) => post({ action: "place-maraqi", ...p }, () => router.push("/admin/students"))} />
+          <TrackSection studentId={id} track={v.maraqi.track} onSaved={() => void load()} />
+        </>
       )}
 
       {/* ق٦: تاريخ البرامج — قراءةٌ فقط */}
@@ -296,6 +299,94 @@ function MaraqiPlacement({ m, saving, fieldErr, onSave }: { m: NonNullable<View[
       <Button onClick={() => onSave(preview)} disabled={saving}>
         {saving ? t("savingBtn") : t("savePlacement")}
       </Button>
+    </Card>
+  );
+}
+
+type TrackInfo = { id: string; nameAr: string; source: string | null; startedAt: string } | null;
+interface TrackOption { id: string; nameAr: string; linesPerDay: number; ordinal: number }
+
+const SOURCE_LABEL: Record<string, string> = {
+  MANUAL: t("trackSourceManual"), AUTO_FROM_FRONTIER: t("trackSourceAuto"),
+  PACE_TEST: t("trackSourcePaceTest"), RAISE: t("trackSourceRaise"), BULK: t("trackSourceBulk"),
+};
+
+function TrackSection({ studentId, track, onSaved }: { studentId: string; track: TrackInfo; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [tracks, setTracks] = useState<TrackOption[]>([]);
+  const [suggestedId, setSuggestedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState("");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const loaded = useRef(false);
+
+  useEffect(() => {
+    if (!editing || loaded.current) return;
+    loaded.current = true;
+    void (async () => {
+      const { data: { session } } = await supabaseBrowser().auth.getSession();
+      const tok = session?.access_token ?? null;
+      const res = await fetch(`/api/students/${studentId}/track-suggestion`, { headers: tok ? { authorization: `Bearer ${tok}` } : {} });
+      if (res.ok) {
+        const j = (await res.json()) as { suggestedTrackId: string | null; availableTracks: TrackOption[] };
+        setTracks(j.availableTracks); setSuggestedId(j.suggestedTrackId);
+        setSelectedId(track?.id ?? j.suggestedTrackId ?? j.availableTracks[0]?.id ?? "");
+      }
+    })();
+  }, [editing, studentId, track?.id]);
+
+  const save = async () => {
+    if (!selectedId) return;
+    setSaving(true); setErr(null);
+    const { data: { session } } = await supabaseBrowser().auth.getSession();
+    const tok = session?.access_token ?? null;
+    const res = await fetch(`/api/students/${studentId}/assign-track`, {
+      method: "POST", headers: { "content-type": "application/json", ...(tok ? { authorization: `Bearer ${tok}` } : {}) },
+      body: JSON.stringify({ trackId: selectedId, ...(note.trim() ? { note: note.trim() } : {}) }),
+    });
+    setSaving(false);
+    if (res.ok) { setEditing(false); loaded.current = false; onSaved(); }
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("trackSaved")); }
+  };
+
+  const isBelowSuggested = suggestedId && tracks.find((x) => x.id === suggestedId)
+    ? (tracks.find((x) => x.id === selectedId)?.ordinal ?? 0) < (tracks.find((x) => x.id === suggestedId)!.ordinal)
+    : false;
+
+  return (
+    <Card style={{ marginTop: sp(4) }}>
+      <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginTop: 0 }}>{t("trackSectionTitle")}</h2>
+      {!track ? (
+        <p style={{ color: ui.color.muted, fontSize: ui.text.sm }}>{t("trackNoTrack")}</p>
+      ) : (
+        <div style={{ display: "flex", gap: sp(3), flexWrap: "wrap", alignItems: "center", marginBottom: sp(3) }}>
+          <Badge tone="primary">{track.nameAr}</Badge>
+          {track.source && <Badge tone="neutral">{SOURCE_LABEL[track.source] ?? t("trackSourceUnknown")}</Badge>}
+          <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{t("trackSinceLabel")} {track.startedAt}</span>
+        </div>
+      )}
+      {!editing && (
+        <Button size="sm" variant="bronze" onClick={() => setEditing(true)}>{t("trackChangeBtnLabel")}</Button>
+      )}
+      {editing && (
+        <div style={{ display: "flex", flexDirection: "column", gap: sp(2), marginTop: sp(2) }}>
+          {tracks.length > 0 && (
+            <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}
+              style={{ fontFamily: ui.font, padding: `${sp(1)} ${sp(2)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, background: ui.color.surface, color: ui.color.text, direction: "rtl" }}>
+              {tracks.map((x) => (
+                <option key={x.id} value={x.id}>{x.nameAr}{x.id === suggestedId ? " ★" : ""}</option>
+              ))}
+            </select>
+          )}
+          <Input placeholder={isBelowSuggested ? t("noteRequiredPlacement") : t("noteOptionalPlacement")} value={note} onChange={(e) => setNote(e.target.value)} />
+          {err && <p style={{ color: ui.color.danger, fontSize: ui.text.xs, margin: 0 }}>{err}</p>}
+          <div style={{ display: "flex", gap: sp(2) }}>
+            <Button size="sm" variant="primary" disabled={saving || !selectedId || (isBelowSuggested && !note.trim())} onClick={() => void save()}>{saving ? t("savingBtn") : t("trackSaveBtn")}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>{t("cancelBtn")}</Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
