@@ -86,6 +86,12 @@ describe("navSections — الترتيب والتصنيف الوظيفيّ", () 
     expect(navSections([])).toEqual([]);
   });
 
+  it("لا تظهر /admin/session في أيّ قسم — اندمجت في الشاشة الموحّدة", () => {
+    const all = navSections(["TEACHER", "SUPER_ADMIN"]).flatMap((s) => s.items.map((i) => i.href));
+    expect(all).not.toContain("/admin/session");
+    expect(all).toContain("/admin/unified");
+  });
+
   it("أمينُ بيدرٍ صرفٌ (م٦ب) ⟵ «البيدر» وحده بمدخل «الجَنْي»", () => {
     expect(keys(["SELLER"])).toEqual(["market"]);
     expect(hrefsOf(["SELLER"], "market")).toEqual(["/sell"]);

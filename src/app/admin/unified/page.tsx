@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { makkahDayDate } from "@/lib/makkah-day";
 import { useMe } from "@/lib/useMe";
-import { arNum } from "@/lib/format";
-import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
+import { arNum, formatAyah } from "@/lib/format";
+import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, TodayTargetView, type TTData, ui, sp } from "@/components/ui";
 import { HifzInput } from "@/components/session/HifzInput";
 import { TarseekhInput, MurajaahInput } from "@/components/session/ConsolidationInput";
 import { attendanceLockAr as tLock } from "@/i18n/ar/attendance-lock";
@@ -14,20 +15,14 @@ import { navAr } from "@/i18n/ar/nav";
 import { tSetup } from "@/i18n/ar/setup";
 import { tUnified as tu } from "@/i18n/ar/unified";
 
-// تسمية البرنامج (شارةٌ لكلّ طالب + عدّادٌ في الترويسة — الحلقة قد تجمع برامج مختلفة). النصوص من i18n.
 const PROGRAM_AR: Record<string, string> = {
   QAIDAH_MADANIYYAH: navAr.civilBase, MARAQI: navAr.maraqi, MUDDAKIR: navAr.grpMuddakir, WEEKLY: navAr.weekly,
 };
-/** عدّاد الطلاب لكلّ برنامج في الحلقة: «مراقي ٢٠ · القاعدة ٩». */
 function programCounts(students: { program: string | null }[]): string {
   const by = new Map<string, number>();
   for (const s of students) { const k = s.program ?? ""; if (k) by.set(k, (by.get(k) ?? 0) + 1); }
   return [...by.entries()].map(([k, n]) => `${PROGRAM_AR[k] ?? k} ${arNum(n)}`).join(" · ");
 }
-
-// شاشة التشغيل الموحّدة (م ج): لوحة الحلقة كلها — لكل طالبٍ حضورُه ووجهةُ يومه بالأزرار، بلا
-// مغادرة. طبقة عرضٍ وتسجيلٍ فوق المحرّكات القائمة (getUnifiedBoard/markAttendance/session/extra/
-// العذر/المنح). لا تكسر شاشتَي الجلسة/الحضور القائمتين — هذه إضافةٌ مستقلّة.
 
 interface Bound { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }
 interface NewHifz { kind: "NEW" | "REPEAT" | "COMPLETED" | "NO_TRACK"; bound?: Bound }
@@ -46,11 +41,7 @@ interface Qaidah {
   chapterName: string | null; lessonName: string | null;
   lessonIndexInChapter: number | null; lessonsInChapter: number | null; percent: number;
 }
-interface SetupStatus {
-  isComplete: boolean;
-  blockers: { key: string }[];
-  warnings: { key: string }[];
-}
+interface SetupStatus { isComplete: boolean; blockers: { key: string }[]; warnings: { key: string }[] }
 interface TrackOption { id: string; nameAr: string; linesPerDay: number; ordinal: number }
 interface Student {
   studentId: string; name: string;
@@ -66,6 +57,17 @@ interface GrantItem { id: string; nameAr: string; value: number; grantSource: st
 type LockState = "OPEN" | "APPROVED" | "AUTO_LOCKED" | "TEMP_OPEN";
 interface DayLock { state: LockState; locked: boolean; date: string }
 
+// بيانات لوحة الجلسة (من /api/circles/[id]/session) — للعرض الملخّص في بطاقات الطلاب.
+interface BoardStudent {
+  studentId: string; name: string; program: string; started: boolean;
+  stageLabel: string | null; hizb: number | null;
+  yesterday: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number; mastered: boolean } | null;
+  todayHifzDone: boolean; tarseekhDone: boolean | null; deferredToday: boolean;
+  required: { tarseekhCount: number; khums: number } | null;
+  weeklyPercent: number | null; weeklyComplete: boolean; mustRepeat: boolean; nextStep: string;
+  today: TTData;
+}
+
 const LOCK_LABEL: Record<LockState, string> = {
   OPEN: tLock.stateOpen, APPROVED: tLock.stateApproved, AUTO_LOCKED: tLock.stateAutoLocked, TEMP_OPEN: tLock.stateTempOpen,
 };
@@ -77,7 +79,6 @@ const ATT_LABEL: Record<string, string> = {
   PRESENT: "حاضر", LATE: "متأخّر", ABSENT_UNEXCUSED: "غائب", LEFT_NO_PERMISSION: "خرج بلا إذن",
   ABSENT_EXCUSED: "غائب بعذر", PRE_EXCUSED: "مستأذن", LEFT_EARLY: "خرج مبكّرًا",
 };
-// أزرار الحضور المباشرة (مستأذن يُقدَّم عبر مسار العذر لا زرّاً مباشراً — §١٠٫٢).
 const ATT_BUTTONS: { status: string; label: string; tone: "primary" | "bronze" | "danger" }[] = [
   { status: "PRESENT", label: "حاضر", tone: "primary" },
   { status: "LATE", label: "متأخّر", tone: "bronze" },
@@ -85,7 +86,7 @@ const ATT_BUTTONS: { status: string; label: string; tone: "primary" | "bronze" |
   { status: "LEFT_NO_PERMISSION", label: "خرج بلا إذن", tone: "danger" },
 ];
 
-const todayISO = () => makkahDayDate(new Date()); // Makkah day, not UTC
+const todayISO = () => makkahDayDate(new Date());
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
   return session?.access_token ?? null;
@@ -94,6 +95,7 @@ const CRUMBS = [{ label: "الرئيسة", href: "/" }, { label: "التشغيل
 
 export default function UnifiedPage() {
   const { me } = useMe();
+  const router = useRouter();
   const date = todayISO();
   const [circles, setCircles] = useState<Circle[]>([]);
   const [circleId, setCircleId] = useState("");
@@ -105,6 +107,23 @@ export default function UnifiedPage() {
   const [items, setItems] = useState<GrantItem[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
   const [msg, setMsg] = useState<string | null>(null);
+  const [view, setViewState] = useState<"list" | "cards">("list");
+  const [board, setBoard] = useState<Map<string, BoardStudent>>(new Map());
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  // يقرأ ?view=cards من URL بعد الوصل
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const v = new URLSearchParams(window.location.search).get("view");
+      setViewState(v === "cards" ? "cards" : "list");
+    }
+  }, []);
+
+  const switchView = (v: "list" | "cards") => {
+    setViewState(v);
+    setExpanded(null);
+    router.push(v === "cards" ? "/admin/unified?view=cards" : "/admin/unified", { scroll: false });
+  };
 
   const load = useCallback(async (cid: string) => {
     const t = await token(); if (!t) { setStatus("unauth"); return; }
@@ -114,9 +133,17 @@ export default function UnifiedPage() {
     const b = (await res.json()) as { students: Student[]; absentDefault?: boolean; dayLock?: DayLock };
     setStudents(b.students); setAbsentDefault(Boolean(b.absentDefault)); setDayLock(b.dayLock ?? null);
     setStatus("ready");
-  }, [date]);
 
-  // الحلقات + بنود التقدير (مرّةً).
+    // في عرض البطاقات: جلب لوحة الجلسة أيضاً للحصول على المرحلة وأمس والمطلوب والدورة.
+    if (view === "cards") {
+      const sRes = await fetch(`/api/circles/${cid}/session?date=${date}`, { headers: { authorization: `Bearer ${t}` } });
+      if (sRes.ok) {
+        const sData = (await sRes.json()) as { students?: BoardStudent[] };
+        setBoard(new Map((sData.students ?? []).map((s) => [s.studentId, s])));
+      }
+    }
+  }, [date, view]);
+
   useEffect(() => {
     void (async () => {
       const t = await token(); if (!t) { setStatus("unauth"); return; }
@@ -177,7 +204,7 @@ export default function UnifiedPage() {
     <Shell>
       {circles.length > 1 && (
         <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", marginBottom: sp(3) }}>
-          {circles.map((c) => <Button key={c.id} size="sm" variant={c.id === circleId ? "bronze" : "ghost"} onClick={() => { setCircleId(c.id); setSelected(null); }}>{c.nameAr}</Button>)}
+          {circles.map((c) => <Button key={c.id} size="sm" variant={c.id === circleId ? "bronze" : "ghost"} onClick={() => { setCircleId(c.id); setSelected(null); setExpanded(null); }}>{c.nameAr}</Button>)}
         </div>
       )}
       {dayLock && <DayLockBar lock={dayLock} circleId={circleId} date={date} post={post} />}
@@ -187,10 +214,16 @@ export default function UnifiedPage() {
       )}
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs, marginBottom: sp(2) }}>{msg}</p>}
 
-      {/* زرّ تعيين المسارات الناقصة — يظهر حين وُجد طلاب مراقي بلا مسار */}
+      {/* تعيين المسارات الناقصة */}
       <AutoAssignMissingBtn students={students} circleId={circleId} onDone={() => void load(circleId)} />
 
-      {/* فلتر الإعداد */}
+      {/* مفتاح العرض (قائمة | بطاقات) */}
+      <div style={{ display: "flex", gap: sp(2), marginBottom: sp(3) }}>
+        <Button size="sm" variant={view === "list" ? "primary" : "ghost"} onClick={() => switchView("list")}>{tu("viewList")}</Button>
+        <Button size="sm" variant={view === "cards" ? "primary" : "ghost"} onClick={() => switchView("cards")}>{tu("viewCards")}</Button>
+      </div>
+
+      {/* فلتر الإعداد — في العرضين */}
       {students && students.length > 0 && (
         <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", marginBottom: sp(2) }}>
           {(["ALL", "NEEDS_SETUP", "MISSING_DATA"] as const).map((f) => (
@@ -201,45 +234,164 @@ export default function UnifiedPage() {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: sp(4), alignItems: "flex-start", flexWrap: "wrap" }}>
-        {/* اللوحة الجانبيّة: قائمة الطلاب (من أُنجز/بقي) */}
-        <div style={{ flex: "1 1 260px", minWidth: 240, maxWidth: 360, display: "flex", flexDirection: "column", gap: sp(2) }}>
-          {students && students.some((s) => s.attendanceStatus == null) && (
-            <Button size="sm" variant="primary" onClick={() => void markAllPresent()}>{tu("markAllPresent")}</Button>
-          )}
-          {filtered.map((s) => {
-            const done = s.attendanceStatus != null;
-            return (
-              <button key={s.studentId} onClick={() => setSelected(s.studentId)}
-                style={{ textAlign: "start", border: `1px solid ${s.studentId === selected ? ui.color.goldLine : ui.color.border}`, background: s.studentId === selected ? ui.color.soft : ui.color.surface, borderRadius: ui.radius.md, padding: `${sp(2)} ${sp(3)}`, cursor: "pointer", fontFamily: ui.font, color: ui.color.text, display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(2) }}>
-                <span style={{ display: "flex", gap: 4, alignItems: "center", minWidth: 0 }}>
-                  <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
-                  {s.program && <Badge tone="neutral">{PROGRAM_AR[s.program] ?? s.program}</Badge>}
-                  {s.setupStatus && !s.setupStatus.isComplete && <Badge tone="danger">{tSetup("badgeNeedsSetup")}</Badge>}
-                  {s.setupStatus && s.setupStatus.isComplete && s.setupStatus.warnings.length > 0 && <Badge tone="bronze">{tSetup("badgeMissingData")}</Badge>}
-                </span>
-                <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                  {done ? <Badge tone="success">{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>
-                    : absentDefault ? <Badge tone="danger">{tu("absentNotRaised")}</Badge> : <Badge tone="neutral">{tu("notRaised")}</Badge>}
-                  {s.todayHifzDone && <Badge tone="bronze">{tu("hifzDone")}</Badge>}
-                </span>
-              </button>
-            );
-          })}
-          {filtered.length === 0 && <EmptyState title={setupFilter === "ALL" ? "لا طلاب في الحلقة" : "لا طلاب ضمن هذا الفلتر"} />}
-        </div>
+      {view === "list" && (
+        <div style={{ display: "flex", gap: sp(4), alignItems: "flex-start", flexWrap: "wrap" }}>
+          {/* اللوحة الجانبيّة: قائمة الطلاب */}
+          <div style={{ flex: "1 1 260px", minWidth: 240, maxWidth: 360, display: "flex", flexDirection: "column", gap: sp(2) }}>
+            {students && students.some((s) => s.attendanceStatus == null) && (
+              <Button size="sm" variant="primary" onClick={() => void markAllPresent()}>{tu("markAllPresent")}</Button>
+            )}
+            {filtered.map((s) => {
+              const done = s.attendanceStatus != null;
+              return (
+                <button key={s.studentId} onClick={() => setSelected(s.studentId)}
+                  style={{ textAlign: "start", border: `1px solid ${s.studentId === selected ? ui.color.goldLine : ui.color.border}`, background: s.studentId === selected ? ui.color.soft : ui.color.surface, borderRadius: ui.radius.md, padding: `${sp(2)} ${sp(3)}`, cursor: "pointer", fontFamily: ui.font, color: ui.color.text, display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(2) }}>
+                  <span style={{ display: "flex", gap: 4, alignItems: "center", minWidth: 0 }}>
+                    <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
+                    {s.program && <Badge tone="neutral">{PROGRAM_AR[s.program] ?? s.program}</Badge>}
+                    {s.setupStatus && !s.setupStatus.isComplete && <Badge tone="danger">{tSetup("badgeNeedsSetup")}</Badge>}
+                    {s.setupStatus && s.setupStatus.isComplete && s.setupStatus.warnings.length > 0 && <Badge tone="bronze">{tSetup("badgeMissingData")}</Badge>}
+                  </span>
+                  <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    {done ? <Badge tone="success">{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>
+                      : absentDefault ? <Badge tone="danger">{tu("absentNotRaised")}</Badge> : <Badge tone="neutral">{tu("notRaised")}</Badge>}
+                    {s.todayHifzDone && <Badge tone="bronze">{tu("hifzDone")}</Badge>}
+                  </span>
+                </button>
+              );
+            })}
+            {filtered.length === 0 && <EmptyState title={setupFilter === "ALL" ? "لا طلاب في الحلقة" : "لا طلاب ضمن هذا الفلتر"} />}
+          </div>
 
-        {/* لوحة الطالب */}
-        <div style={{ flex: "2 1 420px", minWidth: 300 }}>
-          {!cur ? <Card><p style={{ margin: 0, color: ui.color.muted }}>{tu("pickStudent")}</p></Card>
-            : <StudentPanel s={cur} circleId={circleId} date={date} items={items} post={post} />}
+          {/* لوحة الطالب */}
+          <div style={{ flex: "2 1 420px", minWidth: 300 }}>
+            {!cur ? <Card><p style={{ margin: 0, color: ui.color.muted }}>{tu("pickStudent")}</p></Card>
+              : <StudentPanel s={cur} circleId={circleId} date={date} items={items} post={post} />}
+          </div>
         </div>
-      </div>
+      )}
+
+      {view === "cards" && (
+        <CardsView
+          students={filtered}
+          board={board}
+          absentDefault={absentDefault}
+          circleId={circleId}
+          date={date}
+          items={items}
+          post={post}
+          expanded={expanded}
+          setExpanded={setExpanded}
+        />
+      )}
     </Shell>
   );
 }
 
-// شارة حالة اليوم + أزرار الاعتماد/طلب الفتح (المهمّة ٩).
+// ═══════════════ عرض البطاقات (بديل الجلسة اليومية) ═══════════════
+function CardsView({ students, board, absentDefault, circleId, date, items, post, expanded, setExpanded }: {
+  students: Student[];
+  board: Map<string, BoardStudent>;
+  absentDefault: boolean;
+  circleId: string; date: string; items: GrantItem[];
+  post: (url: string, body: Record<string, unknown>, okMsg: string) => Promise<void>;
+  expanded: string | null; setExpanded: (id: string | null) => void;
+}) {
+  const range = (r: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }) =>
+    formatAyah(r.fromSurah, r.fromAyah, r.toSurah, r.toAyah);
+
+  if (students.length === 0) return <EmptyState title="لا طلاب ضمن هذا الفلتر" />;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: sp(3) }}>
+      {students.map((s) => {
+        const b = board.get(s.studentId);
+        const isExpanded = expanded === s.studentId;
+        return (
+          <Card key={s.studentId} style={{ padding: 0, overflow: "hidden" }}>
+            <button
+              onClick={() => setExpanded(isExpanded ? null : s.studentId)}
+              style={{ width: "100%", textAlign: "start", background: "transparent", border: "none", cursor: "pointer", fontFamily: ui.font, color: ui.color.text, padding: sp(4), display: "flex", flexDirection: "column", gap: sp(2) }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), flexWrap: "wrap" }}>
+                <span style={{ display: "flex", gap: sp(2), alignItems: "center", minWidth: 0 }}>
+                  <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
+                  {s.program && <Badge tone="neutral">{PROGRAM_AR[s.program] ?? s.program}</Badge>}
+                  {b?.deferredToday && <Badge tone="bronze">{tu("deferredTodayBadge")}</Badge>}
+                  {s.setupStatus && !s.setupStatus.isComplete && <Badge tone="danger">{tSetup("badgeNeedsSetup")}</Badge>}
+                </span>
+                <span style={{ display: "flex", gap: sp(2), alignItems: "center" }}>
+                  {s.attendanceStatus
+                    ? <Badge tone="success">{ATT_LABEL[s.attendanceStatus] ?? s.attendanceStatus}</Badge>
+                    : absentDefault ? <Badge tone="danger">{tu("absentNotRaised")}</Badge> : <Badge tone="neutral">{tu("notRaised")}</Badge>}
+                  {s.todayHifzDone && <Badge tone="bronze">{tu("hifzDone")}</Badge>}
+                </span>
+              </div>
+
+              {/* سطر الملخّص: المرحلة · أمس · المطلوب · دورة الأسبوع — للمراقييّن فقط */}
+              {b && s.program === "MARAQI" && (
+                <div style={{ display: "flex", gap: sp(4), flexWrap: "wrap", fontSize: ui.text.xs, color: ui.color.muted }}>
+                  {b.stageLabel && (
+                    <span>
+                      {tu("stageLabelPrefix")}<strong style={{ color: ui.color.text }}>{b.stageLabel}</strong>
+                      {b.hizb != null ? <>{tu("hizbInline")}{arNum(b.hizb)}</> : ""}
+                    </span>
+                  )}
+                  {b.yesterday && (
+                    <span>
+                      {tu("yesterdayLabel")}<strong style={{ color: ui.color.text }}>{range(b.yesterday)}</strong>
+                      {!b.yesterday.mastered ? tu("notMasteredSuffix") : ""}
+                    </span>
+                  )}
+                  {b.required && (
+                    <span>
+                      {tu("requiredTodayPrefix")}
+                      <strong style={{ color: ui.color.text }}>
+                        {tu("requiredTarseekhPrefix")}{arNum(b.required.tarseekhCount)}
+                        {tu("requiredKhumsPrefix")}{arNum(b.required.khums)}
+                      </strong>
+                    </span>
+                  )}
+                  {b.weeklyPercent != null && (
+                    <span>{tu("weeklyCyclePrefix")}<strong style={{ color: ui.color.text }}>{arNum(b.weeklyPercent)}٪</strong></span>
+                  )}
+                </div>
+              )}
+            </button>
+
+            {/* وجهة اليوم (م٤) للمراقييّن */}
+            {b && s.program === "MARAQI" && (
+              <div style={{ borderTop: `1px solid ${ui.color.border}`, padding: `${sp(3)} ${sp(4)}` }}>
+                <div style={{ fontSize: ui.text.xs, fontWeight: 700, color: ui.color.primary, marginBottom: sp(2) }}>{tu("todayTargetTitle")}</div>
+                <TodayTargetView t={b.today} />
+              </div>
+            )}
+
+            {/* قسم التسجيل (موسَّع) */}
+            {isExpanded && (
+              <div style={{ borderTop: `1px solid ${ui.color.border}`, padding: sp(4), background: ui.color.bg }}>
+                {/* زر «مؤجَّل»: حاضرٌ لم يُسمَّع لضيق الوقت */}
+                {s.program === "MARAQI" && (
+                  <div style={{ marginBottom: sp(3) }}>
+                    <Button
+                      variant="ghost" size="sm"
+                      onClick={() => void post(`/api/students/${s.studentId}/session`, { kind: "defer", date }, tu("deferDone"))}
+                    >
+                      {tu("deferBtn")}
+                    </Button>
+                  </div>
+                )}
+                <StudentPanel s={s} circleId={circleId} date={date} items={items} post={post} />
+              </div>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+// ═══════════════ شارة حالة اليوم + أزرار الاعتماد/طلب الفتح ═══════════════
 function DayLockBar({ lock, circleId, date, post }: {
   lock: DayLock; circleId: string; date: string;
   post: (url: string, body: Record<string, unknown>, okMsg: string) => Promise<void>;
@@ -275,7 +427,6 @@ function StudentPanel({ s, circleId, date, items, post }: {
   };
   const extra = (kind: string) => post(`/api/students/${sid}/extra`, { kind, date }, "سُجِّلت الزيادة.");
   const grant = (pointItemId: string) => post("/api/economy/grant", { studentId: sid, pointItemId }, "مُنح التقدير.");
-  // القاعدة المدنية (م ج): تقييم درس الطالب الحاليّ — يُعاد استعمال مسار جلسة القاعدة القائم.
   const qaidahEval = (mastered: boolean) => post(`/api/students/${sid}/qaidah-session`, { mastered }, "سُجِّل التقييم.");
   const qaidahDefer = () => post(`/api/students/${sid}/qaidah-session`, { defer: true }, "سُجِّل التأجيل.");
 
@@ -295,7 +446,7 @@ function StudentPanel({ s, circleId, date, items, post }: {
         </div>
       </div>
 
-      {/* ٢) القاعدة: الدرس الحاليّ (م ج) · أو وجهة اليوم (مراقي) · أو رسالةٌ لغيرهما */}
+      {/* ٢) القاعدة أو المراقي أو رسالةٌ لغيرهما */}
       {s.qaidah ? <QaidahPanel q={s.qaidah} onEval={qaidahEval} onDefer={qaidahDefer} />
         : s.today.status === "ON_LEAVE" ? <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: 0 }}>{tu("onStageLeave")}</p>
         : s.today.status !== "ACTIVE" ? <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: 0 }}>{tu("noDailyTasks")}</p>
@@ -340,7 +491,7 @@ function StudentPanel({ s, circleId, date, items, post }: {
             )}
           </>)}
 
-      {/* ٤) تقدير يدويّ */}
+      {/* ٣) تقدير يدويّ */}
       {items.length > 0 && (
         <div>
           <h3 style={H3}>{tu("estimate")}</h3>
@@ -353,7 +504,7 @@ function StudentPanel({ s, circleId, date, items, post }: {
   );
 }
 
-// زرّ «تعيين المسارات الناقصة» — يظهر إذا وُجد طلاب مراقي بلا مسار في الحلقة.
+// زرّ «تعيين المسارات الناقصة»
 function AutoAssignMissingBtn({ students, circleId, onDone }: { students: Student[] | null; circleId: string; onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -382,7 +533,7 @@ function AutoAssignMissingBtn({ students, circleId, onDone }: { students: Studen
   );
 }
 
-// نموذج تعيين المسار المضمَّن — يظهر حين newHifz.kind === "NO_TRACK" تحت «الحفظ الجديد».
+// نموذج تعيين المسار المضمَّن
 function TrackAssignInline({ studentId, post }: {
   studentId: string;
   post: (url: string, body: Record<string, unknown>, okMsg: string) => Promise<void>;
@@ -441,12 +592,8 @@ function TrackAssignInline({ studentId, post }: {
           ))}
         </select>
       )}
-      {isBelowSuggested && (
-        <Input placeholder={tu("noteRequired")} value={note} onChange={(e) => setNote(e.target.value)} />
-      )}
-      {!isBelowSuggested && (
-        <Input placeholder={tu("noteOptional")} value={note} onChange={(e) => setNote(e.target.value)} />
-      )}
+      {isBelowSuggested && <Input placeholder={tu("noteRequired")} value={note} onChange={(e) => setNote(e.target.value)} />}
+      {!isBelowSuggested && <Input placeholder={tu("noteOptional")} value={note} onChange={(e) => setNote(e.target.value)} />}
       <div style={{ display: "flex", gap: sp(2) }}>
         <Button size="sm" variant="primary" onClick={save} disabled={!selectedId || (isBelowSuggested && !note.trim())}>{tu("saveTrack")}</Button>
         <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>{tu("cancelBtn")}</Button>
@@ -455,8 +602,7 @@ function TrackAssignInline({ studentId, post }: {
   );
 }
 
-// كتلة القاعدة المدنية داخل لوحة الطالب (م ج): الباب + الدرس الحاليّ + ترتيبه + النسبة + عدّاد
-// التأجيلات + تقييم اليوم، وأزرار متقن/غير متقن/مؤجَّل (متاحةٌ في كل حالات الحضور — ق٣).
+// كتلة القاعدة المدنية
 function QaidahPanel({ q, onEval, onDefer }: { q: Qaidah; onEval: (mastered: boolean) => void; onDefer: () => void }) {
   const H3: React.CSSProperties = { fontSize: ui.text.base, fontWeight: 700, margin: `0 0 ${sp(2)}` };
   const row: React.CSSProperties = { display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center" };
