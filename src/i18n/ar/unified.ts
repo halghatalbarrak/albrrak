@@ -46,6 +46,9 @@ export const unifiedAr = {
   bulkAssignTracks: "تعيين جماعيّ",
   trackAssigned: "تمّ تعيين المسار.",
   trackAssignFailed: "تعذّر تعيين المسار.",
+  autoAssignMissingBtn: "تعيين المسارات الناقصة",
+  autoAssignDone: "عُيِّنت المسارات:",
+  autoAssignProgress: "جارٍ تعيين المسارات…",
 } as const;
 
 export type UnifiedKey = keyof typeof unifiedAr;

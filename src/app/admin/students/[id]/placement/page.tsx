@@ -319,7 +319,24 @@ function TrackSection({ studentId, track, onSaved }: { studentId: string; track:
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [recalcing, setRecalcing] = useState(false);
+  const [recalcMsg, setRecalcMsg] = useState<string | null>(null);
   const loaded = useRef(false);
+
+  const recalc = async () => {
+    setRecalcing(true); setRecalcMsg(null);
+    const { data: { session } } = await supabaseBrowser().auth.getSession();
+    const tok = session?.access_token ?? null;
+    const res = await fetch(`/api/students/${studentId}/recalc-track-from-placement`, {
+      method: "POST", headers: tok ? { authorization: `Bearer ${tok}` } : {},
+    });
+    setRecalcing(false);
+    if (res.ok) {
+      const j = (await res.json()) as { assigned: boolean };
+      setRecalcMsg(j.assigned ? t("trackRecalcDone") : t("trackAlreadySet"));
+      if (j.assigned) onSaved();
+    }
+  };
 
   useEffect(() => {
     if (!editing || loaded.current) return;
@@ -358,7 +375,15 @@ function TrackSection({ studentId, track, onSaved }: { studentId: string; track:
     <Card style={{ marginTop: sp(4) }}>
       <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginTop: 0 }}>{t("trackSectionTitle")}</h2>
       {!track ? (
-        <p style={{ color: ui.color.muted, fontSize: ui.text.sm }}>{t("trackNoTrack")}</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
+          <p style={{ color: ui.color.muted, fontSize: ui.text.sm, margin: 0 }}>{t("trackNoTrack")}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: sp(2) }}>
+            <Button size="sm" variant="primary" disabled={recalcing} onClick={() => void recalc()}>
+              {recalcing ? t("savingBtn") : t("trackRecalcBtn")}
+            </Button>
+            {recalcMsg && <span style={{ fontSize: ui.text.xs, color: ui.color.success }}>{recalcMsg}</span>}
+          </div>
+        </div>
       ) : (
         <div style={{ display: "flex", gap: sp(3), flexWrap: "wrap", alignItems: "center", marginBottom: sp(3) }}>
           <Badge tone="primary">{track.nameAr}</Badge>

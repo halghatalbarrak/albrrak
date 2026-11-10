@@ -140,3 +140,61 @@ export async function assignMaraqiTrackInTx(
 ): Promise<void> {
   await assignMaraqiTrack({ ...args, _skipAuth: true, _tx: tx }, tx);
 }
+
+/**
+ * يُعيَّن المسار التلقائيّ (AUTO_FROM_FRONTIER) لطالبٍ بلا مسارٍ نشط.
+ * يقترح من التسكين/الجلسات، ويُعيَّن عبر assignMaraqiTrack (يفحص الصلاحية).
+ * إن كان للطالب مسارٌ بالفعل → يُعيد { assigned: false }.
+ */
+export async function assignMissingTrackForStudent(
+  studentId: string,
+  actorId: string,
+  db: PrismaClient = prisma,
+): Promise<{ assigned: boolean }> {
+  const hasTrack = await db.trackAssignment.findFirst({ where: { studentId, endedAt: null }, select: { id: true } });
+  if (hasTrack) return { assigned: false };
+  const suggestion = await suggestTrackForStudent(studentId, db);
+  if (!suggestion.suggestedTrackId) return { assigned: false };
+  await assignMaraqiTrack({ studentId, trackId: suggestion.suggestedTrackId, source: "AUTO_FROM_FRONTIER", actorId }, db);
+  return { assigned: true };
+}
+
+/**
+ * يُعيَّن المسار التلقائيّ لكلّ طلاب الحلقة المراقييّن بلا مسارٍ نشط.
+ * يُرجع إحصائيّات التعيين. يُستخدَم من زرّ «تعيين المسارات الناقصة» في الشاشة الموحّدة.
+ */
+export async function autoAssignMissingTracks(
+  circleId: string,
+  actorId: string,
+  db: PrismaClient = prisma,
+): Promise<{ assigned: number; failed: number; details: { studentId: string; ok: boolean; error?: string }[] }> {
+  const enrollments = await db.enrollment.findMany({
+    where: { circleId, endedAt: null, program: { key: ProgramKey.MARAQI } },
+    select: { studentId: true },
+  });
+  if (!enrollments.length) return { assigned: 0, failed: 0, details: [] };
+
+  const withTrack = await db.trackAssignment.findMany({
+    where: { studentId: { in: enrollments.map((e) => e.studentId) }, endedAt: null },
+    select: { studentId: true },
+  });
+  const withTrackSet = new Set(withTrack.map((a) => a.studentId));
+  const without = enrollments.filter((e) => !withTrackSet.has(e.studentId));
+
+  const details: { studentId: string; ok: boolean; error?: string }[] = [];
+  let assigned = 0, failed = 0;
+
+  for (const { studentId } of without) {
+    try {
+      const suggestion = await suggestTrackForStudent(studentId, db);
+      if (!suggestion.suggestedTrackId) { failed++; details.push({ studentId, ok: false, error: "no-suggestion" }); continue; }
+      await assignMaraqiTrack({ studentId, trackId: suggestion.suggestedTrackId, source: "AUTO_FROM_FRONTIER", actorId, _skipAuth: true }, db);
+      assigned++;
+      details.push({ studentId, ok: true });
+    } catch (e) {
+      failed++;
+      details.push({ studentId, ok: false, error: e instanceof Error ? e.message : "خطأ" });
+    }
+  }
+  return { assigned, failed, details };
+}

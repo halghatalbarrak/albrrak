@@ -1,12 +1,14 @@
 import { ProgramKey, Role, StudentState } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import { assignMaraqiTrack } from "../track-assignment";
+import { assignMaraqiTrack, autoAssignMissingTracks, assignMissingTrackForStudent } from "../track-assignment";
 import { placeMaraqi } from "../placement-actions";
 import { recordPaceTest } from "../maraqi";
 import { AuthorizationError } from "../errors";
+import { todayTarget } from "../today-target";
 import { prisma, resetDb } from "../testing/helpers";
 import { createCircle, createProgram, createStudent, createUser } from "../testing/factories";
+import { MARAQI_SURAH_ORDER } from "@/lib/maraqi-order";
 
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
@@ -156,6 +158,96 @@ describe("التعيين الجماعيّ (BULK)", () => {
     const a3 = await prisma.trackAssignment.findFirst({ where: { studentId: s3.id, endedAt: null } });
     expect(a2?.reason).toBe("BULK");
     expect(a3?.reason).toBe("BULK");
+  });
+});
+
+describe("حالة أويس — جبهة المطففين:٣٦ (سورة ٨٣ آية ٣٦، الجزء ٣٠ جارٍ)", () => {
+  // يبذر وحدات المسار الأوّل بترتيب مراقي حتى السورة المطلوبة (وحدة/سورة للتبسيط).
+  async function seedUnits(trackId: string, upToOrderIdx: number) {
+    for (let i = 0; i <= upToOrderIdx; i++) {
+      const surah = MARAQI_SURAH_ORDER[i];
+      await prisma.trackUnit.create({
+        data: { trackId, unitNo: i + 1, startSurah: surah, startAyah: 1, endSurah: surah, endAyah: 1 },
+      });
+    }
+  }
+
+  it("تسكين المطففين:٣٦ → مسار ordinal=1 (٣ أسطر/يوم) AUTO_FROM_FRONTIER", async () => {
+    const { tracks, manager, student } = await scaffold();
+    await placeMaraqi({ actorId: manager.id, studentId: student.id, reachedSurah: 83, reachedAyah: 36 });
+    const a = await prisma.trackAssignment.findFirst({ where: { studentId: student.id, endedAt: null } });
+    expect(a).not.toBeNull();
+    expect(a?.reason).toBe("AUTO_FROM_FRONTIER");
+    const t = await prisma.track.findUnique({ where: { id: a!.trackId } });
+    expect(t?.ordinal).toBe(1);
+    expect(t?.linesPerDay).toBe(3);
+  });
+
+  it("todayTarget بعد تسكين المطففين:٣٦ → newHifz ليس NO_TRACK + مراجعة غير فارغة", async () => {
+    const { tracks, manager, student } = await scaffold();
+    // بذر ٣٣ وحدة (الفاتحة + الناس حتى المطففين بترتيب مراقي)
+    // MARAQI_SURAH_ORDER[32] = 83 (المطففين)
+    await seedUnits(tracks[0].id, 34); // وحدات 0..34 → ٣٥ وحدة، بما فيها المطففين
+    await placeMaraqi({ actorId: manager.id, studentId: student.id, reachedSurah: 83, reachedAyah: 36 });
+    const target = await todayTarget(student.id, new Date(), prisma);
+    expect(target.status).toBe("ACTIVE");
+    expect(target.newHifz?.kind).not.toBe("NO_TRACK");
+    // المحفوظ حتى المطففين = 33+ وحدة، أكثر من tarseekhUnits=10 → مراجعة غير فارغة
+    expect(target.murajaah?.totalStock).toBeGreaterThan(0);
+    // الحفظ الجديد يبدأ بعد المطففين
+    if (target.newHifz?.kind === "NEW") {
+      const { bound } = target.newHifz;
+      // وحدة ما بعد المطففين (index 33+) في ترتيب مراقي
+      expect(bound.fromSurah).toBe(MARAQI_SURAH_ORDER[35] ?? bound.fromSurah);
+    }
+  });
+
+  it("todayTarget بلا تسكين → NO_TRACK (الوضع السابق للإصلاح)", async () => {
+    const { student } = await scaffold();
+    const target = await todayTarget(student.id, new Date(), prisma);
+    expect(target.newHifz?.kind).toBe("NO_TRACK");
+    expect(target.murajaah?.totalStock ?? 0).toBe(0);
+  });
+
+  it("todayTarget بأجزاء كاملة (جزء ٣٠ كاملاً) → مراجعة غير فارغة", async () => {
+    const { tracks, manager, student } = await scaffold();
+    // جزء ٣٠: سورة ٧٨-١١٤ → السورة الأخيرة ١١٤، لكن في مراقي: الفاتحة ثمّ من ١١٤ نزولاً
+    // جبهة «كلّ سور الجزء ٣٠»: آخرها المطففين:٣٦ (أعلى ترتيباً في مراقي)
+    await seedUnits(tracks[0].id, 34);
+    await placeMaraqi({ actorId: manager.id, studentId: student.id, reachedSurah: 83, reachedAyah: 36 });
+    const target = await todayTarget(student.id, new Date(), prisma);
+    expect(target.murajaah?.totalStock).toBeGreaterThan(0);
+  });
+
+  it("autoAssignMissingTracks يعيَّن المسار لطلاب بلا مسار ويتجاهل من لديه مسار", async () => {
+    const { program, tracks, manager, student, circle } = await scaffold();
+    // طالبٌ ثانٍ بلا مسار
+    const { student: s2 } = await createStudent(prisma);
+    await prisma.enrollment.create({ data: { studentId: s2.id, circleId: circle.id, programId: program.id } });
+    await prisma.student.update({ where: { id: s2.id }, data: { state: StudentState.IN_MARAQI } });
+    // طالبٌ ثالثٌ لديه مسار
+    await assignMaraqiTrack({ studentId: student.id, trackId: tracks[1].id, source: "MANUAL", actorId: manager.id });
+    // يُعيَّن التلقائيّ
+    const result = await autoAssignMissingTracks(circle.id, manager.id, prisma);
+    expect(result.assigned).toBe(1); // s2 فقط
+    expect(result.failed).toBe(0);
+    // s2 الآن له مسار
+    const a2 = await prisma.trackAssignment.findFirst({ where: { studentId: s2.id, endedAt: null } });
+    expect(a2).not.toBeNull();
+    expect(a2?.reason).toBe("AUTO_FROM_FRONTIER");
+    // student لم يتغيّر مساره
+    const a1 = await prisma.trackAssignment.findFirst({ where: { studentId: student.id, endedAt: null } });
+    expect(a1?.trackId).toBe(tracks[1].id);
+  });
+
+  it("assignMissingTrackForStudent يعيَّن من التسكين؛ إن كان للطالب مسار يُعيد assigned=false", async () => {
+    const { tracks, manager, student } = await scaffold();
+    // بلا مسار أوّلاً
+    const r1 = await assignMissingTrackForStudent(student.id, manager.id, prisma);
+    expect(r1.assigned).toBe(true);
+    // مرّةٌ ثانية (له مسار الآن)
+    const r2 = await assignMissingTrackForStudent(student.id, manager.id, prisma);
+    expect(r2.assigned).toBe(false);
   });
 });
 

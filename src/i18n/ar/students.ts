@@ -215,6 +215,9 @@ export const studentsAr = {
   noteRequiredPlacement: "السبب مطلوب (مسار أدنى من المقترح)",
   noteOptionalPlacement: "ملاحظة (اختياريّة)",
   cancelBtn: "إلغاء",
+  trackRecalcBtn: "احتساب المسار من التسكين",
+  trackRecalcDone: "احتُسب المسار وعُيِّن تلقائيّاً.",
+  trackAlreadySet: "الطالب لديه مسارٌ نشط — استعمل «تغيير المسار».",
 } as const;
 
 /** مفاتيح قاموس شاشات الطلاب (للتحقّق الثابت عند الاستدعاء). */
