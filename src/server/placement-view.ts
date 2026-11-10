@@ -23,7 +23,7 @@ export interface PlacementView {
   pending: { programKey: ProgramKey; from: string } | null;
   programs: { id: string; key: ProgramKey; nameAr: string }[];
   qaidah: { currentLessonId: string | null; lessons: { id: string; nameAr: string; chapterName: string | null }[] } | null;
-  maraqi: { reachedSurah: number | null; reachedAyah: number | null; outOfOrder: OutOfOrderRange[] } | null;
+  maraqi: { reachedSurah: number | null; reachedAyah: number | null; outOfOrder: OutOfOrderRange[]; track: { id: string; nameAr: string; source: string | null; startedAt: string } | null } | null;
   history: ProgramHistoryRow[];
 }
 
@@ -83,8 +83,16 @@ export async function getPlacementView(actorId: string, studentId: string, db: P
       lessons: lessons.map((l) => ({ id: l.id, nameAr: l.nameAr, chapterName: l.parent?.nameAr ?? null })),
     };
   } else if (view.programKey === ProgramKey.MARAQI) {
-    const p = await db.maraqiPlacement.findUnique({ where: { studentId }, select: { reachedSurah: true, reachedAyah: true, outOfOrder: true } });
-    base.maraqi = { reachedSurah: p?.reachedSurah ?? null, reachedAyah: p?.reachedAyah ?? null, outOfOrder: parseOoo(p?.outOfOrder) };
+    const [p, ta] = await Promise.all([
+      db.maraqiPlacement.findUnique({ where: { studentId }, select: { reachedSurah: true, reachedAyah: true, outOfOrder: true } }),
+      db.trackAssignment.findFirst({ where: { studentId, endedAt: null }, orderBy: { startedAt: "desc" }, select: { trackId: true, reason: true, startedAt: true, track: { select: { nameAr: true } } } }),
+    ]);
+    base.maraqi = {
+      reachedSurah: p?.reachedSurah ?? null,
+      reachedAyah: p?.reachedAyah ?? null,
+      outOfOrder: parseOoo(p?.outOfOrder),
+      track: ta ? { id: ta.trackId, nameAr: ta.track.nameAr, source: ta.reason?.split(":")[0] ?? null, startedAt: iso(ta.startedAt) } : null,
+    };
   }
   return base;
 }

@@ -188,6 +188,27 @@ describe("قاموس شاشات الطلاب (العربيّة)", () => {
       facesTitle: "الأوجه",
       facePagePrefix: "وجه ص",
       positionsSuffix: "موضعًا",
+      // قسم المسار (التسكين)
+      trackSectionTitle: "مسار مراقي",
+      trackNoTrack: "لم يُعيَّن مسار بعد.",
+      trackCurrentLabel: "المسار الحاليّ",
+      trackSourceLabel: "المصدر",
+      trackSinceLabel: "منذ",
+      trackChangeBtnLabel: "تغيير المسار",
+      trackSaveBtn: "حفظ المسار",
+      trackSaved: "تمّ تعيين المسار.",
+      trackSourceManual: "يدويّ",
+      trackSourceAuto: "تلقائيّ (جبهة)",
+      trackSourcePaceTest: "اختبار المقطع",
+      trackSourceRaise: "رفع يدويّ",
+      trackSourceBulk: "تعيين جماعيّ",
+      trackSourceUnknown: "غير محدّد",
+      noteRequiredPlacement: "السبب مطلوب (مسار أدنى من المقترح)",
+      noteOptionalPlacement: "ملاحظة (اختياريّة)",
+      cancelBtn: "إلغاء",
+      trackRecalcBtn: "احتساب المسار من التسكين",
+      trackRecalcDone: "احتُسب المسار وعُيِّن تلقائيّاً.",
+      trackAlreadySet: "الطالب لديه مسارٌ نشط — استعمل «تغيير المسار».",
     };
     for (const key of Object.keys(expected) as (keyof typeof studentsAr)[]) {
       expect(tStudents(key)).toBe(expected[key]);

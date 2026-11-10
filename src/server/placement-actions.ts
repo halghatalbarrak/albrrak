@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { emitEvent } from "./events";
 import { aerr, verr } from "./errors";
 import { recordProgramEntry, closeProgramHistory, cancelPendingTransition, activeProgramId } from "./program-placement";
+import { assignMaraqiTrackInTx } from "./track-assignment";
+import { suggestTrackForStudent } from "./student-setup";
 
 // ═══════════════ أفعال التسكين وتغيير البرنامج (PLACEMENT_RULES ق٢/ق٣/ق٧) ═══════════════
 //
@@ -85,6 +87,16 @@ export async function placeMaraqi(
       update: { reachedSurah: args.reachedSurah ?? null, reachedAyah: args.reachedAyah ?? null, outOfOrder: ooo },
       create: { studentId: args.studentId, reachedSurah: args.reachedSurah ?? null, reachedAyah: args.reachedAyah ?? null, outOfOrder: ooo },
     });
+
+    // تعيينٌ تلقائيّ: إن كان الطالب في مراقي وبلا مسار، يُعيَّن المقترح فوراً.
+    const hasTrack = await tx.trackAssignment.findFirst({ where: { studentId: args.studentId, endedAt: null }, select: { id: true } });
+    if (!hasTrack) {
+      const suggestion = await suggestTrackForStudent(args.studentId, db as PrismaClient);
+      if (suggestion.suggestedTrackId) {
+        await assignMaraqiTrackInTx(tx, { studentId: args.studentId, trackId: suggestion.suggestedTrackId, source: "AUTO_FROM_FRONTIER", actorId: args.actorId });
+      }
+    }
+
     const hadSession = await tx.dailySession.findFirst({ where: { studentId: args.studentId }, select: { id: true } });
     await emitEvent(tx, {
       type: "MARAQI_PLACED", subjectType: "Student", subjectId: args.studentId, actorId: args.actorId,
