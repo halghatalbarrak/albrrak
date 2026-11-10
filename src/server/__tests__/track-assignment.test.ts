@@ -91,6 +91,23 @@ describe("assignMaraqiTrack — التعيين اليدويّ", () => {
     ).rejects.toMatchObject({ key: "trackBelowSuggestedNoteRequired" });
   });
 
+  it("طالب بحالة AWAITING_READING_TEST وتسكين مراقي نشط ← يُسمح بالتعيين", async () => {
+    const { tracks, manager, student } = await scaffold();
+    await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.AWAITING_READING_TEST } });
+    await assignMaraqiTrack({ studentId: student.id, trackId: tracks[0].id, source: "MANUAL", actorId: manager.id });
+    const a = await prisma.trackAssignment.findFirst({ where: { studentId: student.id, endedAt: null } });
+    expect(a).not.toBeNull();
+    expect(a?.trackId).toBe(tracks[0].id);
+  });
+
+  it("طالب بلا تسكين مراقي نشط ← خطأ trackAssignmentMaraqiOnly", async () => {
+    const { tracks, manager, student } = await scaffold();
+    await prisma.enrollment.updateMany({ where: { studentId: student.id }, data: { endedAt: new Date() } });
+    await expect(
+      assignMaraqiTrack({ studentId: student.id, trackId: tracks[0].id, source: "MANUAL", actorId: manager.id }),
+    ).rejects.toMatchObject({ key: "trackAssignmentMaraqiOnly" });
+  });
+
   it("تعيين جديد يُغلق القديم ← سجلٌّ نشطٌ واحد فقط", async () => {
     const { tracks, manager, student } = await scaffold();
     await assignMaraqiTrack({ studentId: student.id, trackId: tracks[0].id, source: "MANUAL", actorId: manager.id });

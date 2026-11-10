@@ -1,4 +1,4 @@
-import { ProgramKey, Role, StudentState, type Prisma, type PrismaClient } from "@prisma/client";
+import { ProgramKey, Role, type Prisma, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { aerr, verr } from "./errors";
@@ -50,21 +50,17 @@ export async function assignMaraqiTrack(
   const student = await db.student.findUnique({
     where: { id: studentId },
     select: {
-      state: true,
       enrollments: {
-        where: { endedAt: null },
-        select: { programId: true, program: { select: { key: true } }, circleId: true },
+        where: { endedAt: null, program: { key: ProgramKey.MARAQI } },
+        select: { programId: true, circleId: true },
         orderBy: { startedAt: "desc" },
         take: 1,
       },
     },
   });
   if (!student) throw verr("studentNotFound");
-  const MARAQI_STATES: string[] = [StudentState.IN_MARAQI, StudentState.AWAITING_PACE_TEST, StudentState.PACE_RETEST_SCHEDULED];
-  const isMaraqiState = MARAQI_STATES.includes(student.state);
-  if (!isMaraqiState) throw verr("trackAssignmentMaraqiOnly");
   const enrollment = student.enrollments[0];
-  if (!enrollment || enrollment.program?.key !== ProgramKey.MARAQI) throw verr("trackAssignmentMaraqiOnly");
+  if (!enrollment) throw verr("trackAssignmentMaraqiOnly");
 
   // ٣. التحقّق من الصلاحية (ما لم يُتجاوز صراحةً لـPaceTest/RAISE).
   if (!_skipAuth) {
