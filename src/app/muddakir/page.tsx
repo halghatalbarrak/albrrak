@@ -408,7 +408,7 @@ function BigCount({ value, total, onTap, large }: { value: number; total: number
   const size = large ? 96 : 64;
   return (
     <button type="button" onClick={onTap} aria-label={t("repAria")}
-      style={{ width: size, height: size, borderRadius: 999, border: `2px solid ${ui.color.primary}`, background: value >= total ? ui.color.primary : ui.color.surface, color: value >= total ? "#fff" : ui.color.text, fontFamily: ui.font, fontWeight: 700, fontSize: large ? ui.text.lg : ui.text.base, cursor: "pointer" }}>
+      style={{ width: size, height: size, borderRadius: 999, border: `2px solid ${ui.color.primary}`, background: value >= total ? ui.color.primary : ui.color.surface, color: value >= total ? ui.color.onPrimary : ui.color.text, fontFamily: ui.font, fontWeight: 700, fontSize: large ? ui.text.lg : ui.text.base, cursor: "pointer" }}>
       {arNum(value)} / {arNum(total)}
     </button>
   );

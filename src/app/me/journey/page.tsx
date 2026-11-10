@@ -144,7 +144,7 @@ export default function JourneyPage() {
 function StationPill({ s }: { s: Station }) {
   // الهوية: المُنجَزة بنفسجيّة (نصّ أبيض)، الحاليّة ذهبيّة (نصّ داكنٌ لحفظ AA)، المقفلة هادئة.
   const bg = s.state === "DONE" ? ui.color.primary : s.state === "CURRENT" ? ui.color.bronze : ui.color.soft;
-  const fg = s.state === "DONE" ? "#fff" : s.state === "CURRENT" ? "#241633" : ui.color.muted;
+  const fg = s.state === "DONE" ? ui.color.onPrimary : s.state === "CURRENT" ? ui.color.onBronze : ui.color.muted;
   const icon = s.state === "DONE" ? "✓" : s.state === "LOCKED" ? "🔒" : "●";
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, minWidth: 84 }}>

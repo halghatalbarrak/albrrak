@@ -9,8 +9,8 @@ const bg: Record<Variant, string> = {
   primary: ui.color.primary, bronze: ui.color.bronze, ghost: "transparent", danger: ui.color.danger,
 };
 const fg: Record<Variant, string> = {
-  // الذهبيّ لونٌ وسطيٌّ في الوضعين؛ نصٌّ داكنٌ ثابتٌ يحفظ AA على الذهبيّ (الأبيض يسقط ٢٫٩:١).
-  primary: "#fff", bronze: "#241633", ghost: "var(--color-ghost-text)", danger: "#fff",
+  // onPrimary/onBronze يتكيّفان مع الوضع الداكن (يُصبحان داكنَين على الخلفيّة الفاتحة).
+  primary: ui.color.onPrimary, bronze: ui.color.onBronze, ghost: ui.color.ghostText, danger: ui.color.onPrimary,
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

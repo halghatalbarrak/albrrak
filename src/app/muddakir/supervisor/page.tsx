@@ -258,7 +258,7 @@ function Muted({ children }: { children: React.ReactNode }) {
 }
 function Chip({ label, value, danger }: { label: string; value: number | string; danger?: boolean }) {
   return (
-    <span style={{ padding: `2px ${sp(2)}`, borderRadius: 999, background: danger ? ui.color.danger : ui.color.soft, color: danger ? "#fff" : ui.color.text, whiteSpace: "nowrap" }}>
+    <span style={{ padding: `2px ${sp(2)}`, borderRadius: 999, background: danger ? ui.color.danger : ui.color.soft, color: danger ? ui.color.onPrimary : ui.color.text, whiteSpace: "nowrap" }}>
       {label}: {typeof value === "number" ? arNum(value) : value}
     </span>
   );

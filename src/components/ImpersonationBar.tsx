@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { ui } from "@/components/ui";
 
 // ═══════════════ شريط الانتحال الدائم (الضمان ٣) ═══════════════
 //
@@ -48,13 +49,13 @@ export function ImpersonationBar() {
     <>
       <div style={{
         position: "fixed", insetInlineStart: 0, insetInlineEnd: 0, top: 0, zIndex: 9999,
-        background: "#7a2e2e", color: "#fff", padding: "8px 16px",
+        background: ui.color.impersonation, color: ui.color.onImpersonation, padding: "8px 16px",
         display: "flex", alignItems: "center", justifyContent: "center", gap: 16, flexWrap: "wrap",
-        fontFamily: "inherit", fontSize: 14, fontWeight: 600, boxShadow: "0 2px 8px rgba(0,0,0,.25)",
+        fontFamily: "inherit", fontSize: 14, fontWeight: 600, boxShadow: ui.shadowElevated,
       }}>
         <span>👁️ أنت تتصفّح كـ«{name}» — الأفعال تُنفَّذ باسمه (موثّقةٌ باسمك).</span>
         <button onClick={() => void stop()} disabled={busy}
-          style={{ background: "#fff", color: "#7a2e2e", border: "none", borderRadius: 6, padding: "4px 12px", fontWeight: 700, cursor: "pointer" }}>
+          style={{ background: ui.color.onImpersonation, color: ui.color.impersonation, border: "none", borderRadius: 6, padding: "4px 12px", fontWeight: 700, cursor: "pointer" }}>
           {busy ? "…" : "العودة لحسابك"}
         </button>
       </div>

@@ -31,7 +31,7 @@ async function token(): Promise<string | null> {
 }
 
 const column: React.CSSProperties = { maxWidth: 520, margin: "0 auto" };
-const chip: React.CSSProperties = { padding: "0.25rem 0.6rem", borderRadius: ui.radius.full, fontSize: ui.text.xs, color: "#fff", fontWeight: 700 };
+const chip: React.CSSProperties = { padding: "0.25rem 0.6rem", borderRadius: ui.radius.full, fontSize: ui.text.xs, color: ui.color.onPrimary, fontWeight: 700 };
 const CRUMBS = [{ label: t("crumbHome"), href: "/" }, { label: t("crumbHasad") }];
 
 export default function HasadPage() {
@@ -134,7 +134,7 @@ export default function HasadPage() {
   // final outcome
   if (outcome) return (
     <Shell>
-      <Card style={{ background: RANK_BG[outcome.rank], color: "#fff", marginBottom: sp(3) }}>
+      <Card style={{ background: RANK_BG[outcome.rank], color: ui.color.onPrimary, marginBottom: sp(3) }}>
         {t("rankLabel")} <strong>{RANK[outcome.rank]}</strong> · {t("totalErrors")} {outcome.totalErrors}
       </Card>
       <Button type="button" onClick={reset}>{t("newHasad")}</Button>
@@ -179,7 +179,7 @@ export default function HasadPage() {
           <svg viewBox={`0 0 ${vb.width} ${vb.height}`} preserveAspectRatio="none"
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
             {polys.filter((p) => shaded.has(`${p.surahNumber}:${p.ayahNumber}`)).map((p, i) => (
-              <path key={i} d={p.polygon} fill="rgba(220,0,0,0.32)" stroke="rgba(200,0,0,0.7)" strokeWidth={0.6} />
+              <path key={i} d={p.polygon} fill={ui.color.errorFill} stroke={ui.color.errorStroke} strokeWidth={0.6} />
             ))}
           </svg>
         )}
