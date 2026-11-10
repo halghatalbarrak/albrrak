@@ -199,3 +199,31 @@ export async function autoAssignMissingTracks(
   }
   return { assigned, failed, details };
 }
+
+/** يُرجع أسماء الطلاب المراقييّن في الحلقة بلا مسارٍ نشط (للعرض في شارة الزرّ). */
+export async function getMissingTrackStudents(
+  circleId: string,
+  db: PrismaClient = prisma,
+): Promise<{ count: number; students: { studentId: string; name: string }[] }> {
+  const enrollments = await db.enrollment.findMany({
+    where: { circleId, endedAt: null, program: { key: ProgramKey.MARAQI } },
+    select: { studentId: true, student: { select: { user: { select: { nameAsInId: true } } } } },
+  });
+  if (!enrollments.length) return { count: 0, students: [] };
+  const withTrack = await db.trackAssignment.findMany({
+    where: { studentId: { in: enrollments.map((e) => e.studentId) }, endedAt: null },
+    select: { studentId: true },
+  });
+  const withTrackSet = new Set(withTrack.map((a) => a.studentId));
+  const without = enrollments.filter((e) => !withTrackSet.has(e.studentId));
+  return { count: without.length, students: without.map((e) => ({ studentId: e.studentId, name: e.student.user.nameAsInId })) };
+}
+
+/** يُرجع مجموعة معرّفات الطلاب المنتسبين للحلقة (للتحقّق في الـAPI). */
+export async function getCircleStudentIds(
+  circleId: string,
+  db: PrismaClient = prisma,
+): Promise<Set<string>> {
+  const rows = await db.enrollment.findMany({ where: { circleId, endedAt: null }, select: { studentId: true } });
+  return new Set(rows.map((r) => r.studentId));
+}
