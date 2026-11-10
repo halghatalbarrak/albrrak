@@ -39,3 +39,4 @@ export { errorsAr as errors } from "./errors";
 export { appshellAr as appshell } from "./appshell";
 export { mushafAr as mushaf } from "./mushaf";
 export { messagesAr as messages } from "./messages";
+export { setupAr as setup } from "./setup";

@@ -40,3 +40,4 @@ export { errorsAr as errors } from "@/i18n/ar/errors";
 export { appshellAr as appshell } from "@/i18n/ar/appshell";
 export { mushafAr as mushaf } from "@/i18n/ar/mushaf";
 export { messagesAr as messages } from "@/i18n/ar/messages";
+export { setupAr as setup } from "@/i18n/ar/setup";

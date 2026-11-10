@@ -9,6 +9,7 @@ import { arNum, formatAyah } from "@/lib/format";
 import { AppShell, Card, Button, Input, Badge, EmptyState, EmptyAction, Skeleton, ui, sp } from "@/components/ui";
 import { attendanceLockAr as tLock } from "@/i18n/ar/attendance-lock";
 import { navAr } from "@/i18n/ar/nav";
+import { tSetup } from "@/i18n/ar/setup";
 import { tUnified as tu } from "@/i18n/ar/unified";
 
 // تسمية البرنامج (شارةٌ لكلّ طالب + عدّادٌ في الترويسة — الحلقة قد تجمع برامج مختلفة). النصوص من i18n.
@@ -43,6 +44,11 @@ interface Qaidah {
   chapterName: string | null; lessonName: string | null;
   lessonIndexInChapter: number | null; lessonsInChapter: number | null; percent: number;
 }
+interface SetupStatus {
+  isComplete: boolean;
+  blockers: { key: string }[];
+  warnings: { key: string }[];
+}
 interface Student {
   studentId: string; name: string;
   program: string | null;
@@ -50,6 +56,7 @@ interface Student {
   todayHifzDone: boolean; tarseekhDone: boolean | null;
   today: Target;
   qaidah: Qaidah | null;
+  setupStatus?: SetupStatus;
 }
 interface Circle { id: string; nameAr: string }
 interface GrantItem { id: string; nameAr: string; value: number; grantSource: string }
@@ -92,6 +99,7 @@ export default function UnifiedPage() {
   const [absentDefault, setAbsentDefault] = useState(false);
   const [dayLock, setDayLock] = useState<DayLock | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [setupFilter, setSetupFilter] = useState<"ALL" | "NEEDS_SETUP" | "MISSING_DATA">("ALL");
   const [items, setItems] = useState<GrantItem[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
   const [msg, setMsg] = useState<string | null>(null);
@@ -131,6 +139,11 @@ export default function UnifiedPage() {
     else { const j = await res.json().catch(() => ({})) as { error?: string }; setMsg(j.error ?? "تعذّر التسجيل."); }
   }
 
+  const filtered = (students ?? []).filter((s) => {
+    if (setupFilter === "NEEDS_SETUP") return s.setupStatus != null && !s.setupStatus.isComplete;
+    if (setupFilter === "MISSING_DATA") return (s.setupStatus?.warnings.length ?? 0) > 0;
+    return true;
+  });
   const cur = students?.find((s) => s.studentId === selected) ?? null;
 
   const Shell = ({ children }: { children: React.ReactNode }) => (
@@ -156,10 +169,21 @@ export default function UnifiedPage() {
       )}
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs, marginBottom: sp(2) }}>{msg}</p>}
 
+      {/* فلتر الإعداد */}
+      {students && students.length > 0 && (
+        <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", marginBottom: sp(2) }}>
+          {(["ALL", "NEEDS_SETUP", "MISSING_DATA"] as const).map((f) => (
+            <Button key={f} size="sm" variant={setupFilter === f ? "primary" : "ghost"} onClick={() => setSetupFilter(f)}>
+              {f === "ALL" ? "الكل" : f === "NEEDS_SETUP" ? "إعداد ناقص" : "بيانات ناقصة"}
+            </Button>
+          ))}
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: sp(4), alignItems: "flex-start", flexWrap: "wrap" }}>
         {/* اللوحة الجانبيّة: قائمة الطلاب (من أُنجز/بقي) */}
         <div style={{ flex: "1 1 260px", minWidth: 240, maxWidth: 360, display: "flex", flexDirection: "column", gap: sp(2) }}>
-          {students?.map((s) => {
+          {filtered.map((s) => {
             const done = s.attendanceStatus != null;
             return (
               <button key={s.studentId} onClick={() => setSelected(s.studentId)}
@@ -167,6 +191,8 @@ export default function UnifiedPage() {
                 <span style={{ display: "flex", gap: 4, alignItems: "center", minWidth: 0 }}>
                   <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
                   {s.program && <Badge tone="neutral">{PROGRAM_AR[s.program] ?? s.program}</Badge>}
+                  {s.setupStatus && !s.setupStatus.isComplete && <Badge tone="danger">{tSetup("badgeNeedsSetup")}</Badge>}
+                  {s.setupStatus && s.setupStatus.isComplete && s.setupStatus.warnings.length > 0 && <Badge tone="bronze">{tSetup("badgeMissingData")}</Badge>}
                 </span>
                 <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
                   {done ? <Badge tone="success">{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>
@@ -176,7 +202,7 @@ export default function UnifiedPage() {
               </button>
             );
           })}
-          {students?.length === 0 && <EmptyState title="لا طلاب في الحلقة" />}
+          {filtered.length === 0 && <EmptyState title={setupFilter === "ALL" ? "لا طلاب في الحلقة" : "لا طلاب ضمن هذا الفلتر"} />}
         </div>
 
         {/* لوحة الطالب */}

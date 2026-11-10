@@ -7,6 +7,7 @@ import { getAttendanceDayLock, type DayLock } from "./attendance-lock";
 import { assertCanRecordListening } from "./daily-session";
 import { grantAuto } from "./economy";
 import { getQaidahPosition, qaidahBoardRow, type QaidahBoardStudent } from "./qaidah-session";
+import { getStudentSetupStatus, type StudentSetupStatus } from "./student-setup";
 import { nextUnitForStudent } from "./track-units";
 import { sessionBoardWithTarget, type BoardStudentWithTarget } from "./today-target";
 
@@ -30,6 +31,8 @@ export interface UnifiedStudent extends BoardStudentWithTarget {
   /** كتلة القاعدة المدنية (م ج): الباب + الدرس الحاليّ + النسبة + تقييم اليوم + العدّاد + القفل.
    *  null لغير طلاب القاعدة (لمراقي تُستعمل today). البرنامج نفسه في `program` الموروث (ق١، من القيد). */
   qaidah: QaidahBoardStudent | null;
+  /** حالة إعداد الطالب (لوحة «إعدادات ناقصة»). */
+  setupStatus: StudentSetupStatus;
 }
 
 export interface UnifiedBoard {
@@ -66,7 +69,8 @@ export async function getUnifiedBoard(
     const qaidah = s.program === ProgramKey.QAIDAH_MADANIYYAH
       ? qaidahBoardRow(s.studentId, s.name, await getQaidahPosition(s.studentId, db, date))
       : null;
-    students.push({ ...s, attendanceStatus: statusBy.get(s.studentId) ?? null, qaidah });
+    const setupStatus = await getStudentSetupStatus(s.studentId, db);
+    students.push({ ...s, attendanceStatus: statusBy.get(s.studentId) ?? null, qaidah, setupStatus });
   }
 
   // لا ترويسة برنامجٍ للحلقة (قد تكون مختلطة) — الواجهة تعتمد student.program لكلّ صفّ.
