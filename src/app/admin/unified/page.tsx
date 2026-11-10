@@ -9,6 +9,7 @@ import { arNum, formatAyah } from "@/lib/format";
 import { AppShell, Card, Button, Input, Badge, EmptyState, EmptyAction, Skeleton, ui, sp } from "@/components/ui";
 import { attendanceLockAr as tLock } from "@/i18n/ar/attendance-lock";
 import { navAr } from "@/i18n/ar/nav";
+import { tSetup } from "@/i18n/ar/setup";
 import { tUnified as tu } from "@/i18n/ar/unified";
 
 // تسمية البرنامج (شارةٌ لكلّ طالب + عدّادٌ في الترويسة — الحلقة قد تجمع برامج مختلفة). النصوص من i18n.
@@ -190,8 +191,8 @@ export default function UnifiedPage() {
                 <span style={{ display: "flex", gap: 4, alignItems: "center", minWidth: 0 }}>
                   <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
                   {s.program && <Badge tone="neutral">{PROGRAM_AR[s.program] ?? s.program}</Badge>}
-                  {s.setupStatus && !s.setupStatus.isComplete && <Badge tone="danger">يحتاج إعداداً</Badge>}
-                  {s.setupStatus && s.setupStatus.isComplete && s.setupStatus.warnings.length > 0 && <Badge tone="bronze">بيانات ناقصة</Badge>}
+                  {s.setupStatus && !s.setupStatus.isComplete && <Badge tone="danger">{tSetup("badgeNeedsSetup")}</Badge>}
+                  {s.setupStatus && s.setupStatus.isComplete && s.setupStatus.warnings.length > 0 && <Badge tone="bronze">{tSetup("badgeMissingData")}</Badge>}
                 </span>
                 <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
                   {done ? <Badge tone="success">{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>

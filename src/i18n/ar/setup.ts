@@ -4,6 +4,7 @@ export const setupAr = {
   panelTitle: "إعدادات ناقصة",
   panelSubtitle: "أكمل هذه الخطوات ليبدأ الطالب حفظه.",
   badgeNeedsSetup: "يحتاج إعداداً",
+  badgeMissingData: "بيانات ناقصة",
   filterIncomplete: "إعداد ناقص",
   completeCount: (n: number) => `${toAr(n)} خطوة ناقصة`,
 
