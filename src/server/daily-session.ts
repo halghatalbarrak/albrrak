@@ -678,7 +678,7 @@ export async function getCircleSessionBoard(
       required: v.consolidation
         ? { tarseekhCount: v.consolidation.tarseekh.segments.length, khums: v.consolidation.review.khums }
         : null,
-      weeklyPercent: v.weeklyReview?.percent ?? null,
+      weeklyPercent: (v.weeklyReview?.required ?? 0) > 0 ? v.weeklyReview!.percent : null,
       weeklyComplete: v.weeklyReview?.complete ?? false,
       mustRepeat: v.hifzGate?.mustRepeat ?? false,
       nextStep: suggestNextStep(v),

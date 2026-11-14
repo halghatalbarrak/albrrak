@@ -5,12 +5,13 @@ import { useState } from "react";
 import { MARAQI_SURAH_ORDER } from "@/lib/maraqi-order";
 import { SURAH_NAMES, surahName } from "@/lib/surah-names";
 import { nextInMaraqi, prevInMaraqi } from "@/lib/ayah-nav";
+import { arNum } from "@/lib/format";
 import { tDailyRecorder as t } from "@/i18n/ar/daily-recorder";
 import { Button, Input, ui, sp } from "@/components/ui";
 import type { TTBound } from "@/components/ui";
 
 // مكوّن تسجيل الحفظ الجديد المشترَك — المعلّم يؤكّد ولا يكتب.
-// الوجهة معبّأةٌ مسبقاً؛ «سمّع كما هو» بنقرة. ± آية تعبر السور بترتيب مراقي.
+// الوجهة معبّأةٌ مسبقاً؛ «أتقن المقرّر ✓» بنقرة. ± آية تعبر السور بترتيب مراقي.
 
 export interface HifzSave {
   fromSurah: number;
@@ -68,7 +69,7 @@ export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedT
       {/* تنبيه الحكم ١ */}
       {mustRepeat && mustRepeatBound && (
         <p style={{ margin: 0, padding: `${sp(2)} ${sp(3)}`, background: "var(--color-warn-bg,#fffbe6)", borderRadius: ui.radius.md, fontSize: ui.text.xs }}>
-          {t("hifzGateWarning")}{t("hifzGateRangeOpen")}{surahName(mustRepeatBound.fromSurah)} {mustRepeatBound.fromAyah} ← {surahName(mustRepeatBound.toSurah)} {mustRepeatBound.toAyah}{t("hifzGateSuffix")}
+          {t("hifzGateWarning")}{t("hifzGateRangeOpen")}{surahName(mustRepeatBound.fromSurah)} {arNum(mustRepeatBound.fromAyah)} ← {surahName(mustRepeatBound.toSurah)} {arNum(mustRepeatBound.toAyah)}{t("hifzGateSuffix")}
         </p>
       )}
       {!mustRepeat && hifzKind === "REPEAT" && (
@@ -78,14 +79,14 @@ export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedT
       {/* عرض وجهة اليوم */}
       {activeBound && (
         <p style={{ margin: 0, fontSize: ui.text.xs, color: ui.color.muted }}>
-          {t("targetLabel")} {surahName(activeBound.fromSurah)} {activeBound.fromAyah} ← {surahName(activeBound.toSurah)} {activeBound.toAyah}
+          {t("targetLabel")} {surahName(activeBound.fromSurah)} {arNum(activeBound.fromAyah)} ← {surahName(activeBound.toSurah)} {arNum(activeBound.toAyah)}
         </p>
       )}
 
       {/* النهاية الحاليّة + أزرار التعديل */}
       <div style={row}>
         <span style={{ fontSize: ui.text.xs }}>{t("endLabel")}</span>
-        <strong style={{ fontSize: ui.text.base }}>{surahName(st.toSurah)} {st.toAyah}</strong>
+        <strong style={{ fontSize: ui.text.base }}>{surahName(st.toSurah)} {arNum(st.toAyah)}</strong>
         <Button size="sm" variant="ghost" onClick={minusAyah}>{t("minusAyah")}</Button>
         <Button size="sm" variant="ghost" onClick={plusAyah}>{t("plusAyah")}</Button>
         <Button size="sm" variant="ghost" onClick={() => { setShowSurah((v) => !v); setSurahQ(""); }}>{t("surahLabel")} ▾</Button>
@@ -127,14 +128,17 @@ export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedT
         </button>
       </div>
 
-      {/* أزرار الفعل الرئيسيّة: «سمّع كما هو» + «أتقن» */}
+      {/* أزرار الفعل الرئيسيّة: «أتقن المقرّر ✓» + «أتقن/لم يُتقن» */}
       <div style={{ display: "flex", gap: sp(3), flexWrap: "wrap" }}>
-        <button
-          style={{ flex: "1 1 auto", minHeight: 52, background: ui.color.primary, color: "#fff", border: "none", borderRadius: ui.radius.md, fontFamily: ui.font, fontSize: ui.text.base, fontWeight: 700, cursor: "pointer", padding: `${sp(2)} ${sp(4)}` }}
-          onClick={() => onSave(st)}
-        >
-          {t("sayAsIs")}
-        </button>
+        <div style={{ flex: "1 1 auto", display: "flex", flexDirection: "column", gap: sp(1) }}>
+          <button
+            style={{ width: "100%", minHeight: 52, background: ui.color.primary, color: "#fff", border: "none", borderRadius: ui.radius.md, fontFamily: ui.font, fontSize: ui.text.base, fontWeight: 700, cursor: "pointer", padding: `${sp(2)} ${sp(4)}` }}
+            onClick={() => onSave(st)}
+          >
+            {t("sayAsIs")}
+          </button>
+          <p style={{ margin: 0, fontSize: ui.text.xs, color: ui.color.muted, textAlign: "center" }}>{t("sayAsIsHint")}</p>
+        </div>
         <button
           style={{ minHeight: 52, minWidth: 100, background: st.mastered ? ui.color.bronze : ui.color.surface, color: st.mastered ? "#fff" : ui.color.text, border: `1px solid ${st.mastered ? ui.color.bronze : ui.color.border}`, borderRadius: ui.radius.md, fontFamily: ui.font, fontSize: ui.text.base, fontWeight: 600, cursor: "pointer", padding: `${sp(2)} ${sp(4)}` }}
           onClick={() => setSt((s) => ({ ...s, mastered: !s.mastered }))}
@@ -146,7 +150,7 @@ export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedT
       {/* ملخّص ما سُجِّل فعلاً */}
       {savedToday && (
         <p style={{ margin: 0, fontSize: ui.text.xs, color: ui.color.muted }}>
-          ✓ {surahName(savedToday.toSurah)} {savedToday.toAyah} · {savedToday.attempts} مح · {savedToday.mastered ? t("masteredToggle") : t("notMasteredToggle")}
+          ✓ {surahName(savedToday.toSurah)} {arNum(savedToday.toAyah)} · {arNum(savedToday.attempts)} مح · {savedToday.mastered ? t("masteredToggle") : t("notMasteredToggle")}
         </p>
       )}
     </div>
