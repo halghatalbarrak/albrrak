@@ -123,7 +123,7 @@ export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedT
           </button>
         ))}
         <button style={btnStyle(st.attempts >= 4)} onClick={() => setSt((s) => ({ ...s, attempts: Math.max(4, s.attempts) }))}>
-          ٤+
+          {"٤+"}
         </button>
       </div>
 
