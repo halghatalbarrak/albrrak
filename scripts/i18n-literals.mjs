@@ -37,6 +37,7 @@ for (const file of walk(SRC)) {
     for (const m of text.matchAll(THROW_RE)) if (AR.test(m[2])) throws++;
   }
   // نصوص JSX: في صفحات/مكوّنات الواجهة فقط.
+  if (r.includes("/design-preview/")) continue; // نصوص عرض التصميم مقصودة ومعزولة
   if (r.endsWith(".tsx") && (r.startsWith("src/app/") || r.startsWith("src/components/"))) {
     for (const m of text.matchAll(JSX_RE)) if (AR.test(m[1])) jsx++;
   }
