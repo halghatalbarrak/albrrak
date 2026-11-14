@@ -35,7 +35,6 @@ export function navSections(roles: string[], muddakirStaff: string[] = []): NavS
   if (teacher || supervises) {
     push("operate", L.grpOperate, [
       { label: L.unified, href: "/admin/unified" },
-      { label: L.session, href: "/admin/session" },
       { label: L.grantPoints, href: "/admin/grant-points" },
     ]);
   }

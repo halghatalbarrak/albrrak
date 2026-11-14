@@ -41,6 +41,27 @@ export const unifiedAr = {
   autoAssignMissingBtn: "تعيين المسارات الناقصة",
   autoAssignDone: "عُيِّنت المسارات:",
   autoAssignProgress: "جارٍ تعيين المسارات…",
+  // عرض البطاقات (بديل الجلسة اليومية)
+  todayTargetTitle: "وجهة اليوم",
+  viewList: "قائمة",
+  viewCards: "بطاقات",
+  stageLabelPrefix: "المرحلة: ",
+  hizbInline: " · ح",
+  yesterdayLabel: "أمس: ",
+  notMasteredSuffix: " (لم يُتقن)",
+  requiredTodayPrefix: "المطلوب: ",
+  requiredTarseekhPrefix: "ترسيخ ",
+  requiredKhumsPrefix: " · مراجعة أخماس ",
+  weeklyCyclePrefix: "دورة الأسبوع: ",
+  deferredTodayBadge: "مؤجَّل اليوم",
+  deferBtn: "مؤجَّل",
+  deferDone: "سُجِّل التأجيل.",
+  declareReadinessBtn: "يستعدّ للحصاد",
+  declareReadinessDone: "أُعلن الاستعداد.",
+  detailLoading: "جارٍ تحميل التفاصيل…",
+  detailLoadFailed: "تعذّر تحميل التفاصيل.",
+  maraqiOnly: "التسجيل للمراقي فقط.",
+  sessionRedirectNote: "الجلسة اليومية انتقلت إلى الشاشة الموحّدة.",
 } as const;
 
 export type UnifiedKey = keyof typeof unifiedAr;
