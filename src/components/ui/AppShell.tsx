@@ -69,7 +69,7 @@ export function AppShell({ roles, muddakirStaff, userName, activeHref, title, cr
 
   const aside = (
     <aside className={`appshell-aside${drawer ? " open" : ""}`} style={{ background: ui.color.sidebar, color: ui.color.sidebarText }}>
-      <div style={{ padding: sp(4), borderBottom: `1px solid rgba(255,255,255,.12)`, display: "flex", alignItems: "center", gap: sp(2) }}>
+      <div style={{ padding: sp(4), borderBottom: `1px solid ${ui.color.sidebarDivider}`, display: "flex", alignItems: "center", gap: sp(2) }}>
         <Link href="/" aria-label={BRAND} onClick={() => setDrawer(false)} style={{ display: "flex", alignItems: "center", gap: sp(2), textDecoration: "none" }}>
           <img src="/png/logo.png" alt={BRAND} style={{ height: 44, width: "auto" }} />
           <span style={{ fontWeight: 700, fontSize: ui.text.base, color: ui.color.sidebarText, lineHeight: 1.2 }}>{tAppshell("brandLine1")}<br />{tAppshell("brandLine2")}</span>

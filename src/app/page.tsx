@@ -61,7 +61,7 @@ export default function Home() {
         <NabawiBackdrop />
         <img src="/png/logo.png" alt={BRAND} style={{ position: "relative", zIndex: 1, height: 96, width: "auto" }} />
         <Card style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 440, textAlign: "center",
-          border: `1px solid ${ui.color.goldLine}`, boxShadow: `0 0 0 4px rgba(201,160,99,0.12), ${ui.shadowCard}` }}>
+          border: `1px solid ${ui.color.goldLine}`, boxShadow: ui.shadowGold }}>
           <h1 style={{ fontSize: ui.text.xxl, fontWeight: 700, margin: 0 }}>منصّة {BRAND}</h1>
           <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", justifyContent: "center", marginTop: sp(5) }}>
             <Link href="/apply"><Button variant="primary">{tHome("applyBtn")}</Button></Link>

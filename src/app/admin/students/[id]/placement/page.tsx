@@ -212,7 +212,7 @@ function MaraqiPlacement({ m, saving, fieldErr, onSave }: { m: NonNullable<View[
                 style={{
                   padding: `${sp(2)} ${sp(1)}`, borderRadius: ui.radius.md, cursor: "pointer",
                   border: `1px solid ${on ? ui.color.primary : ui.color.border}`,
-                  background: on ? ui.color.primary : ui.color.surface, color: on ? "#fff" : ui.color.text,
+                  background: on ? ui.color.primary : ui.color.surface, color: on ? ui.color.onPrimary : ui.color.text,
                   fontSize: ui.text.xs, fontWeight: 600, textAlign: "center",
                 }}>
                 {t("juzWord")} {arNum(b.juz)}
@@ -249,7 +249,7 @@ function MaraqiPlacement({ m, saving, fieldErr, onSave }: { m: NonNullable<View[
                 style={{
                   padding: `2px ${sp(2)}`, borderRadius: ui.radius.full, cursor: "pointer",
                   border: `1px solid ${on ? ui.color.primary : ui.color.goldLine}`,
-                  background: on ? ui.color.primary : ui.color.surface, color: on ? "#fff" : ui.color.text, fontSize: ui.text.xs,
+                  background: on ? ui.color.primary : ui.color.surface, color: on ? ui.color.onPrimary : ui.color.text, fontSize: ui.text.xs,
                 }}>
                 {name}
               </button>

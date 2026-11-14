@@ -29,7 +29,7 @@ export function Modal({ open, onClose, title, children, footer }: {
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 100,
-        background: "rgba(43,38,32,.45)",
+        background: ui.color.overlay,
         display: "flex", alignItems: "center", justifyContent: "center", padding: sp(4),
         fontFamily: ui.font,
       }}

@@ -35,11 +35,37 @@
   --text-xs:14px; --text-base:16px; --text-lg:20px; --text-xl:24px; --text-2xl:32px; --text-3xl:40px;
   /* ظلّ خفيفٌ للبطاقات */
   --shadow-card:0 1px 3px rgba(60,50,40,.08), 0 1px 2px rgba(60,50,40,.05);
+  /* ظلالٌ إضافيّة */
+  --shadow-panel:0 4px 12px rgba(0,0,0,.12);       /* لوحٌ / قائمةٌ منسدلة */
+  --shadow-elevated:0 2px 8px rgba(0,0,0,.25);     /* عناصرٌ عائمة (شريط الانتحال...) */
+  --shadow-gold:0 0 0 4px rgba(201,160,99,0.12),var(--shadow-card); /* وميضٌ ذهبيّ حول البطاقة */
+  /* ألوانٌ دلاليّة إضافيّة */
+  --color-on-primary:#fff;        /* نصٌّ على خلفيّة primary/danger/success/rank (الوضع الفاتح) */
+  --color-on-bronze:#241633;      /* نصٌّ على زرّ bronze — داكنٌ يحفظ AA */
+  --color-impersonation:#7a2e2e;  /* شريط الانتحال — أحمرٌ داكن ثابت */
+  --color-on-impersonation:#fff;  /* نصٌّ على شريط الانتحال — أبيضٌ ثابت */
+  --color-warning:#b8860b;        /* تحذيرٌ — نصٌّ أو أيقونة */
+  --color-overlay:rgba(43,38,32,.45);        /* حجابٌ لـModal / CommandPalette */
+  --color-error-fill:rgba(220,0,0,0.32);     /* تظليلُ مضلَّع آية الخطأ في المصحف */
+  --color-error-stroke:rgba(200,0,0,0.7);    /* حدُّ مضلَّع آية الخطأ في المصحف */
+  --color-sidebar-divider:rgba(255,255,255,.12); /* فاصلٌ خافتٌ في الشريط الجانبيّ */
+  /* الشاشة التحفيزيّة (TV) — ثابتةٌ لا تستجيب للوضع الداكن */
+  --display-bg-gradient:linear-gradient(135deg,#2B1A4F,#1E1238);
+  --display-overlay:linear-gradient(180deg,rgba(30,18,56,.55),rgba(30,18,56,.78));
+  --display-gold-alpha:rgba(184,146,74,.4);
+  --display-gold-soft:rgba(184,146,74,.22);
+  --display-gold-bg:rgba(184,146,74,.16);
+  --display-gold-bar:linear-gradient(180deg,rgba(184,146,74,.5),rgba(184,146,74,.1));
+  --display-glass:rgba(255,255,255,.08);
+  --display-on-gold:#3a2a12;
+  --display-shadow-image:0 10px 40px rgba(0,0,0,.5);
+  --display-text-shadow:0 2px 12px rgba(0,0,0,.5);
 }
 
 /* ═══════════════ الوضع الداكن (الفكرة ٦) — يُطبَّق بـ[data-theme="dark"] ═══════════════ */
 /* دفءٌ لا سواد قارس؛ البرونزيّ والنجاح/الخطر مرفوعةُ الإضاءة ليبقيا مقروءَين على الداكن. */
-:root[data-theme="dark"] {
+/* ملاحظة: بلا `:root` لتعمل الحاوية المُتداخلة في صفحة معاينة الثيمات أيضاً. */
+[data-theme="dark"] {
   --color-primary:#c9beb0;  --color-primary-hover:#ddd3c6;
   --color-bronze:#c79a5f;   --color-bronze-hover:#d8ad72;
   --color-bg:#1b1916;       --color-surface:#26231f;
@@ -48,12 +74,65 @@
   --color-success:#5fbf8f;  --color-danger:#e0736c;
   --color-soft:#322d26;     --color-warn-bg:#3a3320;  --color-ok-bg:#22322a;
   --shadow-card:0 1px 3px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.25);
+  --shadow-panel:0 4px 16px rgba(0,0,0,.35);
+  --shadow-elevated:0 2px 10px rgba(0,0,0,.45);
+  --shadow-gold:0 0 0 4px rgba(201,160,99,0.07),var(--shadow-card);
+  /* نصٌّ على الخلفيّات المُلوَّنة (تُعكَس إضاءتها في الوضع الداكن) */
+  --color-on-primary:#1b1916;  --color-on-bronze:#1b1916;
+  --color-warning:#d4a541;     --color-overlay:rgba(0,0,0,.55);
   /* الذهب يبقى مقروءًا على الداكن؛ الفيروزيّ أرفع إضاءةً، وخلفيّة الدخول دافئةٌ داكنة. */
   --gold-line:#cBA463;
   --color-teal:#5FB3B3;
   --login-bg-from:#26231f;  --login-bg-to:#1b1916;
 }
 /* صور المصحف أحاديّةُ اللون على أبيض — لا تُقلَب ولا تُظلَم في الوضع الداكن (قرار محمد). */
+
+/* ═══════════════ ثيم الدفء/البنّيّ — فاتح ═══════════════ */
+/* لم يُفعَّل في الإنتاج بعد؛ المدير يختاره من صفحة المعاينة قبل التفعيل. */
+[data-theme="brown"] {
+  --color-primary:#756A5D;  --color-primary-hover:#5e5248;
+  --color-bronze:#C29A6F;   --color-bronze-hover:#a67d4f;
+  --color-bg:#F5EFE6;       --color-surface:#FAF5EC;
+  --color-text:#2C1E0F;     --color-muted:#7A6450;   --color-border:#D4C4A8;
+  --color-ghost-text:#756A5D;
+  --color-success:#2D6A30;  --color-danger:#9B2222;
+  --color-soft:#EDE3D6;     --color-warn-bg:#F5EDD5;  --color-ok-bg:#E6EFE0;
+  --gold:linear-gradient(135deg,#D4AE6E,#C29A6F,#9A7045);
+  --gold-line:#C29A6F;
+  --color-teal:#2E8B8B;
+  --color-sidebar:#3D2B1A;  --color-sidebar-text:#F0E8D8;  --color-sidebar-muted:#C4A882;
+  --color-sidebar-accent:#C29A6F;  --color-sidebar-active-bg:rgba(255,255,255,.07);
+  --color-sidebar-divider:rgba(255,255,255,.12);
+  --login-bg-from:#FAF4EC;  --login-bg-to:#F5EFE6;
+  --shadow-card:0 1px 3px rgba(60,40,20,.08), 0 1px 2px rgba(60,40,20,.05);
+  --shadow-gold:0 0 0 4px rgba(194,154,111,0.14),var(--shadow-card);
+  --color-on-primary:#fff;  --color-on-bronze:#2C1E0F;
+  --color-warning:#b8860b;  --color-overlay:rgba(43,38,32,.45);
+  --color-error-fill:rgba(220,0,0,0.32);  --color-error-stroke:rgba(200,0,0,0.7);
+}
+
+/* ═══════════════ ثيم الدفء/البنّيّ — داكن ═══════════════ */
+[data-theme="brown-dark"] {
+  --color-primary:#BBA898;  --color-primary-hover:#CDB9AC;
+  --color-bronze:#C29A6F;   --color-bronze-hover:#D4AD82;
+  --color-bg:#1E1510;       --color-surface:#2A1F18;
+  --color-text:#EBE0D3;     --color-muted:#B8A090;   --color-border:#4A3A2C;
+  --color-ghost-text:#E8DDD3;
+  --color-success:#5FBF8F;  --color-danger:#E0736C;
+  --color-soft:#2E2218;     --color-warn-bg:#352918;  --color-ok-bg:#1E2D1E;
+  --gold-line:#C4A472;
+  --color-teal:#5FB3B3;
+  --color-sidebar:#2A1A0E;  --color-sidebar-text:#F0E8D8;  --color-sidebar-muted:#C4A882;
+  --color-sidebar-accent:#C29A6F;  --color-sidebar-active-bg:rgba(255,255,255,.07);
+  --color-sidebar-divider:rgba(255,255,255,.12);
+  --login-bg-from:#2A1F18;  --login-bg-to:#1E1510;
+  --shadow-card:0 1px 3px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.25);
+  --shadow-panel:0 4px 16px rgba(0,0,0,.35);
+  --shadow-elevated:0 2px 10px rgba(0,0,0,.45);
+  --shadow-gold:0 0 0 4px rgba(194,154,111,0.08),var(--shadow-card);
+  --color-on-primary:#1E1510;  --color-on-bronze:#1E1510;
+  --color-warning:#d4a541;    --color-overlay:rgba(0,0,0,.55);
+}
 
 /* اللغة البصريّة (الفكرة ٧): سكونٌ في الحركة — نحترم تفضيل تقليل الحركة. */
 @media (prefers-reduced-motion: reduce) {

@@ -20,7 +20,7 @@ export default function AppShellPreview() {
 
   return (
     <div>
-      <div style={{ position: "fixed", bottom: 12, left: 12, zIndex: 200, display: "flex", gap: 6, background: "#fff", padding: 8, borderRadius: 8, boxShadow: ui.shadowCard }}>
+      <div style={{ position: "fixed", bottom: 12, left: 12, zIndex: 200, display: "flex", gap: 6, background: ui.color.surface, padding: 8, borderRadius: 8, boxShadow: ui.shadowCard }}>
         {Object.keys(ROLES).map((r) => (
           <Button key={r} size="sm" variant={r === role ? "bronze" : "ghost"} onClick={() => setRole(r as keyof typeof ROLES)}>{r}</Button>
         ))}

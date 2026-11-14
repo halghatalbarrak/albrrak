@@ -67,7 +67,7 @@ export function CommandPalette() {
   let idx = -1;
   return (
     <div dir="rtl" onClick={() => setOpen(false)}
-      style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(43,38,32,.45)", display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "12vh", fontFamily: ui.font }}>
+      style={{ position: "fixed", inset: 0, zIndex: 120, background: ui.color.overlay, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "12vh", fontFamily: ui.font }}>
       <div onClick={(e) => e.stopPropagation()}
         style={{ background: ui.color.surface, borderRadius: ui.radius.lg, boxShadow: ui.shadowCard, width: "100%", maxWidth: 560, maxHeight: "70vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <input

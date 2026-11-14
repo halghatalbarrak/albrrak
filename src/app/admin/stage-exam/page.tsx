@@ -37,7 +37,7 @@ function todayISO(): string {
 }
 
 const column: React.CSSProperties = { maxWidth: 560, margin: "0 auto" };
-const chip: React.CSSProperties = { padding: "0.25rem 0.6rem", borderRadius: ui.radius.full, fontSize: ui.text.xs, color: "#fff", fontWeight: 700 };
+const chip: React.CSSProperties = { padding: "0.25rem 0.6rem", borderRadius: ui.radius.full, fontSize: ui.text.xs, color: ui.color.onPrimary, fontWeight: 700 };
 const CRUMBS = [{ label: t("crumbHome"), href: "/" }, { label: t("crumbStageExam") }];
 
 export default function StageExamPage() {
@@ -195,7 +195,7 @@ export default function StageExamPage() {
   // final outcome
   if (outcome) return (
     <Shell>
-      <Card style={{ background: RANK_BG[outcome.finalRank], color: "#fff", marginBottom: sp(3) }}>
+      <Card style={{ background: RANK_BG[outcome.finalRank], color: ui.color.onPrimary, marginBottom: sp(3) }}>
         {t("examResult")} <strong>{outcome.status === "PASSED" ? t("resultPassed") : t("resultFailed")}</strong> · {t("rankLabel")} <strong>{RANK[outcome.finalRank]}</strong>
       </Card>
       {outcome.status === "PASSED" && outcome.approvalId && (
@@ -259,7 +259,7 @@ export default function StageExamPage() {
       <Card style={{ display: "flex", gap: sp(4), fontSize: ui.text.xs, marginBottom: sp(3), flexWrap: "wrap", padding: `${sp(2)} ${sp(4)}` }}>
         <span>{t("hizbWord")} <strong>{hizbIdx + 1}</strong> {t("ofWord")} {pick.hizbs.length}{curHizb ? ` (${curHizb.label})` : ""}</span>
         <span>{t("faceWord")} <strong>{faceIdx + 1}</strong> {t("ofWord")} {pages.length}{page != null ? `${t("pageParenPrefix")}${page})` : ""}</span>
-        <span>{t("hizbErrors")} <strong style={{ color: ui.color.danger }}>{curGrade.totalErrors}</strong> (<span style={{ background: RANK_BG[curGrade.rank], color: "#fff", padding: "0 6px", borderRadius: ui.radius.full }}>{RANK[curGrade.rank]}</span>)</span>
+        <span>{t("hizbErrors")} <strong style={{ color: ui.color.danger }}>{curGrade.totalErrors}</strong> (<span style={{ background: RANK_BG[curGrade.rank], color: ui.color.onPrimary, padding: "0 6px", borderRadius: ui.radius.full }}>{RANK[curGrade.rank]}</span>)</span>
         <span>{t("faceHesitation")} <strong>{faceHes}</strong>{faceHes >= 3 ? t("countsAsError") : ""}</span>
       </Card>
       {msg && <p style={{ color: ui.color.danger }}>{msg}</p>}
@@ -273,7 +273,7 @@ export default function StageExamPage() {
           <svg viewBox={`0 0 ${vb.width} ${vb.height}`} preserveAspectRatio="none"
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
             {polys.filter((p) => shaded.has(`${p.surahNumber}:${p.ayahNumber}`)).map((p, i) => (
-              <path key={i} d={p.polygon} fill="rgba(220,0,0,0.32)" stroke="rgba(200,0,0,0.7)" strokeWidth={0.6} />
+              <path key={i} d={p.polygon} fill={ui.color.errorFill} stroke={ui.color.errorStroke} strokeWidth={0.6} />
             ))}
           </svg>
         )}

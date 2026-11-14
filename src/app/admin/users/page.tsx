@@ -215,7 +215,7 @@ export default function AdminUsersPage() {
               position: "absolute", top: "100%", insetInlineEnd: 0, zIndex: 50,
               background: ui.color.surface, border: `1px solid ${ui.color.border}`,
               borderRadius: 6, padding: `${sp(1)} 0`, minWidth: 140,
-              boxShadow: "0 4px 12px rgba(0,0,0,.12)",
+              boxShadow: ui.shadowPanel,
             }}>
               {canImpersonate(u) && (
                 <button style={menuItemStyle} onClick={() => void startImpersonate(u)}>{t("btnImpersonate")}</button>
@@ -256,7 +256,7 @@ export default function AdminUsersPage() {
           <div style={{ display: "flex", gap: sp(1), marginBottom: sp(3), flexWrap: "wrap" }}>
             {(["all", "staff", "guardians", "students"] as const).map((k) => (
               <button key={k} onClick={() => setTab(k)}
-                style={{ padding: `${sp(1.5)} ${sp(3)}`, borderRadius: ui.radius.full, border: `1px solid ${ui.color.border}`, cursor: "pointer", fontSize: ui.text.xs, fontFamily: ui.font, background: tab === k ? ui.color.primary : ui.color.surface, color: tab === k ? "#fff" : ui.color.text }}>
+                style={{ padding: `${sp(1.5)} ${sp(3)}`, borderRadius: ui.radius.full, border: `1px solid ${ui.color.border}`, cursor: "pointer", fontSize: ui.text.xs, fontFamily: ui.font, background: tab === k ? ui.color.primary : ui.color.surface, color: tab === k ? ui.color.onPrimary : ui.color.text }}>
                 {t(k === "all" ? "tabAll" : k === "staff" ? "tabStaff" : k === "guardians" ? "tabGuardians" : "tabStudents")}
               </button>
             ))}

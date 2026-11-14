@@ -155,7 +155,7 @@ export default function StudentImportPage() {
     return s;
   }, [rows]);
 
-  const toneColor = (lvl: PreviewRow["level"]) => (lvl === "error" ? ui.color.danger : lvl === "warning" ? "#b8860b" : lvl === "skip" ? ui.color.muted : ui.color.success);
+  const toneColor = (lvl: PreviewRow["level"]) => (lvl === "error" ? ui.color.danger : lvl === "warning" ? ui.color.warning : lvl === "skip" ? ui.color.muted : ui.color.success);
   const statusText = (lvl: PreviewRow["level"]) => t(lvl === "error" ? "statusError" : lvl === "warning" ? "statusWarning" : lvl === "skip" ? "statusSkip" : "statusValid");
 
   const columns: Column<PreviewRow>[] = [
@@ -244,7 +244,7 @@ export default function StudentImportPage() {
               <h2 style={{ fontSize: ui.text.lg, fontWeight: 700 }}>{t("previewTitle")}</h2>
               <p style={{ fontSize: ui.text.xs }}>
                 <span style={{ color: ui.color.success }}>{t("summaryValid")}: {arNum(summary.valid)}</span>{"  ·  "}
-                <span style={{ color: "#b8860b" }}>{t("summaryWarning")}: {arNum(summary.warning)}</span>{"  ·  "}
+                <span style={{ color: ui.color.warning }}>{t("summaryWarning")}: {arNum(summary.warning)}</span>{"  ·  "}
                 <span style={{ color: ui.color.danger }}>{t("summaryError")}: {arNum(summary.error)}</span>{"  ·  "}
                 <span style={{ color: ui.color.muted }}>{t("summarySkip")}: {arNum(summary.skip)}</span>
               </p>

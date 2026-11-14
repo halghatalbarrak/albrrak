@@ -102,17 +102,17 @@ export default function DisplayTvPage() {
     return () => { if (slideTimer.current) clearTimeout(slideTimer.current); };
   }, [idx, slides]);
 
-  if (!data) return <Fullscreen bg={null}><p style={{ color: "#EFE7D6" }}>{failed ? t("unavailable") : t("loadingTv")}</p></Fullscreen>;
+  if (!data) return <Fullscreen bg={null}><p style={{ color: ui.color.sidebarText }}>{failed ? t("unavailable") : t("loadingTv")}</p></Fullscreen>;
 
   const { image: bg, video: bgVideo } = pickBackground(data.background, data.kind);
   const slide = slides.length ? slides[idx % slides.length] : null;
 
   return (
     <Fullscreen bg={bg} video={bgVideo}>
-      {slide?.type === "image" && <img src={slide.imageUrl} alt="" style={{ maxWidth: "92vw", maxHeight: "86vh", borderRadius: 24, boxShadow: "0 10px 40px rgba(0,0,0,.5)" }} />}
+      {slide?.type === "image" && <img src={slide.imageUrl} alt="" style={{ maxWidth: "92vw", maxHeight: "86vh", borderRadius: 24, boxShadow: ui.displayShadowImage }} />}
       {slide?.type === "program" && <ProgramSlide slide={slide} />}
       {slide?.type === "home" && <HomeSlide slide={slide} />}
-      {!slide && <p style={{ color: "#EFE7D6", fontSize: 28 }}>{data.nameAr}</p>}
+      {!slide && <p style={{ color: ui.color.sidebarText, fontSize: 28 }}>{data.nameAr}</p>}
     </Fullscreen>
   );
 }
@@ -121,10 +121,10 @@ export default function DisplayTvPage() {
 function Fullscreen({ children, bg, video }: { children: React.ReactNode; bg: string | null; video?: string | null }) {
   return (
     <main dir="rtl" style={{ position: "fixed", inset: 0, overflow: "hidden", fontFamily: ui.font, display: "flex", alignItems: "center", justifyContent: "center",
-      background: bg ? `#2B1A4F url('${bg}') center/cover no-repeat` : "linear-gradient(135deg,#2B1A4F,#1E1238)" }}>
+      background: bg ? `${ui.color.sidebar} url('${bg}') center/cover no-repeat` : ui.color.displayBgGrad }}>
       {video && <video src={video} autoPlay muted loop playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />}
       {/* حجابٌ داكنٌ لقراءة النصّ فوق الخلفيّة */}
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(30,18,56,.55), rgba(30,18,56,.78))" }} />
+      <div style={{ position: "absolute", inset: 0, background: ui.color.displayOverlay }} />
       <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "3vh 3vw" }}>
         {children}
       </div>
@@ -132,10 +132,9 @@ function Fullscreen({ children, bg, video }: { children: React.ReactNode; bg: st
   );
 }
 
-const GOLD = "#B8924A", CREAM = "#EFE7D6", MUTED = "#B9A9C9";
 function Title({ children }: { children: React.ReactNode }) {
-  return <h1 style={{ color: CREAM, fontSize: "4vh", fontWeight: 700, margin: "0 0 2.5vh", textAlign: "center", textShadow: "0 2px 12px rgba(0,0,0,.5)" }}>
-    <span style={{ color: GOLD }}>✦ </span>{children}<span style={{ color: GOLD }}> ✦</span>
+  return <h1 style={{ color: ui.color.sidebarText, fontSize: "4vh", fontWeight: 700, margin: "0 0 2.5vh", textAlign: "center", textShadow: ui.displayTextShadow }}>
+    <span style={{ color: ui.color.goldLine }}>✦ </span>{children}<span style={{ color: ui.color.goldLine }}> ✦</span>
   </h1>;
 }
 
@@ -150,20 +149,20 @@ function ProgramSlide({ slide }: { slide: { programNameAr: string; ranking: Rank
         {podium.map((r) => (
           <div key={r.rank} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.8vh" }}>
             <Medallion rank={r.rank} />
-            <div style={{ color: CREAM, fontWeight: 700, fontSize: "2.4vh", textAlign: "center", maxWidth: "20vw" }}>{r.name}</div>
-            <div style={{ color: GOLD, fontWeight: 700, fontSize: "2.2vh" }}>{arNum(r.points)}</div>
+            <div style={{ color: ui.color.sidebarText, fontWeight: 700, fontSize: "2.4vh", textAlign: "center", maxWidth: "20vw" }}>{r.name}</div>
+            <div style={{ color: ui.color.goldLine, fontWeight: 700, fontSize: "2.2vh" }}>{arNum(r.points)}</div>
             {r.badges.length > 0 && <div style={{ fontSize: "2.2vh" }}>{r.badges.slice(0, 5).join(" ")}</div>}
-            <div style={{ width: "10vw", height: heights.get(r.rank), background: "linear-gradient(180deg,rgba(184,146,74,.5),rgba(184,146,74,.1))", borderTop: `3px solid ${GOLD}`, borderRadius: "6px 6px 0 0" }} />
+            <div style={{ width: "10vw", height: heights.get(r.rank), background: ui.color.displayGoldBar, borderTop: `3px solid ${ui.color.goldLine}`, borderRadius: "6px 6px 0 0" }} />
           </div>
         ))}
       </div>
       {next2.length > 0 && (
         <div style={{ display: "flex", gap: "1.5vw", marginBottom: "1.5vh" }}>
           {next2.map((r) => (
-            <div key={r.rank} style={{ display: "flex", alignItems: "center", gap: "1vw", background: "rgba(255,255,255,.08)", border: `1px solid ${GOLD}66`, borderRadius: 14, padding: "1vh 1.6vw" }}>
-              <span style={{ color: GOLD, fontWeight: 700, fontSize: "2.4vh" }}>{arNum(r.rank)}</span>
-              <span style={{ color: CREAM, fontWeight: 600, fontSize: "2.2vh" }}>{r.name}</span>
-              <span style={{ color: GOLD, fontSize: "2vh" }}>{arNum(r.points)}</span>
+            <div key={r.rank} style={{ display: "flex", alignItems: "center", gap: "1vw", background: ui.color.displayGlass, border: `1px solid ${ui.color.displayGoldAlpha}`, borderRadius: 14, padding: "1vh 1.6vw" }}>
+              <span style={{ color: ui.color.goldLine, fontWeight: 700, fontSize: "2.4vh" }}>{arNum(r.rank)}</span>
+              <span style={{ color: ui.color.sidebarText, fontWeight: 600, fontSize: "2.2vh" }}>{r.name}</span>
+              <span style={{ color: ui.color.goldLine, fontSize: "2vh" }}>{arNum(r.points)}</span>
               {r.badges.length > 0 && <span style={{ fontSize: "2vh" }}>{r.badges.slice(0, 5).join(" ")}</span>}
             </div>
           ))}
@@ -179,7 +178,7 @@ function Medallion({ rank }: { rank: number }) {
   return (
     <div style={{ position: "relative", width: "11vw", maxWidth: 140, aspectRatio: "1" }}>
       <img src={frame} alt="" aria-hidden style={{ width: "100%", height: "100%", objectFit: "contain" }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-      <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#3a2a12", fontWeight: 800, fontSize: "3.4vh" }}>{arNum(rank)}</span>
+      <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: ui.color.displayOnGold, fontWeight: 800, fontSize: "3.4vh" }}>{arNum(rank)}</span>
     </div>
   );
 }
@@ -190,15 +189,15 @@ function HomeSlide({ slide }: { slide: { programNameAr: string; son: Son; top: H
   return (
     <>
       <Title>{slide.programNameAr}</Title>
-      <div style={{ background: "rgba(184,146,74,.16)", border: `2px solid ${GOLD}`, borderRadius: 20, padding: "2vh 3vw", marginBottom: "2vh", textAlign: "center", maxWidth: "60vw" }}>
-        <div style={{ color: CREAM, fontSize: "3.2vh", fontWeight: 700 }}>{son.name}</div>
-        <div style={{ display: "flex", gap: "2vw", justifyContent: "center", marginTop: "1vh", color: CREAM, fontSize: "2.4vh" }}>
-          <span style={{ color: GOLD, fontWeight: 700 }}>{arNum(son.points)} {t("pointsWord")}</span>
+      <div style={{ background: ui.color.displayGoldBg, border: `2px solid ${ui.color.goldLine}`, borderRadius: 20, padding: "2vh 3vw", marginBottom: "2vh", textAlign: "center", maxWidth: "60vw" }}>
+        <div style={{ color: ui.color.sidebarText, fontSize: "3.2vh", fontWeight: 700 }}>{son.name}</div>
+        <div style={{ display: "flex", gap: "2vw", justifyContent: "center", marginTop: "1vh", color: ui.color.sidebarText, fontSize: "2.4vh" }}>
+          <span style={{ color: ui.color.goldLine, fontWeight: 700 }}>{arNum(son.points)} {t("pointsWord")}</span>
           {son.rank != null && <span>{t("rankWord")}: {arNum(son.rank)}</span>}
           <span>🔥 {arNum(son.streak)}</span>
         </div>
         {son.badges.length > 0 && <div style={{ marginTop: "1vh", fontSize: "2.6vh" }}>{son.badges.map((b) => b.emoji ?? "🏅").join(" ")}</div>}
-        {son.motivation && <div style={{ marginTop: "1vh", color: MUTED, fontSize: "2vh" }}>{son.motivation}</div>}
+        {son.motivation && <div style={{ marginTop: "1vh", color: ui.color.sidebarMuted, fontSize: "2vh" }}>{son.motivation}</div>}
       </div>
       <CalmList rows={slide.top.map((r) => ({ rank: r.rank, name: r.name, points: r.points, hl: r.isSon }))} />
     </>
@@ -211,10 +210,10 @@ function CalmList({ rows }: { rows: { rank: number; name: string; points: number
   const dur = Math.max(12, rows.length * 2.2);
   const Row = (r: { rank: number; name: string; points: number; hl: boolean }, k: number) => (
     <div key={k} style={{ display: "flex", alignItems: "center", gap: "1.2vw", padding: "0.8vh 1.4vw", borderRadius: 10,
-      background: r.hl ? "rgba(184,146,74,.22)" : "transparent", border: r.hl ? `1.5px solid ${GOLD}` : "1px solid transparent", fontSize: "2.2vh" }}>
-      <span style={{ color: GOLD, fontWeight: 700, minWidth: "3vw" }}>{arNum(r.rank)}</span>
-      <span style={{ color: CREAM, fontWeight: 600, flex: 1 }}>{r.name}</span>
-      <span style={{ color: MUTED }}>{arNum(r.points)}</span>
+      background: r.hl ? ui.color.displayGoldSoft : "transparent", border: r.hl ? `1.5px solid ${ui.color.goldLine}` : "1px solid transparent", fontSize: "2.2vh" }}>
+      <span style={{ color: ui.color.goldLine, fontWeight: 700, minWidth: "3vw" }}>{arNum(r.rank)}</span>
+      <span style={{ color: ui.color.sidebarText, fontWeight: 600, flex: 1 }}>{r.name}</span>
+      <span style={{ color: ui.color.sidebarMuted }}>{arNum(r.points)}</span>
     </div>
   );
   return (

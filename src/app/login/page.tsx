@@ -49,7 +49,7 @@ export default function LoginPage() {
       {/* المحتوى فوق الطبقة الزخرفيّة */}
       <Link href="/" aria-label={BRAND} style={{ position: "relative", zIndex: 1 }}><img src="/png/logo.png" alt={BRAND} style={{ height: 140, width: "auto" }} /></Link>
       <Card style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 400,
-        border: `1px solid ${ui.color.goldLine}`, boxShadow: `0 0 0 4px rgba(201,160,99,0.12), ${ui.shadowCard}` }}>
+        border: `1px solid ${ui.color.goldLine}`, boxShadow: `${ui.shadowGold}` }}>
         <h1 style={{ fontSize: ui.text.xl, fontWeight: 700, marginTop: 0, marginBottom: sp(4) }}>{t("title")}</h1>
         <form onSubmit={onSubmit}>
           <Field label={t("fieldPhone")}>
