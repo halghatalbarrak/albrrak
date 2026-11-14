@@ -3,7 +3,8 @@
 
 export const dailyRecorderAr = {
   // الحفظ الجديد — أزرار الفعل الرئيسيّة
-  sayAsIs: "سمّع كما هو",
+  sayAsIs: "أتقن المقرّر ✓",
+  sayAsIsHint: "يسجّل المقرّر المعروض؛ عدّل النهاية أولاً إن اختلف",
   masteredToggle: "أتقن",
   notMasteredToggle: "لم يُتقن",
   // تعديل النهاية

@@ -464,7 +464,7 @@ function StudentPanel({ s, circleId, date, items, post }: {
                       onSave={(st) => void post(`/api/students/${sid}/session`, { kind: "hifz", date, ...st }, "سُجِّل الحفظ.")}
                     />
                     <div style={{ ...row, marginTop: sp(2) }}>
-                      <Button size="sm" variant="ghost" onClick={() => void extra("hifz")}>{tu("addMore")}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => void extra("hifz")}>{tu("addMoreHifz")}</Button>
                     </div>
                   </>
                 )}

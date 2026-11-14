@@ -18,6 +18,7 @@ export const unifiedAr = {
   trackNotSet: "لم يُحدَّد مساره بعد.",
   setTrackBtn: "تحديد المسار",
   addMore: "+ زيادة",
+  addMoreHifz: "+ حفظ إضافي",
   estimate: "تقدير",
   civilBase: "القاعدة المدنية",
   qaidahCurrentLesson: "القاعدة المدنية — الدرس الحاليّ",

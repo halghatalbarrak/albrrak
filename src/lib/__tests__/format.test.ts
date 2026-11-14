@@ -31,3 +31,24 @@ describe("formatAyah", () => {
     expect(arNum(2026)).toBe("٢٠٢٦");
   });
 });
+
+describe("DailyRecorder — لا أرقام غربية في مخرجات العرض", () => {
+  it("formatAyah لا تُخرج أرقامًا غربية (0–9)", () => {
+    const cases = [
+      formatAyah(100, 1),
+      formatAyah(100, 1, 100, 10),
+      formatAyah(100, 1, 101, 5),
+      formatAyah(1, 7),
+      formatAyah(114, 6),
+    ];
+    for (const result of cases) {
+      expect(result, `يحتوي على رقم غربي: "${result}"`).not.toMatch(/[0-9]/);
+    }
+  });
+
+  it("arNum تحوّل جميع الأرقام الغربية إلى هنديّة", () => {
+    expect(arNum(0)).toBe("٠");
+    expect(arNum(1234567890)).toBe("١٢٣٤٥٦٧٨٩٠");
+    expect(String(arNum(100))).not.toMatch(/[0-9]/);
+  });
+});
