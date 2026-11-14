@@ -494,6 +494,131 @@ export async function recordReviewError(
   return result;
 }
 
+// ─── ضبط أخطاء وحدة (مطلق/idempotent) ───────────────────────────────────────
+
+export interface SetUnitErrorsInput {
+  studentId: string;
+  sessionId: string;
+  /** عدد الأخطاء المطلوب لهذه الوحدة اليوم (٠–٣). صفرٌ يحذف أخطاء اليوم فقط. */
+  errorCount: number;
+  date: string;
+  actorId: string;
+}
+
+export interface SetUnitErrorsResult {
+  /** الوحدة مُرمَّمة حالياً (shar7 → حفظٌ جديد). */
+  reverted: boolean;
+  /** تمّ إلغاء ترميمٍ حدث اليوم لأنّ الأخطاء أُنقصت دون العتبة. */
+  undidRevert: boolean;
+}
+
+/**
+ * يضبط عدد أخطاء مراجعة وحدةٍ لليوم بشكلٍ مطلق (idempotent). يحذف أخطاء اليوم أوّلاً ثم
+ * يُنشئ العدد المطلوب، محترماً منطق النافذة والترميم القائم (الحكم ٥). القيمة ٠ تُصفّر اليوم.
+ *
+ * الترميم القائم (من يومٍ سابق): يُسجَّل الخطأ لكن حالة الترميم لا تتغيّر.
+ * الترميم من اليوم نفسه: يُلغى إن أُنقص الخطأ دون العتبة (المعلّم يراجع حكمه).
+ */
+export async function setUnitErrors(
+  input: SetUnitErrorsInput,
+  db: PrismaClient = prisma,
+): Promise<SetUnitErrorsResult> {
+  await assertCanRecordListening(input.actorId, input.studentId, db);
+  if (!Number.isInteger(input.errorCount) || input.errorCount < 0 || input.errorCount > 3) {
+    throw verr("murajaahErrorsInvalid");
+  }
+  const seg = await db.dailySession.findUnique({
+    where: { id: input.sessionId },
+    select: { studentId: true, hifzMastered: true },
+  });
+  if (!seg || seg.studentId !== input.studentId || seg.hifzMastered !== true) {
+    throw verr("savedSegmentNotFound");
+  }
+
+  const reviewDate = toDateOnly(input.date);
+
+  const result = await db.$transaction(async (tx) => {
+    // أعد قراءة repairedAt داخل المعاملة لتجنّب بيانات متقادمة
+    const fresh = await tx.dailySession.findUnique({
+      where: { id: input.sessionId },
+      select: { repairedAt: true },
+    });
+    const repairedAt = fresh?.repairedAt ?? null;
+    const wasReverted = repairedAt !== null;
+    // هل الترميم حدث اليوم؟ (المعلّم يصحّح قراره في الجلسة نفسها)
+    const revertedToday =
+      wasReverted && toDateOnly(repairedAt!).getTime() === reviewDate.getTime();
+
+    if (wasReverted && !revertedToday) {
+      // ترميمٌ قديم (من يومٍ آخر) — لا نعدّله
+      return { reverted: true, undidRevert: false, newRevert: false };
+    }
+
+    // ١) احذف أخطاء هذا اليوم فقط (idempotent)
+    await tx.reviewError.deleteMany({
+      where: { sessionId: input.sessionId, date: reviewDate },
+    });
+
+    // ٢) أنشئ أخطاء اليوم الجديدة
+    for (let i = 0; i < input.errorCount; i++) {
+      await tx.reviewError.create({
+        data: { sessionId: input.sessionId, recordedBy: input.actorId, date: reviewDate },
+      });
+    }
+
+    // ٣) نافذة آخر ١٠ جلسات حفظ (المُتقَنة وغير المُرمَّمة)
+    const mastered = await tx.dailySession.findMany({
+      where: { studentId: input.studentId, hifzMastered: true, repairedAt: null, hifzFromSurah: { not: null } },
+      orderBy: { date: "asc" },
+      select: { date: true },
+    });
+    const n = mastered.length;
+    const windowStart = n > 0 ? mastered[Math.max(0, n - REVIEW_ERROR_WINDOW)].date : reviewDate;
+    const countInWindow = await tx.reviewError.count({
+      where: { sessionId: input.sessionId, date: { gte: windowStart } },
+    });
+
+    // ٤) تطبيق الحكم ٥ أو إلغاؤه
+    if (!wasReverted && countInWindow >= 2) {
+      // ترميمٌ جديد
+      await tx.dailySession.update({ where: { id: input.sessionId }, data: { repairedAt: new Date() } });
+      await tx.reviewError.deleteMany({ where: { sessionId: input.sessionId } });
+      await emitEvent(tx, {
+        type: "SEGMENT_REVERTED_TO_NEW",
+        subjectType: "Student", subjectId: input.studentId, actorId: input.actorId,
+        payload: { sessionId: input.sessionId },
+      });
+      return { reverted: true, undidRevert: false, newRevert: true };
+    }
+
+    if (revertedToday && countInWindow < 2) {
+      // إلغاء الترميم — المعلّم أصلح حكمه في اليوم نفسه
+      await tx.dailySession.update({ where: { id: input.sessionId }, data: { repairedAt: null } });
+      await emitEvent(tx, {
+        type: "REVIEW_ERROR_LOGGED",
+        subjectType: "Student", subjectId: input.studentId, actorId: input.actorId,
+        payload: { sessionId: input.sessionId, countInWindow },
+      });
+      return { reverted: false, undidRevert: true, newRevert: false };
+    }
+
+    if (countInWindow > 0) {
+      await emitEvent(tx, {
+        type: "REVIEW_ERROR_LOGGED",
+        subjectType: "Student", subjectId: input.studentId, actorId: input.actorId,
+        payload: { sessionId: input.sessionId, countInWindow },
+      });
+    }
+
+    return { reverted: wasReverted, undidRevert: false, newRevert: false };
+  });
+
+  if (result.newRevert) {
+    await autoDismissArifIfBelowThreshold(input.studentId, db);
+  }
+  return { reverted: result.reverted, undidRevert: result.undidRevert };
+}
+
 // ═══════════════ عرض الجلسة (للشاشة) ═══════════════
 
 export interface SessionToday {

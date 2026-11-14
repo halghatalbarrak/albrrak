@@ -82,6 +82,8 @@ describe("قاموس الشاشة الموحّدة (العربيّة)", () => {
       consolidUnit1: "خطأ",
       consolidUnit2: "خطآن",
       consolidUnit3: "ثلاثة فأكثر",
+      consolidSaved: "محفوظ ✓",
+      consolidReverted: "⚠ ترميم",
       weaknessMapBtn: "خريطة ضعف الحلقة",
     };
     for (const key of Object.keys(expected) as (keyof typeof unifiedAr)[]) {

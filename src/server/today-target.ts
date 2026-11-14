@@ -22,6 +22,10 @@ export interface AyahBound {
   fromAyah: number;
   toSurah: number;
   toAyah: number;
+  /** معرّف جلسة الحفظ الأصلية — مُعبَّأٌ فقط في الشاشة الموحّدة. */
+  sessionId?: string | null;
+  /** عدد أخطاء اليوم المحفوظة للوحدة — مُعبَّأٌ فقط في الشاشة الموحّدة. */
+  savedErrors?: number;
 }
 
 export type NewHifzSuggestion =
