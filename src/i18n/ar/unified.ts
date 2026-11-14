@@ -74,6 +74,8 @@ export const unifiedAr = {
   consolidUnit1: "خطأ",
   consolidUnit2: "خطآن",
   consolidUnit3: "ثلاثة فأكثر",
+  consolidSaved: "محفوظ ✓",
+  consolidReverted: "⚠ ترميم",
   weaknessMapBtn: "خريطة ضعف الحلقة",
 } as const;
 

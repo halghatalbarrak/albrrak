@@ -9,7 +9,7 @@ import { grantAuto } from "./economy";
 import { getQaidahPosition, qaidahBoardRow, type QaidahBoardStudent } from "./qaidah-session";
 import { getStudentSetupStatus, type StudentSetupStatus } from "./student-setup";
 import { nextUnitForStudent } from "./track-units";
-import { sessionBoardWithTarget, type BoardStudentWithTarget } from "./today-target";
+import { sessionBoardWithTarget, type AyahBound, type BoardStudentWithTarget } from "./today-target";
 
 // ═══════════════ الشاشة الموحّدة (م ج) — لوحةٌ واحدة + الزيادة ═══════════════
 //
@@ -47,6 +47,55 @@ export interface UnifiedBoard {
 }
 
 /**
+ * يُثري حدود الوحدات (AyahBound[]) بـsessionId وعدد أخطاء اليوم — ٢ استعلامان فقط لكل طالب.
+ * يُستعمل في getUnifiedBoard فقط؛ الحقول اختياريّةٌ ولا تكسر باقي المستهلكين.
+ */
+async function enrichBoundsWithSessions(
+  studentId: string,
+  units: AyahBound[],
+  date: Date,
+  db: PrismaClient,
+): Promise<AyahBound[]> {
+  if (!units.length) return [];
+
+  // ١) كل الجلسات المُتقَنة وغير المُرمَّمة لهذا الطالب (أحدثها أوّلاً → أوّل مطابقة تفوز)
+  const sessions = await db.dailySession.findMany({
+    where: { studentId, hifzMastered: true, repairedAt: null, hifzFromSurah: { not: null } },
+    select: { id: true, hifzFromSurah: true, hifzFromAyah: true, hifzToSurah: true, hifzToAyah: true },
+    orderBy: { date: "desc" },
+  });
+  const sessionMap = new Map<string, string>();
+  for (const s of sessions) {
+    if (s.hifzFromSurah != null && s.hifzToSurah != null) {
+      const k = `${s.hifzFromSurah}:${s.hifzFromAyah ?? 0}:${s.hifzToSurah}:${s.hifzToAyah ?? 0}`;
+      if (!sessionMap.has(k)) sessionMap.set(k, s.id);
+    }
+  }
+
+  const sessionIds = units.map((u) =>
+    sessionMap.get(`${u.fromSurah}:${u.fromAyah}:${u.toSurah}:${u.toAyah}`) ?? null,
+  );
+
+  // ٢) أخطاء اليوم لجميع الجلسات المعروفة (استعلامٌ واحد مُجمَّع)
+  const knownIds = sessionIds.filter((id): id is string => id !== null);
+  const errorCounts = new Map<string, number>();
+  if (knownIds.length) {
+    const groups = await db.reviewError.groupBy({
+      by: ["sessionId"],
+      where: { sessionId: { in: knownIds }, date },
+      _count: { sessionId: true },
+    });
+    for (const g of groups) errorCounts.set(g.sessionId, g._count.sessionId);
+  }
+
+  return units.map((u, i) => ({
+    ...u,
+    sessionId: sessionIds[i],
+    savedErrors: sessionIds[i] ? (errorCounts.get(sessionIds[i]!) ?? 0) : 0,
+  }));
+}
+
+/**
  * لوحة الحلقة الموحّدة: كل طالبٍ **بلوحة برنامجه هو** (ق١) — مراقي وجهةَ يومه، والقاعدة درسَه
  * الحاليّ — ولو كانت الحلقة مختلطة البرامج. البرنامج يُقرأ من قيد كلّ طالب لا من الحلقة.
  */
@@ -57,8 +106,9 @@ export async function getUnifiedBoard(
   db: PrismaClient = prisma,
 ): Promise<UnifiedBoard> {
   const board = await sessionBoardWithTarget(actorId, circleId, date, db);
+  const reviewDate = toDateOnly(date);
   const rows = await db.attendance.findMany({
-    where: { circleId, date: toDateOnly(date) },
+    where: { circleId, date: reviewDate },
     select: { studentId: true, status: true },
   });
   const statusBy = new Map(rows.map((r) => [r.studentId, r.status]));
@@ -70,7 +120,15 @@ export async function getUnifiedBoard(
       ? qaidahBoardRow(s.studentId, s.name, await getQaidahPosition(s.studentId, db, date))
       : null;
     const setupStatus = await getStudentSetupStatus(s.studentId, db);
-    students.push({ ...s, attendanceStatus: statusBy.get(s.studentId) ?? null, qaidah, setupStatus });
+
+    // إثراء وحدات الترسيخ والمراجعة بـ sessionId وأخطاء اليوم المحفوظة
+    const enrichedTarseekh = await enrichBoundsWithSessions(s.studentId, s.today.tarseekh, reviewDate, db);
+    const enrichedMurajaah = s.today.murajaah
+      ? { ...s.today.murajaah, todaySlice: await enrichBoundsWithSessions(s.studentId, s.today.murajaah.todaySlice, reviewDate, db) }
+      : null;
+    const enrichedToday = { ...s.today, tarseekh: enrichedTarseekh, murajaah: enrichedMurajaah };
+
+    students.push({ ...s, today: enrichedToday, attendanceStatus: statusBy.get(s.studentId) ?? null, qaidah, setupStatus });
   }
 
   // لا ترويسة برنامجٍ للحلقة (قد تكون مختلطة) — الواجهة تعتمد student.program لكلّ صفّ.
