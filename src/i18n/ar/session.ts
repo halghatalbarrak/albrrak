@@ -58,19 +58,7 @@ export const sessionAr = {
 
   // قسم الحفظ
   hifzTitle: "الحفظ (المعلم وحده)",
-  hifzSuggestionPrefix: "الحقل مملوءٌ بمقترح وجهة اليوم (", // يتبعه النطاق ثم اللاحقة
-  hifzSuggestionSuffix: ") — أكّده أو عدّله.",
-  hifzGatePrefix: "⚠️ الحكم ١: يعيد ", // يتبعه «نفس المقطع» ثم النطاق
-  hifzGateSameSegment: "نفس المقطع",
-  hifzGateSuffix: ")، لا حفظ جديد.",
-  hifzGateRangeOpen: " (", // قبل نطاق الحكم ١
-  fillSegment: "املأ المقطع",
-  fromSurah: "من سورة",
-  ayah: "آية",
-  toSurah: "إلى سورة",
-  attempts: "المحاولات",
   mastered: "أتقن",
-  save: "حفظ",
   recordedTodayPrefix: "مُسجَّل اليوم: ", // يتبعه نطاقٌ وأرقام مركّبة في الصفحة
   attemptsMid: " · محاولات ", // بين النطاق وعدد المحاولات
   masteredSep: " · ", // قبل «أتقن»/«لم يُتقن»
@@ -92,13 +80,13 @@ export const sessionAr = {
   weeklyCyclePercentClose: "٪)",
   weeklyCycleComplete: " · اكتملت ✓",
 
-  // قسم الترسيخ والمراجعة (تمّ/لم يتم)
+  // قسم الترسيخ والمراجعة
   consolidationTitle: "الترسيخ والمراجعة",
   tarseekhInlineLabel: "الترسيخ: ",
   done: "تمّ",
   notDone: "لم يتم",
-  murajaahInlinePrefix: "المراجعة اليوم (مقاطع): ",
-  recordAmount: "رصد المقدار",
+  murajaahSectionTitle: "المراجعة",
+  murajaahRecordedPrefix: "مُرصَد اليوم: ",
   oneError: "خطأ واحد",
   twoErrors: "خطآن ← ترميم",
 
