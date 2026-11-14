@@ -62,6 +62,19 @@ export const unifiedAr = {
   detailLoadFailed: "تعذّر تحميل التفاصيل.",
   maraqiOnly: "التسجيل للمراقي فقط.",
   sessionRedirectNote: "الجلسة اليومية انتقلت إلى الشاشة الموحّدة.",
+  // بطاقة الطالب المبسَّطة (ثلاثة أسطر)
+  hifzSectionLabel: "احفظ",
+  tarseekhSectionLabel: "رسّخ",
+  murajaahSectionLabel: "راجِع",
+  consolidDone: "تمّ",
+  consolidNotDone: "لم يتمّ",
+  consolidErrors: "أخطاء…",
+  consolidHideErrors: "▴ أخطاء",
+  consolidUnitSafe: "سليمة",
+  consolidUnit1: "خطأ",
+  consolidUnit2: "خطآن",
+  consolidUnit3: "ثلاثة فأكثر",
+  weaknessMapBtn: "خريطة ضعف الحلقة",
 } as const;
 
 export type UnifiedKey = keyof typeof unifiedAr;

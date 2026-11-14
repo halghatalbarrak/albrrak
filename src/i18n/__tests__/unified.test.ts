@@ -71,6 +71,18 @@ describe("قاموس الشاشة الموحّدة (العربيّة)", () => {
       detailLoadFailed: "تعذّر تحميل التفاصيل.",
       maraqiOnly: "التسجيل للمراقي فقط.",
       sessionRedirectNote: "الجلسة اليومية انتقلت إلى الشاشة الموحّدة.",
+      hifzSectionLabel: "احفظ",
+      tarseekhSectionLabel: "رسّخ",
+      murajaahSectionLabel: "راجِع",
+      consolidDone: "تمّ",
+      consolidNotDone: "لم يتمّ",
+      consolidErrors: "أخطاء…",
+      consolidHideErrors: "▴ أخطاء",
+      consolidUnitSafe: "سليمة",
+      consolidUnit1: "خطأ",
+      consolidUnit2: "خطآن",
+      consolidUnit3: "ثلاثة فأكثر",
+      weaknessMapBtn: "خريطة ضعف الحلقة",
     };
     for (const key of Object.keys(expected) as (keyof typeof unifiedAr)[]) {
       expect(tUnified(key)).toBe(expected[key]);

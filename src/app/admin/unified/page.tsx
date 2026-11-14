@@ -7,9 +7,8 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { makkahDayDate } from "@/lib/makkah-day";
 import { useMe } from "@/lib/useMe";
 import { arNum, formatAyah } from "@/lib/format";
-import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, TodayTargetView, type TTData, ui, sp } from "@/components/ui";
+import { AppShell, Card, Button, Input, Badge, EmptyState, Skeleton, ui, sp } from "@/components/ui";
 import { HifzInput } from "@/components/session/HifzInput";
-import { TarseekhInput, MurajaahInput } from "@/components/session/ConsolidationInput";
 import { attendanceLockAr as tLock } from "@/i18n/ar/attendance-lock";
 import { navAr } from "@/i18n/ar/nav";
 import { tSetup } from "@/i18n/ar/setup";
@@ -51,22 +50,21 @@ interface Student {
   today: Target;
   qaidah: Qaidah | null;
   setupStatus?: SetupStatus;
+  // من UnifiedStudent/BoardStudentWithTarget — محسوبةٌ من الخادم
+  stageLabel: string | null;
+  hizb: number | null;
+  weeklyPercent: number | null;
+  weeklyComplete: boolean;
+  deferredToday: boolean;
+  mustRepeat: boolean;
+  started: boolean;
+  yesterday: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number; mastered: boolean } | null;
+  required: { tarseekhCount: number; khums: number } | null;
 }
 interface Circle { id: string; nameAr: string }
 interface GrantItem { id: string; nameAr: string; value: number; grantSource: string }
 type LockState = "OPEN" | "APPROVED" | "AUTO_LOCKED" | "TEMP_OPEN";
 interface DayLock { state: LockState; locked: boolean; date: string }
-
-// بيانات لوحة الجلسة (من /api/circles/[id]/session) — للعرض الملخّص في بطاقات الطلاب.
-interface BoardStudent {
-  studentId: string; name: string; program: string; started: boolean;
-  stageLabel: string | null; hizb: number | null;
-  yesterday: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number; mastered: boolean } | null;
-  todayHifzDone: boolean; tarseekhDone: boolean | null; deferredToday: boolean;
-  required: { tarseekhCount: number; khums: number } | null;
-  weeklyPercent: number | null; weeklyComplete: boolean; mustRepeat: boolean; nextStep: string;
-  today: TTData;
-}
 
 const LOCK_LABEL: Record<LockState, string> = {
   OPEN: tLock.stateOpen, APPROVED: tLock.stateApproved, AUTO_LOCKED: tLock.stateAutoLocked, TEMP_OPEN: tLock.stateTempOpen,
@@ -85,6 +83,15 @@ const ATT_BUTTONS: { status: string; label: string; tone: "primary" | "bronze" |
   { status: "ABSENT_UNEXCUSED", label: "غائب", tone: "danger" },
   { status: "LEFT_NO_PERMISSION", label: "خرج بلا إذن", tone: "danger" },
 ];
+
+function boundsRangeLabel(bounds: Bound[]): string {
+  if (!bounds.length) return "—";
+  const first = bounds[0];
+  const last = bounds[bounds.length - 1];
+  const outer = formatAyah(first.fromSurah, first.fromAyah, last.toSurah, last.toAyah);
+  if (bounds.length === 1) return outer;
+  return `${outer} (${arNum(bounds.length)} وحدة)`;
+}
 
 const todayISO = () => makkahDayDate(new Date());
 async function token(): Promise<string | null> {
@@ -108,10 +115,7 @@ export default function UnifiedPage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
   const [msg, setMsg] = useState<string | null>(null);
   const [view, setViewState] = useState<"list" | "cards">("list");
-  const [board, setBoard] = useState<Map<string, BoardStudent>>(new Map());
-  const [expanded, setExpanded] = useState<string | null>(null);
 
-  // يقرأ ?view=cards من URL بعد الوصل
   useEffect(() => {
     if (typeof window !== "undefined") {
       const v = new URLSearchParams(window.location.search).get("view");
@@ -121,7 +125,6 @@ export default function UnifiedPage() {
 
   const switchView = (v: "list" | "cards") => {
     setViewState(v);
-    setExpanded(null);
     router.push(v === "cards" ? "/admin/unified?view=cards" : "/admin/unified", { scroll: false });
   };
 
@@ -133,16 +136,7 @@ export default function UnifiedPage() {
     const b = (await res.json()) as { students: Student[]; absentDefault?: boolean; dayLock?: DayLock };
     setStudents(b.students); setAbsentDefault(Boolean(b.absentDefault)); setDayLock(b.dayLock ?? null);
     setStatus("ready");
-
-    // في عرض البطاقات: جلب لوحة الجلسة أيضاً للحصول على المرحلة وأمس والمطلوب والدورة.
-    if (view === "cards") {
-      const sRes = await fetch(`/api/circles/${cid}/session?date=${date}`, { headers: { authorization: `Bearer ${t}` } });
-      if (sRes.ok) {
-        const sData = (await sRes.json()) as { students?: BoardStudent[] };
-        setBoard(new Map((sData.students ?? []).map((s) => [s.studentId, s])));
-      }
-    }
-  }, [date, view]);
+  }, [date]);
 
   useEffect(() => {
     void (async () => {
@@ -204,7 +198,7 @@ export default function UnifiedPage() {
     <Shell>
       {circles.length > 1 && (
         <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", marginBottom: sp(3) }}>
-          {circles.map((c) => <Button key={c.id} size="sm" variant={c.id === circleId ? "bronze" : "ghost"} onClick={() => { setCircleId(c.id); setSelected(null); setExpanded(null); }}>{c.nameAr}</Button>)}
+          {circles.map((c) => <Button key={c.id} size="sm" variant={c.id === circleId ? "bronze" : "ghost"} onClick={() => { setCircleId(c.id); setSelected(null); }}>{c.nameAr}</Button>)}
         </div>
       )}
       {dayLock && <DayLockBar lock={dayLock} circleId={circleId} date={date} post={post} />}
@@ -214,16 +208,17 @@ export default function UnifiedPage() {
       )}
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs, marginBottom: sp(2) }}>{msg}</p>}
 
-      {/* تعيين المسارات الناقصة */}
       <AutoAssignMissingBtn students={students} circleId={circleId} onDone={() => void load(circleId)} />
 
-      {/* مفتاح العرض (قائمة | بطاقات) */}
-      <div style={{ display: "flex", gap: sp(2), marginBottom: sp(3) }}>
+      {/* مفتاح العرض + خريطة الضعف */}
+      <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", marginBottom: sp(3) }}>
         <Button size="sm" variant={view === "list" ? "primary" : "ghost"} onClick={() => switchView("list")}>{tu("viewList")}</Button>
         <Button size="sm" variant={view === "cards" ? "primary" : "ghost"} onClick={() => switchView("cards")}>{tu("viewCards")}</Button>
+        {circleId && (
+          <Button size="sm" variant="ghost" onClick={() => { window.location.href = `/admin/weakness-map?circleId=${circleId}`; }}>{tu("weaknessMapBtn")}</Button>
+        )}
       </div>
 
-      {/* فلتر الإعداد — في العرضين */}
       {students && students.length > 0 && (
         <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", marginBottom: sp(2) }}>
           {(["ALL", "NEEDS_SETUP", "MISSING_DATA"] as const).map((f) => (
@@ -236,7 +231,6 @@ export default function UnifiedPage() {
 
       {view === "list" && (
         <div style={{ display: "flex", gap: sp(4), alignItems: "flex-start", flexWrap: "wrap" }}>
-          {/* اللوحة الجانبيّة: قائمة الطلاب */}
           <div style={{ flex: "1 1 260px", minWidth: 240, maxWidth: 360, display: "flex", flexDirection: "column", gap: sp(2) }}>
             {students && students.some((s) => s.attendanceStatus == null) && (
               <Button size="sm" variant="primary" onClick={() => void markAllPresent()}>{tu("markAllPresent")}</Button>
@@ -263,7 +257,6 @@ export default function UnifiedPage() {
             {filtered.length === 0 && <EmptyState title={setupFilter === "ALL" ? "لا طلاب في الحلقة" : "لا طلاب ضمن هذا الفلتر"} />}
           </div>
 
-          {/* لوحة الطالب */}
           <div style={{ flex: "2 1 420px", minWidth: 300 }}>
             {!cur ? <Card><p style={{ margin: 0, color: ui.color.muted }}>{tu("pickStudent")}</p></Card>
               : <StudentPanel s={cur} circleId={circleId} date={date} items={items} post={post} />}
@@ -274,38 +267,31 @@ export default function UnifiedPage() {
       {view === "cards" && (
         <CardsView
           students={filtered}
-          board={board}
           absentDefault={absentDefault}
           circleId={circleId}
           date={date}
           items={items}
           post={post}
-          expanded={expanded}
-          setExpanded={setExpanded}
         />
       )}
     </Shell>
   );
 }
 
-// ═══════════════ عرض البطاقات (بديل الجلسة اليومية) ═══════════════
-function CardsView({ students, board, absentDefault, circleId, date, items, post, expanded, setExpanded }: {
+// ═══════════════ عرض البطاقات ═══════════════
+function CardsView({ students, absentDefault, circleId, date, items, post }: {
   students: Student[];
-  board: Map<string, BoardStudent>;
   absentDefault: boolean;
   circleId: string; date: string; items: GrantItem[];
   post: (url: string, body: Record<string, unknown>, okMsg: string) => Promise<void>;
-  expanded: string | null; setExpanded: (id: string | null) => void;
 }) {
-  const range = (r: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number }) =>
-    formatAyah(r.fromSurah, r.fromAyah, r.toSurah, r.toAyah);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   if (students.length === 0) return <EmptyState title="لا طلاب ضمن هذا الفلتر" />;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: sp(3) }}>
       {students.map((s) => {
-        const b = board.get(s.studentId);
         const isExpanded = expanded === s.studentId;
         return (
           <Card key={s.studentId} style={{ padding: 0, overflow: "hidden" }}>
@@ -317,7 +303,7 @@ function CardsView({ students, board, absentDefault, circleId, date, items, post
                 <span style={{ display: "flex", gap: sp(2), alignItems: "center", minWidth: 0 }}>
                   <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
                   {s.program && <Badge tone="neutral">{PROGRAM_AR[s.program] ?? s.program}</Badge>}
-                  {b?.deferredToday && <Badge tone="bronze">{tu("deferredTodayBadge")}</Badge>}
+                  {s.deferredToday && <Badge tone="bronze">{tu("deferredTodayBadge")}</Badge>}
                   {s.setupStatus && !s.setupStatus.isComplete && <Badge tone="danger">{tSetup("badgeNeedsSetup")}</Badge>}
                 </span>
                 <span style={{ display: "flex", gap: sp(2), alignItems: "center" }}>
@@ -328,49 +314,40 @@ function CardsView({ students, board, absentDefault, circleId, date, items, post
                 </span>
               </div>
 
-              {/* سطر الملخّص: المرحلة · أمس · المطلوب · دورة الأسبوع — للمراقييّن فقط */}
-              {b && s.program === "MARAQI" && (
+              {/* سطر الملخّص: المرحلة · أمس · المطلوب · دورة الأسبوع */}
+              {s.program === "MARAQI" && (
                 <div style={{ display: "flex", gap: sp(4), flexWrap: "wrap", fontSize: ui.text.xs, color: ui.color.muted }}>
-                  {b.stageLabel && (
+                  {s.stageLabel && (
                     <span>
-                      {tu("stageLabelPrefix")}<strong style={{ color: ui.color.text }}>{b.stageLabel}</strong>
-                      {b.hizb != null ? <>{tu("hizbInline")}{arNum(b.hizb)}</> : ""}
+                      {tu("stageLabelPrefix")}<strong style={{ color: ui.color.text }}>{s.stageLabel}</strong>
+                      {s.hizb != null ? <>{tu("hizbInline")}{arNum(s.hizb)}</> : ""}
                     </span>
                   )}
-                  {b.yesterday && (
+                  {s.yesterday && (
                     <span>
-                      {tu("yesterdayLabel")}<strong style={{ color: ui.color.text }}>{range(b.yesterday)}</strong>
-                      {!b.yesterday.mastered ? tu("notMasteredSuffix") : ""}
+                      {tu("yesterdayLabel")}<strong style={{ color: ui.color.text }}>{formatAyah(s.yesterday.fromSurah, s.yesterday.fromAyah, s.yesterday.toSurah, s.yesterday.toAyah)}</strong>
+                      {!s.yesterday.mastered ? tu("notMasteredSuffix") : ""}
                     </span>
                   )}
-                  {b.required && (
+                  {s.required && (
                     <span>
                       {tu("requiredTodayPrefix")}
                       <strong style={{ color: ui.color.text }}>
-                        {tu("requiredTarseekhPrefix")}{arNum(b.required.tarseekhCount)}
-                        {tu("requiredKhumsPrefix")}{arNum(b.required.khums)}
+                        {tu("requiredTarseekhPrefix")}{arNum(s.required.tarseekhCount)}
+                        {tu("requiredKhumsPrefix")}{arNum(s.required.khums)}
                       </strong>
                     </span>
                   )}
-                  {b.weeklyPercent != null && (
-                    <span>{tu("weeklyCyclePrefix")}<strong style={{ color: ui.color.text }}>{arNum(b.weeklyPercent)}٪</strong></span>
+                  {s.weeklyPercent != null && (
+                    <span>{tu("weeklyCyclePrefix")}<strong style={{ color: s.weeklyComplete ? ui.color.success : ui.color.text }}>{arNum(s.weeklyPercent)}٪</strong></span>
                   )}
                 </div>
               )}
             </button>
 
-            {/* وجهة اليوم (م٤) للمراقييّن */}
-            {b && s.program === "MARAQI" && (
-              <div style={{ borderTop: `1px solid ${ui.color.border}`, padding: `${sp(3)} ${sp(4)}` }}>
-                <div style={{ fontSize: ui.text.xs, fontWeight: 700, color: ui.color.primary, marginBottom: sp(2) }}>{tu("todayTargetTitle")}</div>
-                <TodayTargetView t={b.today} />
-              </div>
-            )}
-
             {/* قسم التسجيل (موسَّع) */}
             {isExpanded && (
               <div style={{ borderTop: `1px solid ${ui.color.border}`, padding: sp(4), background: ui.color.bg }}>
-                {/* زر «مؤجَّل»: حاضرٌ لم يُسمَّع لضيق الوقت */}
                 {s.program === "MARAQI" && (
                   <div style={{ marginBottom: sp(3) }}>
                     <Button
@@ -413,13 +390,14 @@ function DayLockBar({ lock, circleId, date, post }: {
   );
 }
 
+// ═══════════════ بطاقة الطالب المبسَّطة (ثلاثة أسطر: احفظ / رسّخ / راجِع) ═══════════════
 function StudentPanel({ s, circleId, date, items, post }: {
   s: Student; circleId: string; date: string; items: GrantItem[];
   post: (url: string, body: Record<string, unknown>, okMsg: string) => Promise<void>;
 }) {
+  const sid = s.studentId;
   const hifzBound = (s.today.newHifz?.kind === "NEW" || s.today.newHifz?.kind === "REPEAT") ? (s.today.newHifz.bound ?? null) : null;
 
-  const sid = s.studentId;
   const markAtt = (st: string) => post(`/api/circles/${circleId}/mark-attendance`, { studentId: sid, status: st, date }, "سُجِّل الحضور.");
   const excuse = () => {
     const reason = window.prompt("سبب الاستئذان/العذر:");
@@ -437,26 +415,45 @@ function StudentPanel({ s, circleId, date, items, post }: {
     <Card style={{ display: "flex", flexDirection: "column", gap: sp(4) }}>
       <strong style={{ fontSize: ui.text.lg }}>{s.name}</strong>
 
-      {/* ١) الحضور */}
+      {/* الحضور */}
       <div>
-        <h3 style={H3}>الحضور{s.attendanceStatus ? ` — ${ATT_LABEL[s.attendanceStatus] ?? s.attendanceStatus}` : ""}</h3>
+        <h3 style={H3}>{"الحضور"}{s.attendanceStatus ? ` — ${ATT_LABEL[s.attendanceStatus] ?? s.attendanceStatus}` : ""}</h3>
         <div style={row}>
           {ATT_BUTTONS.map((b) => <Button key={b.status} size="sm" variant={b.tone} onClick={() => void markAtt(b.status)}>{b.label}</Button>)}
           <Button size="sm" variant="ghost" onClick={excuse}>{tu("excused")}</Button>
         </div>
       </div>
 
-      {/* ٢) القاعدة أو المراقي أو رسالةٌ لغيرهما */}
+      {/* محتوى البرنامج */}
       {s.qaidah ? <QaidahPanel q={s.qaidah} onEval={qaidahEval} onDefer={qaidahDefer} />
         : s.today.status === "ON_LEAVE" ? <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: 0 }}>{tu("onStageLeave")}</p>
         : s.today.status !== "ACTIVE" ? <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: 0 }}>{tu("noDailyTasks")}</p>
         : (
           <>
+            {/* سطر الملخّص: المرحلة · دورة الأسبوع */}
+            {(s.stageLabel || s.weeklyPercent != null) && (
+              <div style={{ display: "flex", gap: sp(3), flexWrap: "wrap", fontSize: ui.text.xs, color: ui.color.muted }}>
+                {s.stageLabel && (
+                  <span>
+                    {tu("stageLabelPrefix")}<strong style={{ color: ui.color.text }}>{s.stageLabel}</strong>
+                    {s.hizb != null ? <>{tu("hizbInline")}{arNum(s.hizb)}</> : ""}
+                  </span>
+                )}
+                {s.weeklyPercent != null && (
+                  <span>
+                    {tu("weeklyCyclePrefix")}<strong style={{ color: s.weeklyComplete ? ui.color.success : ui.color.text }}>{arNum(s.weeklyPercent)}٪</strong>
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* احفظ */}
             <div>
-              <h3 style={H3}>{tu("newHifz")}</h3>
+              <h3 style={H3}>{tu("hifzSectionLabel")}</h3>
               {s.today.newHifz?.kind === "COMPLETED" ? <p style={{ color: ui.color.success, margin: 0 }}>{tu("trackCompleted")}</p>
                 : s.today.newHifz?.kind === "NO_TRACK" ? <TrackAssignInline studentId={sid} post={post} />
-                : <>
+                : (
+                  <>
                     <HifzInput
                       bound={hifzBound}
                       hifzKind={s.today.newHifz?.kind ?? null}
@@ -465,33 +462,35 @@ function StudentPanel({ s, circleId, date, items, post }: {
                     <div style={{ ...row, marginTop: sp(2) }}>
                       <Button size="sm" variant="ghost" onClick={() => void extra("hifz")}>{tu("addMore")}</Button>
                     </div>
-                  </>}
+                  </>
+                )}
             </div>
 
+            {/* رسّخ */}
             {s.today.hasTarsikh && (
-            <div>
-              <h3 style={H3}>الترسيخ{s.today.tarseekh.length ? ` (${s.today.tarseekh.length} وحدة)` : ""}</h3>
-              <TarseekhInput bounds={s.today.tarseekh} onDone={(done) => void post(`/api/students/${sid}/session`, { kind: "tarseekh", date, done }, "سُجِّل الترسيخ.")} />
-              <div style={{ ...row, marginTop: sp(2) }}>
-                <Button size="sm" variant="ghost" onClick={() => void extra("tarseekh")}>{tu("addMore")}</Button>
-              </div>
-            </div>
+              <ConsolidationRow
+                label={tu("tarseekhSectionLabel")}
+                bounds={s.today.tarseekh}
+                onDone={(done) => void post(`/api/students/${sid}/session`, { kind: "tarseekh", date, done }, "سُجِّل الترسيخ.")}
+                onExtra={() => void extra("tarseekh")}
+              />
             )}
 
+            {/* راجِع */}
             {s.today.hasMuraja && (
-            <div>
-              <h3 style={H3}>المراجعة{s.today.murajaah?.todaySlice.length ? " — حصّة اليوم" : ""}</h3>
-              {s.today.murajaah?.totalStock === 0
-                ? <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `0 0 ${sp(2)}` }}>{tu("noRasikhYet")} <Button size="sm" variant="ghost" onClick={() => { window.location.href = "/admin/tracks"; }}>{tu("setPath")}</Button></p>
-                : <MurajaahInput todaySlice={s.today.murajaah?.todaySlice ?? []} onRecord={(count) => void post(`/api/students/${sid}/session`, { kind: "murajaah", date, count }, "سُجِّلت المراجعة.")} />}
-              <div style={{ ...row, marginTop: sp(2) }}>
-                <Button size="sm" variant="ghost" onClick={() => void extra("murajaah")}>{tu("addMore")}</Button>
-              </div>
-            </div>
+              s.today.murajaah?.totalStock === 0
+                ? <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: 0 }}>{tu("noRasikhYet")} <Button size="sm" variant="ghost" onClick={() => { window.location.href = "/admin/tracks"; }}>{tu("setPath")}</Button></p>
+                : <ConsolidationRow
+                    label={tu("murajaahSectionLabel")}
+                    bounds={s.today.murajaah?.todaySlice ?? []}
+                    onDone={(done) => void post(`/api/students/${sid}/session`, { kind: "murajaah", date, count: done ? (s.today.murajaah?.todaySlice.length ?? 0) : 0 }, "سُجِّلت المراجعة.")}
+                    onExtra={() => void extra("murajaah")}
+                  />
             )}
-          </>)}
+          </>
+        )}
 
-      {/* ٣) تقدير يدويّ */}
+      {/* تقدير */}
       {items.length > 0 && (
         <div>
           <h3 style={H3}>{tu("estimate")}</h3>
@@ -501,6 +500,73 @@ function StudentPanel({ s, circleId, date, items, post }: {
         </div>
       )}
     </Card>
+  );
+}
+
+// ═══════════════ سطر الترسيخ / المراجعة (رسّخ / راجِع) مع [أخطاء…] ═══════════════
+function ConsolidationRow({ label, bounds, onDone, onExtra }: {
+  label: string; bounds: Bound[];
+  onDone: (done: boolean) => void;
+  onExtra: () => void;
+}) {
+  const [errorsOpen, setErrorsOpen] = useState(false);
+  const [unitErrors, setUnitErrors] = useState<Record<number, 0 | 1 | 2 | 3>>({});
+
+  const rangeText = boundsRangeLabel(bounds);
+  const erroredCount = Object.values(unitErrors).filter((e) => e > 0).length;
+
+  const errorLabel = (n: 0 | 1 | 2 | 3): string =>
+    n === 0 ? tu("consolidUnitSafe")
+    : n === 1 ? tu("consolidUnit1")
+    : n === 2 ? tu("consolidUnit2")
+    : tu("consolidUnit3");
+
+  const row: React.CSSProperties = { display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center" };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
+      <div style={row}>
+        <span style={{ fontWeight: 700, fontSize: ui.text.base, minWidth: 36 }}>{label}</span>
+        <span style={{ fontSize: ui.text.xs, color: ui.color.muted, flex: 1, minWidth: 0 }}>{rangeText}</span>
+        <Button size="sm" variant="primary" onClick={() => onDone(true)}>{tu("consolidDone")}</Button>
+        <Button size="sm" variant="danger" onClick={() => onDone(false)}>{tu("consolidNotDone")}</Button>
+        {bounds.length > 0 && (
+          <Button size="sm" variant="ghost" onClick={() => setErrorsOpen((v) => !v)}>
+            {errorsOpen
+              ? tu("consolidHideErrors")
+              : `${tu("consolidErrors")}${erroredCount > 0 ? ` ${arNum(erroredCount)}` : ""}`}
+          </Button>
+        )}
+        <Button size="sm" variant="ghost" onClick={onExtra}>{tu("addMore")}</Button>
+      </div>
+
+      {errorsOpen && bounds.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: sp(1), background: ui.color.bg, padding: sp(2), borderRadius: ui.radius.md, border: `1px solid ${ui.color.border}` }}>
+          {bounds.map((b, i) => {
+            const errs = (unitErrors[i] ?? 0) as 0 | 1 | 2 | 3;
+            const next = errs >= 3 ? 0 : (errs + 1) as 0 | 1 | 2 | 3;
+            return (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: sp(2) }}>
+                <span style={{ flex: 1, fontSize: ui.text.xs }}>{formatAyah(b.fromSurah, b.fromAyah, b.toSurah, b.toAyah)}</span>
+                <button
+                  onClick={() => setUnitErrors((prev) => ({ ...prev, [i]: next }))}
+                  style={{
+                    fontSize: ui.text.xs, padding: `${sp(0.5)} ${sp(2.5)}`,
+                    borderRadius: ui.radius.sm,
+                    border: `1px solid ${errs > 0 ? ui.color.danger : ui.color.border}`,
+                    background: errs >= 2 ? ui.color.danger : errs === 1 ? "#fffbe6" : ui.color.surface,
+                    color: errs >= 2 ? "#fff" : errs === 1 ? "#b45309" : ui.color.muted,
+                    cursor: "pointer", fontFamily: ui.font, minWidth: 90, minHeight: 36,
+                  }}
+                >
+                  {errorLabel(errs)}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -624,11 +690,11 @@ function QaidahPanel({ q, onEval, onDefer }: { q: Qaidah; onEval: (mastered: boo
     <div>
       <h3 style={H3}>{tu("qaidahCurrentLesson")}</h3>
       <p style={{ fontSize: ui.text.xs, color: ui.color.muted, margin: `0 0 ${sp(2)}` }}>
-        {q.chapterName ? <>{tu("chapterPrefix")}<strong style={{ color: ui.color.text }}>{q.chapterName}</strong> · </> : null}
-        الدرس: <strong style={{ color: ui.color.text }}>{q.lessonName ?? "—"}</strong>
+        {q.chapterName ? <>{tu("chapterPrefix")}<strong style={{ color: ui.color.text }}>{q.chapterName}</strong>{" · "}</> : null}
+        {"الدرس: "}<strong style={{ color: ui.color.text }}>{q.lessonName ?? "—"}</strong>
         {q.lessonIndexInChapter && q.lessonsInChapter ? ` (${arNum(q.lessonIndexInChapter)}/${arNum(q.lessonsInChapter)})` : ""}
-        {" · "}{arNum(q.percent)}٪
-        {q.consecutiveDeferrals > 0 ? <> · <Badge tone="bronze">تأجيلات متتالية: {arNum(q.consecutiveDeferrals)}</Badge></> : null}
+        {" · "}{arNum(q.percent)}{"٪"}
+        {q.consecutiveDeferrals > 0 ? <>{" · "}<Badge tone="bronze">{"تأجيلات متتالية: "}{arNum(q.consecutiveDeferrals)}</Badge></> : null}
         {resultLabel ? <>{tu("todayPrefix")}<strong style={{ color: ui.color.text }}>{resultLabel}</strong></> : null}
       </p>
       <div style={row}>

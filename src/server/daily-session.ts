@@ -639,7 +639,7 @@ async function lastHifzBefore(
 /** الخطوة التالية المقترحة لطالب — أولويّةٌ واحدةٌ واضحة (قاعدة: النظام يوجّه). */
 function suggestNextStep(v: SessionView): string {
   if (v.program !== ProgramKey.MARAQI) return "في القاعدة المدنية — تابِع سلّمه";
-  if (!v.position.started) return "لم يبدأ — حدّد مستواه باختبار المقطع";
+  if (!v.position.started) return "لم يبدأ بعد";
   if (v.hifzGate?.mustRepeat) return "يعيد مقطع أمس (لم يُتقن) — لا حفظ جديد";
   const memorizedToday = v.session?.hifzFromSurah != null;
   if (!memorizedToday) return "حفظٌ جديد اليوم";
