@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 
 import {
   ActivationPurpose,
@@ -554,4 +554,22 @@ export async function completeActivation(
     subjectId: link.userId,
     actorId: link.userId,
   });
+}
+
+// ═══════════════ rate limit التفعيل ═══════════════
+
+const ACTIVATE_WINDOW_MS = 60_000;
+const ACTIVATE_LIMIT = 10;
+
+/** يُعيد true إن كان الطلب ضمن الحدّ المسموح (10 طلبات/دقيقة لكل IP). */
+export async function checkActivateRateLimit(ip: string): Promise<boolean> {
+  const rkey = `act:${createHash("sha256").update(ip).digest("hex")}`;
+  const windowStart = new Date(Math.floor(Date.now() / ACTIVATE_WINDOW_MS) * ACTIVATE_WINDOW_MS);
+  const hit = await prisma.displayRateHit.upsert({
+    where: { rkey_windowStart: { rkey, windowStart } },
+    update: { count: { increment: 1 } },
+    create: { rkey, windowStart, count: 1 },
+    select: { count: true },
+  });
+  return hit.count <= ACTIVATE_LIMIT;
 }
