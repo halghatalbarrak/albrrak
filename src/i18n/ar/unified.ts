@@ -78,6 +78,7 @@ export const unifiedAr = {
   consolidSaved: "محفوظ ✓",
   consolidReverted: "⚠ ترميم",
   weaknessMapBtn: "خريطة ضعف الحلقة",
+  nextStudentBtn: "الطالب التالي ←",
 } as const;
 
 export type UnifiedKey = keyof typeof unifiedAr;

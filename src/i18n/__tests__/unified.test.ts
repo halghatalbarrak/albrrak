@@ -86,6 +86,7 @@ describe("قاموس الشاشة الموحّدة (العربيّة)", () => {
       consolidSaved: "محفوظ ✓",
       consolidReverted: "⚠ ترميم",
       weaknessMapBtn: "خريطة ضعف الحلقة",
+      nextStudentBtn: "الطالب التالي ←",
     };
     for (const key of Object.keys(expected) as (keyof typeof unifiedAr)[]) {
       expect(tUnified(key)).toBe(expected[key]);
