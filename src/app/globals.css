@@ -3,13 +3,9 @@
 @tailwind utilities;
 
 /* ═══════════════ هوية المنصّة — tokens (المرحلة ١) ═══════════════ */
-/* الخطّ: IBM Plex Sans Arabic (SIL OFL) — مستضافٌ ذاتيًّا. لا يُغيّر body هنا (شاشاتٌ لاحقة). */
-@font-face { font-family:'IBM Plex Sans Arabic'; font-weight:400; font-style:normal; font-display:swap; src:url('/fonts/IBMPlexSansArabic-Regular.ttf') format('truetype'); }
-@font-face { font-family:'IBM Plex Sans Arabic'; font-weight:600; font-style:normal; font-display:swap; src:url('/fonts/IBMPlexSansArabic-SemiBold.ttf') format('truetype'); }
-@font-face { font-family:'IBM Plex Sans Arabic'; font-weight:700; font-style:normal; font-display:swap; src:url('/fonts/IBMPlexSansArabic-Bold.ttf') format('truetype'); }
+/* الخطّ: IBM Plex Sans Arabic — يُحمَّل عبر next/font/google، متغيّر --font-sans مُعرَّفٌ في <html>. */
 
 :root {
-  --font-sans: 'IBM Plex Sans Arabic', system-ui, sans-serif;
   /* هوية البراك البصريّة (قرار محمد): بنفسجيّ داكن + ذهبيّ عتيق + كريميّ. تباين النصوص ≥ AA. */
   --color-primary:#5B3E96;  --color-primary-hover:#4a2f80;   /* بنفسجيّ ثانويّ — لون الأفعال (نصّ أبيض ٨:١) */
   --color-bronze:#B8924A;   --color-bronze-hover:#9a7636;    /* ذهبيّ عتيق مميِّز — للإطارات والزخارف لا خلفيّةً لنصٍّ فاتح */

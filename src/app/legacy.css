@@ -46,7 +46,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
 body{
-  font-family:'IBM Plex Sans Arabic','Tajawal',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-family:var(--font-sans);
   background:var(--canvas);
   color:var(--ink);
   line-height:1.7;
