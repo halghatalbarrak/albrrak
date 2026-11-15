@@ -131,6 +131,7 @@
 | #218 | توثيق: CLAUDE.md + HANDOFF.md (سجل الصيانة) | مدموج ✅ |
 | #220 | قاعدة «الاسم الحرفي» لـrequired_status_checks في CLAUDE.md | مدموج ✅ |
 | #221 | docs/BACKUP_PLAN.md — خطّة النسخ الاحتياطي (خطّة فقط) | مدموج ✅ |
+| #223 | أمان: IDOR في GET /api/circles/[id]/arifs — assertTeacherOwnsCircle | مدموج ✅ |
 
 ## الخطوة التالية مباشرةً
 
