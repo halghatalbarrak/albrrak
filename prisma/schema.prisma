@@ -1069,6 +1069,7 @@ model Purchase {
 
   @@index([studentId])
   @@index([sellerUserId])
+  @@index([marketItemId]) // تقرير «كم بِيع من هذا البند؟» — بطيء بلا فهرس
 }
 
 // ═══════════════ إدارة المستخدمين (المرحلة أ) — ROLES.md ═══════════════
