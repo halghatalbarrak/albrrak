@@ -2,7 +2,7 @@
 // الهوية والوضع الداكن معًا (الفكرة ٦): تبديل [data-theme] يغيّر القيَم دون لمس المكوّنات.
 
 export const ui = {
-  font: "'IBM Plex Sans Arabic', system-ui, sans-serif",
+  font: "var(--font-sans)",
   color: {
     primary: "var(--color-primary)", primaryHover: "var(--color-primary-hover)",
     bronze: "var(--color-bronze)", bronzeHover: "var(--color-bronze-hover)",

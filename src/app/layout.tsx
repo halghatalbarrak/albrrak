@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { IBM_Plex_Sans_Arabic } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import "./legacy.css";
@@ -6,6 +7,13 @@ import { ImpersonationBar } from "@/components/ImpersonationBar";
 import { RegisterSW } from "@/components/pwa/RegisterSW";
 import { InstallButton } from "@/components/pwa/InstallButton";
 import { LOCALE_COOKIE, resolveLocale, dirFor } from "@/lib/locale";
+
+const ibmPlexArabic = IBM_Plex_Sans_Arabic({
+  subsets: ["arabic", "latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
   title: "منصة حلقات البراك",
@@ -28,7 +36,7 @@ export default async function RootLayout({
   // التوطين (PR-1): اللغة والاتّجاه من cookie اللغة (العربية افتراضيّاً RTL) — خادميّاً بلا وميض.
   const locale = resolveLocale((await cookies()).get(LOCALE_COOKIE)?.value);
   return (
-    <html lang={locale} dir={dirFor(locale)}>
+    <html lang={locale} dir={dirFor(locale)} className={ibmPlexArabic.variable}>
       <body>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
         <RegisterSW />
