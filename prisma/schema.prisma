@@ -856,8 +856,11 @@ model Application {
   decisionNote String? // إلزامي عند الرفض
   studentId    String?           @unique // يُملأ عند القبول
   createdAt    DateTime          @default(now())
+  deletedAt    DateTime?         @db.Timestamp(3)
+  deletedById  String?
 
   @@index([status, createdAt])
+  @@index([deletedAt])
 }
 
 // ═══════════════ رسائل وليّ الأمر (الفكرة ٩) ═══════════════
@@ -907,6 +910,10 @@ model PointItem {
   limitPeriod PointLimitPeriod @default(NONE)
   active      Boolean          @default(true)
   createdAt   DateTime         @default(now())
+  deletedAt   DateTime?        @db.Timestamp(3)
+  deletedById String?
+
+  @@index([deletedAt])
 }
 
 // حركةٌ في دفتر النقاط — سطرٌ لكلّ عملية منحٍ/خصم. amount وgrantSource **لقطتان تاريخيّتان**
@@ -1021,6 +1028,8 @@ model MarketItem {
   stock       Int? // null = بلا حدّ
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
+  deletedAt   DateTime? @db.Timestamp(3)
+  deletedById String?
 
   // ── م٦ب-٢ ──
   addedByUserId       String? // مَن أضافها (null = الإدارة)
@@ -1030,6 +1039,7 @@ model MarketItem {
 
   @@index([approvalStatus])
   @@index([targetStudentId])
+  @@index([deletedAt])
 }
 
 // كود الطالب المتغيّر اللحظيّ (ECONOMY_RULES §الركن ٢): يطلبه الطالب أو وليّه، فيُولَّد
@@ -1496,21 +1506,24 @@ enum DisplayAssetType {
 }
 
 model DisplayScreen {
-  id         String            @id @default(cuid())
-  kind       DisplayScreenKind
-  nameAr     String
-  studentId  String? // لشاشة البيت: الابن المرتبط (null للمسجد)
-  refreshSec Int               @default(180) // ⚙ دورة التحديث الآليّ
-  active     Boolean           @default(true)
-  createdAt  DateTime          @default(now())
+  id          String            @id @default(cuid())
+  kind        DisplayScreenKind
+  nameAr      String
+  studentId   String? // لشاشة البيت: الابن المرتبط (null للمسجد)
+  refreshSec  Int               @default(180) // ⚙ دورة التحديث الآليّ
+  active      Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  deletedAt   DateTime?         @db.Timestamp(3)
+  deletedById String?
   // §١٠: تعديلٌ يدويّ بالدقائق لكل صلاة فوق حساب أمّ القرى (افتراضيّه ٠)
-  adjFajr    Int               @default(0)
-  adjDhuhr   Int               @default(0)
-  adjAsr     Int               @default(0)
-  adjMaghrib Int               @default(0)
-  adjIsha    Int               @default(0)
+  adjFajr     Int               @default(0)
+  adjDhuhr    Int               @default(0)
+  adjAsr      Int               @default(0)
+  adjMaghrib  Int               @default(0)
+  adjIsha     Int               @default(0)
 
   @@index([kind, active])
+  @@index([deletedAt])
 }
 
 // رمز الشاشة — append-only: يُلغى (revokedAt) ويُجدَّد بإنشاء رمزٍ جديد.
@@ -1605,8 +1618,11 @@ model DisplaySchedule {
   daysMask    Int                    @default(127) // بتات أيّام الأسبوع (bit0=الأحد … bit6=السبت)؛ ١٢٧=كلّها
   active      Boolean                @default(true)
   createdAt   DateTime               @default(now())
+  deletedAt   DateTime?              @db.Timestamp(3)
+  deletedById String?
 
   @@index([screenId, active])
+  @@index([deletedAt])
 }
 
 // ═══════════════ سجل العمليات (الحذف الناعم) ═══════════════
