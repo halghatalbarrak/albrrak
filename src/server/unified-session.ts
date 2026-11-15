@@ -4,18 +4,17 @@ import { prisma } from "@/lib/prisma";
 
 import { defaultStatusFor, toDateOnly } from "./attendance";
 import { getAttendanceDayLock, type DayLock } from "./attendance-lock";
-import { assertCanRecordListening } from "./daily-session";
+import { assertCanRecordListening, getCircleSessionBoard } from "./daily-session";
 import { grantAuto } from "./economy";
 import { getQaidahPosition, qaidahBoardRow, type QaidahBoardStudent } from "./qaidah-session";
-import { getStudentSetupStatus, type StudentSetupStatus } from "./student-setup";
+import { getStudentSetupStatusBatch, type StudentSetupStatus } from "./student-setup";
 import { nextUnitForStudent } from "./track-units";
-import { sessionBoardWithTarget, type AyahBound, type BoardStudentWithTarget } from "./today-target";
+import { todayTarget, type AyahBound, type TodayTarget } from "./today-target";
 
 // ═══════════════ الشاشة الموحّدة (م ج) — لوحةٌ واحدة + الزيادة ═══════════════
 //
-// طبقة عرضٍ وتسجيلٍ فوق المحرّكات القائمة (todayTarget/grantAuto/الحضور/محرّك العذر) — لا
-// تكرّر منطقًا. getUnifiedBoard يجمع لوحة الجلسة+الوجهة مع حالة حضور كل طالب. recordExtra
-// يكافئ الإنجاز الزائد بالوحدة التالية (nextUnitForStudent) ويُطلق *_EXTRA بمرجع الوحدة.
+// getUnifiedBoard يُرجع بيانات القائمة فقط (لا today/qaidah) — سريعٌ ثابتُ الاستعلامات.
+// getStudentPanelDetail يُحضِر today + qaidah + الإثراء لطالبٍ واحد عند فتح بطاقته.
 
 const dayKey = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -25,40 +24,42 @@ const EXTRA_EVENT: Record<"hifz" | "tarseekh" | "murajaah", AutoEventType> = {
   murajaah: AutoEventType.MURAJAAH_EXTRA,
 };
 
-export interface UnifiedStudent extends BoardStudentWithTarget {
-  /** حالة الحضور المسجَّلة اليوم، أو null إن لم تُرفَع بعد (يُبيّن «من بقي»). */
+export interface UnifiedStudent {
+  studentId: string;
+  name: string;
+  program: string | null;
+  stageLabel: string | null;
+  hizb: number | null;
+  yesterday: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number; mastered: boolean } | null;
+  required: { tarseekhCount: number; khums: number } | null;
+  weeklyPercent: number | null;
+  weeklyComplete: boolean;
+  todayHifzDone: boolean;
+  tarseekhDone: boolean | null;
+  deferredToday: boolean;
+  mustRepeat: boolean;
   attendanceStatus: AttendanceStatus | null;
-  /** كتلة القاعدة المدنية (م ج): الباب + الدرس الحاليّ + النسبة + تقييم اليوم + العدّاد + القفل.
-   *  null لغير طلاب القاعدة (لمراقي تُستعمل today). البرنامج نفسه في `program` الموروث (ق١، من القيد). */
-  qaidah: QaidahBoardStudent | null;
-  /** حالة إعداد الطالب (لوحة «إعدادات ناقصة»). */
   setupStatus: StudentSetupStatus;
 }
 
 export interface UnifiedBoard {
   circle: { id: string; nameAr: string } | null;
-  /** برنامج الحلقة الافتراضيّ (للترويسة). في حلقةٍ مختلطة يُعتمَد برنامج كلّ طالبٍ من student.program. */
   program: ProgramKey | null;
   students: UnifiedStudent[];
-  /** هل الأصل «غياب» لهذا اليوم؟ (§ م ج: من العتبة فصاعدًا) — تُبيّنه الواجهة لمن لم يُرفَع. */
   absentDefault: boolean;
-  /** حالة قفل يوم الحلقة (المهمّة ٩) — للشارة والأزرار. */
   dayLock: DayLock;
 }
 
-/**
- * يُثري حدود الوحدات (AyahBound[]) بـsessionId وعدد أخطاء اليوم — ٢ استعلامان فقط لكل طالب.
- * يُستعمل في getUnifiedBoard فقط؛ الحقول اختياريّةٌ ولا تكسر باقي المستهلكين.
- */
-async function enrichBoundsWithSessions(
+// ─── تفاصيل بطاقة الطالب (محضَرةٌ عند الفتح فقط) ───
+
+/** يُثري حدود الوحدات بـsessionId وأخطاء اليوم — ٢ استعلامان لطالبٍ واحد. */
+async function enrichBounds(
   studentId: string,
   units: AyahBound[],
   date: Date,
   db: PrismaClient,
 ): Promise<AyahBound[]> {
   if (!units.length) return [];
-
-  // ١) كل الجلسات المُتقَنة وغير المُرمَّمة لهذا الطالب (أحدثها أوّلاً → أوّل مطابقة تفوز)
   const sessions = await db.dailySession.findMany({
     where: { studentId, hifzMastered: true, repairedAt: null, hifzFromSurah: { not: null } },
     select: { id: true, hifzFromSurah: true, hifzFromAyah: true, hifzToSurah: true, hifzToAyah: true },
@@ -71,33 +72,55 @@ async function enrichBoundsWithSessions(
       if (!sessionMap.has(k)) sessionMap.set(k, s.id);
     }
   }
-
-  const sessionIds = units.map((u) =>
-    sessionMap.get(`${u.fromSurah}:${u.fromAyah}:${u.toSurah}:${u.toAyah}`) ?? null,
-  );
-
-  // ٢) أخطاء اليوم لجميع الجلسات المعروفة (استعلامٌ واحد مُجمَّع)
-  const knownIds = sessionIds.filter((id): id is string => id !== null);
+  const knownIds = [...new Set(units.map((u) => sessionMap.get(`${u.fromSurah}:${u.fromAyah}:${u.toSurah}:${u.toAyah}`) ?? null).filter((id): id is string => id !== null))];
   const errorCounts = new Map<string, number>();
   if (knownIds.length) {
-    const groups = await db.reviewError.groupBy({
-      by: ["sessionId"],
-      where: { sessionId: { in: knownIds }, date },
-      _count: { sessionId: true },
-    });
+    const groups = await db.reviewError.groupBy({ by: ["sessionId"], where: { sessionId: { in: knownIds }, date }, _count: { sessionId: true } });
     for (const g of groups) errorCounts.set(g.sessionId, g._count.sessionId);
   }
-
-  return units.map((u, i) => ({
-    ...u,
-    sessionId: sessionIds[i],
-    savedErrors: sessionIds[i] ? (errorCounts.get(sessionIds[i]!) ?? 0) : 0,
-  }));
+  return units.map((u) => {
+    const sid = sessionMap.get(`${u.fromSurah}:${u.fromAyah}:${u.toSurah}:${u.toAyah}`) ?? null;
+    return { ...u, sessionId: sid, savedErrors: sid ? (errorCounts.get(sid) ?? 0) : 0 };
+  });
 }
 
+export interface StudentPanelDetail {
+  today: TodayTarget;
+  qaidah: QaidahBoardStudent | null;
+}
+
+/** تفاصيل بطاقة طالبٍ واحد — تُحضَر عند فتح البطاقة فقط. */
+export async function getStudentPanelDetail(
+  _actorId: string,
+  studentId: string,
+  program: string | null,
+  date: string | Date,
+  db: PrismaClient = prisma,
+): Promise<StudentPanelDetail> {
+  const reviewDate = toDateOnly(date);
+  const [rawToday, qaidahPos] = await Promise.all([
+    todayTarget(studentId, date, db),
+    program === ProgramKey.QAIDAH_MADANIYYAH ? getQaidahPosition(studentId, db, date) : Promise.resolve(null),
+  ]);
+
+  const [enrichedTarseekh, enrichedMurajaah] = await Promise.all([
+    enrichBounds(studentId, rawToday.tarseekh, reviewDate, db),
+    rawToday.murajaah
+      ? enrichBounds(studentId, rawToday.murajaah.todaySlice, reviewDate, db).then((s) => ({ ...rawToday.murajaah!, todaySlice: s }))
+      : Promise.resolve(null),
+  ]);
+
+  return {
+    today: { ...rawToday, tarseekh: enrichedTarseekh, murajaah: enrichedMurajaah },
+    qaidah: program === ProgramKey.QAIDAH_MADANIYYAH && qaidahPos ? qaidahBoardRow(studentId, "", qaidahPos) : null,
+  };
+}
+
+// ─── لوحة القائمة (سريعة، لا today/qaidah) ───
+
 /**
- * لوحة الحلقة الموحّدة: كل طالبٍ **بلوحة برنامجه هو** (ق١) — مراقي وجهةَ يومه، والقاعدة درسَه
- * الحاليّ — ولو كانت الحلقة مختلطة البرامج. البرنامج يُقرأ من قيد كلّ طالب لا من الحلقة.
+ * لوحة الحلقة الموحّدة — بيانات القائمة فقط (بلا today/qaidah).
+ * يعتمد على batch ثابت الاستعلامات بدلاً من حلقة N+1.
  */
 export async function getUnifiedBoard(
   actorId: string,
@@ -105,34 +128,34 @@ export async function getUnifiedBoard(
   date: string | Date,
   db: PrismaClient = prisma,
 ): Promise<UnifiedBoard> {
-  const board = await sessionBoardWithTarget(actorId, circleId, date, db);
+  const board = await getCircleSessionBoard(actorId, circleId, date, db);
   const reviewDate = toDateOnly(date);
-  const rows = await db.attendance.findMany({
-    where: { circleId, date: reviewDate },
-    select: { studentId: true, status: true },
-  });
-  const statusBy = new Map(rows.map((r) => [r.studentId, r.status]));
+  const studentIds = board.students.map((s) => s.studentId);
 
-  // برنامج كلّ طالبٍ محسوبٌ مسبقًا في s.program (getStudentPosition ⟵ activeCircle ⟵ القيد، ق١).
-  const students: UnifiedStudent[] = [];
-  for (const s of board.students) {
-    const qaidah = s.program === ProgramKey.QAIDAH_MADANIYYAH
-      ? qaidahBoardRow(s.studentId, s.name, await getQaidahPosition(s.studentId, db, date))
-      : null;
-    const setupStatus = await getStudentSetupStatus(s.studentId, db);
+  const [attRows, setupMap, dayLock] = await Promise.all([
+    db.attendance.findMany({ where: { circleId, date: reviewDate }, select: { studentId: true, status: true } }),
+    getStudentSetupStatusBatch(studentIds, db),
+    getAttendanceDayLock(circleId, date, db),
+  ]);
+  const statusBy = new Map(attRows.map((r) => [r.studentId, r.status]));
 
-    // إثراء وحدات الترسيخ والمراجعة بـ sessionId وأخطاء اليوم المحفوظة
-    const enrichedTarseekh = await enrichBoundsWithSessions(s.studentId, s.today.tarseekh, reviewDate, db);
-    const enrichedMurajaah = s.today.murajaah
-      ? { ...s.today.murajaah, todaySlice: await enrichBoundsWithSessions(s.studentId, s.today.murajaah.todaySlice, reviewDate, db) }
-      : null;
-    const enrichedToday = { ...s.today, tarseekh: enrichedTarseekh, murajaah: enrichedMurajaah };
-
-    students.push({ ...s, today: enrichedToday, attendanceStatus: statusBy.get(s.studentId) ?? null, qaidah, setupStatus });
-  }
-
-  // لا ترويسة برنامجٍ للحلقة (قد تكون مختلطة) — الواجهة تعتمد student.program لكلّ صفّ.
-  const dayLock = await getAttendanceDayLock(circleId, date, db);
+  const students: UnifiedStudent[] = board.students.map((s) => ({
+    studentId: s.studentId,
+    name: s.name,
+    program: s.program,
+    stageLabel: s.stageLabel,
+    hizb: s.hizb,
+    yesterday: s.yesterday,
+    required: s.required,
+    weeklyPercent: s.weeklyPercent,
+    weeklyComplete: s.weeklyComplete,
+    todayHifzDone: s.todayHifzDone,
+    tarseekhDone: s.tarseekhDone,
+    deferredToday: s.deferredToday,
+    mustRepeat: s.mustRepeat,
+    attendanceStatus: statusBy.get(s.studentId) ?? null,
+    setupStatus: setupMap.get(s.studentId) ?? { studentId: s.studentId, isComplete: true, blockers: [], warnings: [] },
+  }));
 
   return {
     circle: board.circle,
@@ -144,21 +167,12 @@ export async function getUnifiedBoard(
 }
 
 export interface ExtraArgs {
-  studentId: string;
-  actorId: string;
-  kind: "hifz" | "tarseekh" | "murajaah";
-  date: string | Date;
+  studentId: string; actorId: string; kind: "hifz" | "tarseekh" | "murajaah"; date: string | Date;
 }
-
 export interface ExtraResult {
   unit: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number } | null;
 }
 
-/**
- * مكافأة الإنجاز الزائد (م ج): يقترح الوحدة التالية في مسار الطالب ويُطلق *_EXTRA بمرجعها
- * (منع ازدواجٍ لكلّ وحدةٍ في اليوم). لا وحدةَ تالية (أتمّ/لا مسار) ⟵ لا زيادة. يفوّض معلّم
- * الحلقة/العريف المُسنَد (كنمط التسميع). لا يمسّ موضع الطالب — مكافأةٌ فقط.
- */
 export async function recordExtra(args: ExtraArgs, db: PrismaClient = prisma): Promise<ExtraResult> {
   await assertCanRecordListening(args.actorId, args.studentId, db);
   const next = await nextUnitForStudent(args.studentId, db);

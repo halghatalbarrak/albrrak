@@ -7,7 +7,7 @@ import { tSetup } from "@/i18n/ar/setup";
 import { tUnified as tu } from "@/i18n/ar/unified";
 import { navAr } from "@/i18n/ar/nav";
 import { StudentPanel } from "./_StudentPanel";
-import type { GrantItem, PostFn, Student } from "./_types";
+import type { GrantItem, PanelDetail, PostFn, Student } from "./_types";
 
 const PROGRAM_AR: Record<string, string> = {
   QAIDAH_MADANIYYAH: navAr.civilBase, MARAQI: navAr.maraqi, MUDDAKIR: navAr.grpMuddakir, WEEKLY: navAr.weekly,
@@ -17,11 +17,14 @@ const ATT_LABEL: Record<string, string> = {
   ABSENT_EXCUSED: "غائب بعذر", PRE_EXCUSED: "مستأذن", LEFT_EARLY: "خرج مبكّرًا",
 };
 
-export function CardsView({ students, absentDefault, circleId, date, items, post }: {
+export function CardsView({ students, absentDefault, circleId, date, items, post, panelCache, panelLoading, onOpenStudent }: {
   students: Student[];
   absentDefault: boolean;
   circleId: string; date: string; items: GrantItem[];
   post: PostFn;
+  panelCache: ReadonlyMap<string, PanelDetail>;
+  panelLoading: ReadonlySet<string>;
+  onOpenStudent: (studentId: string, program: string | null) => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -34,7 +37,11 @@ export function CardsView({ students, absentDefault, circleId, date, items, post
         return (
           <Card key={s.studentId} style={{ padding: 0, overflow: "hidden" }}>
             <button
-              onClick={() => setExpanded(isExpanded ? null : s.studentId)}
+              onClick={() => {
+                const next = isExpanded ? null : s.studentId;
+                setExpanded(next);
+                if (next && !panelCache.has(next)) onOpenStudent(next, s.program);
+              }}
               style={{ width: "100%", textAlign: "start", background: "transparent", border: "none", cursor: "pointer", fontFamily: ui.font, color: ui.color.text, padding: sp(4), display: "flex", flexDirection: "column", gap: sp(2) }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), flexWrap: "wrap" }}>
@@ -90,13 +97,17 @@ export function CardsView({ students, absentDefault, circleId, date, items, post
                   <div style={{ marginBottom: sp(3) }}>
                     <Button
                       variant="ghost" size="sm"
-                      onClick={() => void post(`/api/students/${s.studentId}/session`, { kind: "defer", date }, tu("deferDone"))}
+                      onClick={() => void post(`/api/students/${s.studentId}/session`, { kind: "defer", date }, tu("deferDone"), s.studentId)}
                     >
                       {tu("deferBtn")}
                     </Button>
                   </div>
                 )}
-                <StudentPanel s={s} circleId={circleId} date={date} items={items} post={post} />
+                <StudentPanel
+                  s={s} circleId={circleId} date={date} items={items} post={post}
+                  detail={panelCache.get(s.studentId) ?? null}
+                  detailLoading={panelLoading.has(s.studentId)}
+                />
               </div>
             )}
           </Card>
