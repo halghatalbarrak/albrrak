@@ -145,8 +145,20 @@ export interface ScheduleRow {
   programId: string | null; programNameAr: string | null; slideIds: string[]; daysMask: number; active: boolean;
 }
 
+export async function softDeleteSchedule(actorUserId: string, scheduleId: string, db: PrismaClient = prisma): Promise<void> {
+  await assertDisplayAdmin(actorUserId, db);
+  const sch = await db.displaySchedule.findUnique({ where: { id: scheduleId }, select: { id: true, screenId: true, deletedAt: true } });
+  if (!sch) throw verr("displayScheduleNotFound");
+  if (sch.deletedAt) throw verr("displayScheduleAlreadyDeleted");
+  const now = new Date();
+  await db.$transaction([
+    db.displaySchedule.update({ where: { id: scheduleId }, data: { deletedAt: now, deletedById: actorUserId } }),
+    db.auditLog.create({ data: { action: "DELETE", entity: "DisplaySchedule", entityId: scheduleId, actorId: actorUserId, label: `جدول شاشة` } }),
+  ]);
+}
+
 export async function listSchedules(screenId: string, db: PrismaClient = prisma): Promise<ScheduleRow[]> {
-  const rows = await db.displaySchedule.findMany({ where: { screenId }, orderBy: { ordinal: "asc" } });
+  const rows = await db.displaySchedule.findMany({ where: { screenId, deletedAt: null }, orderBy: { ordinal: "asc" } });
   const keyById = await programKeys(rows, db);
   return rows.map((r) => ({
     id: r.id, ordinal: r.ordinal, startMode: r.startMode, prayer: r.prayer as Prayer | null, rel: r.rel as "AFTER" | "BEFORE" | null,
@@ -176,7 +188,7 @@ export async function todayPreview(screenId: string, db: PrismaClient = prisma, 
   const prayers = madinahPrayerTimesAdjusted(dateISO, adjust);
   const prayerMs = madinahPrayerMs(dateISO, adjust);
   const mid = makkahDayBounds(dateISO).start.getTime();
-  const rows = await db.displaySchedule.findMany({ where: { screenId, active: true }, orderBy: { ordinal: "asc" } });
+  const rows = await db.displaySchedule.findMany({ where: { screenId, active: true, deletedAt: null }, orderBy: { ordinal: "asc" } });
   const keyById = await programKeys(rows, db);
   const lines: { at: number; text: string }[] = [];
   for (const r of rows) {
@@ -203,7 +215,7 @@ function addDaysISO(dateISO: string, k: number): string {
 
 /** تحذيرات التداخل (§١٠) على مدى الأيّام السبعة القادمة — الأعلى ترتيباً يغلب. */
 export async function scheduleWarnings(screenId: string, db: PrismaClient = prisma, now: Date = new Date()): Promise<string[]> {
-  const rows = await db.displaySchedule.findMany({ where: { screenId, active: true }, orderBy: { ordinal: "asc" } });
+  const rows = await db.displaySchedule.findMany({ where: { screenId, active: true, deletedAt: null }, orderBy: { ordinal: "asc" } });
   if (rows.length < 2) return [];
   const keyById = await programKeys(rows, db);
   const labelOf = (r: DisplaySchedule) => contentLabel(r, keyById);

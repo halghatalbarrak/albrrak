@@ -45,6 +45,17 @@ export default function AdminEconomyPage() {
     else setErr(tEco("errToggle"));
   }
 
+  async function del(item: Item) {
+    if (!window.confirm(`حذف بند «${item.nameAr}»؟`)) return;
+    const t = await token();
+    if (!t) return;
+    const res = await fetch(`/api/admin/economy?id=${encodeURIComponent(item.id)}`, {
+      method: "DELETE", headers: { authorization: `Bearer ${t}` },
+    });
+    if (res.ok) void load();
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? tEco("errToggle")); }
+  }
+
   const cols: Column<Item>[] = [
     { key: "name", header: tEco("colName"), cell: (i) => <span style={{ opacity: i.active ? 1 : 0.5 }}>{i.nameAr}</span> },
     { key: "value", header: tEco("colValue"), cell: (i) => (
@@ -61,6 +72,7 @@ export default function AdminEconomyPage() {
       <div style={{ display: "flex", gap: sp(2), justifyContent: "flex-end" }}>
         <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/economy/${i.id}/edit`)}>{tEco("edit")}</Button>
         <Button variant="ghost" size="sm" onClick={() => void toggle(i)}>{i.active ? tEco("deactivate") : tEco("activate")}</Button>
+        <Button variant="ghost" size="sm" style={{ color: ui.color.danger }} onClick={() => void del(i)}>{tEco("delete")}</Button>
       </div>
     ) },
   ];

@@ -33,6 +33,7 @@ export const applicationsAr = {
   btnReject: "رفض",
   btnWaitlist: "انتظار",
   btnRevealId: "كشف الهوية",
+  btnDelete: "حذف",
   revealedIdPrefix: "الهوية: ", // يليه رقم الهوية
 
   // AppShell والعنوان (page.tsx)

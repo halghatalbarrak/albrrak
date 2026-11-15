@@ -33,6 +33,7 @@ export const marketAr = {
   actEdit: "تعديل",
   actDeactivate: "تعطيل",
   actActivate: "تفعيل",
+  actDelete: "حذف",
 
   // صفحة بيدر أبناء الوليّ (bidder/page.tsx)
   guardianMotivateTitle: "كن شريكًا في تحفيز ابنك 🌱",

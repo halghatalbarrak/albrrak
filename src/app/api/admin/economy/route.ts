@@ -4,6 +4,7 @@ import {
   createPointItem,
   listPointItems,
   setPointItemActive,
+  softDeletePointItem,
   updatePointItem,
   type PointItemInput,
 } from "@/server/economy";
@@ -52,6 +53,19 @@ export async function POST(req: Request) {
     const body = (await req.json()) as Record<string, unknown>;
     const item = await createPointItem(actor.id, readItemBody(body));
     return Response.json(item, { status: 201 });
+  } catch (e) {
+    return errorResponse(e);
+  }
+}
+
+// DELETE /api/admin/economy?id=… — حذفٌ ناعم لبند.
+export async function DELETE(req: Request) {
+  try {
+    const actor = await requireRoles(req, MANAGER);
+    const id = new URL(req.url).searchParams.get("id");
+    if (!id) throw verr("idRequired");
+    await softDeletePointItem(actor.id, id);
+    return Response.json({ ok: true });
   } catch (e) {
     return errorResponse(e);
   }

@@ -465,6 +465,14 @@ export const errorsAr = {
   circleGenderConflict: "لا يمكن تغيير جنس الحلقة؛ فيها طلاب نشطون من الجنس الآخر.",
   circleNameDuplicate: "اسم الحلقة موجودٌ فعلاً في حلقةٍ أخرى.",
   circleNameInTrash: "هذا الاسم موجودٌ في حلقةٍ محذوفة — أعِدها من قائمة الحلقات المؤرشفة.",
+
+  // الحذف الناعم — شاشة/موعد/بند/ثمرة/طلب (P4 — سلة المحذوفات)
+  displayScreenAlreadyDeleted: "الشاشة محذوفةٌ فعلاً.",
+  displayScheduleAlreadyDeleted: "الموعد محذوفٌ فعلاً.",
+  pointItemAlreadyDeleted: "البند محذوفٌ فعلاً.",
+  marketItemAlreadyDeleted: "الثمرة محذوفةٌ فعلاً.",
+  applicationAlreadyDeleted: "الطلب محذوفٌ فعلاً.",
+  applicationAcceptedCannotDelete: "الطلب مقبولٌ ومرتبطٌ بطالب — لا يُحذف.",
 } as const;
 
 /** مفاتيح أخطاء الخادم المُرحَّلة (تنمو كلّما رُحِّل مجال). */

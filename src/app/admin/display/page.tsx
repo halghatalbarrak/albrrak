@@ -157,6 +157,7 @@ export default function DisplayAdminPage() {
             {s.copy === "legacy" && <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{t("renewForCopy")}</span>}
             {s.copy === "keyMissing" && <Button size="sm" variant="ghost" disabled title={t("copyKeyMissing")}>{t("copyLink")}</Button>}
             {s.hasActiveToken && <Button size="sm" variant="ghost" onClick={() => void act({ action: "revokeToken", screenId: s.id })}>{t("revokeLink")}</Button>}
+            <Button size="sm" variant="ghost" style={{ color: ui.color.danger }} onClick={() => { if (window.confirm(`${t("delete")} «${s.nameAr}»؟`)) void act({ action: "deleteScreen", screenId: s.id }); }}>{t("delete")}</Button>
             <label style={{ fontSize: ui.text.xs, color: ui.color.muted, display: "flex", alignItems: "center", gap: 4 }}>
               {s.kind === "MOSQUE" ? t("uploadMosqueBg") : t("uploadHomeBg")}
               <input type="file" accept="image/*,video/mp4" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadFile(f, { target: "background", screenKind: s.kind }); }} />
@@ -301,6 +302,7 @@ function Schedules({ detail, programs, act }: { detail: Detail; programs: Progra
           <Button size="sm" variant="ghost" onClick={() => void act({ action: "setSchedule", scheduleId: sc.id, input: { active: !sc.active } })}>{sc.active ? t("disable") : t("enable")}</Button>
           <Button size="sm" variant="ghost" disabled={i === 0} onClick={() => move(i, -1)}>{t("moveUp")}</Button>
           <Button size="sm" variant="ghost" disabled={i === detail.schedules.length - 1} onClick={() => move(i, 1)}>{t("moveDown")}</Button>
+          <Button size="sm" variant="ghost" style={{ color: ui.color.danger }} onClick={() => { if (window.confirm(t("deleteScheduleConfirm"))) void act({ action: "deleteSchedule", scheduleId: sc.id }); }}>{t("delete")}</Button>
         </div>
       ))}
 

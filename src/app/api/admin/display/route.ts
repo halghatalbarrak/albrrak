@@ -1,10 +1,10 @@
 import { DisplayScreenKind, Role } from "@prisma/client";
 
 import { requireRoles } from "@/server/auth";
-import { createScreen, issueToken, listScreens, revokeToken } from "@/server/display/screens";
+import { createScreen, issueToken, listScreens, revokeToken, softDeleteScreen } from "@/server/display/screens";
 import { addProgramSlide, getScreenDetail, listProgramsForSlides, reorderSlides, revealScreenToken, searchStudents, setPrayerAdjust, setSlide } from "@/server/display/admin";
 import { type PrayerAdjust } from "@/lib/display-schedule";
-import { addSchedule, reorderSchedules, setSchedule, type ScheduleInput } from "@/server/display/schedules";
+import { addSchedule, reorderSchedules, setSchedule, softDeleteSchedule, type ScheduleInput } from "@/server/display/schedules";
 import { errorResponse } from "@/server/http";
 import { verr } from "@/server/errors";
 
@@ -79,6 +79,16 @@ export async function POST(req: Request) {
       case "reorder": {
         if (typeof b.screenId !== "string" || !Array.isArray(b.orderedIds)) throw verr("displayOrderRequired");
         await reorderSlides(actor.id, b.screenId, b.orderedIds.filter((x): x is string => typeof x === "string"));
+        return Response.json({ ok: true });
+      }
+      case "deleteScreen": {
+        if (typeof b.screenId !== "string") throw verr("displayScreenRequired");
+        await softDeleteScreen(actor.id, b.screenId);
+        return Response.json({ ok: true });
+      }
+      case "deleteSchedule": {
+        if (typeof b.scheduleId !== "string") throw verr("displayScheduleDataRequired");
+        await softDeleteSchedule(actor.id, b.scheduleId);
         return Response.json({ ok: true });
       }
       default:

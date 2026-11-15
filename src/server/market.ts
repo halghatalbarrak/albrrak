@@ -155,10 +155,26 @@ export async function setMarketItemActive(
   return item;
 }
 
+export async function softDeleteMarketItem(
+  actorId: string,
+  itemId: string,
+  db: PrismaClient = prisma,
+): Promise<void> {
+  await assertMarketAdmin(actorId, db);
+  const item = await db.marketItem.findUnique({ where: { id: itemId }, select: { id: true, nameAr: true, deletedAt: true } });
+  if (!item) throw verr("marketItemNotFound");
+  if (item.deletedAt) throw verr("marketItemAlreadyDeleted");
+  const now = new Date();
+  await db.$transaction([
+    db.marketItem.update({ where: { id: itemId }, data: { deletedAt: now, deletedById: actorId } }),
+    db.auditLog.create({ data: { action: "DELETE", entity: "MarketItem", entityId: itemId, actorId, label: item.nameAr } }),
+  ]);
+}
+
 /** كلّ السلع (المفعّلة أوّلًا) — لشاشة الإدارة. */
 export async function listMarketItems(actorId: string, db: PrismaClient = prisma) {
   await assertMarketAdmin(actorId, db);
-  return db.marketItem.findMany({ orderBy: [{ active: "desc" }, { createdAt: "asc" }] });
+  return db.marketItem.findMany({ where: { deletedAt: null }, orderBy: [{ active: "desc" }, { createdAt: "asc" }] });
 }
 
 export interface SellableItem {
@@ -179,7 +195,7 @@ export async function listSellableItems(
 ): Promise<SellableItem[]> {
   await assertSeller(actorId, db);
   const items = await db.marketItem.findMany({
-    where: { active: true, approvalStatus: MarketItemApproval.APPROVED, targetStudentId: null },
+    where: { active: true, deletedAt: null, approvalStatus: MarketItemApproval.APPROVED, targetStudentId: null },
     orderBy: { createdAt: "asc" },
     select: { id: true, nameAr: true, imageUrl: true, pricePoints: true, stock: true },
   });
@@ -208,6 +224,7 @@ async function bidderItems(studentId: string, db: PrismaClient): Promise<Sellabl
   const items = await db.marketItem.findMany({
     where: {
       active: true,
+      deletedAt: null,
       approvalStatus: MarketItemApproval.APPROVED,
       OR: [{ targetStudentId: null }, { targetStudentId: studentId }],
     },
