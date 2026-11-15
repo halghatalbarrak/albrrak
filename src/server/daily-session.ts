@@ -744,23 +744,6 @@ export interface CircleSessionBoard {
   students: BoardStudent[];
 }
 
-/** آخر جلسة حفظٍ قبل اليوم (لعرض «حفظ أمس»). */
-async function lastHifzBefore(
-  studentId: string, date: Date, db: PrismaClient,
-): Promise<BoardStudent["yesterday"]> {
-  const r = await db.dailySession.findFirst({
-    where: { studentId, hifzFromSurah: { not: null }, date: { lt: date } },
-    orderBy: { date: "desc" },
-    select: { hifzFromSurah: true, hifzFromAyah: true, hifzToSurah: true, hifzToAyah: true, hifzMastered: true },
-  });
-  if (!r || r.hifzFromSurah == null) return null;
-  return {
-    fromSurah: r.hifzFromSurah, fromAyah: r.hifzFromAyah ?? 1,
-    toSurah: r.hifzToSurah ?? r.hifzFromSurah, toAyah: r.hifzToAyah ?? (r.hifzFromAyah ?? 1),
-    mastered: r.hifzMastered === true,
-  };
-}
-
 /** الخطوة التالية المقترحة لطالب — أولويّةٌ واحدةٌ واضحة (قاعدة: النظام يوجّه). */
 function suggestNextStep(v: SessionView): string {
   if (v.program !== ProgramKey.MARAQI) return "في القاعدة المدنية — تابِع سلّمه";
