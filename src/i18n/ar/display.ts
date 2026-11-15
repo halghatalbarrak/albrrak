@@ -27,6 +27,8 @@ export const displayAr = {
   moveDown: "أسفل",
   disable: "تعطيل",
   enable: "تفعيل",
+  delete: "حذف",
+  deleteScheduleConfirm: "حذف هذا الموعد؟",
   background: "الخلفيّة",
   uploadMosqueBg: "رفع خلفيّة المسجد",
   uploadHomeBg: "رفع خلفيّة البيت",

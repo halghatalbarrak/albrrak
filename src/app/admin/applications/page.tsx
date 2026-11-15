@@ -155,7 +155,7 @@ export default function AdminApplicationsPage() {
           <Button variant="danger" size="sm" onClick={() => decide(r.id, "reject")}>{t("btnReject")}</Button>
           <Button variant="ghost" size="sm" onClick={() => decide(r.id, "waitlist")}>{t("btnWaitlist")}</Button>
           {canReveal && <Button variant="ghost" size="sm" onClick={() => revealId(r.id)}>{revealed[r.id] ? `${t("revealedIdPrefix")}${revealed[r.id]}` : t("btnRevealId")}</Button>}
-          {(roles.includes("CIRCLE_MANAGER") || roles.includes("SUPER_ADMIN")) && <Button variant="ghost" size="sm" style={{ color: ui.color.danger }} onClick={() => void del(r.id, r.name)}>حذف</Button>}
+          {(roles.includes("CIRCLE_MANAGER") || roles.includes("SUPER_ADMIN")) && <Button variant="ghost" size="sm" style={{ color: ui.color.danger }} onClick={() => void del(r.id, r.name)}>{t("btnDelete")}</Button>}
         </div>
       ),
     },

@@ -72,7 +72,7 @@ export default function AdminEconomyPage() {
       <div style={{ display: "flex", gap: sp(2), justifyContent: "flex-end" }}>
         <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/economy/${i.id}/edit`)}>{tEco("edit")}</Button>
         <Button variant="ghost" size="sm" onClick={() => void toggle(i)}>{i.active ? tEco("deactivate") : tEco("activate")}</Button>
-        <Button variant="ghost" size="sm" style={{ color: ui.color.danger }} onClick={() => void del(i)}>حذف</Button>
+        <Button variant="ghost" size="sm" style={{ color: ui.color.danger }} onClick={() => void del(i)}>{tEco("delete")}</Button>
       </div>
     ) },
   ];

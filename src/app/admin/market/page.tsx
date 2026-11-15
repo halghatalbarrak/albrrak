@@ -102,7 +102,7 @@ export default function AdminMarketPage() {
       <div style={{ display: "flex", gap: sp(2), justifyContent: "flex-end" }}>
         <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/market/${i.id}/edit`)}>{t("actEdit")}</Button>
         <Button variant="ghost" size="sm" onClick={() => void toggle(i)}>{i.active ? t("actDeactivate") : t("actActivate")}</Button>
-        <Button variant="ghost" size="sm" style={{ color: ui.color.danger }} onClick={() => void del(i)}>حذف</Button>
+        <Button variant="ghost" size="sm" style={{ color: ui.color.danger }} onClick={() => void del(i)}>{t("actDelete")}</Button>
       </div>
     ) },
   ];
