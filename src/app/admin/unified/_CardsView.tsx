@@ -7,7 +7,7 @@ import { tSetup } from "@/i18n/ar/setup";
 import { tUnified as tu } from "@/i18n/ar/unified";
 import { navAr } from "@/i18n/ar/nav";
 import { StudentPanel } from "./_StudentPanel";
-import type { GrantItem, PanelDetail, PostFn, Student } from "./_types";
+import type { GrantItem, MarkAttFn, PanelDetail, PostFn, Student } from "./_types";
 
 const PROGRAM_AR: Record<string, string> = {
   QAIDAH_MADANIYYAH: navAr.civilBase, MARAQI: navAr.maraqi, MUDDAKIR: navAr.grpMuddakir, WEEKLY: navAr.weekly,
@@ -17,7 +17,7 @@ const ATT_LABEL: Record<string, string> = {
   ABSENT_EXCUSED: "غائب بعذر", PRE_EXCUSED: "مستأذن", LEFT_EARLY: "خرج مبكّرًا",
 };
 
-export function CardsView({ students, absentDefault, circleId, date, items, post, panelCache, panelLoading, onOpenStudent }: {
+export function CardsView({ students, absentDefault, circleId, date, items, post, panelCache, panelLoading, onOpenStudent, markAtt, pendingStudents }: {
   students: Student[];
   absentDefault: boolean;
   circleId: string; date: string; items: GrantItem[];
@@ -25,6 +25,8 @@ export function CardsView({ students, absentDefault, circleId, date, items, post
   panelCache: ReadonlyMap<string, PanelDetail>;
   panelLoading: ReadonlySet<string>;
   onOpenStudent: (studentId: string, program: string | null) => void;
+  markAtt: MarkAttFn;
+  pendingStudents: ReadonlySet<string>;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -108,6 +110,7 @@ export function CardsView({ students, absentDefault, circleId, date, items, post
                   s={s} circleId={circleId} date={date} items={items} post={post}
                   detail={panelCache.get(s.studentId) ?? null}
                   detailLoading={panelLoading.has(s.studentId)}
+                  markAtt={markAtt} isPending={pendingStudents.has(s.studentId)}
                 />
               </div>
             )}

@@ -9,6 +9,7 @@ import { deferSession } from "@/server/session-deferral";
 import { requireAuth, requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
 import { verr } from "@/server/errors";
+import { makeTimer } from "@/lib/timing";
 
 const ROLES = [Role.TEACHER, Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
 
@@ -31,8 +32,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 //   tarseekh/murajaah ⟵ المعلّم أو عريفٌ مُسنَد (الأحكام ٦، ٨ — يُتحقَّق في الخادم)
 // requireAuth فقط: الحرّاس في الخادم تفصل الصلاحية لكل جزء (فالعريف طالبٌ لا معلّم).
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const t = makeTimer();
   try {
     const actor = await requireAuth(req);
+    t.endAuth();
     const { id } = await ctx.params;
     const b = (await req.json()) as Record<string, unknown>;
     if (typeof b.date !== "string") throw verr("dateRequired");
@@ -60,7 +63,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         mastered: b.mastered,
         teacherId: actor.id,
       });
-      return Response.json({ ok: true }, { status: 201 });
+      t.endDb(); t.log("/api/students/[id]/session hifz");
+      return new Response(JSON.stringify({ ok: true }), { status: 201, headers: { "Content-Type": "application/json", "Server-Timing": t.header() } });
     }
 
     // تسميعٌ مرن (الحكم ٦): المعلّم الفاعل المسؤول، وله أن يُسنِد من سمّع فعلاً (listenerId).
@@ -69,14 +73,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (b.kind === "tarseekh") {
       if (typeof b.done !== "boolean") throw verr("doneFieldRequired");
       await recordTarseekh({ studentId: id, date: b.date, done: b.done, actorId: actor.id, ...listener });
-      return Response.json({ ok: true }, { status: 201 });
+      t.endDb(); t.log("/api/students/[id]/session tarseekh");
+      return new Response(JSON.stringify({ ok: true }), { status: 201, headers: { "Content-Type": "application/json", "Server-Timing": t.header() } });
     }
 
     if (b.kind === "murajaah") {
       // الحكم ٤ الموسّع: يُرصد مقدار ما رُوجِع اليوم (عدد المقاطع).
       if (typeof b.count !== "number") throw verr("murajaahAmountRequired");
       await recordMurajaah({ studentId: id, date: b.date, count: b.count, actorId: actor.id, ...listener });
-      return Response.json({ ok: true }, { status: 201 });
+      t.endDb(); t.log("/api/students/[id]/session murajaah");
+      return new Response(JSON.stringify({ ok: true }), { status: 201, headers: { "Content-Type": "application/json", "Server-Timing": t.header() } });
     }
 
     throw verr("unknownSessionKind");

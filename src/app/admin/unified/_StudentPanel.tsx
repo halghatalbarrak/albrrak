@@ -8,7 +8,7 @@ import { tUnified as tu } from "@/i18n/ar/unified";
 import { QaidahPanel } from "./_QaidahPanel";
 import { ConsolidationRow } from "./_ConsolidationRow";
 import { TrackAssignInline } from "./_TrackAssignInline";
-import type { GrantItem, PanelDetail, PostFn, Student } from "./_types";
+import type { GrantItem, MarkAttFn, PanelDetail, PostFn, Student } from "./_types";
 
 const ATT_LABEL: Record<string, string> = {
   PRESENT: "حاضر", LATE: "متأخّر", ABSENT_UNEXCUSED: "غائب", LEFT_NO_PERMISSION: "خرج بلا إذن",
@@ -21,11 +21,13 @@ const ATT_BUTTONS: { status: string; label: string; tone: "primary" | "bronze" |
   { status: "LEFT_NO_PERMISSION", label: "خرج بلا إذن", tone: "danger" },
 ];
 
-export function StudentPanel({ s, circleId, date, items, post, detail, detailLoading, onNextStudent, grantManual }: {
+export function StudentPanel({ s, circleId, date, items, post, detail, detailLoading, onNextStudent, grantManual, markAtt: markAttProp, isPending }: {
   s: Student; circleId: string; date: string; items: GrantItem[];
   post: PostFn;
   detail: PanelDetail | null;
   detailLoading?: boolean;
+  markAtt: MarkAttFn;
+  isPending: boolean;
   onNextStudent?: () => void;
   grantManual?: (studentId: string, pointItemId: string) => Promise<{ granted: boolean } | null>;
 }) {
@@ -38,10 +40,9 @@ export function StudentPanel({ s, circleId, date, items, post, detail, detailLoa
     setLocalGranted(new Set(detail?.manualGranted ?? []));
   }, [detail?.manualGranted]);
 
-  const markAtt = (st: string) => post(`/api/circles/${circleId}/mark-attendance`, { studentId: sid, status: st, date }, "سُجِّل الحضور.");
   const excuse = () => {
     const reason = window.prompt("سبب الاستئذان/العذر:");
-    if (reason?.trim()) void post("/api/attendance/excuse", { studentId: sid, date, reason, kind: "EXCUSE" }, "قُدِّم طلب العذر — بانتظار اعتماد صاحب الصلاحية.");
+    if (reason?.trim()) void post("/api/attendance/excuse", { studentId: sid, date, reason, kind: "EXCUSE" }, "قُدِّم طلب العذر — بانتظار اعتماد صاحب الصلاحية.", sid);
   };
   const extra = (kind: string) => post(`/api/students/${sid}/extra`, { kind, date }, "سُجِّلت الزيادة.", sid);
   const qaidahEval = (mastered: boolean) => post(`/api/students/${sid}/qaidah-session`, { mastered }, "سُجِّل التقييم.", sid);
@@ -74,10 +75,22 @@ export function StudentPanel({ s, circleId, date, items, post, detail, detailLoa
 
       {/* الحضور */}
       <div>
-        <h3 style={H3}>{"الحضور"}{s.attendanceStatus ? ` — ${ATT_LABEL[s.attendanceStatus] ?? s.attendanceStatus}` : ""}</h3>
+        <h3 style={H3}>
+          {"الحضور"}{s.attendanceStatus ? ` — ${ATT_LABEL[s.attendanceStatus] ?? s.attendanceStatus}` : ""}
+          {isPending && <span style={{ fontSize: ui.text.xs, fontWeight: 400, color: ui.color.muted, marginInlineStart: 8 }}>جارٍ...</span>}
+        </h3>
         <div style={row}>
-          {ATT_BUTTONS.map((b) => <Button key={b.status} size="sm" variant={b.tone} onClick={() => void markAtt(b.status)}>{b.label}</Button>)}
-          <Button size="sm" variant="ghost" onClick={excuse}>{tu("excused")}</Button>
+          {ATT_BUTTONS.map((b) => (
+            <Button
+              key={b.status}
+              size="sm"
+              variant={b.tone}
+              disabled={isPending}
+              data-testid={`att-btn-${b.status}`}
+              onClick={() => { if (!isPending) void markAttProp(sid, b.status); }}
+            >{b.label}</Button>
+          ))}
+          <Button size="sm" variant="ghost" disabled={isPending} onClick={excuse}>{tu("excused")}</Button>
         </div>
       </div>
 

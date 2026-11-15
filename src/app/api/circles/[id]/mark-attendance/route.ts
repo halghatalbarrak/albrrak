@@ -3,14 +3,17 @@ import { markStudentAttendance } from "@/server/attendance";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
 import { verr } from "@/server/errors";
+import { makeTimer } from "@/lib/timing";
 
 const ROLES = [Role.TEACHER, Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
 
 // POST /api/circles/[id]/mark-attendance — تأشير حضور طالبٍ واحد (الشاشة الموحّدة).
 // الجسم: { studentId, status, date }. «مستأذن» لا يُرسَل هنا — يُقدَّم عبر مسار العذر.
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const t = makeTimer();
   try {
     const actor = await requireRoles(req, ROLES);
+    t.endAuth();
     const { id } = await ctx.params;
     const b = (await req.json()) as { studentId?: unknown; status?: unknown; date?: unknown };
     if (typeof b.studentId !== "string") throw verr("studentRequired");
@@ -19,7 +22,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       throw verr("unknownAttendanceStatus");
     }
     const res = await markStudentAttendance({ circleId: id, studentId: b.studentId, status: b.status as AttendanceStatus, date: b.date, recorderId: actor.id });
-    return Response.json(res, { status: 201 });
+    t.endDb();
+    t.log("/api/circles/[id]/mark-attendance");
+    return new Response(JSON.stringify(res), {
+      status: 201,
+      headers: { "Content-Type": "application/json", "Server-Timing": t.header() },
+    });
   } catch (e) {
     return errorResponse(e);
   }
