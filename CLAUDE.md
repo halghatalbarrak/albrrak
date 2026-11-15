@@ -40,3 +40,10 @@
 - **worktree فقط عند تشغيل وكلاء متوازين.** العمل التسلسليّ (وكيلٌ واحد بالتسلسل) يجري في المجلد الرئيسيّ على فرعٍ جديد (`git switch -c feat/…`)، لا worktree.
 - **بعد دمج PR أيّ worktree، احذف مجلده وفرعه المحلّيّ فوراً** (`git worktree remove` ثم `git branch -D`).
 - **لا تُنشئ worktree داخل مجلد المستودع.** المسار الصحيح دائماً: `D:\PROGRAM\albrrak-wt-<اسم>`.
+
+## قواعد commit وPR (للوكيل)
+
+- **استعمل Bash لا PowerShell** في كل أوامر git/gh — Bash هو المحدّد في CLAUDE.md.
+- **وصف commit وPR من ملف** (`git commit -F /tmp/msg.txt` و`gh pr create --body "$(cat file)"`) — لا تكتب الوصف مضمَّناً في السطر الواحد.
+- **وكيلٌ واحد بالتسلسل** في `D:\PROGRAM\albrrak` مباشرةً — لا worktree إلا عند تشغيل وكلاء متوازين.
+- **حدِّث `HANDOFF.md` قبل `/clear`** — أضف سطر «مدموج ✅ PR #N» لكل PR اندمج في الجلسة.
