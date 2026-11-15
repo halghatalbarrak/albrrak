@@ -13,6 +13,7 @@
 ## الحسابات
 
 - **حسابات البراك الوحيدة:** GitHub `halghatalbarrak`، وبريد Git `thmny88@gmail.com`، وVercel فريق `albarrak11` بحساب `thmny88`. أيّ ظهور لـ `alameen5509` أو `marsa1` أو `smsmf123321-afk` أو `istedama-creator` أو `albtaqtalsyahyt-sketch` يعني توقّفاً فوريّاً وإبلاغ المدير.
+- **الدفع يمرّ عبر credential helper المحلّيّ المربوط بـ`.gh-albrrak`.** إن ظهر `alameen5509` أو أيّ حسابٍ ممنوع في أيّ ناتج، فتوقّف وأبلغ المدير فوراً. لا تُكمل أيّ عمليّة.
 - **لا تستعمل `-c user.email=…` ولا `-c user.name=…` في أيّ أمر git.** اعتمد على إعداد المستودع المحلّيّ وحده، وتحقّق قبل كلّ commit أنّ `git config user.email` يساوي `thmny88@gmail.com`، وإلّا فتوقّف.
 
 ## الدفع والدمج

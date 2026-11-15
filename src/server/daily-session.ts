@@ -744,23 +744,6 @@ export interface CircleSessionBoard {
   students: BoardStudent[];
 }
 
-/** آخر جلسة حفظٍ قبل اليوم (لعرض «حفظ أمس»). */
-async function lastHifzBefore(
-  studentId: string, date: Date, db: PrismaClient,
-): Promise<BoardStudent["yesterday"]> {
-  const r = await db.dailySession.findFirst({
-    where: { studentId, hifzFromSurah: { not: null }, date: { lt: date } },
-    orderBy: { date: "desc" },
-    select: { hifzFromSurah: true, hifzFromAyah: true, hifzToSurah: true, hifzToAyah: true, hifzMastered: true },
-  });
-  if (!r || r.hifzFromSurah == null) return null;
-  return {
-    fromSurah: r.hifzFromSurah, fromAyah: r.hifzFromAyah ?? 1,
-    toSurah: r.hifzToSurah ?? r.hifzFromSurah, toAyah: r.hifzToAyah ?? (r.hifzFromAyah ?? 1),
-    mastered: r.hifzMastered === true,
-  };
-}
-
 /** الخطوة التالية المقترحة لطالب — أولويّةٌ واحدةٌ واضحة (قاعدة: النظام يوجّه). */
 function suggestNextStep(v: SessionView): string {
   if (v.program !== ProgramKey.MARAQI) return "في القاعدة المدنية — تابِع سلّمه";
@@ -775,39 +758,115 @@ function suggestNextStep(v: SessionView): string {
 
 /**
  * لوحة الجلسة لحلقةٍ كاملة في يومٍ: كل طلابها، كلٌّ بحاله وخطوته التالية.
- * يعيد استعمال getSessionView (بحُرّاسه) لكل طالب، ويضيف «حفظ أمس».
+ * استعلامان مجمَّعان (جلسة اليوم + حفظ أمس) + معالجةٌ متوازية لكل طالب.
+ * الحارس: مرّةٌ واحدة على مستوى الحلقة (لا N×assertTeachesStudent).
  */
 export async function getCircleSessionBoard(
   actorId: string, circleId: string, date: string | Date, db: PrismaClient = prisma,
 ): Promise<CircleSessionBoard> {
-  const circle = await db.circle.findUnique({ where: { id: circleId }, select: { id: true, nameAr: true } });
-  const roster = await listCircleStudents(circleId, db);
-  const d = toDateOnly(date);
-  // «مؤجَّل» اليوم لهذه الحلقة (عرضٌ فقط — لا يمسّ منطق الجلسة).
-  const deferredToday = await deferredStudentIdsForDate(roster.map((s) => s.id), d, db);
-  const students: BoardStudent[] = [];
-  for (const s of roster) {
-    const v = await getSessionView(actorId, s.id, date, db);
-    const yesterday = await lastHifzBefore(s.id, d, db);
-    students.push({
-      studentId: s.id,
-      name: s.name,
-      program: v.program,
-      started: v.position.started,
-      stageLabel: v.position.current?.label ?? null,
-      hizb: v.position.current?.hizb ?? null,
-      yesterday,
-      todayHifzDone: v.session?.hifzFromSurah != null,
-      tarseekhDone: v.session?.tarseekhDone ?? null,
-      deferredToday: deferredToday.has(s.id),
-      required: v.consolidation
-        ? { tarseekhCount: v.consolidation.tarseekh.segments.length, khums: v.consolidation.review.khums }
-        : null,
-      weeklyPercent: (v.weeklyReview?.required ?? 0) > 0 ? v.weeklyReview!.percent : null,
-      weeklyComplete: v.weeklyReview?.complete ?? false,
-      mustRepeat: v.hifzGate?.mustRepeat ?? false,
-      nextStep: suggestNextStep(v),
+  // ١. حارسٌ واحد على مستوى الحلقة بدلاً من N حارس per-student
+  const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
+  if (!actor) throw aerr("userNotFound");
+  if (!actor.roles.some((r) => r === Role.SUPER_ADMIN || r === Role.CIRCLE_MANAGER)) {
+    const link = await db.circleTeacher.findFirst({
+      where: { circleId, teacherId: actorId, endedAt: null }, select: { circleId: true },
     });
+    if (!link) throw aerr("sessionOwnStudentsOnly");
   }
+
+  const [circle, roster] = await Promise.all([
+    db.circle.findUnique({ where: { id: circleId }, select: { id: true, nameAr: true } }),
+    listCircleStudents(circleId, db),
+  ]);
+  const d = toDateOnly(date);
+  const studentIds = roster.map((s) => s.id);
+
+  // ٢. استعلامان مجمَّعان (بدلاً من 2N استعلاماً مستقلاً)
+  const [todaySessions, deferredToday, yesterdaySessions] = await Promise.all([
+    db.dailySession.findMany({
+      where: { studentId: { in: studentIds }, date: d },
+      select: {
+        studentId: true, hifzFromSurah: true, hifzFromAyah: true,
+        hifzToSurah: true, hifzToAyah: true, hifzAttempts: true,
+        hifzMastered: true, tarseekhDone: true, murajaahDone: true, murajaahCount: true,
+      },
+    }),
+    deferredStudentIdsForDate(studentIds, d, db),
+    db.dailySession.findMany({
+      where: { studentId: { in: studentIds }, date: { lt: d }, hifzFromSurah: { not: null } },
+      orderBy: { date: "desc" },
+      select: {
+        studentId: true, hifzFromSurah: true, hifzFromAyah: true,
+        hifzToSurah: true, hifzToAyah: true, hifzMastered: true,
+      },
+    }),
+  ]);
+
+  // ٣. خرائط بحثٍ سريع من النتائج المجمَّعة
+  const sessionByStudent = new Map(todaySessions.map((s) => [s.studentId, s]));
+  const yesterdayByStudent = new Map<string, BoardStudent["yesterday"]>();
+  for (const ys of yesterdaySessions) {
+    if (!yesterdayByStudent.has(ys.studentId) && ys.hifzFromSurah != null) {
+      yesterdayByStudent.set(ys.studentId, {
+        fromSurah: ys.hifzFromSurah,
+        fromAyah: ys.hifzFromAyah ?? 1,
+        toSurah: ys.hifzToSurah ?? ys.hifzFromSurah,
+        toAyah: ys.hifzToAyah ?? (ys.hifzFromAyah ?? 1),
+        mastered: ys.hifzMastered === true,
+      });
+    }
+  }
+
+  // ٤. معالجةٌ متوازية لكل طالب (لا serial for-await)
+  const students: BoardStudent[] = await Promise.all(
+    roster.map(async (s) => {
+      const position = await getStudentPosition(s.id, db);
+      const isMaraqi = position.program === ProgramKey.MARAQI;
+      const rawRow = sessionByStudent.get(s.id);
+      const row: SessionToday | null = rawRow
+        ? {
+            hifzFromSurah: rawRow.hifzFromSurah, hifzFromAyah: rawRow.hifzFromAyah,
+            hifzToSurah: rawRow.hifzToSurah, hifzToAyah: rawRow.hifzToAyah,
+            hifzAttempts: rawRow.hifzAttempts, hifzMastered: rawRow.hifzMastered,
+            tarseekhDone: rawRow.tarseekhDone, murajaahDone: rawRow.murajaahDone,
+            murajaahCount: rawRow.murajaahCount,
+          }
+        : null;
+      const [consolidation, weeklyReview, hifzGate] = await Promise.all([
+        isMaraqi ? getConsolidation(s.id, db) : Promise.resolve(null),
+        isMaraqi ? getWeeklyReview(s.id, date, db) : Promise.resolve(null),
+        isMaraqi ? getHifzGate(s.id, date, db) : Promise.resolve(null),
+      ]);
+      const v: SessionView = {
+        student: { id: s.id, name: s.name },
+        program: position.program,
+        position,
+        session: row,
+        consolidation,
+        weeklyReview,
+        hifzGate,
+      };
+      return {
+        studentId: s.id,
+        name: s.name,
+        program: position.program,
+        started: position.started,
+        stageLabel: position.current?.label ?? null,
+        hizb: position.current?.hizb ?? null,
+        yesterday: yesterdayByStudent.get(s.id) ?? null,
+        todayHifzDone: row?.hifzFromSurah != null,
+        tarseekhDone: row?.tarseekhDone ?? null,
+        deferredToday: deferredToday.has(s.id),
+        required: consolidation
+          ? { tarseekhCount: consolidation.tarseekh.segments.length, khums: consolidation.review.khums }
+          : null,
+        weeklyPercent: (weeklyReview?.required ?? 0) > 0 ? weeklyReview!.percent : null,
+        weeklyComplete: weeklyReview?.complete ?? false,
+        mustRepeat: hifzGate?.mustRepeat ?? false,
+        nextStep: suggestNextStep(v),
+      };
+    }),
+  );
+
   return { circle, students };
 }

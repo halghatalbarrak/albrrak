@@ -74,6 +74,7 @@ export async function listStudentsForAdmin(
         },
       },
       orderBy: { id: "asc" },
+      take: 2000,
     }),
     // قرارات التحديد المعلّقة — subjectId نصّيّ لا علاقة، فنستعلمها منفصلةً ونربطها.
     db.approval.findMany({
