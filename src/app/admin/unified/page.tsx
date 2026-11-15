@@ -50,7 +50,6 @@ interface Student {
   today: Target;
   qaidah: Qaidah | null;
   setupStatus?: SetupStatus;
-  // من UnifiedStudent/BoardStudentWithTarget — محسوبةٌ من الخادم
   stageLabel: string | null;
   hizb: number | null;
   weeklyPercent: number | null;
@@ -115,13 +114,40 @@ export default function UnifiedPage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
   const [msg, setMsg] = useState<string | null>(null);
   const [view, setViewState] = useState<"list" | "cards">("list");
+  const [isNarrow, setIsNarrow] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const v = new URLSearchParams(window.location.search).get("view");
-      setViewState(v === "cards" ? "cards" : "list");
-    }
+    if (typeof window === "undefined") return;
+    // sync ?view= and ?student= from URL
+    const params = new URLSearchParams(window.location.search);
+    setViewState(params.get("view") === "cards" ? "cards" : "list");
+    const sid = params.get("student");
+    if (sid) setSelected(sid);
+    // narrow detection: <900px = accordion inline, ≥900px = sticky column
+    const mq = window.matchMedia("(max-width: 899px)");
+    setIsNarrow(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsNarrow(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
   }, []);
+
+  // scroll active accordion item into view on narrow screens
+  useEffect(() => {
+    if (!isNarrow || !selected) return;
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-student-id="${selected}"]`);
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [isNarrow, selected]);
+
+  const selectStudent = useCallback((id: string | null) => {
+    setSelected(id);
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set("student", id);
+    else url.searchParams.delete("student");
+    router.push(url.pathname + url.search, { scroll: false });
+  }, [router]);
 
   const switchView = (v: "list" | "cards") => {
     setViewState(v);
@@ -185,6 +211,14 @@ export default function UnifiedPage() {
   });
   const cur = students?.find((s) => s.studentId === selected) ?? null;
 
+  const nextStudent = useCallback(() => {
+    if (!selected || !filtered.length) return;
+    const idx = filtered.findIndex((s) => s.studentId === selected);
+    if (idx >= 0 && idx < filtered.length - 1) {
+      selectStudent(filtered[idx + 1].studentId);
+    }
+  }, [selected, filtered, selectStudent]);
+
   const Shell = ({ children }: { children: React.ReactNode }) => (
     <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/unified" title="الشاشة الموحّدة" crumbs={CRUMBS}>{children}</AppShell>
   );
@@ -198,7 +232,7 @@ export default function UnifiedPage() {
     <Shell>
       {circles.length > 1 && (
         <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", marginBottom: sp(3) }}>
-          {circles.map((c) => <Button key={c.id} size="sm" variant={c.id === circleId ? "bronze" : "ghost"} onClick={() => { setCircleId(c.id); setSelected(null); }}>{c.nameAr}</Button>)}
+          {circles.map((c) => <Button key={c.id} size="sm" variant={c.id === circleId ? "bronze" : "ghost"} onClick={() => { setCircleId(c.id); selectStudent(null); }}>{c.nameAr}</Button>)}
         </div>
       )}
       {dayLock && <DayLockBar lock={dayLock} circleId={circleId} date={date} post={post} />}
@@ -230,38 +264,117 @@ export default function UnifiedPage() {
       )}
 
       {view === "list" && (
-        <div style={{ display: "flex", gap: sp(4), alignItems: "flex-start", flexWrap: "wrap" }}>
-          <div style={{ flex: "1 1 260px", minWidth: 240, maxWidth: 360, display: "flex", flexDirection: "column", gap: sp(2) }}>
-            {students && students.some((s) => s.attendanceStatus == null) && (
-              <Button size="sm" variant="primary" onClick={() => void markAllPresent()}>{tu("markAllPresent")}</Button>
-            )}
-            {filtered.map((s) => {
-              const done = s.attendanceStatus != null;
-              return (
-                <button key={s.studentId} onClick={() => setSelected(s.studentId)}
-                  style={{ textAlign: "start", border: `1px solid ${s.studentId === selected ? ui.color.goldLine : ui.color.border}`, background: s.studentId === selected ? ui.color.soft : ui.color.surface, borderRadius: ui.radius.md, padding: `${sp(2)} ${sp(3)}`, cursor: "pointer", fontFamily: ui.font, color: ui.color.text, display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(2) }}>
-                  <span style={{ display: "flex", gap: 4, alignItems: "center", minWidth: 0 }}>
-                    <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
-                    {s.program && <Badge tone="neutral">{PROGRAM_AR[s.program] ?? s.program}</Badge>}
-                    {s.setupStatus && !s.setupStatus.isComplete && <Badge tone="danger">{tSetup("badgeNeedsSetup")}</Badge>}
-                    {s.setupStatus && s.setupStatus.isComplete && s.setupStatus.warnings.length > 0 && <Badge tone="bronze">{tSetup("badgeMissingData")}</Badge>}
-                  </span>
-                  <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    {done ? <Badge tone="success">{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>
-                      : absentDefault ? <Badge tone="danger">{tu("absentNotRaised")}</Badge> : <Badge tone="neutral">{tu("notRaised")}</Badge>}
-                    {s.todayHifzDone && <Badge tone="bronze">{tu("hifzDone")}</Badge>}
-                  </span>
-                </button>
-              );
-            })}
-            {filtered.length === 0 && <EmptyState title={setupFilter === "ALL" ? "لا طلاب في الحلقة" : "لا طلاب ضمن هذا الفلتر"} />}
-          </div>
+        isNarrow
+          ? (
+            /* narrow (<900px): inline accordion */
+            <div style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
+              {students && students.some((s) => s.attendanceStatus == null) && (
+                <div style={{ marginBottom: sp(2) }}>
+                  <Button size="sm" variant="primary" onClick={() => void markAllPresent()}>{tu("markAllPresent")}</Button>
+                </div>
+              )}
+              {filtered.map((s) => {
+                const done = s.attendanceStatus != null;
+                const isOpen = s.studentId === selected;
+                return (
+                  <div key={s.studentId} data-student-id={s.studentId} data-testid="student-row">
+                    <button
+                      onClick={() => selectStudent(isOpen ? null : s.studentId)}
+                      style={{
+                        width: "100%", textAlign: "start",
+                        border: `1px solid ${isOpen ? ui.color.goldLine : ui.color.border}`,
+                        background: isOpen ? ui.color.soft : ui.color.surface,
+                        borderRadius: isOpen ? `${ui.radius.md} ${ui.radius.md} 0 0` : ui.radius.md,
+                        padding: `${sp(2)} ${sp(3)}`, cursor: "pointer", fontFamily: ui.font, color: ui.color.text,
+                        display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(2),
+                      }}
+                    >
+                      <span style={{ display: "flex", gap: 4, alignItems: "center", minWidth: 0, flex: "1 1 auto", flexWrap: "wrap" }}>
+                        <strong style={{ fontSize: ui.text.base, wordBreak: "break-word" }}>{s.name}</strong>
+                        {s.program && <Badge tone="neutral">{PROGRAM_AR[s.program] ?? s.program}</Badge>}
+                        {s.setupStatus && !s.setupStatus.isComplete && <Badge tone="danger">{tSetup("badgeNeedsSetup")}</Badge>}
+                        {s.setupStatus && s.setupStatus.isComplete && s.setupStatus.warnings.length > 0 && <Badge tone="bronze">{tSetup("badgeMissingData")}</Badge>}
+                      </span>
+                      <span style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
+                        {done
+                          ? <Badge tone="success" style={{ whiteSpace: "nowrap" }}>{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>
+                          : absentDefault
+                            ? <Badge tone="danger" style={{ whiteSpace: "nowrap" }}>{tu("notRaised")}</Badge>
+                            : <Badge tone="neutral" style={{ whiteSpace: "nowrap" }}>{tu("notRaised")}</Badge>}
+                        {s.todayHifzDone && <Badge tone="bronze" style={{ whiteSpace: "nowrap" }}>{tu("hifzDone")}</Badge>}
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div
+                        data-testid="student-inline-card"
+                        style={{
+                          border: `1px solid ${ui.color.goldLine}`,
+                          borderTop: "none",
+                          borderRadius: `0 0 ${ui.radius.md} ${ui.radius.md}`,
+                          background: ui.color.bg,
+                          padding: sp(3),
+                        }}
+                      >
+                        <StudentPanel s={s} circleId={circleId} date={date} items={items} post={post} onNextStudent={nextStudent} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {filtered.length === 0 && <EmptyState title={setupFilter === "ALL" ? "لا طلاب في الحلقة" : "لا طلاب ضمن هذا الفلتر"} />}
+            </div>
+          )
+          : (
+            /* wide (>=900px): two-column layout with sticky card */
+            <div style={{ display: "flex", gap: sp(4), alignItems: "flex-start" }}>
+              <div style={{ flex: "1 1 260px", minWidth: 240, maxWidth: 360, display: "flex", flexDirection: "column", gap: sp(2) }}>
+                {students && students.some((s) => s.attendanceStatus == null) && (
+                  <Button size="sm" variant="primary" onClick={() => void markAllPresent()}>{tu("markAllPresent")}</Button>
+                )}
+                {filtered.map((s) => {
+                  const done = s.attendanceStatus != null;
+                  return (
+                    <button
+                      key={s.studentId}
+                      data-testid="student-row"
+                      onClick={() => selectStudent(s.studentId)}
+                      style={{
+                        textAlign: "start",
+                        border: `1px solid ${s.studentId === selected ? ui.color.goldLine : ui.color.border}`,
+                        background: s.studentId === selected ? ui.color.soft : ui.color.surface,
+                        borderRadius: ui.radius.md, padding: `${sp(2)} ${sp(3)}`, cursor: "pointer",
+                        fontFamily: ui.font, color: ui.color.text,
+                        display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(2),
+                      }}
+                    >
+                      <span style={{ display: "flex", gap: 4, alignItems: "center", minWidth: 0, flex: "1 1 auto", flexWrap: "wrap" }}>
+                        <strong style={{ fontSize: ui.text.base, wordBreak: "break-word" }}>{s.name}</strong>
+                        {s.program && <Badge tone="neutral">{PROGRAM_AR[s.program] ?? s.program}</Badge>}
+                        {s.setupStatus && !s.setupStatus.isComplete && <Badge tone="danger">{tSetup("badgeNeedsSetup")}</Badge>}
+                        {s.setupStatus && s.setupStatus.isComplete && s.setupStatus.warnings.length > 0 && <Badge tone="bronze">{tSetup("badgeMissingData")}</Badge>}
+                      </span>
+                      <span style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
+                        {done
+                          ? <Badge tone="success" style={{ whiteSpace: "nowrap" }}>{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>
+                          : absentDefault
+                            ? <Badge tone="danger" style={{ whiteSpace: "nowrap" }}>{tu("notRaised")}</Badge>
+                            : <Badge tone="neutral" style={{ whiteSpace: "nowrap" }}>{tu("notRaised")}</Badge>}
+                        {s.todayHifzDone && <Badge tone="bronze" style={{ whiteSpace: "nowrap" }}>{tu("hifzDone")}</Badge>}
+                      </span>
+                    </button>
+                  );
+                })}
+                {filtered.length === 0 && <EmptyState title={setupFilter === "ALL" ? "لا طلاب في الحلقة" : "لا طلاب ضمن هذا الفلتر"} />}
+              </div>
 
-          <div style={{ flex: "2 1 420px", minWidth: 300 }}>
-            {!cur ? <Card><p style={{ margin: 0, color: ui.color.muted }}>{tu("pickStudent")}</p></Card>
-              : <StudentPanel s={cur} circleId={circleId} date={date} items={items} post={post} />}
-          </div>
-        </div>
+              {/* البطاقة sticky تبقى ظاهرة عند التمرير */}
+              <div style={{ flex: "2 1 420px", minWidth: 300, position: "sticky", top: 80, alignSelf: "flex-start", maxHeight: "calc(100vh - 100px)", overflowY: "auto" }}>
+                {!cur
+                  ? <Card><p style={{ margin: 0, color: ui.color.muted }}>{tu("pickStudent")}</p></Card>
+                  : <StudentPanel s={cur} circleId={circleId} date={date} items={items} post={post} onNextStudent={nextStudent} />}
+              </div>
+            </div>
+          )
       )}
 
       {view === "cards" && (
@@ -300,17 +413,19 @@ function CardsView({ students, absentDefault, circleId, date, items, post }: {
               style={{ width: "100%", textAlign: "start", background: "transparent", border: "none", cursor: "pointer", fontFamily: ui.font, color: ui.color.text, padding: sp(4), display: "flex", flexDirection: "column", gap: sp(2) }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: sp(3), flexWrap: "wrap" }}>
-                <span style={{ display: "flex", gap: sp(2), alignItems: "center", minWidth: 0 }}>
-                  <strong style={{ fontSize: ui.text.base }}>{s.name}</strong>
+                <span style={{ display: "flex", gap: sp(2), alignItems: "center", minWidth: 0, flex: "1 1 auto" }}>
+                  <strong style={{ fontSize: ui.text.base, wordBreak: "break-word" }}>{s.name}</strong>
                   {s.program && <Badge tone="neutral">{PROGRAM_AR[s.program] ?? s.program}</Badge>}
                   {s.deferredToday && <Badge tone="bronze">{tu("deferredTodayBadge")}</Badge>}
                   {s.setupStatus && !s.setupStatus.isComplete && <Badge tone="danger">{tSetup("badgeNeedsSetup")}</Badge>}
                 </span>
-                <span style={{ display: "flex", gap: sp(2), alignItems: "center" }}>
+                <span style={{ display: "flex", gap: sp(2), alignItems: "center", flexShrink: 0 }}>
                   {s.attendanceStatus
-                    ? <Badge tone="success">{ATT_LABEL[s.attendanceStatus] ?? s.attendanceStatus}</Badge>
-                    : absentDefault ? <Badge tone="danger">{tu("absentNotRaised")}</Badge> : <Badge tone="neutral">{tu("notRaised")}</Badge>}
-                  {s.todayHifzDone && <Badge tone="bronze">{tu("hifzDone")}</Badge>}
+                    ? <Badge tone="success" style={{ whiteSpace: "nowrap" }}>{ATT_LABEL[s.attendanceStatus] ?? s.attendanceStatus}</Badge>
+                    : absentDefault
+                      ? <Badge tone="danger" style={{ whiteSpace: "nowrap" }}>{tu("notRaised")}</Badge>
+                      : <Badge tone="neutral" style={{ whiteSpace: "nowrap" }}>{tu("notRaised")}</Badge>}
+                  {s.todayHifzDone && <Badge tone="bronze" style={{ whiteSpace: "nowrap" }}>{tu("hifzDone")}</Badge>}
                 </span>
               </div>
 
@@ -391,9 +506,10 @@ function DayLockBar({ lock, circleId, date, post }: {
 }
 
 // ═══════════════ بطاقة الطالب المبسَّطة (ثلاثة أسطر: احفظ / رسّخ / راجِع) ═══════════════
-function StudentPanel({ s, circleId, date, items, post }: {
+function StudentPanel({ s, circleId, date, items, post, onNextStudent }: {
   s: Student; circleId: string; date: string; items: GrantItem[];
   post: (url: string, body: Record<string, unknown>, okMsg: string) => Promise<void>;
+  onNextStudent?: () => void;
 }) {
   const sid = s.studentId;
   const hifzBound = (s.today.newHifz?.kind === "NEW" || s.today.newHifz?.kind === "REPEAT") ? (s.today.newHifz.bound ?? null) : null;
@@ -413,7 +529,12 @@ function StudentPanel({ s, circleId, date, items, post }: {
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: sp(4) }}>
-      <strong style={{ fontSize: ui.text.lg }}>{s.name}</strong>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: sp(2) }}>
+        <strong style={{ fontSize: ui.text.lg }}>{s.name}</strong>
+        {onNextStudent && (
+          <Button size="sm" variant="ghost" onClick={onNextStudent}>{tu("nextStudentBtn")}</Button>
+        )}
+      </div>
 
       {/* الحضور */}
       <div>
