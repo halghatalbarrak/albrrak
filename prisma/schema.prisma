@@ -255,6 +255,7 @@ model GuardianLink {
   unlinkDecisionNote String?
 
   @@unique([guardianId, studentId])
+  @@index([studentId])
 }
 
 // ═══════════════ محرّك الاعتمادات ═══════════════
