@@ -6,6 +6,7 @@ import {
   listCircleArifs,
 } from "@/server/arif";
 import { requireRoles } from "@/server/auth";
+import { assertTeacherOwnsCircle } from "@/server/circles";
 import { errorResponse } from "@/server/http";
 import { verr } from "@/server/errors";
 
@@ -14,8 +15,11 @@ const ROLES = [Role.TEACHER, Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
 // GET /api/circles/[id]/arifs — عرفاء الحلقة النشطون + الطلاب المؤهّلون للتعيين.
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    await requireRoles(req, ROLES);
+    const actor = await requireRoles(req, ROLES);
     const { id } = await ctx.params;
+    if (actor.roles.includes(Role.TEACHER) && !actor.roles.some((r) => r === Role.CIRCLE_MANAGER || r === Role.SUPER_ADMIN)) {
+      await assertTeacherOwnsCircle(actor.id, id);
+    }
     const [arifs, candidates] = await Promise.all([
       listCircleArifs(id),
       listAppointableStudents(id),
