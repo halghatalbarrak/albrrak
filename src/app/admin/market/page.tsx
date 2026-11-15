@@ -76,6 +76,17 @@ export default function AdminMarketPage() {
     else setErr(t("errToggleState"));
   }
 
+  async function del(item: Item) {
+    if (!window.confirm(`حذف ثمرة «${item.nameAr}»؟`)) return;
+    const tok = await token();
+    if (!tok) return;
+    const res = await fetch(`/api/admin/market?id=${encodeURIComponent(item.id)}`, {
+      method: "DELETE", headers: { authorization: `Bearer ${tok}` },
+    });
+    if (res.ok) void load();
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("errToggleState")); }
+  }
+
   const cols: Column<Item>[] = [
     { key: "name", header: t("colName"), cell: (i) => (
       <span style={{ display: "flex", gap: sp(2), alignItems: "center", opacity: i.active ? 1 : 0.5 }}>
@@ -91,6 +102,7 @@ export default function AdminMarketPage() {
       <div style={{ display: "flex", gap: sp(2), justifyContent: "flex-end" }}>
         <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/market/${i.id}/edit`)}>{t("actEdit")}</Button>
         <Button variant="ghost" size="sm" onClick={() => void toggle(i)}>{i.active ? t("actDeactivate") : t("actActivate")}</Button>
+        <Button variant="ghost" size="sm" style={{ color: ui.color.danger }} onClick={() => void del(i)}>حذف</Button>
       </div>
     ) },
   ];

@@ -197,12 +197,28 @@ export type PointItemWithEvent = Prisma.PointItemGetPayload<Record<string, never
   eventType: AutoEventType | null;
 };
 
+export async function softDeletePointItem(
+  actorId: string,
+  itemId: string,
+  db: PrismaClient = prisma,
+): Promise<void> {
+  await assertAdmin(actorId, db);
+  const item = await db.pointItem.findUnique({ where: { id: itemId }, select: { id: true, nameAr: true, deletedAt: true } });
+  if (!item) throw verr("economyItemNotFound");
+  if (item.deletedAt) throw verr("pointItemAlreadyDeleted");
+  const now = new Date();
+  await db.$transaction([
+    db.pointItem.update({ where: { id: itemId }, data: { deletedAt: now, deletedById: actorId } }),
+    db.auditLog.create({ data: { action: "DELETE", entity: "PointItem", entityId: itemId, actorId, label: item.nameAr } }),
+  ]);
+}
+
 export async function listPointItems(
   actorId: string,
   db: PrismaClient = prisma,
 ): Promise<PointItemWithEvent[]> {
   await assertAdmin(actorId, db);
-  const items = await db.pointItem.findMany({ orderBy: [{ active: "desc" }, { createdAt: "asc" }] });
+  const items = await db.pointItem.findMany({ where: { deletedAt: null }, orderBy: [{ active: "desc" }, { createdAt: "asc" }] });
   const rules = await db.autoGrantRule.findMany({
     where: { pointItemId: { in: items.map((i) => i.id) } },
     select: { pointItemId: true, eventType: true },

@@ -248,6 +248,26 @@ export interface ReviewRow {
   createdAt: Date;
 }
 
+export async function softDeleteApplication(
+  actorId: string,
+  applicationId: string,
+  db: PrismaClient = prisma,
+): Promise<void> {
+  const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
+  if (!actor) throw verr("userNotFound");
+  const isAdmin = actor.roles.some((r) => r === Role.SUPER_ADMIN || r === Role.CIRCLE_MANAGER);
+  if (!isAdmin) throw verr("notAuthorized");
+  const app = await db.application.findUnique({ where: { id: applicationId }, select: { id: true, nameAsInId: true, deletedAt: true, status: true } });
+  if (!app) throw verr("applicationNotFound");
+  if (app.deletedAt) throw verr("applicationAlreadyDeleted");
+  if (app.status === ApplicationStatus.ACCEPTED) throw verr("applicationAcceptedCannotDelete");
+  const now = new Date();
+  await db.$transaction([
+    db.application.update({ where: { id: applicationId }, data: { deletedAt: now, deletedById: actorId } }),
+    db.auditLog.create({ data: { action: "DELETE", entity: "Application", entityId: applicationId, actorId, label: app.nameAsInId } }),
+  ]);
+}
+
 /**
  * الطلبات المعلّقة/المنتظرة للمراجعة — كل سطر يحمل خبره كاملاً.
  * **بلا رقم الهوية** (م٥). العمر محسوب لا مُخزَّن.
@@ -259,6 +279,7 @@ export async function listApplicationsForReview(
   const apps = await db.application.findMany({
     where: {
       status: { in: [ApplicationStatus.PENDING, ApplicationStatus.WAITLISTED] },
+      deletedAt: null,
     },
     orderBy: { createdAt: "asc" },
     select: {

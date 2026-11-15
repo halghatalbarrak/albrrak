@@ -70,6 +70,17 @@ export default function AdminApplicationsPage() {
     void load();
   }, [load]);
 
+  async function del(id: string, name: string) {
+    if (!window.confirm(`حذف طلب «${name}»؟`)) return;
+    const tok = await token();
+    if (!tok) return;
+    const res = await fetch(`/api/admin/applications/${encodeURIComponent(id)}`, {
+      method: "DELETE", headers: { authorization: `Bearer ${tok}` },
+    });
+    if (res.ok) void load();
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("errDecide")); }
+  }
+
   async function decide(id: string, decision: "accept" | "reject" | "waitlist") {
     const tok = await token();
     if (!tok) return;
@@ -144,6 +155,7 @@ export default function AdminApplicationsPage() {
           <Button variant="danger" size="sm" onClick={() => decide(r.id, "reject")}>{t("btnReject")}</Button>
           <Button variant="ghost" size="sm" onClick={() => decide(r.id, "waitlist")}>{t("btnWaitlist")}</Button>
           {canReveal && <Button variant="ghost" size="sm" onClick={() => revealId(r.id)}>{revealed[r.id] ? `${t("revealedIdPrefix")}${revealed[r.id]}` : t("btnRevealId")}</Button>}
+          {(roles.includes("CIRCLE_MANAGER") || roles.includes("SUPER_ADMIN")) && <Button variant="ghost" size="sm" style={{ color: ui.color.danger }} onClick={() => void del(r.id, r.name)}>حذف</Button>}
         </div>
       ),
     },

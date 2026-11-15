@@ -74,8 +74,8 @@ export async function resolveScreenByToken(token: string, db: PrismaClient = pri
   if (!t) return null;
   const row = await db.displayScreenToken.findUnique({ where: { tokenHash: hashToken(t) }, select: { revokedAt: true, screenId: true } });
   if (!row || row.revokedAt) return null;
-  const screen = await db.displayScreen.findUnique({ where: { id: row.screenId }, select: { id: true, kind: true, nameAr: true, studentId: true, refreshSec: true, active: true, adjFajr: true, adjDhuhr: true, adjAsr: true, adjMaghrib: true, adjIsha: true } });
-  if (!screen || !screen.active) return null;
+  const screen = await db.displayScreen.findUnique({ where: { id: row.screenId }, select: { id: true, kind: true, nameAr: true, studentId: true, refreshSec: true, active: true, deletedAt: true, adjFajr: true, adjDhuhr: true, adjAsr: true, adjMaghrib: true, adjIsha: true } });
+  if (!screen || !screen.active || screen.deletedAt) return null;
   return { id: screen.id, kind: screen.kind, nameAr: screen.nameAr, studentId: screen.studentId, refreshSec: screen.refreshSec, adjust: { FAJR: screen.adjFajr, DHUHR: screen.adjDhuhr, ASR: screen.adjAsr, MAGHRIB: screen.adjMaghrib, ISHA: screen.adjIsha } };
 }
 
@@ -89,9 +89,20 @@ export async function screenPrayerAdjust(screenId: string, db: PrismaClient = pr
 export type CopyStatus = "ready" | "legacy" | "keyMissing" | "none";
 export interface ScreenRow { id: string; kind: DisplayScreenKind; nameAr: string; studentId: string | null; active: boolean; hasActiveToken: boolean; copy: CopyStatus }
 
+export async function softDeleteScreen(actorId: string, screenId: string, db: PrismaClient = prisma): Promise<void> {
+  const screen = await db.displayScreen.findUnique({ where: { id: screenId }, select: { id: true, nameAr: true, deletedAt: true } });
+  if (!screen) throw verr("displayScreenNotFound");
+  if (screen.deletedAt) throw verr("displayScreenAlreadyDeleted");
+  const now = new Date();
+  await db.$transaction([
+    db.displayScreen.update({ where: { id: screenId }, data: { deletedAt: now, deletedById: actorId } }),
+    db.auditLog.create({ data: { action: "DELETE", entity: "DisplayScreen", entityId: screenId, actorId, label: screen.nameAr } }),
+  ]);
+}
+
 /** قائمة الشاشات للمدير (بلا كشف الرمز — نعرض فقط ألهُ رمزٌ فعّال وحالة النسخ). */
 export async function listScreens(db: PrismaClient = prisma): Promise<ScreenRow[]> {
-  const screens = await db.displayScreen.findMany({ orderBy: { createdAt: "desc" } });
+  const screens = await db.displayScreen.findMany({ where: { deletedAt: null }, orderBy: { createdAt: "desc" } });
   const active = await db.displayScreenToken.findMany({ where: { revokedAt: null }, select: { screenId: true, tokenEnc: true } });
   const encByScreen = new Map(active.map((a) => [a.screenId, a.tokenEnc]));
   const keyOk = displayTokenKeyAvailable();

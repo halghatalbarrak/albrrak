@@ -4,6 +4,7 @@ import {
   createMarketItem,
   listMarketItems,
   setMarketItemActive,
+  softDeleteMarketItem,
   updateMarketItem,
   type MarketItemInput,
 } from "@/server/market";
@@ -46,6 +47,19 @@ export async function POST(req: Request) {
     const body = (await req.json()) as Record<string, unknown>;
     const item = await createMarketItem(actor.id, readItemBody(body));
     return Response.json(item, { status: 201 });
+  } catch (e) {
+    return errorResponse(e);
+  }
+}
+
+// DELETE /api/admin/market?id=… — حذفٌ ناعم لسلعة.
+export async function DELETE(req: Request) {
+  try {
+    const actor = await requireRoles(req, MANAGER);
+    const id = new URL(req.url).searchParams.get("id");
+    if (!id) throw verr("idRequired");
+    await softDeleteMarketItem(actor.id, id);
+    return Response.json({ ok: true });
   } catch (e) {
     return errorResponse(e);
   }
