@@ -41,6 +41,10 @@
 - **بعد دمج PR أيّ worktree، احذف مجلده وفرعه المحلّيّ فوراً** (`git worktree remove` ثم `git branch -D`).
 - **لا تُنشئ worktree داخل مجلد المستودع.** المسار الصحيح دائماً: `D:\PROGRAM\albrrak-wt-<اسم>`.
 
+## الـruleset وسياقات الفحوصات المطلوبة
+
+- **لا يُضاف سياق إلى `required_status_checks`** إلا باسمه الحرفي كما يظهر في `gh pr checks` لـPR فعلي، وبعد اختبار PR تجريبي يُدمج بنجاح قبل الاعتماد.
+
 ## قواعد commit وPR (للوكيل)
 
 - **استعمل Bash لا PowerShell** في كل أوامر git/gh — Bash هو المحدّد في CLAUDE.md.
