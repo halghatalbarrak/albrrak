@@ -1,7 +1,7 @@
 "use client";
-/* eslint-disable @next/next/no-img-element -- شعارٌ من public/ بأبعادٍ ثابتة؛ لا يحتاج next/image. */
 
 import { useEffect, useState, type ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { tAppshell } from "@/i18n/ar/appshell";
@@ -71,7 +71,7 @@ export function AppShell({ roles, muddakirStaff, userName, activeHref, title, cr
     <aside className={`appshell-aside${drawer ? " open" : ""}`} style={{ background: ui.color.sidebar, color: ui.color.sidebarText }}>
       <div style={{ padding: sp(4), borderBottom: `1px solid ${ui.color.sidebarDivider}`, display: "flex", alignItems: "center", gap: sp(2) }}>
         <Link href="/" aria-label={BRAND} onClick={() => setDrawer(false)} style={{ display: "flex", alignItems: "center", gap: sp(2), textDecoration: "none" }}>
-          <img src="/png/logo.png" alt={BRAND} style={{ height: 44, width: "auto" }} />
+          <Image src="/png/logo.png" alt={BRAND} height={44} width={62} style={{ width: "auto", height: 44 }} priority />
           <span style={{ fontWeight: 700, fontSize: ui.text.base, color: ui.color.sidebarText, lineHeight: 1.2 }}>{tAppshell("brandLine1")}<br />{tAppshell("brandLine2")}</span>
         </Link>
       </div>
@@ -108,6 +108,7 @@ export function AppShell({ roles, muddakirStaff, userName, activeHref, title, cr
                       <Link
                         key={it.href}
                         href={it.href}
+                        prefetch={false}
                         onClick={() => setDrawer(false)}
                         style={{
                           display: "flex", alignItems: "center", gap: sp(2),

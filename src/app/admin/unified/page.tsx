@@ -131,15 +131,16 @@ export default function UnifiedPage() {
   useEffect(() => {
     void (async () => {
       const t = await token(); if (!t) { setStatus("unauth"); return; }
-      const [cRes, gRes] = await Promise.all([
-        fetch("/api/attendance/circles", { headers: { authorization: `Bearer ${t}` } }),
-        fetch("/api/economy/grant", { headers: { authorization: `Bearer ${t}` } }),
-      ]);
+      // grant غير حاجز — يُحمَّل في الخلفية بعد ظهور القائمة.
+      fetch("/api/economy/grant", { headers: { authorization: `Bearer ${t}` } })
+        .then((r) => (r.ok ? (r.json() as Promise<{ items?: GrantItem[] }>) : null))
+        .then((j) => { if (j) setItems((j.items ?? []).filter((i) => i.value > 0)); })
+        .catch(() => {});
+      const cRes = await fetch("/api/attendance/circles", { headers: { authorization: `Bearer ${t}` } });
       if (cRes.ok) {
         const cs = ((await cRes.json()) as { circles?: Circle[] }).circles ?? [];
         setCircles(cs); if (cs.length) setCircleId(cs[0].id); else setStatus("ready");
       } else setStatus("error");
-      if (gRes.ok) setItems(((await gRes.json()) as { items?: GrantItem[] }).items ?? []);
     })();
   }, []);
   useEffect(() => { if (circleId) void load(circleId); }, [circleId, load]);

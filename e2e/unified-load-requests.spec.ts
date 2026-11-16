@@ -2,12 +2,13 @@
  * يتحقّق أن شاشة الموحّدة لا تُطلق أكثر من MAX_API_REQUESTS طلباً على /api/
  * عند التحميل الأوّلي (قبل فتح أيّ بطاقة).
  *
- * الهدف: ≤15 طلباً (api فقط، دون الأصول الثابتة وملفّات JS).
+ * الهدف: ≤8 طلباً (api فقط). بعد إصلاحات السرعة:
+ *   me(1) + circles(1) + grant(1) + unified(1) = 4 طلبات حقيقية.
  * يُخفَق إن تجاوز الطلبات بسبب حلقة N+1 أو جلب مبكّر للبيانات الثقيلة.
  */
 import { test, expect } from "@playwright/test";
 
-const MAX_API_REQUESTS = 15;
+const MAX_API_REQUESTS = 8;
 
 const MOCK_STUDENTS = Array.from({ length: 20 }, (_, i) => ({
   studentId: `s-${i + 1}`,
@@ -25,6 +26,7 @@ const MOCK_STUDENTS = Array.from({ length: 20 }, (_, i) => ({
   started: true,
   yesterday: null,
   required: null,
+  noTrack: false,
 }));
 
 const FAKE_SESSION = JSON.stringify({
