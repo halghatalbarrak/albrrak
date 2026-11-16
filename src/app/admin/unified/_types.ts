@@ -40,6 +40,7 @@ export interface Student {
   started: boolean;
   yesterday: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number; mastered: boolean } | null;
   required: { tarseekhCount: number; khums: number } | null;
+  noTrack?: boolean;
 }
 
 /** تفاصيل البطاقة — محضَرةٌ per-student عند فتح البطاقة فقط، مع cache. */
