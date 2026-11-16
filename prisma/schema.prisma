@@ -970,6 +970,7 @@ enum AutoEventType {
   MUDDAKIR_FACE_HEARD
   MUDDAKIR_STAGE_COMPLETE
   MUDDAKIR_SHORTFALL
+  MANUAL_GRANT // منح يدويٌّ من الشاشة الموحّدة — مُعرِّف فريد في AutoGrant
 }
 
 // قاعدةٌ تربط بنداً (PointItem مصدره AUTO) بنوع حدث. الإدارة تنشئها من شاشة النقاط.

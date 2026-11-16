@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Card, Button, Skeleton, sp, ui } from "@/components/ui";
 import { arNum } from "@/lib/format";
 import { HifzInput } from "@/components/session/HifzInput";
@@ -20,14 +21,20 @@ const ATT_BUTTONS: { status: string; label: string; tone: "primary" | "bronze" |
   { status: "LEFT_NO_PERMISSION", label: "خرج بلا إذن", tone: "danger" },
 ];
 
-export function StudentPanel({ s, circleId, date, items, post, detail, detailLoading, onNextStudent }: {
+export function StudentPanel({ s, circleId, date, items, post, detail, detailLoading, onNextStudent, grantManual }: {
   s: Student; circleId: string; date: string; items: GrantItem[];
   post: PostFn;
   detail: PanelDetail | null;
   detailLoading?: boolean;
   onNextStudent?: () => void;
+  grantManual?: (studentId: string, pointItemId: string) => Promise<{ granted: boolean } | null>;
 }) {
   const sid = s.studentId;
+  const [localGranted, setLocalGranted] = useState<Set<string>>(new Set(detail?.manualGranted ?? []));
+
+  useEffect(() => {
+    setLocalGranted(new Set(detail?.manualGranted ?? []));
+  }, [detail?.manualGranted]);
 
   const markAtt = (st: string) => post(`/api/circles/${circleId}/mark-attendance`, { studentId: sid, status: st, date }, "سُجِّل الحضور.");
   const excuse = () => {
@@ -35,12 +42,24 @@ export function StudentPanel({ s, circleId, date, items, post, detail, detailLoa
     if (reason?.trim()) void post("/api/attendance/excuse", { studentId: sid, date, reason, kind: "EXCUSE" }, "قُدِّم طلب العذر — بانتظار اعتماد صاحب الصلاحية.");
   };
   const extra = (kind: string) => post(`/api/students/${sid}/extra`, { kind, date }, "سُجِّلت الزيادة.", sid);
-  const grant = (pointItemId: string) => post("/api/economy/grant", { studentId: sid, pointItemId }, "مُنح التقدير.");
   const qaidahEval = (mastered: boolean) => post(`/api/students/${sid}/qaidah-session`, { mastered }, "سُجِّل التقييم.", sid);
   const qaidahDefer = () => post(`/api/students/${sid}/qaidah-session`, { defer: true }, "سُجِّل التأجيل.", sid);
 
+  const handleToggle = async (pointItemId: string) => {
+    if (!grantManual) return;
+    const wasGranted = localGranted.has(pointItemId);
+    setLocalGranted((prev) => { const n = new Set(prev); wasGranted ? n.delete(pointItemId) : n.add(pointItemId); return n; });
+    const result = await grantManual(sid, pointItemId);
+    if (!result) {
+      setLocalGranted((prev) => { const n = new Set(prev); wasGranted ? n.add(pointItemId) : n.delete(pointItemId); return n; });
+    }
+  };
+
   const H3: React.CSSProperties = { fontSize: ui.text.base, fontWeight: 700, margin: `0 0 ${sp(2)}` };
   const row: React.CSSProperties = { display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center" };
+
+  const posItems = items.filter((i) => i.value > 0);
+  const negItems = items.filter((i) => i.value < 0);
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: sp(4) }}>
@@ -60,7 +79,7 @@ export function StudentPanel({ s, circleId, date, items, post, detail, detailLoa
         </div>
       </div>
 
-      {/* محتوى البرنامج — يظهر هيكل عند التحميل */}
+      {/* محتوى البرنامج */}
       {!detail
         ? (detailLoading ? <Skeleton height={80} /> : <p style={{ color: ui.color.muted, fontSize: ui.text.xs, margin: 0 }}>{tu("pickStudent")}</p>)
         : detail.qaidah ? <QaidahPanel q={detail.qaidah} onEval={qaidahEval} onDefer={qaidahDefer} />
@@ -131,13 +150,44 @@ export function StudentPanel({ s, circleId, date, items, post, detail, detailLoa
           </>
         )}
 
-      {/* تقدير */}
+      {/* نقاط اليوم — toggle */}
       {items.length > 0 && (
         <div>
-          <h3 style={H3}>{tu("estimate")}</h3>
-          <div style={row}>
-            {items.map((it) => <Button key={it.id} size="sm" variant="bronze" onClick={() => void grant(it.id)}>{it.nameAr} (+{it.value})</Button>)}
-          </div>
+          <h3 style={H3}>{tu("dayPoints")}</h3>
+          {posItems.length > 0 && (
+            <div style={{ ...row, marginBottom: negItems.length ? sp(2) : 0 }}>
+              {posItems.map((it) => {
+                const active = localGranted.has(it.id);
+                return (
+                  <Button
+                    key={it.id}
+                    size="sm"
+                    variant={active ? "primary" : "ghost"}
+                    onClick={() => void handleToggle(it.id)}
+                  >
+                    {it.nameAr} (+{it.value}){active ? " ✓" : ""}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+          {negItems.length > 0 && (
+            <div style={row}>
+              {negItems.map((it) => {
+                const active = localGranted.has(it.id);
+                return (
+                  <Button
+                    key={it.id}
+                    size="sm"
+                    variant={active ? "danger" : "ghost"}
+                    onClick={() => void handleToggle(it.id)}
+                  >
+                    {it.nameAr} ({it.value}){active ? " ✓" : ""}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </Card>

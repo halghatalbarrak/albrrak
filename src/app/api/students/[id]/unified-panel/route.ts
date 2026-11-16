@@ -1,5 +1,6 @@
 import { Role } from "@prisma/client";
 import { getStudentPanelDetail } from "@/server/unified-session";
+import { listGrantableItems, getTodayManualGrantStatus } from "@/server/economy";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
 import { verr } from "@/server/errors";
@@ -8,8 +9,7 @@ import { makeTimer } from "@/lib/timing";
 const ROLES = [Role.TEACHER, Role.CIRCLE_MANAGER, Role.SUPER_ADMIN];
 
 // GET /api/students/[id]/unified-panel?date=YYYY-MM-DD&program=MARAQI|...
-// تفاصيل بطاقة الطالب (today + qaidah + bounds مُثرَاة بـsessionId/errors).
-// تُستدعى مرّةً واحدة عند فتح البطاقة وتُخزَّن محليّاً حتى تتغيّر.
+// تفاصيل بطاقة الطالب (today + qaidah + bounds مُثرَاة + manualGranted لليوم).
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const t = makeTimer();
   try {
@@ -20,10 +20,15 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const date = url.searchParams.get("date");
     if (!date) throw verr("dateRequired");
     const program = url.searchParams.get("program") ?? null;
-    const detail = await getStudentPanelDetail(actor.id, id, program, date);
+    const [detail, grantableItems] = await Promise.all([
+      getStudentPanelDetail(actor.id, id, program, date),
+      listGrantableItems(actor.id),
+    ]);
+    const itemIds = grantableItems.map((i) => i.id);
+    const manualGranted = await getTodayManualGrantStatus(id, date, itemIds);
     t.endDb();
     t.log("/api/students/[id]/unified-panel");
-    return new Response(JSON.stringify(detail), {
+    return new Response(JSON.stringify({ ...detail, manualGranted }), {
       headers: { "Content-Type": "application/json", "Server-Timing": t.header() },
     });
   } catch (e) {

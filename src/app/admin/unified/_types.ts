@@ -46,6 +46,7 @@ export interface Student {
 export interface PanelDetail {
   today: Target;
   qaidah: Qaidah | null;
+  manualGranted: string[];
 }
 
 export interface Circle { id: string; nameAr: string }
