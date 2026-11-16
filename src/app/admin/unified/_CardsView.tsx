@@ -37,6 +37,7 @@ export function CardsView({ students, absentDefault, circleId, date, items, post
         return (
           <Card key={s.studentId} style={{ padding: 0, overflow: "hidden" }}>
             <button
+              data-testid="student-row"
               onClick={() => {
                 const next = isExpanded ? null : s.studentId;
                 setExpanded(next);
@@ -92,7 +93,7 @@ export function CardsView({ students, absentDefault, circleId, date, items, post
             </button>
 
             {isExpanded && (
-              <div style={{ borderTop: `1px solid ${ui.color.border}`, padding: sp(4), background: ui.color.bg }}>
+              <div data-testid="student-inline-card" style={{ borderTop: `1px solid ${ui.color.border}`, padding: sp(4), background: ui.color.bg }}>
                 {s.program === "MARAQI" && (
                   <div style={{ marginBottom: sp(3) }}>
                     <Button

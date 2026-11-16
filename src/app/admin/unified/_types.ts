@@ -46,6 +46,7 @@ export interface Student {
 export interface PanelDetail {
   today: Target;
   qaidah: Qaidah | null;
+  manualGranted: string[];
 }
 
 export interface Circle { id: string; nameAr: string }
@@ -54,7 +55,7 @@ export type LockState = "OPEN" | "APPROVED" | "AUTO_LOCKED" | "TEMP_OPEN";
 export interface DayLock { state: LockState; locked: boolean; date: string }
 
 /** studentId اختياريّ: إن أُرسِل، يُبطَل cache بطاقة ذلك الطالب بعد نجاح POST. */
-export type PostFn = (url: string, body: Record<string, unknown>, okMsg: string, studentId?: string) => Promise<void>;
+export type PostFn = (url: string, body: Record<string, unknown>, okMsg: string, studentId?: string) => Promise<{ ok: boolean; error?: string }>;
 
 // رمز الجلسة — مُخزَّن بهامش ٦٠ث لتجنّب قراءة localStorage في كل طلب.
 let _tok: { value: string; exp: number } | null = null;

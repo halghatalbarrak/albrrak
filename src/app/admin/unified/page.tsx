@@ -56,10 +56,14 @@ export default function UnifiedPage() {
   const [items, setItems] = useState<GrantItem[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
   const [msg, setMsg] = useState<string | null>(null);
+  const [msgKind, setMsgKind] = useState<"ok" | "err">("ok");
   const [view, setViewState] = useState<"list" | "cards">("list");
   const [isNarrow, setIsNarrow] = useState(false);
   const [panelCache, setPanelCache] = useState<ReadonlyMap<string, PanelDetail>>(new Map());
   const [panelLoading, setPanelLoading] = useState<ReadonlySet<string>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
+  const [bulkItemId, setBulkItemId] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -134,7 +138,7 @@ export default function UnifiedPage() {
         const cs = ((await cRes.json()) as { circles?: Circle[] }).circles ?? [];
         setCircles(cs); if (cs.length) setCircleId(cs[0].id); else setStatus("ready");
       } else setStatus("error");
-      if (gRes.ok) setItems((((await gRes.json()) as { items?: GrantItem[] }).items ?? []).filter((i) => i.value > 0));
+      if (gRes.ok) setItems(((await gRes.json()) as { items?: GrantItem[] }).items ?? []);
     })();
   }, []);
   useEffect(() => { if (circleId) void load(circleId); }, [circleId, load]);
@@ -149,18 +153,41 @@ export default function UnifiedPage() {
 
   const post: PostFn = useCallback(async (url, body, okMsg, studentId?) => {
     setMsg(null);
-    const t = await token(); if (!t) { setStatus("unauth"); return; }
+    const t = await token(); if (!t) { setStatus("unauth"); return { ok: false, error: "انتهت الجلسة." }; }
     const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` }, body: JSON.stringify(body) });
     if (res.ok) {
-      setMsg(okMsg);
+      setMsg(okMsg); setMsgKind("ok");
       await load(circleId);
       // أبطِل cache البطاقة لهذا الطالب ليُعاد تحميله بالبيانات الجديدة.
       if (studentId) setPanelCache((p) => { const n = new Map(p); n.delete(studentId); return n; });
+      return { ok: true };
     } else {
       const j = await res.json().catch(() => ({})) as { error?: string };
-      setMsg(j.error ?? "تعذّر التسجيل.");
+      const errMsg = j.error ?? "تعذّر التسجيل.";
+      setMsg(errMsg); setMsgKind("err");
+      return { ok: false, error: errMsg };
     }
   }, [circleId, load]) as PostFn;
+
+  const grantManual = useCallback(async (studentId: string, pointItemId: string): Promise<{ granted: boolean } | null> => {
+    const t = await token();
+    if (!t) return null;
+    const res = await fetch(`/api/students/${studentId}/grant-manual`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${t}` },
+      body: JSON.stringify({ pointItemId, date }),
+    });
+    if (!res.ok) return null;
+    const result = (await res.json()) as { granted: boolean };
+    setPanelCache((prev) => {
+      const existing = prev.get(studentId);
+      if (!existing) return prev;
+      const mg = existing.manualGranted ?? [];
+      const updated = { ...existing, manualGranted: result.granted ? [...mg, pointItemId] : mg.filter((id) => id !== pointItemId) };
+      return new Map([...prev, [studentId, updated]]);
+    });
+    return result;
+  }, [date]);
 
   async function markAllPresent() {
     if (!students) return;
@@ -176,6 +203,25 @@ export default function UnifiedPage() {
     ));
     setMsg(tu("markAllPresent") + " — سُجِّل.");
     await load(circleId);
+  }
+
+  async function handleBulkGrant() {
+    if (!bulkSelected.size || !bulkItemId) return;
+    const tok = await token(); if (!tok) return;
+    const res = await fetch("/api/economy/grant-bulk", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ studentIds: [...bulkSelected], pointItemId: bulkItemId, date }),
+    });
+    if (res.ok) {
+      const { granted } = (await res.json()) as { granted: number };
+      setMsg(`${tu("bulkGrantDone")} (${arNum(granted)} طالب)`);
+    } else {
+      setMsg("تعذّر المنح الجماعيّ.");
+    }
+    setBulkSelected(new Set());
+    setBulkMode(false);
+    setBulkItemId("");
   }
 
   const filtered = (students ?? []).filter((s) => {
@@ -212,7 +258,7 @@ export default function UnifiedPage() {
       {students && students.length > 0 && programCounts(students) && (
         <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginBottom: sp(2) }}>{programCounts(students)}</p>
       )}
-      {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs, marginBottom: sp(2) }}>{msg}</p>}
+      {msg && <p style={{ color: msgKind === "ok" ? ui.color.success : ui.color.danger, fontSize: ui.text.xs, marginBottom: sp(2) }}>{msg}</p>}
 
       <AutoAssignMissingBtn students={students} circleId={circleId} onDone={() => void load(circleId)} />
 
@@ -222,6 +268,9 @@ export default function UnifiedPage() {
         {circleId && (
           <Button size="sm" variant="ghost" onClick={() => { window.location.href = `/admin/circles/${circleId}/weakness`; }}>{tu("weaknessMapBtn")}</Button>
         )}
+        <Button size="sm" variant={bulkMode ? "bronze" : "ghost"} onClick={() => { setBulkMode(!bulkMode); setBulkSelected(new Set()); setBulkItemId(""); }}>
+          {bulkMode ? tu("bulkCancelBtn") : tu("bulkModeBtn")}
+        </Button>
       </div>
 
       {students && students.length > 0 && (
@@ -231,6 +280,25 @@ export default function UnifiedPage() {
               {f === "ALL" ? "الكل" : f === "NEEDS_SETUP" ? "إعداد ناقص" : "بيانات ناقصة"}
             </Button>
           ))}
+        </div>
+      )}
+
+      {bulkMode && (
+        <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center", marginBottom: sp(3), padding: sp(3), background: ui.color.soft, borderRadius: ui.radius.md, border: `1px solid ${ui.color.goldLine}` }}>
+          <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>
+            {bulkSelected.size > 0 ? `${arNum(bulkSelected.size)} طالب محدَّد` : "اختر طلاباً من القائمة"}
+          </span>
+          <select
+            value={bulkItemId}
+            onChange={(e) => setBulkItemId(e.target.value)}
+            style={{ fontFamily: ui.font, fontSize: ui.text.xs, padding: `${sp(1)} ${sp(2)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, background: ui.color.surface, color: ui.color.text }}
+          >
+            <option value="">{tu("bulkGrantSelectItem")}</option>
+            {items.map((it) => <option key={it.id} value={it.id}>{it.nameAr} ({it.value > 0 ? "+" : ""}{it.value})</option>)}
+          </select>
+          <Button size="sm" variant="primary" onClick={() => void handleBulkGrant()} disabled={!bulkSelected.size || !bulkItemId}>
+            {tu("bulkGrantBtn")} ({arNum(bulkSelected.size)})
+          </Button>
         </div>
       )}
 
@@ -250,13 +318,17 @@ export default function UnifiedPage() {
                   <div key={s.studentId} data-student-id={s.studentId} data-testid="student-row">
                     <button
                       onClick={() => {
-                        const next = isOpen ? null : s.studentId;
-                        selectStudent(next);
-                        if (next && !panelCache.has(next)) void loadDetail(next, s.program);
+                        if (bulkMode) {
+                          setBulkSelected((prev) => { const n = new Set(prev); n.has(s.studentId) ? n.delete(s.studentId) : n.add(s.studentId); return n; });
+                        } else {
+                          const next = isOpen ? null : s.studentId;
+                          selectStudent(next);
+                          if (next && !panelCache.has(next)) void loadDetail(next, s.program);
+                        }
                       }}
                       style={{
                         width: "100%", textAlign: "start",
-                        border: `1px solid ${isOpen ? ui.color.goldLine : ui.color.border}`,
+                        border: `1px solid ${bulkMode && bulkSelected.has(s.studentId) ? ui.color.goldLine : isOpen ? ui.color.goldLine : ui.color.border}`,
                         background: isOpen ? ui.color.soft : ui.color.surface,
                         borderRadius: isOpen ? `${ui.radius.md} ${ui.radius.md} 0 0` : ui.radius.md,
                         padding: `${sp(2)} ${sp(3)}`, cursor: "pointer", fontFamily: ui.font, color: ui.color.text,
@@ -270,6 +342,7 @@ export default function UnifiedPage() {
                         {s.setupStatus && s.setupStatus.isComplete && s.setupStatus.warnings.length > 0 && <Badge tone="bronze">{tSetup("badgeMissingData")}</Badge>}
                       </span>
                       <span style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
+                        {bulkMode && bulkSelected.has(s.studentId) && <Badge tone="success">✓</Badge>}
                         {done
                           ? <Badge tone="success" style={{ whiteSpace: "nowrap" }}>{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>
                           : absentDefault
@@ -278,7 +351,7 @@ export default function UnifiedPage() {
                         {s.todayHifzDone && <Badge tone="bronze" style={{ whiteSpace: "nowrap" }}>{tu("hifzDone")}</Badge>}
                       </span>
                     </button>
-                    {isOpen && (
+                    {!bulkMode && isOpen && (
                       <div
                         data-testid="student-inline-card"
                         style={{
@@ -292,6 +365,7 @@ export default function UnifiedPage() {
                           detail={panelCache.get(s.studentId) ?? null}
                           detailLoading={panelLoading.has(s.studentId)}
                           onNextStudent={nextStudent}
+                          grantManual={grantManual}
                         />
                       </div>
                     )}
@@ -314,12 +388,16 @@ export default function UnifiedPage() {
                       key={s.studentId}
                       data-testid="student-row"
                       onClick={() => {
-                        selectStudent(s.studentId);
-                        if (!panelCache.has(s.studentId)) void loadDetail(s.studentId, s.program);
+                        if (bulkMode) {
+                          setBulkSelected((prev) => { const n = new Set(prev); n.has(s.studentId) ? n.delete(s.studentId) : n.add(s.studentId); return n; });
+                        } else {
+                          selectStudent(s.studentId);
+                          if (!panelCache.has(s.studentId)) void loadDetail(s.studentId, s.program);
+                        }
                       }}
                       style={{
                         textAlign: "start",
-                        border: `1px solid ${s.studentId === selected ? ui.color.goldLine : ui.color.border}`,
+                        border: `1px solid ${bulkMode && bulkSelected.has(s.studentId) ? ui.color.goldLine : s.studentId === selected ? ui.color.goldLine : ui.color.border}`,
                         background: s.studentId === selected ? ui.color.soft : ui.color.surface,
                         borderRadius: ui.radius.md, padding: `${sp(2)} ${sp(3)}`, cursor: "pointer",
                         fontFamily: ui.font, color: ui.color.text,
@@ -333,6 +411,7 @@ export default function UnifiedPage() {
                         {s.setupStatus && s.setupStatus.isComplete && s.setupStatus.warnings.length > 0 && <Badge tone="bronze">{tSetup("badgeMissingData")}</Badge>}
                       </span>
                       <span style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
+                        {bulkMode && bulkSelected.has(s.studentId) && <Badge tone="success">✓</Badge>}
                         {done
                           ? <Badge tone="success" style={{ whiteSpace: "nowrap" }}>{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>
                           : absentDefault
@@ -347,16 +426,21 @@ export default function UnifiedPage() {
               </div>
 
               <div style={{ flex: "2 1 420px", minWidth: 300, position: "sticky", top: 80, alignSelf: "flex-start", maxHeight: "calc(100vh - 100px)", overflowY: "auto" }}>
-                {!cur
-                  ? <div style={{ padding: sp(4), color: ui.color.muted }}>{tu("pickStudent")}</div>
-                  : (
-                    <StudentPanel
-                      s={cur} circleId={circleId} date={date} items={items} post={post}
-                      detail={panelCache.get(cur.studentId) ?? null}
-                      detailLoading={panelLoading.has(cur.studentId)}
-                      onNextStudent={nextStudent}
-                    />
-                  )}
+                {bulkMode
+                  ? <div style={{ padding: sp(4), color: ui.color.muted }}>{bulkSelected.size > 0 ? `${arNum(bulkSelected.size)} طالب محدَّد — اختر بنداً وانقر «منح».` : "اختر طلاباً من القائمة."}</div>
+                  : !cur
+                    ? <div style={{ padding: sp(4), color: ui.color.muted }}>{tu("pickStudent")}</div>
+                    : (
+                      <div data-testid="student-inline-card">
+                        <StudentPanel
+                          s={cur} circleId={circleId} date={date} items={items} post={post}
+                          detail={panelCache.get(cur.studentId) ?? null}
+                          detailLoading={panelLoading.has(cur.studentId)}
+                          onNextStudent={nextStudent}
+                          grantManual={grantManual}
+                        />
+                      </div>
+                    )}
               </div>
             </div>
           )

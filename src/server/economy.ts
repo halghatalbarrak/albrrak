@@ -634,3 +634,83 @@ export async function listGrantableStudents(
     }))
     .sort((a, b) => a.name.localeCompare(b.name, "ar"));
 }
+
+// ═══════════════ المنح اليدويّ من الشاشة الموحّدة (toggle) ═══════════════
+
+export interface ManualGrantResult { granted: boolean }
+
+/**
+ * يُبدِّل حالة منح بندٍ يدويٍّ لطالب في يومٍ محدَّد:
+ *   • لا منح نشط ⟵ يمنح ويُضيف سطراً في AutoGrant (MANUAL_GRANT، sourceRef = manual:DATE:ITEM_ID).
+ *   • منحٌ نشط موجود ⟵ يعكسه (reversedAt) وينشر قيداً تعويضيّاً سالباً في الدفتر.
+ * يتحقّق من صلاحية الفاعل ومصدر البند (assertActorMayGrantToStudent + sourceAllowedForRoles).
+ */
+export async function grantManualItem(
+  actorId: string,
+  studentId: string,
+  pointItemId: string,
+  date: string,
+  db: PrismaClient = prisma,
+): Promise<ManualGrantResult> {
+  const actor = await db.user.findUnique({ where: { id: actorId }, select: { roles: true } });
+  if (!actor) throw aerr("userNotFound");
+
+  const item = await db.pointItem.findUnique({ where: { id: pointItemId } });
+  if (!item) throw verr("economyItemNotFound");
+  if (!item.active) throw verr("economyItemDisabled");
+
+  if (!sourceAllowedForRoles(actor.roles, item.grantSource)) {
+    if (item.grantSource === PointGrantSource.AUTO) throw aerr("economyAutoNotManual");
+    throw aerr("economyNoSourcePermission");
+  }
+
+  return db.$transaction(async (tx) => {
+    await assertActorMayGrantToStudent(actor.roles, actorId, studentId, tx);
+
+    const sourceRef = `manual:${date}:${pointItemId}`;
+    const existing = await tx.autoGrant.findFirst({
+      where: { eventType: AutoEventType.MANUAL_GRANT, sourceRef, studentId, reversedAt: null },
+      select: { id: true, pointTransactionId: true },
+    });
+
+    if (existing) {
+      // عكس المنح
+      await tx.autoGrant.update({ where: { id: existing.id }, data: { reversedAt: new Date(), reversedById: actorId } });
+      const orig = await tx.pointTransaction.findUnique({ where: { id: existing.pointTransactionId }, select: { amount: true, pointItemId: true } });
+      if (orig && orig.amount !== 0) {
+        await tx.pointTransaction.create({
+          data: { studentId, pointItemId: orig.pointItemId, amount: -orig.amount, grantSource: item.grantSource, grantedByUserId: actorId, note: "إلغاء يدويّ لبند اليوم" },
+        });
+      }
+      await emitEvent(tx, { type: "POINTS_REVERSED_AUTO", subjectType: "Student", subjectId: studentId, actorId, payload: { eventType: AutoEventType.MANUAL_GRANT, sourceRef } });
+      return { granted: false };
+    }
+
+    // منح جديد
+    const txn = await tx.pointTransaction.create({
+      data: { studentId, pointItemId: item.id, amount: item.value, grantSource: item.grantSource, grantedByUserId: actorId, note: null },
+    });
+    await tx.autoGrant.create({ data: { eventType: AutoEventType.MANUAL_GRANT, sourceRef, studentId, pointTransactionId: txn.id } });
+    await emitEvent(tx, { type: "POINTS_GRANTED", subjectType: "Student", subjectId: studentId, actorId, payload: { pointItemId: item.id, amount: item.value } });
+    return { granted: true };
+  });
+}
+
+/**
+ * يُرجع معرّفات البنود التي مُنحت يدويّاً لطالبٍ في تاريخٍ محدَّد (ولم تُعكَس).
+ * يُستخدم في تفاصيل بطاقة الطالب لإظهار حالة الأزرار.
+ */
+export async function getTodayManualGrantStatus(
+  studentId: string,
+  date: string,
+  pointItemIds: string[],
+  db: PrismaClient = prisma,
+): Promise<string[]> {
+  if (!pointItemIds.length) return [];
+  const sourceRefs = pointItemIds.map((id) => `manual:${date}:${id}`);
+  const grants = await db.autoGrant.findMany({
+    where: { studentId, eventType: AutoEventType.MANUAL_GRANT, sourceRef: { in: sourceRefs }, reversedAt: null },
+    select: { sourceRef: true },
+  });
+  return grants.map((g) => g.sourceRef.replace(`manual:${date}:`, ""));
+}

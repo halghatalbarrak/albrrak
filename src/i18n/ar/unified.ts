@@ -79,6 +79,12 @@ export const unifiedAr = {
   consolidReverted: "⚠ ترميم",
   weaknessMapBtn: "خريطة ضعف الحلقة",
   nextStudentBtn: "الطالب التالي ←",
+  dayPoints: "نقاط اليوم",
+  bulkModeBtn: "تحديد متعدّد",
+  bulkCancelBtn: "إلغاء التحديد",
+  bulkGrantBtn: "منح",
+  bulkGrantSelectItem: "— اختر بنداً —",
+  bulkGrantDone: "مُنح.",
 } as const;
 
 export type UnifiedKey = keyof typeof unifiedAr;

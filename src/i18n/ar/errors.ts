@@ -331,6 +331,7 @@ export const errorsAr = {
   unknownApprovedRejected: "قرار غير معروف (APPROVED | REJECTED).",
   studentRequired: "الطالب مطلوب.",
   dateRequired: "التاريخ مطلوب.",
+  studentsRequired: "قائمة الطلاب مطلوبة.",
   unknownRequestType: "نوع الطلب غير معروف.",
   decisionRequiredApprovedRejected: "القرار مطلوب (APPROVED/REJECTED).",
   stageRequired: "المرحلة مطلوبة.",
