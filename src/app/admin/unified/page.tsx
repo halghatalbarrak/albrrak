@@ -58,7 +58,6 @@ export default function UnifiedPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [view, setViewState] = useState<"list" | "cards">("list");
   const [isNarrow, setIsNarrow] = useState(false);
-  // cache تفاصيل البطاقة: تُجلب per-student عند الفتح + تُبطَل بعد post لذلك الطالب.
   const [panelCache, setPanelCache] = useState<ReadonlyMap<string, PanelDetail>>(new Map());
   const [panelLoading, setPanelLoading] = useState<ReadonlySet<string>>(new Set());
 
