@@ -1,7 +1,7 @@
 import { AttendanceStatus, AutoEventType, PointGrantSource, ProgramKey, Role, StudentState } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import { getUnifiedBoard, recordExtra } from "../unified-session";
+import { getStudentPanelDetail, getUnifiedBoard, recordExtra } from "../unified-session";
 import { markStudentAttendance } from "../attendance";
 import { createPointItem, getBalance } from "../economy";
 import { prisma, resetDb } from "../testing/helpers";
@@ -88,7 +88,9 @@ describe("getUnifiedBoard — اللوحة الموحّدة (م ج)", () => {
     let board = await getUnifiedBoard(teacher.id, circle.id, DATE, prisma);
     const before = board.students.find((s) => s.studentId === student.id);
     expect(before?.attendanceStatus).toBeNull();
-    expect(before?.today.newHifz).toEqual({ kind: "NEW", bound: { fromSurah: 1, fromAyah: 1, toSurah: 1, toAyah: 7 } });
+    // تفاصيل الوجهة اليوميّة عبر panel detail.
+    const detail = await getStudentPanelDetail(teacher.id, student.id, "MARAQI", DATE, prisma);
+    expect(detail.today.newHifz).toEqual({ kind: "NEW", bound: { fromSurah: 1, fromAyah: 1, toSurah: 1, toAyah: 7 } });
     // بعد الرفع: الحالة تظهر.
     await markStudentAttendance({ circleId: circle.id, studentId: student.id, status: AttendanceStatus.PRESENT, date: DATE, recorderId: teacher.id }, prisma);
     board = await getUnifiedBoard(teacher.id, circle.id, DATE, prisma);
@@ -98,20 +100,20 @@ describe("getUnifiedBoard — اللوحة الموحّدة (م ج)", () => {
   it("hasTarsikh=false وhasMuraja=false لطالبٍ بلا مسار (NO_TRACK)", async () => {
     // بلا track: لا ترسيخ ولا مراجعة في الخطّة.
     const { circle, teacher, student } = await scaffold();
-    const board = await getUnifiedBoard(teacher.id, circle.id, DATE, prisma);
-    const row = board.students.find((s) => s.studentId === student.id);
-    expect(row?.today.hasTarsikh).toBe(false);
-    expect(row?.today.hasMuraja).toBe(false);
-    expect(row?.today.tarseekh).toHaveLength(0);
+    void (await getUnifiedBoard(teacher.id, circle.id, DATE, prisma));
+    const detail = await getStudentPanelDetail(teacher.id, student.id, "MARAQI", DATE, prisma);
+    expect(detail.today.hasTarsikh).toBe(false);
+    expect(detail.today.hasMuraja).toBe(false);
+    expect(detail.today.tarseekh).toHaveLength(0);
   });
 
   it("hasTarsikh=false لطالبٍ بمسارٍ لم يحفظ وحداتٍ بعد", async () => {
     const { program, circle, teacher, student } = await scaffold();
     await withTrack(program.id, student.id); // مسارٌ بوحدتين، الطالب لم يُسجَّل له حفظ
-    const board = await getUnifiedBoard(teacher.id, circle.id, DATE, prisma);
-    const row = board.students.find((s) => s.studentId === student.id);
+    void (await getUnifiedBoard(teacher.id, circle.id, DATE, prisma));
+    const detail = await getStudentPanelDetail(teacher.id, student.id, "MARAQI", DATE, prisma);
     // reached=0 ⟶ نافذة الترسيخ فارغة ⟶ hasTarsikh=false
-    expect(row?.today.hasTarsikh).toBe(false);
-    expect(row?.today.tarseekh).toHaveLength(0);
+    expect(detail.today.hasTarsikh).toBe(false);
+    expect(detail.today.tarseekh).toHaveLength(0);
   });
 });

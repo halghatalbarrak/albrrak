@@ -12,7 +12,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { markStudentAttendance } from "../attendance";
 import { recordHifz, setUnitErrors } from "../daily-session";
 import { transferStudent } from "../enrollment";
-import { getUnifiedBoard } from "../unified-session";
+import { getStudentPanelDetail, getUnifiedBoard } from "../unified-session";
 import { prisma, resetDb } from "../testing/helpers";
 import { createCircle, createStudent, createUser } from "../testing/factories";
 
@@ -64,13 +64,14 @@ describe("الرحلة الأساسية — رحلة طالب مراقي كام�
   it("يمرّ بكل خطوات الجلسة اليومية الكاملة بلا خطأ", async () => {
     const { circle1, circle2, teacher, student } = await coreScaffold();
 
-    // ١. اللوحة الموحّدة — تعرض NEW hifz bound قبل أيّ تسجيل
+    // ١. اللوحة الموحّدة — تعرض حالة الحضور (null) + panel detail للوجهة اليوميّة
     const boardBefore = await getUnifiedBoard(teacher.id, circle1.id, DATE, prisma);
     const rowBefore = boardBefore.students.find((s) => s.studentId === student.id);
     expect(rowBefore).toBeDefined();
     expect(rowBefore?.attendanceStatus).toBeNull();
-    expect(rowBefore?.today.newHifz?.kind).toBe("NEW");
-    const hifzBound = rowBefore?.today.newHifz?.kind === "NEW" ? rowBefore.today.newHifz.bound : null;
+    const detailBefore = await getStudentPanelDetail(teacher.id, student.id, "MARAQI", DATE, prisma);
+    expect(detailBefore.today.newHifz?.kind).toBe("NEW");
+    const hifzBound = detailBefore.today.newHifz?.kind === "NEW" ? detailBefore.today.newHifz.bound : null;
     expect(hifzBound?.fromSurah).toBe(87);
 
     // ٢. تسجيل الحضور (حاضر)

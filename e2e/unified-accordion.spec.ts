@@ -8,15 +8,6 @@ const MOCK_STUDENTS = Array.from({ length: 10 }, (_, i) => ({
   attendanceStatus: null,
   todayHifzDone: false,
   tarseekhDone: null,
-  today: {
-    status: "ACTIVE",
-    newHifz: null,
-    tarseekh: [],
-    murajaah: null,
-    hasTarsikh: false,
-    hasMuraja: false,
-  },
-  qaidah: null,
   stageLabel: "السادس",
   hizb: null,
   weeklyPercent: null,
@@ -27,6 +18,18 @@ const MOCK_STUDENTS = Array.from({ length: 10 }, (_, i) => ({
   yesterday: null,
   required: null,
 }));
+
+const MOCK_PANEL = {
+  today: {
+    status: "ACTIVE",
+    newHifz: null,
+    tarseekh: [],
+    murajaah: null,
+    hasTarsikh: false,
+    hasMuraja: false,
+  },
+  qaidah: null,
+};
 
 // تزوير جلسة Supabase عبر localStorage قبل تحميل الصفحة
 const FAKE_SESSION = JSON.stringify({
@@ -60,6 +63,10 @@ test.describe("الشاشة الموحّدة — أكورديون بعرض 390px
     );
     await page.route("**/api/circles/c1/unified**", (route) =>
       route.fulfill({ json: { students: MOCK_STUDENTS, absentDefault: false } }),
+    );
+    // استجابة تفاصيل البطاقة per-student
+    await page.route("**/api/students/**/unified-panel**", (route) =>
+      route.fulfill({ json: MOCK_PANEL }),
     );
     // تجاهل أي طلبات Supabase أخرى
     await page.route("**supabase**", (route) => route.fulfill({ json: {} }));
