@@ -2,7 +2,7 @@ import { ProgramHistoryReason, ProgramKey, Role, StudentState } from "@prisma/cl
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { enrollStudent } from "../enrollment";
-import { getUnifiedBoard } from "../unified-session";
+import { getStudentPanelDetail, getUnifiedBoard } from "../unified-session";
 import { prisma, resetDb } from "../testing/helpers";
 import { createCircle, createProgram, createStudent, createUser } from "../testing/factories";
 
@@ -70,9 +70,12 @@ describe("getUnifiedBoard يعرض لكلّ طالبٍ لوحة برنامجه �
     const m = board.students.find((s) => s.studentId === mStu.id)!;
     const q = board.students.find((s) => s.studentId === qStu.id)!;
     expect(m.program).toBe(ProgramKey.MARAQI);
-    expect(m.qaidah).toBeNull();
     expect(q.program).toBe(ProgramKey.QAIDAH_MADANIYYAH);
-    expect(q.qaidah).not.toBeNull(); // كتلة درس القاعدة (ولو بلا بذر: started=false)
+    // تفاصيل القاعدة عبر panel detail.
+    const mDetail = await getStudentPanelDetail(mgr.id, mStu.id, "MARAQI", "2026-05-10", prisma);
+    const qDetail = await getStudentPanelDetail(mgr.id, qStu.id, "QAIDAH_MADANIYYAH", "2026-05-10", prisma);
+    expect(mDetail.qaidah).toBeNull();
+    expect(qDetail.qaidah).not.toBeNull(); // كتلة درس القاعدة (ولو بلا بذر: started=false)
   });
 
   it("قيدٌ بلا programId (بيانات قديمة) ⟵ ارتدادٌ لبرنامج الحلقة", async () => {

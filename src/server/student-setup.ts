@@ -133,6 +133,82 @@ export async function getStudentSetupStatus(
   };
 }
 
+// ─────────── batch لكل الطلاب دفعةً واحدة ───────────
+
+/**
+ * نسخةٌ مجمَّعة: استعلامات ثابتة العدد (٣ بدلاً من ١–٣ × N) لكل الطلاب دفعةً واحدة.
+ */
+export async function getStudentSetupStatusBatch(
+  studentIds: string[],
+  db: PrismaClient = prisma,
+): Promise<Map<string, StudentSetupStatus>> {
+  if (!studentIds.length) return new Map();
+
+  const rows = await db.student.findMany({
+    where: { id: { in: studentIds } },
+    select: {
+      id: true, state: true,
+      user: { select: { birthDate: true, phone: true } },
+      enrollments: {
+        where: { endedAt: null },
+        select: { programId: true, program: { select: { key: true } } },
+        take: 1, orderBy: { startedAt: "desc" },
+      },
+      trackAssignments: { where: { endedAt: null }, select: { id: true }, take: 1 },
+      guardians: { where: { status: GuardianLinkStatus.ACTIVE }, select: { id: true }, take: 1 },
+    },
+  });
+
+  const awaitingIds = rows.filter((r) => r.state === StudentState.AWAITING_READING_TEST).map((r) => r.id);
+  const activeMaraqiIds = rows.filter((r) => {
+    const pk = r.enrollments[0]?.program?.key;
+    return pk === ProgramKey.MARAQI && isActiveMaraqi(r.state);
+  }).map((r) => r.id);
+
+  const [pendingApprovals, placements] = await Promise.all([
+    awaitingIds.length
+      ? db.approval.findMany({ where: { kind: ApprovalKind.PLACEMENT_DECISION, subjectId: { in: awaitingIds }, status: ApprovalStatus.PENDING }, select: { id: true, subjectId: true } })
+      : Promise.resolve([]),
+    activeMaraqiIds.length
+      ? db.maraqiPlacement.findMany({ where: { studentId: { in: activeMaraqiIds } }, select: { studentId: true } })
+      : Promise.resolve([]),
+  ]);
+  const approvalBy = new Map(pendingApprovals.map((a) => [a.subjectId, a.id]));
+  const hasPlacement = new Set(placements.map((p) => p.studentId));
+  const today = new Date();
+  const result = new Map<string, StudentSetupStatus>();
+
+  for (const r of rows) {
+    const blockers: SetupBlocker[] = [];
+    const warnings: SetupWarning[] = [];
+    const activeEnrollment = r.enrollments[0];
+    if (!activeEnrollment?.programId) {
+      blockers.push({ key: "NO_PROGRAM" });
+      result.set(r.id, { studentId: r.id, isComplete: false, blockers, warnings });
+      continue;
+    }
+    const programKey = activeEnrollment.program?.key ?? null;
+    const isMaraqi = programKey === ProgramKey.MARAQI;
+    if (r.state === StudentState.AWAITING_READING_TEST) {
+      blockers.push({ key: "READING_TEST", pendingApprovalId: approvalBy.get(r.id) ?? null });
+      result.set(r.id, { studentId: r.id, isComplete: false, blockers, warnings });
+      continue;
+    }
+    if (isMaraqi && isActiveMaraqi(r.state)) {
+      if (!hasPlacement.has(r.id)) blockers.push({ key: "FRONTIER" });
+      if (!r.trackAssignments.length) blockers.push({ key: "NO_TRACK" });
+    }
+    const age = r.user.birthDate ? computeAge(r.user.birthDate, today) : null;
+    if (age !== null && age < 18 && !r.guardians.length) warnings.push({ key: "NO_GUARDIAN" });
+    if (age !== null && age >= 13 && !r.user.phone) warnings.push({ key: "NO_PHONE", minAge: 13 });
+    result.set(r.id, { studentId: r.id, isComplete: blockers.length === 0, blockers, warnings });
+  }
+  for (const id of studentIds) {
+    if (!result.has(id)) result.set(id, { studentId: id, isComplete: true, blockers: [], warnings: [] });
+  }
+  return result;
+}
+
 // ─────────── اقتراح المسار ───────────
 
 export interface TrackOption { id: string; nameAr: string; linesPerDay: number; ordinal: number }

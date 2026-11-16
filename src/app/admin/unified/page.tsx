@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -11,11 +12,19 @@ import { tSetup } from "@/i18n/ar/setup";
 import { tUnified as tu } from "@/i18n/ar/unified";
 import { navAr } from "@/i18n/ar/nav";
 
-import { token, type Circle, type DayLock, type GrantItem, type PostFn, type Student } from "./_types";
+import { token, type Circle, type DayLock, type GrantItem, type PanelDetail, type PostFn, type Student } from "./_types";
 import { DayLockBar } from "./_DayLockBar";
 import { AutoAssignMissingBtn } from "./_AutoAssignMissingBtn";
-import { StudentPanel } from "./_StudentPanel";
-import { CardsView } from "./_CardsView";
+
+// تحميلٌ كسول — لا تُجلب حتى تُفتح أوّل بطاقة / يُفعَّل عرض البطاقات.
+const StudentPanel = dynamic(
+  () => import("./_StudentPanel").then((m) => ({ default: m.StudentPanel })),
+  { loading: () => <Skeleton height={200} /> },
+);
+const CardsView = dynamic(
+  () => import("./_CardsView").then((m) => ({ default: m.CardsView })),
+  { loading: () => <Skeleton height={300} /> },
+);
 
 const PROGRAM_AR: Record<string, string> = {
   QAIDAH_MADANIYYAH: navAr.civilBase, MARAQI: navAr.maraqi, MUDDAKIR: navAr.grpMuddakir, WEEKLY: navAr.weekly,
@@ -49,6 +58,8 @@ export default function UnifiedPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [view, setViewState] = useState<"list" | "cards">("list");
   const [isNarrow, setIsNarrow] = useState(false);
+  const [panelCache, setPanelCache] = useState<ReadonlyMap<string, PanelDetail>>(new Map());
+  const [panelLoading, setPanelLoading] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -95,6 +106,23 @@ export default function UnifiedPage() {
     setStatus("ready");
   }, [date]);
 
+  // تحميل تفاصيل بطاقة طالب — per-student عند الفتح، مُخزَّنةٌ حتى تتغيّر.
+  const loadDetail = useCallback(async (studentId: string, program: string | null) => {
+    if (panelCache.has(studentId) || panelLoading.has(studentId)) return;
+    setPanelLoading((p) => new Set([...p, studentId]));
+    const t = await token();
+    if (!t) { setPanelLoading((p) => { const n = new Set(p); n.delete(studentId); return n; }); return; }
+    const res = await fetch(
+      `/api/students/${studentId}/unified-panel?date=${date}&program=${program ?? ""}`,
+      { headers: { authorization: `Bearer ${t}` } },
+    );
+    if (res.ok) {
+      const detail = (await res.json()) as PanelDetail;
+      setPanelCache((p) => new Map([...p, [studentId, detail]]));
+    }
+    setPanelLoading((p) => { const n = new Set(p); n.delete(studentId); return n; });
+  }, [date, panelCache, panelLoading]);
+
   useEffect(() => {
     void (async () => {
       const t = await token(); if (!t) { setStatus("unauth"); return; }
@@ -111,13 +139,28 @@ export default function UnifiedPage() {
   }, []);
   useEffect(() => { if (circleId) void load(circleId); }, [circleId, load]);
 
-  const post: PostFn = async (url, body, okMsg) => {
+  // عند اختيار طالب: حمّل تفاصيله إن لم تكن في الـcache.
+  useEffect(() => {
+    if (!selected || !students) return;
+    const s = students.find((x) => x.studentId === selected);
+    if (!s || panelCache.has(selected)) return;
+    void loadDetail(selected, s.program);
+  }, [selected, students, panelCache, loadDetail]);
+
+  const post: PostFn = useCallback(async (url, body, okMsg, studentId?) => {
     setMsg(null);
     const t = await token(); if (!t) { setStatus("unauth"); return; }
     const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` }, body: JSON.stringify(body) });
-    if (res.ok) { setMsg(okMsg); await load(circleId); }
-    else { const j = await res.json().catch(() => ({})) as { error?: string }; setMsg(j.error ?? "تعذّر التسجيل."); }
-  };
+    if (res.ok) {
+      setMsg(okMsg);
+      await load(circleId);
+      // أبطِل cache البطاقة لهذا الطالب ليُعاد تحميله بالبيانات الجديدة.
+      if (studentId) setPanelCache((p) => { const n = new Map(p); n.delete(studentId); return n; });
+    } else {
+      const j = await res.json().catch(() => ({})) as { error?: string };
+      setMsg(j.error ?? "تعذّر التسجيل.");
+    }
+  }, [circleId, load]) as PostFn;
 
   async function markAllPresent() {
     if (!students) return;
@@ -206,7 +249,11 @@ export default function UnifiedPage() {
                 return (
                   <div key={s.studentId} data-student-id={s.studentId} data-testid="student-row">
                     <button
-                      onClick={() => selectStudent(isOpen ? null : s.studentId)}
+                      onClick={() => {
+                        const next = isOpen ? null : s.studentId;
+                        selectStudent(next);
+                        if (next && !panelCache.has(next)) void loadDetail(next, s.program);
+                      }}
                       style={{
                         width: "100%", textAlign: "start",
                         border: `1px solid ${isOpen ? ui.color.goldLine : ui.color.border}`,
@@ -240,7 +287,12 @@ export default function UnifiedPage() {
                           background: ui.color.bg, padding: sp(3),
                         }}
                       >
-                        <StudentPanel s={s} circleId={circleId} date={date} items={items} post={post} onNextStudent={nextStudent} />
+                        <StudentPanel
+                          s={s} circleId={circleId} date={date} items={items} post={post}
+                          detail={panelCache.get(s.studentId) ?? null}
+                          detailLoading={panelLoading.has(s.studentId)}
+                          onNextStudent={nextStudent}
+                        />
                       </div>
                     )}
                   </div>
@@ -261,7 +313,10 @@ export default function UnifiedPage() {
                     <button
                       key={s.studentId}
                       data-testid="student-row"
-                      onClick={() => selectStudent(s.studentId)}
+                      onClick={() => {
+                        selectStudent(s.studentId);
+                        if (!panelCache.has(s.studentId)) void loadDetail(s.studentId, s.program);
+                      }}
                       style={{
                         textAlign: "start",
                         border: `1px solid ${s.studentId === selected ? ui.color.goldLine : ui.color.border}`,
@@ -294,14 +349,24 @@ export default function UnifiedPage() {
               <div style={{ flex: "2 1 420px", minWidth: 300, position: "sticky", top: 80, alignSelf: "flex-start", maxHeight: "calc(100vh - 100px)", overflowY: "auto" }}>
                 {!cur
                   ? <div style={{ padding: sp(4), color: ui.color.muted }}>{tu("pickStudent")}</div>
-                  : <StudentPanel s={cur} circleId={circleId} date={date} items={items} post={post} onNextStudent={nextStudent} />}
+                  : (
+                    <StudentPanel
+                      s={cur} circleId={circleId} date={date} items={items} post={post}
+                      detail={panelCache.get(cur.studentId) ?? null}
+                      detailLoading={panelLoading.has(cur.studentId)}
+                      onNextStudent={nextStudent}
+                    />
+                  )}
               </div>
             </div>
           )
       )}
 
       {view === "cards" && (
-        <CardsView students={filtered} absentDefault={absentDefault} circleId={circleId} date={date} items={items} post={post} />
+        <CardsView
+          students={filtered} absentDefault={absentDefault} circleId={circleId} date={date} items={items} post={post}
+          panelCache={panelCache} panelLoading={panelLoading} onOpenStudent={loadDetail}
+        />
       )}
     </Shell>
   );

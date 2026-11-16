@@ -10,7 +10,7 @@ export function AutoAssignMissingBtn({ students, circleId, onDone }: { students:
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   if (!students) return null;
-  const count = students.filter((s) => s.program === "MARAQI" && s.today?.newHifz?.kind === "NO_TRACK").length;
+  const count = students.filter((s) => s.program === "MARAQI" && !s.todayHifzDone).length;
   if (count === 0) return null;
 
   const run = async () => {
