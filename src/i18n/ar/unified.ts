@@ -7,6 +7,7 @@ export const unifiedAr = {
   absentDefaultNote: "الأصل اليوم «غياب»: من لم تَرفعه حاضرًا يُحسب غائبًا. أشِّر الحاضرين من اللوحة.",
   absentNotRaised: "غياب (لم يُرفَع)",
   notRaised: "لم يُرفَع",
+  savingPending: "جارٍ...",
   hifzDone: "حفظ ✓",
   pickStudent: "اختر طالبًا من القائمة.",
   excused: "مستأذن…",

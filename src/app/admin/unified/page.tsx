@@ -12,7 +12,7 @@ import { tSetup } from "@/i18n/ar/setup";
 import { tUnified as tu } from "@/i18n/ar/unified";
 import { navAr } from "@/i18n/ar/nav";
 
-import { token, type Circle, type DayLock, type GrantItem, type PanelDetail, type PostFn, type Student } from "./_types";
+import { token, type Circle, type DayLock, type GrantItem, type MarkAttFn, type PanelDetail, type PostFn, type Student } from "./_types";
 import { DayLockBar } from "./_DayLockBar";
 import { AutoAssignMissingBtn } from "./_AutoAssignMissingBtn";
 
@@ -64,6 +64,7 @@ export default function UnifiedPage() {
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
   const [bulkItemId, setBulkItemId] = useState("");
+  const [pendingStudents, setPendingStudents] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -151,6 +152,37 @@ export default function UnifiedPage() {
     void loadDetail(selected, s.program);
   }, [selected, students, panelCache, loadDetail]);
 
+  // تأشير الحضور: تحديثٌ متفائلٌ فوريّ — الزر يتغيّر قبل ردّ الخادم.
+  const markAtt = useCallback<MarkAttFn>(async (studentId, status) => {
+    if (pendingStudents.has(studentId)) return;
+    setPendingStudents((p) => new Set([...p, studentId]));
+    let prevStatus: string | null = null;
+    setStudents((p) => {
+      prevStatus = p?.find((s) => s.studentId === studentId)?.attendanceStatus ?? null;
+      return p?.map((s) => s.studentId === studentId ? { ...s, attendanceStatus: status } : s) ?? null;
+    });
+    const tok = await token();
+    if (!tok) {
+      setStudents((p) => p?.map((s) => s.studentId === studentId ? { ...s, attendanceStatus: prevStatus } : s) ?? null);
+      setStatus("unauth");
+      setPendingStudents((p) => { const n = new Set(p); n.delete(studentId); return n; });
+      return;
+    }
+    const res = await fetch(`/api/circles/${circleId}/mark-attendance`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ studentId, status, date }),
+    });
+    if (!res.ok) {
+      setStudents((p) => p?.map((s) => s.studentId === studentId ? { ...s, attendanceStatus: prevStatus } : s) ?? null);
+      const j = await res.json().catch(() => ({})) as { error?: string };
+      setMsg(j.error ?? "تعذّر التسجيل."); setMsgKind("err");
+    } else {
+      setMsg("سُجِّل الحضور."); setMsgKind("ok");
+    }
+    setPendingStudents((p) => { const n = new Set(p); n.delete(studentId); return n; });
+  }, [circleId, date, pendingStudents]);
+
   const post: PostFn = useCallback(async (url, body, okMsg, studentId?) => {
     setMsg(null);
     const t = await token(); if (!t) { setStatus("unauth"); return { ok: false, error: "انتهت الجلسة." }; }
@@ -158,7 +190,6 @@ export default function UnifiedPage() {
     if (res.ok) {
       setMsg(okMsg); setMsgKind("ok");
       await load(circleId);
-      // أبطِل cache البطاقة لهذا الطالب ليُعاد تحميله بالبيانات الجديدة.
       if (studentId) setPanelCache((p) => { const n = new Map(p); n.delete(studentId); return n; });
       return { ok: true };
     } else {
@@ -189,21 +220,26 @@ export default function UnifiedPage() {
     return result;
   }, [date]);
 
-  async function markAllPresent() {
+  // «الكل حاضر» — طلبٌ واحدٌ مجمَّع مع تحديثٍ متفائل.
+  const markAllPresent = useCallback(async () => {
     if (!students) return;
     const tok = await token(); if (!tok) return;
     const unmark = students.filter((s) => s.attendanceStatus == null);
     if (!unmark.length) return;
-    await Promise.all(unmark.map((s) =>
-      fetch(`/api/circles/${circleId}/mark-attendance`, {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
-        body: JSON.stringify({ studentId: s.studentId, status: "PRESENT", date }),
-      }),
-    ));
-    setMsg(tu("markAllPresent") + " — سُجِّل.");
-    await load(circleId);
-  }
+    const ids = unmark.map((s) => s.studentId);
+    setStudents((p) => p?.map((s) => ids.includes(s.studentId) ? { ...s, attendanceStatus: "PRESENT" } : s) ?? null);
+    const res = await fetch(`/api/circles/${circleId}/mark-all-present`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ studentIds: ids, date }),
+    });
+    if (!res.ok) {
+      setStudents((p) => p?.map((s) => ids.includes(s.studentId) ? { ...s, attendanceStatus: null } : s) ?? null);
+      setMsg("تعذّر التسجيل الجماعي.");
+    } else {
+      setMsg(tu("markAllPresent") + " — سُجِّل.");
+    }
+  }, [circleId, date, students]);
 
   async function handleBulkGrant() {
     if (!bulkSelected.size || !bulkItemId) return;
@@ -343,11 +379,12 @@ export default function UnifiedPage() {
                       </span>
                       <span style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
                         {bulkMode && bulkSelected.has(s.studentId) && <Badge tone="success">✓</Badge>}
+                        {pendingStudents.has(s.studentId) && <span style={{ fontSize: ui.text.xs, color: ui.color.muted }} aria-label="جارٍ">•</span>}
                         {done
-                          ? <Badge tone="success" style={{ whiteSpace: "nowrap" }}>{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>
+                          ? <Badge tone="success" style={{ whiteSpace: "nowrap" }} data-testid="att-badge">{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>
                           : absentDefault
-                            ? <Badge tone="danger" style={{ whiteSpace: "nowrap" }}>{tu("notRaised")}</Badge>
-                            : <Badge tone="neutral" style={{ whiteSpace: "nowrap" }}>{tu("notRaised")}</Badge>}
+                            ? <Badge tone="danger" style={{ whiteSpace: "nowrap" }} data-testid="att-badge">{tu("notRaised")}</Badge>
+                            : <Badge tone="neutral" style={{ whiteSpace: "nowrap" }} data-testid="att-badge">{tu("notRaised")}</Badge>}
                         {s.todayHifzDone && <Badge tone="bronze" style={{ whiteSpace: "nowrap" }}>{tu("hifzDone")}</Badge>}
                       </span>
                     </button>
@@ -361,11 +398,12 @@ export default function UnifiedPage() {
                         }}
                       >
                         <StudentPanel
-                          s={s} circleId={circleId} date={date} items={items} post={post}
+                          s={s} date={date} items={items} post={post}
                           detail={panelCache.get(s.studentId) ?? null}
                           detailLoading={panelLoading.has(s.studentId)}
                           onNextStudent={nextStudent}
                           grantManual={grantManual}
+                          markAtt={markAtt} isPending={pendingStudents.has(s.studentId)}
                         />
                       </div>
                     )}
@@ -412,11 +450,12 @@ export default function UnifiedPage() {
                       </span>
                       <span style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }}>
                         {bulkMode && bulkSelected.has(s.studentId) && <Badge tone="success">✓</Badge>}
+                        {pendingStudents.has(s.studentId) && <span style={{ fontSize: ui.text.xs, color: ui.color.muted }} aria-label="جارٍ">•</span>}
                         {done
-                          ? <Badge tone="success" style={{ whiteSpace: "nowrap" }}>{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>
+                          ? <Badge tone="success" style={{ whiteSpace: "nowrap" }} data-testid="att-badge">{ATT_LABEL[s.attendanceStatus!] ?? s.attendanceStatus}</Badge>
                           : absentDefault
-                            ? <Badge tone="danger" style={{ whiteSpace: "nowrap" }}>{tu("notRaised")}</Badge>
-                            : <Badge tone="neutral" style={{ whiteSpace: "nowrap" }}>{tu("notRaised")}</Badge>}
+                            ? <Badge tone="danger" style={{ whiteSpace: "nowrap" }} data-testid="att-badge">{tu("notRaised")}</Badge>
+                            : <Badge tone="neutral" style={{ whiteSpace: "nowrap" }} data-testid="att-badge">{tu("notRaised")}</Badge>}
                         {s.todayHifzDone && <Badge tone="bronze" style={{ whiteSpace: "nowrap" }}>{tu("hifzDone")}</Badge>}
                       </span>
                     </button>
@@ -433,11 +472,12 @@ export default function UnifiedPage() {
                     : (
                       <div data-testid="student-inline-card">
                         <StudentPanel
-                          s={cur} circleId={circleId} date={date} items={items} post={post}
+                          s={cur} date={date} items={items} post={post}
                           detail={panelCache.get(cur.studentId) ?? null}
                           detailLoading={panelLoading.has(cur.studentId)}
                           onNextStudent={nextStudent}
                           grantManual={grantManual}
+                          markAtt={markAtt} isPending={pendingStudents.has(cur.studentId)}
                         />
                       </div>
                     )}
@@ -448,8 +488,9 @@ export default function UnifiedPage() {
 
       {view === "cards" && (
         <CardsView
-          students={filtered} absentDefault={absentDefault} circleId={circleId} date={date} items={items} post={post}
+          students={filtered} absentDefault={absentDefault} date={date} items={items} post={post}
           panelCache={panelCache} panelLoading={panelLoading} onOpenStudent={loadDetail}
+          markAtt={markAtt} pendingStudents={pendingStudents}
         />
       )}
     </Shell>

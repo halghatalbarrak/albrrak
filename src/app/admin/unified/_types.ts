@@ -57,6 +57,9 @@ export interface DayLock { state: LockState; locked: boolean; date: string }
 /** studentId اختياريّ: إن أُرسِل، يُبطَل cache بطاقة ذلك الطالب بعد نجاح POST. */
 export type PostFn = (url: string, body: Record<string, unknown>, okMsg: string, studentId?: string) => Promise<{ ok: boolean; error?: string }>;
 
+/** تأشير حضور: تحديثٌ متفائلٌ فوريّ — الزر يتغيّر قبل ردّ الخادم. */
+export type MarkAttFn = (studentId: string, status: string) => Promise<void>;
+
 // رمز الجلسة — مُخزَّن بهامش ٦٠ث لتجنّب قراءة localStorage في كل طلب.
 let _tok: { value: string; exp: number } | null = null;
 export async function token(): Promise<string | null> {
