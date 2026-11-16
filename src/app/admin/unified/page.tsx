@@ -431,13 +431,15 @@ export default function UnifiedPage() {
                   : !cur
                     ? <div style={{ padding: sp(4), color: ui.color.muted }}>{tu("pickStudent")}</div>
                     : (
-                      <StudentPanel
-                        s={cur} circleId={circleId} date={date} items={items} post={post}
-                        detail={panelCache.get(cur.studentId) ?? null}
-                        detailLoading={panelLoading.has(cur.studentId)}
-                        onNextStudent={nextStudent}
-                        grantManual={grantManual}
-                      />
+                      <div data-testid="student-inline-card">
+                        <StudentPanel
+                          s={cur} circleId={circleId} date={date} items={items} post={post}
+                          detail={panelCache.get(cur.studentId) ?? null}
+                          detailLoading={panelLoading.has(cur.studentId)}
+                          onNextStudent={nextStudent}
+                          grantManual={grantManual}
+                        />
+                      </div>
                     )}
               </div>
             </div>
