@@ -133,6 +133,7 @@
 | #221 | docs/BACKUP_PLAN.md — خطّة النسخ الاحتياطي (خطّة فقط) | مدموج ✅ |
 | #223 | أمان: IDOR في GET /api/circles/[id]/arifs — assertTeacherOwnsCircle | مدموج ✅ |
 | #225 | أداء: N+1 → batch + فهرس GuardianLink + حارس route-auth في CI | مدموج ✅ |
+| #228 | أداء: شلّال N+1 في الشاشة الموحّدة — قائمة خفيفة + بطاقة عند الفتح + dynamic imports | مدموج ✅ |
 
 ## الخطوة التالية مباشرةً
 
