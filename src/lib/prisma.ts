@@ -18,10 +18,10 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-const prismaOptions =
-  process.env.NODE_ENV === "production"
-    ? ({ datasources: { db: { url: prodUrl() } } } as ConstructorParameters<typeof PrismaClient>[0])
-    : {};
+const _prodUrl = process.env.NODE_ENV === "production" ? prodUrl() : undefined;
+const prismaOptions = _prodUrl
+  ? ({ datasources: { db: { url: _prodUrl } } } as ConstructorParameters<typeof PrismaClient>[0])
+  : {};
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient(prismaOptions);
 

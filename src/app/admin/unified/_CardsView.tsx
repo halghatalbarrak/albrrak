@@ -17,10 +17,10 @@ const ATT_LABEL: Record<string, string> = {
   ABSENT_EXCUSED: "غائب بعذر", PRE_EXCUSED: "مستأذن", LEFT_EARLY: "خرج مبكّرًا",
 };
 
-export function CardsView({ students, absentDefault, circleId, date, items, post, panelCache, panelLoading, onOpenStudent, markAtt, pendingStudents }: {
+export function CardsView({ students, absentDefault, date, items, post, panelCache, panelLoading, onOpenStudent, markAtt, pendingStudents }: {
   students: Student[];
   absentDefault: boolean;
-  circleId: string; date: string; items: GrantItem[];
+  date: string; items: GrantItem[];
   post: PostFn;
   panelCache: ReadonlyMap<string, PanelDetail>;
   panelLoading: ReadonlySet<string>;
@@ -107,7 +107,7 @@ export function CardsView({ students, absentDefault, circleId, date, items, post
                   </div>
                 )}
                 <StudentPanel
-                  s={s} circleId={circleId} date={date} items={items} post={post}
+                  s={s} date={date} items={items} post={post}
                   detail={panelCache.get(s.studentId) ?? null}
                   detailLoading={panelLoading.has(s.studentId)}
                   markAtt={markAtt} isPending={pendingStudents.has(s.studentId)}

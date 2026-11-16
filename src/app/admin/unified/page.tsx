@@ -398,7 +398,7 @@ export default function UnifiedPage() {
                         }}
                       >
                         <StudentPanel
-                          s={s} circleId={circleId} date={date} items={items} post={post}
+                          s={s} date={date} items={items} post={post}
                           detail={panelCache.get(s.studentId) ?? null}
                           detailLoading={panelLoading.has(s.studentId)}
                           onNextStudent={nextStudent}
@@ -472,7 +472,7 @@ export default function UnifiedPage() {
                     : (
                       <div data-testid="student-inline-card">
                         <StudentPanel
-                          s={cur} circleId={circleId} date={date} items={items} post={post}
+                          s={cur} date={date} items={items} post={post}
                           detail={panelCache.get(cur.studentId) ?? null}
                           detailLoading={panelLoading.has(cur.studentId)}
                           onNextStudent={nextStudent}
@@ -488,7 +488,7 @@ export default function UnifiedPage() {
 
       {view === "cards" && (
         <CardsView
-          students={filtered} absentDefault={absentDefault} circleId={circleId} date={date} items={items} post={post}
+          students={filtered} absentDefault={absentDefault} date={date} items={items} post={post}
           panelCache={panelCache} panelLoading={panelLoading} onOpenStudent={loadDetail}
           markAtt={markAtt} pendingStudents={pendingStudents}
         />

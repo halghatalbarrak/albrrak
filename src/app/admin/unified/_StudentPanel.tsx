@@ -21,8 +21,8 @@ const ATT_BUTTONS: { status: string; label: string; tone: "primary" | "bronze" |
   { status: "LEFT_NO_PERMISSION", label: "خرج بلا إذن", tone: "danger" },
 ];
 
-export function StudentPanel({ s, circleId, date, items, post, detail, detailLoading, onNextStudent, grantManual, markAtt: markAttProp, isPending }: {
-  s: Student; circleId: string; date: string; items: GrantItem[];
+export function StudentPanel({ s, date, items, post, detail, detailLoading, onNextStudent, grantManual, markAtt: markAttProp, isPending }: {
+  s: Student; date: string; items: GrantItem[];
   post: PostFn;
   detail: PanelDetail | null;
   detailLoading?: boolean;
