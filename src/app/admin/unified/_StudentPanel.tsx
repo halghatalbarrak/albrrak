@@ -77,7 +77,7 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
       <div>
         <h3 style={H3}>
           {"الحضور"}{s.attendanceStatus ? ` — ${ATT_LABEL[s.attendanceStatus] ?? s.attendanceStatus}` : ""}
-          {isPending && <span style={{ fontSize: ui.text.xs, fontWeight: 400, color: ui.color.muted, marginInlineStart: 8 }}>جارٍ...</span>}
+          {isPending && <span style={{ fontSize: ui.text.xs, fontWeight: 400, color: ui.color.muted, marginInlineStart: 8 }}>{tu("savingPending")}</span>}
         </h3>
         <div style={row}>
           {ATT_BUTTONS.map((b) => (
