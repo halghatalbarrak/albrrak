@@ -32,7 +32,11 @@ interface HifzInputProps {
   mustRepeatBound?: TTBound | null;
   /** ما سُجِّل فعلاً اليوم (للعرض فقط). */
   savedToday?: { toSurah: number; toAyah: number; attempts: number; mastered: boolean } | null;
-  onSave: (s: HifzSave) => void;
+  /** رسالة خطأ تظهر داخل البطاقة بعد فشل الحفظ. */
+  saveError?: string | null;
+  /** true أثناء إرسال الطلب — يُعطَّل الزر. */
+  saving?: boolean;
+  onSave: (s: HifzSave) => void | Promise<void>;
 }
 
 const btnStyle = (active: boolean): React.CSSProperties => ({
@@ -47,7 +51,7 @@ const btnStyle = (active: boolean): React.CSSProperties => ({
   padding: `${sp(1)} ${sp(2.5)}`,
 });
 
-export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedToday, onSave }: HifzInputProps) {
+export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedToday, saveError, saving, onSave }: HifzInputProps) {
   const activeBound = mustRepeat && mustRepeatBound ? mustRepeatBound : bound;
   const [st, setSt] = useState<HifzSave>(() =>
     activeBound
@@ -115,7 +119,7 @@ export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedT
         </div>
       )}
 
-      {/* أزرار المحاولات */}
+      {/* أزرار المحاولات — ٣ فقط (الحكم ١) */}
       <div style={row}>
         <span style={{ fontSize: ui.text.xs }}>{t("attemptsLabel")}</span>
         {([1, 2, 3] as const).map((n, i) => (
@@ -123,19 +127,22 @@ export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedT
             {["١", "٢", "٣"][i]}
           </button>
         ))}
-        <button style={btnStyle(st.attempts >= 4)} onClick={() => setSt((s) => ({ ...s, attempts: Math.max(4, s.attempts) }))}>
-          {"٤+"}
-        </button>
       </div>
 
       {/* أزرار الفعل الرئيسيّة: «أتقن المقرّر ✓» + «أتقن/لم يُتقن» */}
+      {saveError && (
+        <p style={{ margin: 0, fontSize: ui.text.xs, color: ui.color.danger, padding: `${sp(1.5)} ${sp(2)}`, background: "var(--color-danger-bg,#fff0f0)", borderRadius: ui.radius.sm }}>
+          {saveError}
+        </p>
+      )}
       <div style={{ display: "flex", gap: sp(3), flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 auto", display: "flex", flexDirection: "column", gap: sp(1) }}>
           <button
-            style={{ width: "100%", minHeight: 52, background: ui.color.primary, color: "#fff", border: "none", borderRadius: ui.radius.md, fontFamily: ui.font, fontSize: ui.text.base, fontWeight: 700, cursor: "pointer", padding: `${sp(2)} ${sp(4)}` }}
-            onClick={() => onSave(st)}
+            disabled={saving}
+            style={{ width: "100%", minHeight: 52, background: saving ? ui.color.muted : ui.color.primary, color: "#fff", border: "none", borderRadius: ui.radius.md, fontFamily: ui.font, fontSize: ui.text.base, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", padding: `${sp(2)} ${sp(4)}`, opacity: saving ? 0.7 : 1 }}
+            onClick={() => { void onSave(st); }}
           >
-            {t("sayAsIs")}
+            {saving ? "جارٍ التسجيل…" : t("sayAsIs")}
           </button>
           <p style={{ margin: 0, fontSize: ui.text.xs, color: ui.color.muted, textAlign: "center" }}>{t("sayAsIsHint")}</p>
         </div>

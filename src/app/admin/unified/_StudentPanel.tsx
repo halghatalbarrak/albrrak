@@ -31,6 +31,8 @@ export function StudentPanel({ s, circleId, date, items, post, detail, detailLoa
 }) {
   const sid = s.studentId;
   const [localGranted, setLocalGranted] = useState<Set<string>>(new Set(detail?.manualGranted ?? []));
+  const [hifzError, setHifzError] = useState<string | null>(null);
+  const [hifzSaving, setHifzSaving] = useState(false);
 
   useEffect(() => {
     setLocalGranted(new Set(detail?.manualGranted ?? []));
@@ -113,7 +115,15 @@ export function StudentPanel({ s, circleId, date, items, post, detail, detailLoa
                     <HifzInput
                       bound={(detail.today.newHifz?.kind === "NEW" || detail.today.newHifz?.kind === "REPEAT") ? (detail.today.newHifz.bound ?? null) : null}
                       hifzKind={detail.today.newHifz?.kind ?? null}
-                      onSave={(st) => void post(`/api/students/${sid}/session`, { kind: "hifz", date, ...st }, "سُجِّل الحفظ.", sid)}
+                      saving={hifzSaving}
+                      saveError={hifzError}
+                      onSave={async (st) => {
+                        setHifzError(null);
+                        setHifzSaving(true);
+                        const r = await post(`/api/students/${sid}/session`, { kind: "hifz", date, ...st }, "سُجِّل الحفظ.", sid);
+                        setHifzSaving(false);
+                        if (!r.ok) setHifzError(r.error ?? "تعذّر التسجيل.");
+                      }}
                     />
                     <div style={{ ...row, marginTop: sp(2) }}>
                       <Button size="sm" variant="ghost" onClick={() => void extra("hifz")}>{tu("addMoreHifz")}</Button>

@@ -153,16 +153,19 @@ export default function UnifiedPage() {
 
   const post: PostFn = useCallback(async (url, body, okMsg, studentId?) => {
     setMsg(null);
-    const t = await token(); if (!t) { setStatus("unauth"); return; }
+    const t = await token(); if (!t) { setStatus("unauth"); return { ok: false, error: "انتهت الجلسة." }; }
     const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` }, body: JSON.stringify(body) });
     if (res.ok) {
       setMsg(okMsg); setMsgKind("ok");
       await load(circleId);
       // أبطِل cache البطاقة لهذا الطالب ليُعاد تحميله بالبيانات الجديدة.
       if (studentId) setPanelCache((p) => { const n = new Map(p); n.delete(studentId); return n; });
+      return { ok: true };
     } else {
       const j = await res.json().catch(() => ({})) as { error?: string };
-      setMsg(j.error ?? "تعذّر التسجيل."); setMsgKind("err");
+      const errMsg = j.error ?? "تعذّر التسجيل.";
+      setMsg(errMsg); setMsgKind("err");
+      return { ok: false, error: errMsg };
     }
   }, [circleId, load]) as PostFn;
 

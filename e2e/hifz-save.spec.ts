@@ -163,7 +163,49 @@ test("زرّ «+ حفظ إضافي» يُرسل POST إلى /extra", async ({ pa
   expect(extraCalled).toBe(true);
 });
 
-// ═══ ٤) حين hifzKind:"REPEAT" يظهر تحذير الإعادة ═══
+// ═══ ٥) زرّ «٤+» غير موجود — الحكم ١: ٣ محاولات فقط ═══
+test("زرّ المحاولة الرابعة غير موجود في البطاقة", async ({ page }) => {
+  await setupPage(page);
+  await page.route("**/api/circles/c1/unified**", (r) =>
+    r.fulfill({ json: { students: ONE_STUDENT, absentDefault: false } }),
+  );
+  await page.route("**/api/students/s1/unified-panel**", (r) => r.fulfill({ json: PANEL_NEW }));
+
+  await page.goto("/admin/unified");
+  await expect(page.locator("[data-testid='student-row']")).toHaveCount(1, { timeout: 15_000 });
+  await page.locator("[data-testid='student-row']").first().click();
+  await expect(page.locator("[data-testid='student-inline-card']")).toBeVisible({ timeout: 10_000 });
+
+  await expect(page.getByText("٤+")).not.toBeVisible();
+});
+
+// ═══ ٦) ردّ خطأ من الخادم يظهر رسالة حمراء داخل البطاقة ═══
+test("خطأ من الخادم يُظهر رسالة حمراء داخل بطاقة الطالب", async ({ page }) => {
+  await setupPage(page);
+  await page.route("**/api/circles/c1/unified**", (r) =>
+    r.fulfill({ json: { students: ONE_STUDENT, absentDefault: false } }),
+  );
+  await page.route("**/api/students/s1/unified-panel**", (r) => r.fulfill({ json: PANEL_NEW }));
+  await page.route("**/api/students/s1/session", (r) =>
+    r.fulfill({ status: 400, json: { error: "خطأ في الحفظ" } }),
+  );
+
+  await page.goto("/admin/unified");
+  await expect(page.locator("[data-testid='student-row']")).toHaveCount(1, { timeout: 15_000 });
+  await page.locator("[data-testid='student-row']").first().click();
+  await expect(page.locator("[data-testid='student-inline-card']")).toBeVisible({ timeout: 10_000 });
+
+  await page.getByText("أتقن المقرّر ✓").click();
+
+  // الخطأ يظهر داخل البطاقة (ضمن data-testid=student-inline-card)
+  const card = page.locator("[data-testid='student-inline-card']");
+  await expect(card.getByText("خطأ في الحفظ")).toBeVisible({ timeout: 5_000 });
+
+  // الزر يعود قابلاً للنقر بعد انتهاء الطلب
+  await expect(page.getByText("أتقن المقرّر ✓")).toBeEnabled({ timeout: 3_000 });
+});
+
+// ═══ ٧) حين hifzKind:"REPEAT" يظهر تحذير الإعادة ═══
 test("حين يجب إعادة المقطع يظهر التحذير في البطاقة", async ({ page }) => {
   await setupPage(page);
 

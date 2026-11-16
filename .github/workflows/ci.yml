@@ -151,3 +151,37 @@ jobs:
           echo "   الترتيب الحاكم: شغّل workflow «Migrate (deploy)» أولًا، ثم ادمج."
           echo "   (الترحيلات إضافية؛ فالكود القديم يتجاهل الأعمدة الجديدة بأمان.)"
           exit 1
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    needs: verify
+    env:
+      # متغيّرات مؤقّتة للبناء والتشغيل — الاختبارات تُزيَّف كل طلبات الشبكة (page.route).
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/albrrak_test
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/albrrak_test
+      NATIONAL_ID_ENC_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      SUPABASE_JWT_SECRET: placeholder-for-e2e
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Run E2E tests
+        run: npx playwright test
