@@ -56,6 +56,7 @@ export default function UnifiedPage() {
   const [items, setItems] = useState<GrantItem[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "unauth">("loading");
   const [msg, setMsg] = useState<string | null>(null);
+  const [msgKind, setMsgKind] = useState<"ok" | "err">("ok");
   const [view, setViewState] = useState<"list" | "cards">("list");
   const [isNarrow, setIsNarrow] = useState(false);
   const [panelCache, setPanelCache] = useState<ReadonlyMap<string, PanelDetail>>(new Map());
@@ -155,13 +156,13 @@ export default function UnifiedPage() {
     const t = await token(); if (!t) { setStatus("unauth"); return; }
     const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` }, body: JSON.stringify(body) });
     if (res.ok) {
-      setMsg(okMsg);
+      setMsg(okMsg); setMsgKind("ok");
       await load(circleId);
       // أبطِل cache البطاقة لهذا الطالب ليُعاد تحميله بالبيانات الجديدة.
       if (studentId) setPanelCache((p) => { const n = new Map(p); n.delete(studentId); return n; });
     } else {
       const j = await res.json().catch(() => ({})) as { error?: string };
-      setMsg(j.error ?? "تعذّر التسجيل.");
+      setMsg(j.error ?? "تعذّر التسجيل."); setMsgKind("err");
     }
   }, [circleId, load]) as PostFn;
 
@@ -254,7 +255,7 @@ export default function UnifiedPage() {
       {students && students.length > 0 && programCounts(students) && (
         <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginBottom: sp(2) }}>{programCounts(students)}</p>
       )}
-      {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs, marginBottom: sp(2) }}>{msg}</p>}
+      {msg && <p style={{ color: msgKind === "ok" ? ui.color.success : ui.color.danger, fontSize: ui.text.xs, marginBottom: sp(2) }}>{msg}</p>}
 
       <AutoAssignMissingBtn students={students} circleId={circleId} onDone={() => void load(circleId)} />
 

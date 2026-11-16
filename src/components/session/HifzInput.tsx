@@ -51,8 +51,8 @@ export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedT
   const activeBound = mustRepeat && mustRepeatBound ? mustRepeatBound : bound;
   const [st, setSt] = useState<HifzSave>(() =>
     activeBound
-      ? { fromSurah: activeBound.fromSurah, fromAyah: activeBound.fromAyah, toSurah: activeBound.toSurah, toAyah: activeBound.toAyah, attempts: 1, mastered: false }
-      : { fromSurah: 1, fromAyah: 1, toSurah: 1, toAyah: 1, attempts: 1, mastered: false },
+      ? { fromSurah: activeBound.fromSurah, fromAyah: activeBound.fromAyah, toSurah: activeBound.toSurah, toAyah: activeBound.toAyah, attempts: 1, mastered: true }
+      : { fromSurah: 1, fromAyah: 1, toSurah: 1, toAyah: 1, attempts: 1, mastered: true },
   );
   const [showSurah, setShowSurah] = useState(false);
   const [surahQ, setSurahQ] = useState("");
