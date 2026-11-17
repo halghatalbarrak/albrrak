@@ -1,5 +1,6 @@
 import {
   MuddakirDeliveryMode,
+  MuddakirMode,
   MuddakirStaffRole,
   ProgramHistoryReason,
   Role,
@@ -51,6 +52,8 @@ export interface EnrollMuddakirArgs {
   studentId: string;
   actorId: string;
   deliveryMode?: MuddakirDeliveryMode; // يحدّده المدير؛ الافتراضيّ IN_PERSON
+  track?: number; // ١|٢|٣ أوجه/يوم؛ إن أُهمل يُحسَب من Setting
+  supervisorId?: string; // يُسند فور الإلحاق إن مُرِّر
 }
 
 export interface EnrollMuddakirResult {
@@ -71,7 +74,7 @@ export async function enrollInMuddakir(
   if (!student) throw verr("hafizNotFound");
   const programId = await muddakirProgramId(db);
 
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     const active = await tx.enrollment.findFirst({
       where: { studentId: args.studentId, endedAt: null },
       select: { id: true, circleId: true, programId: true },
@@ -113,6 +116,17 @@ export async function enrollInMuddakir(
     });
     return { enrollmentId: created.id, alreadyEnrolled: false };
   });
+
+  // تطبيق المسار المختار (بعد commit المعاملة).
+  if (args.track && [1, 2, 3].includes(args.track)) {
+    await db.muddakirProfile.update({ where: { studentId: args.studentId }, data: { track: args.track } });
+  }
+  // إسناد المشرف فور الإلحاق إن طُلب.
+  if (args.supervisorId) {
+    await assignSupervisor({ studentId: args.studentId, supervisorId: args.supervisorId, actorId: args.actorId }, db);
+  }
+
+  return result;
 }
 
 // ── الإسناد للمشرف ──
@@ -183,6 +197,8 @@ export interface HafizRow {
   supervisorId: string | null;
   supervisorName: string | null;
   deliveryMode: MuddakirDeliveryMode;
+  track: number; // ١ | ٢ | ٣ أوجه/يوم
+  mode: MuddakirMode;
 }
 
 // جداول المُدَّكِر بلا FK (نصّيّة)، فتُجلب الأسماء باستعلاماتٍ منفصلة بالمعرّفات.
@@ -197,10 +213,10 @@ async function namesByUserId(db: PrismaClient, ids: string[]): Promise<Map<strin
   return new Map(rows.map((r) => [r.id, r.nameAsInId]));
 }
 
-/** قائمة حفّاظ المُدَّكِر: الاسم والمرحلة والمشرف النشط ونمط اللقاء. */
+/** قائمة حفّاظ المُدَّكِر: الاسم والمرحلة والمشرف النشط ونمط اللقاء والمسار والوضع. */
 export async function listMuddakirHafiz(db: PrismaClient = prisma): Promise<HafizRow[]> {
   const profiles = await db.muddakirProfile.findMany({
-    select: { studentId: true, currentStageId: true, deliveryMode: true },
+    select: { studentId: true, currentStageId: true, deliveryMode: true, track: true, mode: true },
   });
   const studentIds = profiles.map((p) => p.studentId);
   const sups = await db.muddakirSupervision.findMany({
@@ -220,6 +236,8 @@ export async function listMuddakirHafiz(db: PrismaClient = prisma): Promise<Hafi
         supervisorId,
         supervisorName: supervisorId ? (supNames.get(supervisorId) ?? "—") : null,
         deliveryMode: p.deliveryMode,
+        track: p.track,
+        mode: p.mode,
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, "ar"));
@@ -281,7 +299,7 @@ export async function listHafizForSupervisor(supervisorId: string, db: PrismaCli
   if (!studentIds.length) return [];
   const profiles = await db.muddakirProfile.findMany({
     where: { studentId: { in: studentIds } },
-    select: { studentId: true, currentStageId: true, deliveryMode: true },
+    select: { studentId: true, currentStageId: true, deliveryMode: true, track: true, mode: true },
   });
   const profileBy = new Map(profiles.map((p) => [p.studentId, p]));
   const studentNames = await namesByStudentId(db, studentIds);
@@ -296,7 +314,16 @@ export async function listHafizForSupervisor(supervisorId: string, db: PrismaCli
         supervisorId,
         supervisorName: supName,
         deliveryMode: p?.deliveryMode ?? MuddakirDeliveryMode.IN_PERSON,
+        track: p?.track ?? 1,
+        mode: p?.mode ?? MuddakirMode.ACTIVE,
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, "ar"));
+}
+
+/** يغيّر وضع الحافظ (ACTIVE ↔ REVIEW_ONLY) — صلاحيّة الإدارة. */
+export async function setHafizMode(args: { studentId: string; mode: MuddakirMode }, db: PrismaClient = prisma): Promise<void> {
+  const profile = await db.muddakirProfile.findUnique({ where: { studentId: args.studentId }, select: { studentId: true } });
+  if (!profile) throw verr("hafizNotEnrolledInMuddakir");
+  await db.muddakirProfile.update({ where: { studentId: args.studentId }, data: { mode: args.mode } });
 }

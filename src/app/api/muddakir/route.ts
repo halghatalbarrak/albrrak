@@ -7,7 +7,9 @@ import {
   listHafizForSupervisor,
   listMuddakirHafiz,
   listSupervisorsWithLoad,
+  setHafizMode,
 } from "@/server/muddakir-enrollment";
+import { MuddakirMode } from "@prisma/client";
 import { MuddakirRequestType } from "@prisma/client";
 
 import { requireMuddakir } from "@/server/muddakir-staff";
@@ -42,13 +44,15 @@ export async function POST(req: Request) {
   try {
     const actor = await requireMuddakir(req, "view");
     if (!actor.caps.manage && !actor.caps.admin) throw aerr("actionManagerOrAdmin");
-    const b = (await req.json()) as { action?: unknown; studentId?: unknown; supervisorId?: unknown; deliveryMode?: unknown };
+    const b = (await req.json()) as { action?: unknown; studentId?: unknown; supervisorId?: unknown; deliveryMode?: unknown; track?: unknown; mode?: unknown };
     if (typeof b.studentId !== "string") throw verr("hafizRequired");
     const studentId = b.studentId;
 
     if (b.action === "enroll") {
       const deliveryMode = b.deliveryMode === MuddakirDeliveryMode.REMOTE ? MuddakirDeliveryMode.REMOTE : MuddakirDeliveryMode.IN_PERSON;
-      const r = await performOrRequest(actor, { type: MuddakirRequestType.ENROLL, payload: { studentId, deliveryMode }, studentId, direct: () => enrollInMuddakir({ studentId, actorId: actor.id, deliveryMode }) });
+      const track = typeof b.track === "number" && [1, 2, 3].includes(b.track) ? (b.track as 1 | 2 | 3) : undefined;
+      const supervisorId = typeof b.supervisorId === "string" ? b.supervisorId : undefined;
+      const r = await performOrRequest(actor, { type: MuddakirRequestType.ENROLL, payload: { studentId, deliveryMode, track, supervisorId }, studentId, direct: () => enrollInMuddakir({ studentId, actorId: actor.id, deliveryMode, track, supervisorId }) });
       return Response.json(r, { status: r.executed ? 201 : 202 });
     }
     if (b.action === "assign") {
@@ -56,6 +60,11 @@ export async function POST(req: Request) {
       const supervisorId = b.supervisorId;
       const r = await performOrRequest(actor, { type: MuddakirRequestType.ASSIGN_SUPERVISOR, payload: { studentId, supervisorId }, studentId, direct: () => assignSupervisor({ studentId, supervisorId, actorId: actor.id }) });
       return Response.json(r, { status: r.executed ? 201 : 202 });
+    }
+    if (b.action === "mode") {
+      const mode = b.mode === MuddakirMode.REVIEW_ONLY ? MuddakirMode.REVIEW_ONLY : MuddakirMode.ACTIVE;
+      const r = await performOrRequest(actor, { type: MuddakirRequestType.SET_MODE, payload: { studentId, mode }, studentId, direct: () => setHafizMode({ studentId, mode }) });
+      return Response.json(r, { status: r.executed ? 200 : 202 });
     }
     throw verr("actionRequiredEnrollAssign");
   } catch (e) {

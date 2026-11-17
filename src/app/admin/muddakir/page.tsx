@@ -17,6 +17,8 @@ interface Hafiz {
   supervisorId: string | null;
   supervisorName: string | null;
   deliveryMode: "IN_PERSON" | "REMOTE";
+  track: number;
+  mode: "ACTIVE" | "REVIEW_ONLY";
 }
 interface Supervisor { id: string; name: string; load: number; max: number; full: boolean }
 interface Enrollable { studentId: string; name: string }
@@ -37,6 +39,8 @@ export default function MuddakirAdminPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [enrollId, setEnrollId] = useState("");
   const [enrollDelivery, setEnrollDelivery] = useState<"IN_PERSON" | "REMOTE">("IN_PERSON");
+  const [enrollTrack, setEnrollTrack] = useState<1 | 2 | 3>(1);
+  const [enrollSupervisorId, setEnrollSupervisorId] = useState("");
 
   const load = useCallback(async () => {
     setStatus("loading"); setMsg(null);
@@ -99,6 +103,13 @@ export default function MuddakirAdminPage() {
       ),
     },
     { key: "delivery", header: tMuddakir("colDelivery"), cell: (h) => deliveryLabel(h.deliveryMode) },
+    { key: "track", header: tMuddakir("track"), cell: (h) => tMuddakir(h.track === 1 ? "track1" : h.track === 2 ? "track2" : "track3") },
+    { key: "mode", header: tMuddakir("modeLabel"), cell: (h) => (
+      <Button type="button" size="sm" variant="ghost"
+        onClick={() => void post({ action: "mode", studentId: h.studentId, mode: h.mode === "ACTIVE" ? "REVIEW_ONLY" : "ACTIVE" }, tMuddakir("saved"))}>
+        {h.mode === "ACTIVE" ? tMuddakir("setReviewOnly") : tMuddakir("setActive")}
+      </Button>
+    ) },
   ];
 
   // أعمدة المشرف (للقراءة فقط): بلا اختيار مشرف.
@@ -106,6 +117,7 @@ export default function MuddakirAdminPage() {
     { key: "name", header: tMuddakir("colHafiz"), cell: (h) => <strong>{h.name}</strong> },
     { key: "stage", header: tMuddakir("colStage"), cell: (h) => stageLabel(h.stage) },
     { key: "delivery", header: tMuddakir("colDelivery"), cell: (h) => deliveryLabel(h.deliveryMode) },
+    { key: "track", header: tMuddakir("track"), cell: (h) => tMuddakir(h.track === 1 ? "track1" : h.track === 2 ? "track2" : "track3") },
   ];
 
   return (
@@ -128,12 +140,23 @@ export default function MuddakirAdminPage() {
                 <option value="">— {tMuddakir("selectHafiz")} —</option>
                 {data.enrollable.map((s) => <option key={s.studentId} value={s.studentId}>{s.name}</option>)}
               </Select>
+              <Select value={String(enrollTrack)} onChange={(e) => setEnrollTrack(Number(e.target.value) as 1 | 2 | 3)} style={{ width: "auto" }} aria-label={tMuddakir("track")}>
+                <option value="1">{tMuddakir("track1")}</option>
+                <option value="2">{tMuddakir("track2")}</option>
+                <option value="3">{tMuddakir("track3")}</option>
+              </Select>
               <Select value={enrollDelivery} onChange={(e) => setEnrollDelivery(e.target.value as "IN_PERSON" | "REMOTE")} style={{ width: "auto" }} aria-label={tMuddakir("colDelivery")}>
                 <option value="IN_PERSON">{tMuddakir("deliveryInPerson")}</option>
                 <option value="REMOTE">{tMuddakir("deliveryRemote")}</option>
               </Select>
+              <Select value={enrollSupervisorId} onChange={(e) => setEnrollSupervisorId(e.target.value)} style={{ width: "auto", minWidth: 160 }} aria-label={tMuddakir("enrollSupervisor")}>
+                <option value="">— {tMuddakir("enrollSupervisor")} —</option>
+                {(data.supervisors ?? []).filter((s) => !s.full).map((s) => (
+                  <option key={s.id} value={s.id}>{s.name} ({supervisorLoadLabel(s.load, s.max)})</option>
+                ))}
+              </Select>
               <Button type="button" size="sm" disabled={!enrollId}
-                onClick={() => { if (enrollId) { void post({ action: "enroll", studentId: enrollId, deliveryMode: enrollDelivery }, tMuddakir("enroll")); setEnrollId(""); } }}>
+                onClick={() => { if (enrollId) { void post({ action: "enroll", studentId: enrollId, deliveryMode: enrollDelivery, track: enrollTrack, supervisorId: enrollSupervisorId || undefined }, tMuddakir("enroll")); setEnrollId(""); setEnrollSupervisorId(""); } }}>
                 {tMuddakir("enroll")}
               </Button>
               {data.enrollable.length === 0 && <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}>{tMuddakir("noEnrollable")}</span>}
