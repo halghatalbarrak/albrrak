@@ -13,7 +13,7 @@ export interface NavSection { key: string; label: string; items: NavItem[] }
  * التحفيز · المناهج · المُدَّكِر · الإعدادات — ثمّ أقسام الأدوار المُحصَّرة (طاقم المُدَّكِر،
  * البائع) وأقسام الطالب/الوليّ (التعلّم · الرسائل). المجموعة الفارغة لدور المستخدم تُخفى.
  */
-export function navSections(roles: string[], muddakirStaff: string[] = []): NavSection[] {
+export function navSections(roles: string[], muddakirStaff: string[] = [], options?: { isHafiz?: boolean }): NavSection[] {
   const hasStaff = (r: string) => muddakirStaff.includes(r);
   if (roles.length === 0 && muddakirStaff.length === 0) return [];
   const has = (r: string) => roles.includes(r);
@@ -126,6 +126,9 @@ export function navSections(roles: string[], muddakirStaff: string[] = []): NavS
   if ((reciter || hasStaff("EXAMINER")) && !supervises) {
     push("muddakirExam", L.grpMuddakirExam, [{ label: L.muddakirRecitation, href: "/muddakir/recitation" }]);
   }
+
+  // ── الحافظ في المدّكر: رابط التطبيق (لمن ثبت قيده ببرنامج المدّكر) ──
+  if (options?.isHafiz) push("muddakirHafiz", L.grpMuddakir, [{ label: L.muddakirApp, href: "/muddakir" }]);
 
   // ── البائع (م٦ب): نقطة بيع البيدر وحدها ──
   if (has("SELLER")) push("market", L.grpMarket, [{ label: L.sell, href: "/sell" }]);

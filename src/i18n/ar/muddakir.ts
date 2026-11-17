@@ -69,6 +69,9 @@ export const muddakirAr = {
   deliveryInPerson: "حضوريّ",
   deliveryRemote: "عن بُعد",
 
+  // شاشات العناوين
+  hafizTitle: "تطبيق مُدَّكِر",
+
   // شاشة الإدارة (المرحلة ٣)
   adminTitle: "إدارة مُدَّكِر",
   colHafiz: "الحافظ",

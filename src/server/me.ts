@@ -5,6 +5,7 @@ import { isLocale } from "@/lib/locale";
 import { verr } from "./errors";
 
 import { activeStaffRoles } from "./muddakir-staff";
+import { muddakirProgramId } from "./muddakir-profile";
 import { getStudentPosition, getHifzGate } from "./daily-session";
 import { getConsolidation, getWeeklyReview } from "./tarseekh";
 import { todayTarget, type TodayTarget } from "./today-target";
@@ -16,6 +17,8 @@ export interface MyPage {
   roles: string[];
   /** أدوار المدّكر المُحصَّرة النشطة (§٢) — ليراها الشريط الجانبيّ لمن لا دورَ عامّ له. */
   muddakirStaff: MuddakirStaffRole[];
+  /** هل المستخدم حافظٌ ملتحقٌ بالمدّكر؟ — لإظهار رابط التطبيق في الشريط الجانبيّ. */
+  isMuddakirHafiz: boolean;
   student: { id: string; state: string } | null;
   /** لغة الواجهة المختارة (null ⟵ العربية افتراضيّاً) — لمزامنتها مع cookie اللغة. */
   locale: Locale | null;
@@ -35,11 +38,24 @@ export async function getMyPage(
       student: { select: { id: true, state: true } },
     },
   });
+  let isMuddakirHafiz = false;
+  if (user.student) {
+    try {
+      const programId = await muddakirProgramId(db);
+      const enrollment = await db.enrollment.findFirst({
+        where: { studentId: user.student.id, programId, endedAt: null },
+        select: { id: true },
+      });
+      isMuddakirHafiz = !!enrollment;
+    } catch { /* برنامج المدّكر غير مبذور — false افتراضيًا */ }
+  }
+
   return {
     userId: user.id,
     name: user.nameAsInId,
     roles: user.roles,
     muddakirStaff: await activeStaffRoles(db, user.id),
+    isMuddakirHafiz,
     student: user.student
       ? { id: user.student.id, state: user.student.state }
       : null,

@@ -109,7 +109,7 @@ export default function MuddakirAdminPage() {
   ];
 
   return (
-    <AppShell roles={me?.roles ?? []} muddakirStaff={me?.muddakirStaff ?? []} userName={me?.name} activeHref="/admin/muddakir"
+    <AppShell roles={me?.roles ?? []} muddakirStaff={me?.muddakirStaff ?? []} isHafiz={me?.isMuddakirHafiz} userName={me?.name} activeHref="/admin/muddakir"
       title={tMuddakir("adminTitle")}
       crumbs={[{ label: tMuddakir("crumbHome"), href: "/" }, { label: tMuddakir("crumbAdmin") }, { label: tMuddakir("adminTitle") }]}>
       {(me?.roles ?? []).some((r) => r === "SUPER_ADMIN" || r === "CIRCLE_MANAGER") && <Tabs items={muddakirTabs} />}

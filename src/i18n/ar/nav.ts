@@ -48,6 +48,7 @@ export const navAr = {
   muddakirRecitation: "سرد مُدَّكِر",
   muddakirHifazi: "حفّاظي",
   muddakirWeekly: "اللقاء الأسبوعيّ",
+  muddakirApp: "التطبيق",
   lists: "القوائم",
   users: "المستخدمون",
   sell: "الجَنْي",
