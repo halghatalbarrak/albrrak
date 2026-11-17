@@ -1,0 +1,37 @@
+name: إحصاء DailySession
+
+# قراءة فقط — لا تعديل في قاعدة البيانات.
+# يطبع جدولاً يومياً لصفوف DailySession منذ تاريخ STATS_FROM.
+on:
+  workflow_dispatch:
+    inputs:
+      from_date:
+        description: "تاريخ البداية (YYYY-MM-DD)"
+        required: false
+        default: "2026-11-09"
+
+permissions:
+  contents: read
+
+jobs:
+  stats:
+    name: daily-session-stats
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      STATS_FROM: ${{ inputs.from_date || '2026-11-09' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: Run stats query (read-only)
+        run: node scripts/daily-session-stats.mjs
