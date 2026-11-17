@@ -89,11 +89,11 @@ export default function MuddakirOverviewPage() {
           {/* توزيع الحفّاظ على المراحل */}
           {byStage.size > 0 && (
             <>
-              <h2 style={{ fontSize: ui.text.base, fontWeight: 700, margin: `0 0 ${sp(2)}` }}>توزيع المراحل</h2>
+              <h2 style={{ fontSize: ui.text.base, fontWeight: 700, margin: `0 0 ${sp(2)}` }}>{tMuddakir("overviewStageDist")}</h2>
               <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", marginBottom: sp(4) }}>
                 {[...byStage.entries()].sort(([a], [b]) => a - b).map(([stage, count]) => (
                   <Badge key={stage} tone="neutral" style={{ fontSize: ui.text.xs, padding: `${sp(1)} ${sp(2)}` }}>
-                    {stageLabel(stage)}: {arNum(count)}
+                    {`${stageLabel(stage)}: ${arNum(count)}`}
                   </Badge>
                 ))}
               </div>
@@ -104,13 +104,13 @@ export default function MuddakirOverviewPage() {
           {withoutSupervisor > 0 && (
             <>
               <h2 style={{ fontSize: ui.text.base, fontWeight: 700, color: ui.color.danger, margin: `0 0 ${sp(2)}` }}>
-                بلا مشرف ({arNum(withoutSupervisor)})
+                {`${tMuddakir("overviewNoSuperTitle")} (${arNum(withoutSupervisor)})`}
               </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: sp(1), marginBottom: sp(3) }}>
                 {data.hafiz.filter((h) => !h.supervisorId).map((h) => (
                   <Card key={h.studentId} style={{ padding: `${sp(2)} ${sp(3)}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: ui.text.xs }}><strong>{h.name}</strong> — {stageLabel(h.stage)}</span>
-                    <a href="/admin/muddakir" style={{ fontSize: ui.text.xs, color: ui.color.primary }}>إسناد ←</a>
+                    <span style={{ fontSize: ui.text.xs }}>{`${h.name} — ${stageLabel(h.stage)}`}</span>
+                    <a href="/admin/muddakir" style={{ fontSize: ui.text.xs, color: ui.color.primary }}>{tMuddakir("overviewAssignLink")}</a>
                   </Card>
                 ))}
               </div>

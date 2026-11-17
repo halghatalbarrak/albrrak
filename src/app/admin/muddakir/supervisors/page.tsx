@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { arNum } from "@/lib/format";
-import { AppShell, Card, Button, Badge, EmptyState, Tabs, muddakirTabs, ui, sp } from "@/components/ui";
+import { AppShell, Card, Button, Select, Badge, EmptyState, Tabs, muddakirTabs, ui, sp } from "@/components/ui";
 import { tMuddakir, stageLabel, supervisorLoadLabel } from "@/i18n/ar/muddakir";
 
 interface Hafiz {
@@ -14,6 +14,8 @@ interface Hafiz {
 }
 interface Supervisor { id: string; name: string; load: number; max: number; full: boolean }
 interface Payload { canManage: boolean; hafiz: Hafiz[]; supervisors: Supervisor[] }
+interface Candidate { userId: string; name: string; memorizedFaces: number }
+interface StaffPayload { canAssignManager: boolean; supervisorCandidates: Candidate[]; assignableUsers: { id: string; name: string }[] }
 
 async function token(): Promise<string | null> {
   const { data: { session } } = await supabaseBrowser().auth.getSession();
@@ -23,22 +25,39 @@ async function token(): Promise<string | null> {
 export default function MuddakirSupervisorsPage() {
   const { me } = useMe();
   const [data, setData] = useState<Payload | null>(null);
+  const [staffData, setStaffData] = useState<StaffPayload | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error" | "unauth">("idle");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [assignUserId, setAssignUserId] = useState("");
 
   const load = useCallback(async () => {
     setStatus("loading");
     try {
       const t = await token();
       if (!t) { setStatus("unauth"); return; }
-      const res = await fetch("/api/muddakir", { headers: { authorization: `Bearer ${t}` } });
+      const [res, staffRes] = await Promise.all([
+        fetch("/api/muddakir", { headers: { authorization: `Bearer ${t}` } }),
+        fetch("/api/muddakir/staff", { headers: { authorization: `Bearer ${t}` } }),
+      ]);
       if (res.status === 401 || res.status === 403) { setStatus("unauth"); return; }
       if (!res.ok) { setStatus("error"); return; }
       setData((await res.json()) as Payload);
+      if (staffRes.ok) setStaffData((await staffRes.json()) as StaffPayload);
       setStatus("ready");
     } catch { setStatus("error"); }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  async function assignSupervisor() {
+    if (!assignUserId) return;
+    setMsg(null);
+    const t = await token();
+    if (!t) { setStatus("unauth"); return; }
+    const res = await fetch("/api/muddakir/staff", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${t}` }, body: JSON.stringify({ action: "assign", userId: assignUserId, role: "SUPERVISOR" }) });
+    if (res.ok) { setMsg(tMuddakir("supervisorAssigned")); setAssignUserId(""); await load(); }
+    else { const j = (await res.json()) as { error?: string }; setMsg(j.error ?? tMuddakir("genericError")); }
+  }
 
   if (status === "unauth")
     return (
@@ -48,6 +67,8 @@ export default function MuddakirSupervisorsPage() {
       </main>
     );
 
+  const candidates = staffData?.supervisorCandidates ?? [];
+
   return (
     <AppShell roles={me?.roles ?? []} muddakirStaff={me?.muddakirStaff ?? []} userName={me?.name}
       activeHref="/admin/muddakir/supervisors"
@@ -55,8 +76,23 @@ export default function MuddakirSupervisorsPage() {
       crumbs={[{ label: tMuddakir("crumbHome"), href: "/" }, { label: tMuddakir("crumbAdmin") }, { label: tMuddakir("colSupervisor") }]}>
       {(me?.roles ?? []).some((r) => r === "SUPER_ADMIN" || r === "CIRCLE_MANAGER") && <Tabs items={muddakirTabs} />}
 
+      {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
       {status === "loading" && <p style={{ color: ui.color.muted }}>{tMuddakir("loading")}</p>}
       {status === "error" && <p style={{ color: ui.color.danger }}>{tMuddakir("loadFailed")} <Button variant="ghost" size="sm" onClick={() => void load()}>{tMuddakir("retry")}</Button></p>}
+
+      {/* تعيين مشرف جديد (للمدير فقط — staffData يظهر إن كان للمستخدم manage) */}
+      {staffData && (
+        <Card style={{ display: "flex", gap: sp(2), alignItems: "center", flexWrap: "wrap", padding: sp(3), marginBottom: sp(3) }}>
+          <Select value={assignUserId} onChange={(e) => setAssignUserId(e.target.value)} style={{ width: "auto", minWidth: 240 }} aria-label={tMuddakir("halfQuranSuggestion")}>
+            <option value="">— {tMuddakir("halfQuranSuggestion")} —</option>
+            {candidates.map((c) => <option key={c.userId} value={c.userId}>{c.name} ({arNum(c.memorizedFaces)})</option>)}
+          </Select>
+          <Button type="button" size="sm" disabled={!assignUserId} onClick={() => void assignSupervisor()}>
+            {tMuddakir("assignSupervisorBtn")}
+          </Button>
+          {candidates.length === 0 && <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}>{tMuddakir("noSupervisorCandidates")}</span>}
+        </Card>
+      )}
 
       {status === "ready" && data && (
         data.supervisors.length === 0 ? <EmptyState title={tMuddakir("noSupervisors")} /> : (
@@ -84,7 +120,7 @@ export default function MuddakirSupervisorsPage() {
                       ))}
                     </div>
                   )}
-                  {arNum(assigned.length)} / {arNum(s.max)} {tMuddakir("colHafiz")}
+                  <p style={{ margin: `${sp(1)} 0 0`, fontSize: ui.text.xs, color: ui.color.muted }}>{`${supervisorLoadLabel(assigned.length, s.max)} ${tMuddakir("colHafiz")}`}</p>
                 </Card>
               );
             })}
