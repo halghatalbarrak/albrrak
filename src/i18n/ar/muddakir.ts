@@ -301,6 +301,20 @@ export const muddakirAr = {
   crumbAdmin: "الإدارة",
   hafizOnlyNote: "هذه الشاشة للحافظ الملتحق بمُدَّكِر.",
   repAria: "تكرار",
+
+  // مفاتيح مركز إعداد مُدَّكِر — الجزء الثاني (track + تعيين المشرف/المختبِر + تعطيل)
+  track1: "١ وجه/يوم",
+  track2: "وجهان/يوم",
+  track3: "٣ أوجه/يوم",
+  enrollSupervisor: "المشرف عند الإلحاق (اختياريّ)",
+  noSupervisorCandidates: "لا مرشّحون للإشراف (أقلّ من نصف القرآن).",
+  assignSupervisorBtn: "تعيين مشرف",
+  assignExaminerBtn: "تعيين مختبِر",
+  supervisorAssigned: "عُيِّن المشرف",
+  examinerAssigned: "عُيِّن المختبِر",
+  overviewStageDist: "توزيع المراحل",
+  overviewNoSuperTitle: "بلا مشرف",
+  overviewAssignLink: "إسناد ←",
 } as const;
 
 /** مفاتيح قاموس المُدَّكِر (للتحقّق الثابت عند الاستدعاء). */

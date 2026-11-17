@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { arNum } from "@/lib/format";
-import { AppShell, Card, Button, Input, Select, Table, Badge, EmptyState, ui, sp, type Column } from "@/components/ui";
+import { AppShell, Card, Button, Input, Select, Table, Badge, EmptyState, Tabs, muddakirTabs, ui, sp, type Column } from "@/components/ui";
 import { tMuddakir } from "@/i18n/ar/muddakir";
 
 // شاشة إعدادات التثبيت (و٤، §٩/§١٢): سلّم التثبيت والإعدادات المحصورة وبنود نقاط المدّكر وسجلّ
@@ -106,6 +106,8 @@ export default function MuddakirTathbitAdminPage() {
     <AppShell roles={me?.roles ?? []} muddakirStaff={me?.muddakirStaff ?? []} userName={me?.name} activeHref="/admin/muddakir/tathbit"
       title={tMuddakir("tathbitAdminTitle")}
       crumbs={[{ label: tMuddakir("crumbHome"), href: "/" }, { label: tMuddakir("crumbAdmin") }, { label: tMuddakir("tathbitAdminTitle") }]}>
+
+      {(me?.roles ?? []).some((r) => r === "SUPER_ADMIN" || r === "CIRCLE_MANAGER") && <Tabs items={muddakirTabs} />}
 
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
       {status === "loading" && <p style={{ color: ui.color.muted }}>{tMuddakir("loading")}</p>}

@@ -16,9 +16,12 @@ export const attendanceTabs: TabItem[] = [
   { label: L.tabAttendanceLock, href: "/admin/attendance-lock" },
 ];
 
-/** المُدَّكِر: البرنامج · الطلبات · الطاقم (يُعرَض الشريط للمشرف/المدير). */
+/** مركز إعداد المُدَّكِر: ٦ تبويبات (نظرة عامّة · حفّاظ · مشرفون · مختبِرون · الإعدادات · الطلبات). */
 export const muddakirTabs: TabItem[] = [
-  { label: L.tabMuddakirProgram, href: "/admin/muddakir" },
+  { label: L.tabMuddakirOverview, href: "/admin/muddakir/overview" },
+  { label: L.tabMuddakirHafiz, href: "/admin/muddakir" },
+  { label: L.tabMuddakirSupervisors, href: "/admin/muddakir/supervisors" },
+  { label: L.tabMuddakirExaminers, href: "/admin/muddakir/examiners" },
+  { label: L.tabMuddakirSettings, href: "/admin/muddakir/tathbit" },
   { label: L.tabMuddakirRequests, href: "/admin/muddakir/requests" },
-  { label: L.tabMuddakirStaff, href: "/admin/muddakir/staff" },
 ];

@@ -61,8 +61,13 @@ export const navAr = {
   tabEnrollment: "القيد",
   tabAttendanceDaily: "الحضور",
   tabAttendanceLock: "قفل الحضور",
-  tabMuddakirProgram: "البرنامج",
+  tabMuddakirOverview: "نظرة عامّة",
+  tabMuddakirHafiz: "حفّاظ",
+  tabMuddakirSupervisors: "مشرفون",
+  tabMuddakirExaminers: "مختبِرون",
+  tabMuddakirSettings: "الإعدادات",
   tabMuddakirRequests: "الطلبات",
+  tabMuddakirProgram: "البرنامج",
   tabMuddakirStaff: "الطاقم",
 } as const;
 
