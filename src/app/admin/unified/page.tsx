@@ -42,6 +42,12 @@ const ATT_LABEL: Record<string, string> = {
 const todayISO = () => makkahDayDate(new Date());
 const CRUMBS = [{ label: "الرئيسة", href: "/" }, { label: "التشغيل" }, { label: "الشاشة الموحّدة" }];
 
+function PageShell({ roles, userName, children }: { roles: string[]; userName?: string; children: React.ReactNode }) {
+  return (
+    <AppShell roles={roles} userName={userName} activeHref="/admin/unified" title="الشاشة الموحّدة" crumbs={CRUMBS}>{children}</AppShell>
+  );
+}
+
 export default function UnifiedPage() {
   const { me } = useMe();
   const router = useRouter();
@@ -274,17 +280,13 @@ export default function UnifiedPage() {
     if (idx >= 0 && idx < filtered.length - 1) selectStudent(filtered[idx + 1].studentId);
   }, [selected, filtered, selectStudent]);
 
-  const Shell = ({ children }: { children: React.ReactNode }) => (
-    <AppShell roles={me?.roles ?? []} userName={me?.name} activeHref="/admin/unified" title="الشاشة الموحّدة" crumbs={CRUMBS}>{children}</AppShell>
-  );
-
-  if (status === "unauth") return <Shell><p>{tu("needLoginTeacherAdmin")}</p></Shell>;
-  if (status === "loading") return <Shell><Skeleton height={80} /></Shell>;
-  if (status === "error") return <Shell><p style={{ color: ui.color.danger }}>{tu("loadFailed")}<Button variant="ghost" size="sm" onClick={() => void load(circleId)}>{tu("retry")}</Button></p></Shell>;
-  if (circles.length === 0) return <Shell><EmptyState title="لا حلقات تَرصدها" /></Shell>;
+  if (status === "unauth") return <PageShell roles={me?.roles ?? []} userName={me?.name}><p>{tu("needLoginTeacherAdmin")}</p></PageShell>;
+  if (status === "loading") return <PageShell roles={me?.roles ?? []} userName={me?.name}><Skeleton height={80} /></PageShell>;
+  if (status === "error") return <PageShell roles={me?.roles ?? []} userName={me?.name}><p style={{ color: ui.color.danger }}>{tu("loadFailed")}<Button variant="ghost" size="sm" onClick={() => void load(circleId)}>{tu("retry")}</Button></p></PageShell>;
+  if (circles.length === 0) return <PageShell roles={me?.roles ?? []} userName={me?.name}><EmptyState title="لا حلقات تَرصدها" /></PageShell>;
 
   return (
-    <Shell>
+    <PageShell roles={me?.roles ?? []} userName={me?.name}>
       {circles.length > 1 && (
         <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", marginBottom: sp(3) }}>
           {circles.map((c) => <Button key={c.id} size="sm" variant={c.id === circleId ? "bronze" : "ghost"} onClick={() => { setCircleId(c.id); selectStudent(null); }}>{c.nameAr}</Button>)}
@@ -494,6 +496,6 @@ export default function UnifiedPage() {
           markAtt={markAtt} pendingStudents={pendingStudents}
         />
       )}
-    </Shell>
+    </PageShell>
   );
 }
