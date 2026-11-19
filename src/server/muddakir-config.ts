@@ -58,11 +58,12 @@ export async function listMuddakirSettings(db: Db = prisma): Promise<Record<stri
   return out;
 }
 
-/** يضبط إعداد مدّكرٍ من القائمة المسموحة فقط. */
+/** يضبط إعداد مدّكرٍ من القائمة المسموحة فقط، ويُسجَّل في AuditLog. */
 export async function setMuddakirSetting(key: string, value: Prisma.InputJsonValue, actorId: string, db: Db = prisma): Promise<void> {
   if (!(MUDDAKIR_SETTING_KEYS as readonly string[]).includes(key)) throw verr("settingKeyNotAllowed");
   const pid = await muddakirProgramId(db);
   await setProgramSetting({ programId: pid, key, value, actorId }, db as PrismaClient);
+  await db.auditLog.create({ data: { action: "UPDATE", entity: "MuddakirSetting", entityId: key, actorId, label: JSON.stringify(value) } });
 }
 
 // ── بنود نقاط المدّكر (AUTO لأحداث MUDDAKIR_* وحدها) ──

@@ -368,6 +368,50 @@ test("المدير ينقر «نقل» ويُسند الحافظ لمشرفٍ ج
   expect(postedBody!["supervisorId"]).toBe("sup-2");
 });
 
+// ─── ٩) مدير البرنامج يعدّل إعداداً وتُرسَل القيمة صحيحة ───────────────────
+
+const ADMIN_SETTINGS_PAYLOAD = {
+  canManage: true,
+  ladder: [],
+  settings: { maxHafizPerSupervisor: 4, stageJuzCount: 5, meetingDay: 3, newReps: 30, tracks: [1,2,3] },
+  pointItems: [],
+  raises: [],
+};
+
+test("مدير البرنامج يغيّر «أقصى حفّاظ للمشرف» والقيمة تُرسَل صحيحة", async ({ page }) => {
+  await injectSession(page, MANAGER_SESSION);
+
+  await page.route("**/api/me", (r) =>
+    r.fulfill({ json: { name: "المدير", roles: ["SUPER_ADMIN"], muddakirStaff: [] } }),
+  );
+
+  let postedBody: Record<string, unknown> | null = null;
+  await page.route("**/api/muddakir/admin", async (r) => {
+    if (r.request().method() === "GET")
+      return r.fulfill({ json: ADMIN_SETTINGS_PAYLOAD });
+    postedBody = JSON.parse(r.request().postData() ?? "{}") as Record<string, unknown>;
+    return r.fulfill({ json: { executed: true } });
+  });
+
+  await page.goto("/admin/muddakir/tathbit");
+
+  // ينتظر ظهور الإعدادات
+  await expect(page.getByText("أقصى حفّاظ للمشرف")).toBeVisible({ timeout: 15_000 });
+
+  // يغيّر «أقصى حفّاظ للمشرف» من ٤ إلى ٣
+  await page.getByLabel("أقصى حفّاظ للمشرف").selectOption({ value: "3" });
+
+  // ينقر «حفظ» للإعداد
+  const settingRows = page.locator("div").filter({ hasText: "أقصى حفّاظ للمشرف" });
+  await settingRows.getByRole("button", { name: "حفظ" }).click();
+
+  await page.waitForTimeout(500);
+  expect(postedBody).not.toBeNull();
+  expect(postedBody!["action"]).toBe("setting");
+  expect(postedBody!["key"]).toBe("maxHafizPerSupervisor");
+  expect(postedBody!["value"]).toBe(3);
+});
+
 // ─── ٨) زرّ «فتح نموذج الإلحاق» في صفحة الطلبات يمرّر الـprefill ────────────
 
 test("زرّ فتح نموذج الإلحاق يملأ الحقول مسبقاً", async ({ page }) => {
