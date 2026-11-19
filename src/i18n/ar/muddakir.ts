@@ -320,6 +320,31 @@ export const muddakirAr = {
   transferSupervisor: "نقل",
   transferConfirm: "تأكيد النقل",
   openEnrollForm: "فتح نموذج الإلحاق",
+
+  // تسميات إعدادات §٩ (للعرض في الواجهة)
+  settingStageJuzCount:          "أجزاء المرحلة",
+  settingNewReps:                "تكرار الجديد",
+  settingFirstCleanReps:         "التكرارات الأولى أن تسلم",
+  settingYesterdayReps:          "تكرار الأمس",
+  settingRibatWindowDays:        "نافذة الربط (أيّام)",
+  settingReviewCycleDays:        "دورة المراجعة (أيّام)",
+  settingTreatmentLineReps:      "تكرار سطرَي العلاج",
+  settingTreatmentCleanSessions: "جلسات العلاج السليمة",
+  settingMaxHafizPerSupervisor:  "أقصى حفّاظ للمشرف",
+  settingMeetingDay:             "يوم اللقاء",
+  settingWeakFaceThreshold:      "عتبة الوجه الضعيف",
+  settingMonthlyExcuseLimit:     "حدّ الأعذار الشهريّ",
+  settingWeeklySurpriseJuz:      "أجزاء المفاجأة الأسبوعيّة",
+  settingPermanentWardJuz:       "أجزاء الورد الدائم",
+  settingTracks:                 "المسارات المتاحة",
+  settingNotSet:                 "غير مضبوط (يُستعمل الافتراضيّ)",
+  settingDayAhad:                "الأحد",
+  settingDayIthnayn:             "الاثنين",
+  settingDayThalatha:            "الثلاثاء",
+  settingDayArba:                "الأربعاء",
+  settingDayKhamis:              "الخميس",
+  settingDayJumua:               "الجمعة",
+  settingDaySabt:                "السبت",
 } as const;
 
 /** مفاتيح قاموس المُدَّكِر (للتحقّق الثابت عند الاستدعاء). */

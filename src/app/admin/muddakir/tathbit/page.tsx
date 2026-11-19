@@ -17,11 +17,34 @@ interface PointRow { id: string; nameAr: string; value: number; active: boolean;
 interface RaiseRow { id: string; studentName: string; fromDegree: number; toDegree: number; atKhatma: number; by: string; createdAt: string }
 interface Payload { canManage: boolean; ladder: LadderRow[]; settings: Record<string, unknown>; pointItems: PointRow[]; raises: RaiseRow[] }
 
-// الإعدادات القابلة للتعديل هنا (أعدادٌ صحيحة)؛ البقيّة (مثل tracks) تُعرَض للقراءة.
-const EDITABLE_SETTINGS = [
-  "weeklySurpriseJuz", "permanentWardJuz", "maxHafizPerSupervisor", "monthlyExcuseLimit",
-  "reviewCycleDays", "ribatWindowDays", "weakFaceThreshold", "meetingDay", "stageJuzCount",
-] as const;
+// ── بيانات وصفيّة للإعدادات §٩: الاسم والخيارات والافتراضيّ ──
+const DAY_OPTS = [
+  { v: 0, label: "الأحد" }, { v: 1, label: "الاثنين" }, { v: 2, label: "الثلاثاء" },
+  { v: 3, label: "الأربعاء" }, { v: 4, label: "الخميس" }, { v: 5, label: "الجمعة" }, { v: 6, label: "السبت" },
+];
+
+type SettingKind = "select" | "day" | "tracks";
+interface SettingMeta {
+  key: string; labelKey: Parameters<typeof tMuddakir>[0];
+  kind: SettingKind; opts?: number[]; defaultVal: number | string | null;
+}
+const SETTINGS_META: SettingMeta[] = [
+  { key: "stageJuzCount",          labelKey: "settingStageJuzCount",          kind: "select", opts: [3,4,5,6,7,8,9,10],      defaultVal: 5  },
+  { key: "newReps",                 labelKey: "settingNewReps",                kind: "select", opts: [10,15,20,25,30,35,40,50], defaultVal: 30 },
+  { key: "firstCleanReps",          labelKey: "settingFirstCleanReps",         kind: "select", opts: [1,2,3,4,5],               defaultVal: 3  },
+  { key: "yesterdayReps",           labelKey: "settingYesterdayReps",          kind: "select", opts: [5,8,10,12,15,20],         defaultVal: 10 },
+  { key: "ribatWindowDays",         labelKey: "settingRibatWindowDays",        kind: "select", opts: [10,12,15,18,20,25,30],    defaultVal: 20 },
+  { key: "reviewCycleDays",         labelKey: "settingReviewCycleDays",        kind: "select", opts: [5,6,7,10,14],             defaultVal: 7  },
+  { key: "treatmentLineReps",       labelKey: "settingTreatmentLineReps",      kind: "select", opts: [5,8,10,12,15,20],         defaultVal: 10 },
+  { key: "treatmentCleanSessions",  labelKey: "settingTreatmentCleanSessions", kind: "select", opts: [2,3,4,5],                 defaultVal: 3  },
+  { key: "maxHafizPerSupervisor",   labelKey: "settingMaxHafizPerSupervisor",  kind: "select", opts: [1,2,3,4,5,6,7,8],         defaultVal: 4  },
+  { key: "meetingDay",              labelKey: "settingMeetingDay",             kind: "day",                                      defaultVal: 3  },
+  { key: "weakFaceThreshold",       labelKey: "settingWeakFaceThreshold",      kind: "select", opts: [1,2,3,4,5,6,7],           defaultVal: null },
+  { key: "monthlyExcuseLimit",      labelKey: "settingMonthlyExcuseLimit",     kind: "select", opts: [1,2,3,4,5,6,7,8,9,10],   defaultVal: null },
+  { key: "weeklySurpriseJuz",       labelKey: "settingWeeklySurpriseJuz",      kind: "select", opts: [1,2,3],                   defaultVal: 1  },
+  { key: "permanentWardJuz",        labelKey: "settingPermanentWardJuz",       kind: "select", opts: [5,7,8,9,10],              defaultVal: 10 },
+  { key: "tracks",                  labelKey: "settingTracks",                 kind: "tracks",                                   defaultVal: null },
+];
 const EVENTS: Evt[] = ["MUDDAKIR_DAY_COMPLETE", "MUDDAKIR_FACE_HEARD", "MUDDAKIR_STAGE_COMPLETE", "MUDDAKIR_SHORTFALL"];
 const evtLabel = (e: Evt): string =>
   tMuddakir(e === "MUDDAKIR_DAY_COMPLETE" ? "evtDayComplete" : e === "MUDDAKIR_FACE_HEARD" ? "evtFaceHeard" : e === "MUDDAKIR_STAGE_COMPLETE" ? "evtStageComplete" : "evtShortfall");
@@ -39,7 +62,7 @@ export default function MuddakirTathbitAdminPage() {
   const [msg, setMsg] = useState<string | null>(null);
   // local edit drafts (id → value).
   const [ladderDraft, setLadderDraft] = useState<Record<number, Partial<LadderRow>>>({});
-  const [settingDraft, setSettingDraft] = useState<Record<string, string>>({});
+  const [settingDraft, setSettingDraft] = useState<Record<string, unknown>>({});
   const [pointDraft, setPointDraft] = useState<Record<string, number>>({});
   const [newPoint, setNewPoint] = useState<{ nameAr: string; value: string; eventType: Evt }>({ nameAr: "", value: "", eventType: "MUDDAKIR_DAY_COMPLETE" });
 
@@ -121,18 +144,67 @@ export default function MuddakirTathbitAdminPage() {
           <h2 style={sectionTitle}>{tMuddakir("ladderTitle")}</h2>
           <Table columns={ladderColumns} rows={data.ladder} empty="—" />
 
-          {/* الإعدادات */}
+          {/* الإعدادات §٩ */}
           <h2 style={sectionTitle}>{tMuddakir("settingsTitle")}</h2>
           <Card style={{ padding: sp(3), display: "flex", flexDirection: "column", gap: sp(2) }}>
-            {EDITABLE_SETTINGS.map((k) => {
-              const cur = data.settings[k];
-              const curStr = cur == null ? "" : String(cur);
+            {SETTINGS_META.map((m) => {
+              const raw = data.settings[m.key];
+              const effVal = raw != null ? raw : m.defaultVal;
+              const isTracksKind = m.kind === "tracks";
+
+              if (isTracksKind) {
+                const active: number[] = Array.isArray(raw) ? (raw as number[]) : [1, 2, 3];
+                const draft = settingDraft[m.key] !== undefined ? (JSON.parse(settingDraft[m.key] as string) as number[]) : active;
+                return (
+                  <div key={m.key} style={{ display: "flex", gap: sp(2), alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={{ minWidth: 220, fontSize: ui.text.xs }}>{tMuddakir(m.labelKey)}</span>
+                    {[1, 2, 3].map((t) => (
+                      <label key={t} style={{ display: "flex", alignItems: "center", gap: sp(1), cursor: "pointer", fontSize: ui.text.xs }}>
+                        <input type="checkbox" checked={draft.includes(t)}
+                          onChange={(e) => {
+                            const next = e.target.checked ? [...draft, t].sort() : draft.filter((x) => x !== t);
+                            setSettingDraft((p) => ({ ...p, [m.key]: JSON.stringify(next) }));
+                          }} />
+                        {t === 1 ? tMuddakir("track1") : t === 2 ? tMuddakir("track2") : tMuddakir("track3")}
+                      </label>
+                    ))}
+                    <Button type="button" size="sm" disabled={settingDraft[m.key] === undefined}
+                      onClick={() => { const v = JSON.parse(settingDraft[m.key] as string) as number[]; void act({ action: "setting", key: m.key, value: v }); }}>{tMuddakir("save")}</Button>
+                  </div>
+                );
+              }
+
+              if (m.kind === "day") {
+                const curDay = effVal != null ? String(effVal) : "3";
+                return (
+                  <div key={m.key} style={{ display: "flex", gap: sp(2), alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={{ minWidth: 220, fontSize: ui.text.xs }}>{tMuddakir(m.labelKey)}</span>
+                    <Select aria-label={tMuddakir(m.labelKey)} style={{ width: "auto" }}
+                      value={settingDraft[m.key] !== undefined ? String(settingDraft[m.key]) : curDay}
+                      onChange={(e) => setSettingDraft((p) => ({ ...p, [m.key]: e.target.value }))}>
+                      {DAY_OPTS.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
+                    </Select>
+                    <Button type="button" size="sm"
+                      disabled={settingDraft[m.key] === undefined || String(settingDraft[m.key]) === curDay}
+                      onClick={() => void act({ action: "setting", key: m.key, value: Number(settingDraft[m.key]) })}>{tMuddakir("save")}</Button>
+                  </div>
+                );
+              }
+
+              // select عاديّ
+              const curNum = effVal != null ? String(effVal) : "";
               return (
-                <div key={k} style={{ display: "flex", gap: sp(2), alignItems: "center", flexWrap: "wrap" }}>
-                  <span style={{ minWidth: 200, fontSize: ui.text.xs, color: ui.color.muted }}>{k}</span>
-                  <Input type="number" style={{ width: 96 }} defaultValue={curStr} onChange={(e) => setSettingDraft((p) => ({ ...p, [k]: e.target.value }))} aria-label={k} />
-                  <Button type="button" size="sm" disabled={settingDraft[k] === undefined || settingDraft[k] === curStr}
-                    onClick={() => void act({ action: "setting", key: k, value: Number(settingDraft[k]) })}>{tMuddakir("save")}</Button>
+                <div key={m.key} style={{ display: "flex", gap: sp(2), alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ minWidth: 220, fontSize: ui.text.xs }}>{tMuddakir(m.labelKey)}</span>
+                  <Select aria-label={tMuddakir(m.labelKey)} style={{ width: "auto" }}
+                    value={settingDraft[m.key] !== undefined ? String(settingDraft[m.key]) : curNum}
+                    onChange={(e) => setSettingDraft((p) => ({ ...p, [m.key]: e.target.value }))}>
+                    {m.defaultVal == null && <option value="">{tMuddakir("settingNotSet")}</option>}
+                    {(m.opts ?? []).map((o) => <option key={o} value={o}>{arNum(o)}</option>)}
+                  </Select>
+                  <Button type="button" size="sm"
+                    disabled={settingDraft[m.key] === undefined || String(settingDraft[m.key]) === curNum}
+                    onClick={() => void act({ action: "setting", key: m.key, value: Number(settingDraft[m.key]) })}>{tMuddakir("save")}</Button>
                 </div>
               );
             })}
