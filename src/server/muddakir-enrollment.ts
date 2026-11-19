@@ -163,6 +163,12 @@ export async function assignSupervisor(
     // قفلٌ متبادلٌ على المشرف: يُسلسِل كلّ إسنادٍ له فيُفرَض السقف بلا تسابق.
     await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${args.supervisorId})::bigint)`);
 
+    // احفظ المشرف السابق قبل الإنهاء (للتحقّق من كونه نقلاً وتسجيله في AuditLog).
+    const prevSup = await tx.muddakirSupervision.findFirst({
+      where: { studentId: args.studentId, endedAt: null },
+      select: { supervisorId: true },
+    });
+
     // إعادة الإسناد: أنهِ أي إسنادٍ نشطٍ سابقٍ للحافظ (لا حذف) — ويحفظ قيد «نشطٌ واحدٌ لكلّ حافظ».
     await tx.muddakirSupervision.updateMany({
       where: { studentId: args.studentId, endedAt: null },
@@ -184,6 +190,18 @@ export async function assignSupervisor(
       actorId: args.actorId,
       payload: { supervisorId: args.supervisorId },
     });
+    // سجِّل في AuditLog إن كان نقلاً (كان ثمّة مشرفٌ سابق مختلف).
+    if (prevSup && prevSup.supervisorId !== args.supervisorId) {
+      await tx.auditLog.create({
+        data: {
+          action: "TRANSFER",
+          entity: "MuddakirSupervision",
+          entityId: args.studentId,
+          actorId: args.actorId,
+          label: `${prevSup.supervisorId} → ${args.supervisorId}`,
+        },
+      });
+    }
     return { supervisionId: created.id };
   });
 }

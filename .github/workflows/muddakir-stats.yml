@@ -1,0 +1,31 @@
+name: إحصاء مُدَّكِر
+
+# قراءة فقط — لا تعديل في قاعدة البيانات.
+# يطبع: التسكينات حسب الوضع + الطاقم النشط حسب الدور + الإسنادات النشطة.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  stats:
+    name: muddakir-stats
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: Run muddakir stats (read-only)
+        run: node scripts/muddakir-stats.mjs

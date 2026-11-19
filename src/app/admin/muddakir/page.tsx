@@ -41,6 +41,19 @@ export default function MuddakirAdminPage() {
   const [enrollDelivery, setEnrollDelivery] = useState<"IN_PERSON" | "REMOTE">("IN_PERSON");
   const [enrollTrack, setEnrollTrack] = useState<1 | 2 | 3>(1);
   const [enrollSupervisorId, setEnrollSupervisorId] = useState("");
+  const [transferingId, setTransferingId] = useState<string | null>(null);
+  const [transferSupId, setTransferSupId] = useState("");
+
+  // قراءة بيانات الإلحاق المسبقة من URL (من زرّ «فتح نموذج الإلحاق» في صفحة الطلبات).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("prefill_studentId");
+    const t = params.get("prefill_track");
+    const s = params.get("prefill_supervisorId");
+    if (id) setEnrollId(id);
+    if (t && ["1", "2", "3"].includes(t)) setEnrollTrack(Number(t) as 1 | 2 | 3);
+    if (s) setEnrollSupervisorId(s);
+  }, []);
 
   const load = useCallback(async () => {
     setStatus("loading"); setMsg(null);
@@ -86,20 +99,30 @@ export default function MuddakirAdminPage() {
     { key: "stage", header: tMuddakir("colStage"), cell: (h) => stageLabel(h.stage) },
     {
       key: "supervisor", header: tMuddakir("colSupervisor"),
-      cell: (h) => (
-        <Select
-          value={h.supervisorId ?? ""}
-          onChange={(e) => e.target.value && void post({ action: "assign", studentId: h.studentId, supervisorId: e.target.value }, tMuddakir("assign"))}
-          style={{ width: "auto", minWidth: 180 }}
-          aria-label={tMuddakir("selectSupervisor")}
-        >
-          <option value="">— {tMuddakir("noSupervisor")} —</option>
-          {(data?.supervisors ?? []).map((s) => (
-            <option key={s.id} value={s.id} disabled={s.full && s.id !== h.supervisorId}>
-              {s.name} ({supervisorLoadLabel(s.load, s.max)}){s.full && s.id !== h.supervisorId ? ` — ${tMuddakir("supervisorFull")}` : ""}
-            </option>
-          ))}
-        </Select>
+      cell: (h) => transferingId === h.studentId ? (
+        <div style={{ display: "flex", gap: sp(1), alignItems: "center", flexWrap: "wrap" }}>
+          <Select value={transferSupId} onChange={(e) => setTransferSupId(e.target.value)} style={{ minWidth: 160 }} aria-label={tMuddakir("selectSupervisor")}>
+            <option value="">— {tMuddakir("selectSupervisor")} —</option>
+            {(data?.supervisors ?? []).map((s) => (
+              <option key={s.id} value={s.id} disabled={s.full && s.id !== h.supervisorId}>
+                {s.name} ({supervisorLoadLabel(s.load, s.max)})
+              </option>
+            ))}
+          </Select>
+          <Button type="button" size="sm" disabled={!transferSupId} onClick={() => { if (transferSupId) { void post({ action: "assign", studentId: h.studentId, supervisorId: transferSupId }, tMuddakir("assign")); setTransferingId(null); setTransferSupId(""); } }}>
+            {tMuddakir("transferConfirm")}
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => { setTransferingId(null); setTransferSupId(""); }}>
+            {tMuddakir("cancel")}
+          </Button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: sp(2), alignItems: "center" }}>
+          <span style={{ fontSize: ui.text.xs }}>{h.supervisorName ?? tMuddakir("noSupervisor")}</span>
+          <Button type="button" size="sm" variant="ghost" onClick={() => { setTransferingId(h.studentId); setTransferSupId(h.supervisorId ?? ""); }}>
+            {tMuddakir("transferSupervisor")}
+          </Button>
+        </div>
       ),
     },
     { key: "delivery", header: tMuddakir("colDelivery"), cell: (h) => deliveryLabel(h.deliveryMode) },

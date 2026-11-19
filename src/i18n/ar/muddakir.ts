@@ -315,6 +315,11 @@ export const muddakirAr = {
   overviewStageDist: "توزيع المراحل",
   overviewNoSuperTitle: "بلا مشرف",
   overviewAssignLink: "إسناد ←",
+
+  // نقل المشرف وإلحاق من طلب
+  transferSupervisor: "نقل",
+  transferConfirm: "تأكيد النقل",
+  openEnrollForm: "فتح نموذج الإلحاق",
 } as const;
 
 /** مفاتيح قاموس المُدَّكِر (للتحقّق الثابت عند الاستدعاء). */
