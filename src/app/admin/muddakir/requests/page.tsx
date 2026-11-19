@@ -23,6 +23,15 @@ async function token(): Promise<string | null> {
 const typeLabel = (t: ReqType): string =>
   tMuddakir(t === "ENROLL" ? "typeEnroll" : t === "ASSIGN_SUPERVISOR" ? "typeAssignSupervisor" : t === "SET_MODE" ? "typeSetMode" : t === "SET_SETTING" ? "typeSetSetting" : t === "SET_TATHBIT_LADDER" ? "typeSetLadder" : "typeSetPointItem");
 
+function enrollPrefillHref(r: Req): string {
+  const p = (r.payload ?? {}) as { track?: number; supervisorId?: string };
+  const params = new URLSearchParams();
+  if (r.studentId) params.set("prefill_studentId", r.studentId);
+  if (p.track) params.set("prefill_track", String(p.track));
+  if (p.supervisorId) params.set("prefill_supervisorId", p.supervisorId);
+  return `/admin/muddakir?${params.toString()}`;
+}
+
 const statusView = (s: ReqStatus): { label: string; tone: "neutral" | "success" | "danger" } =>
   s === "APPROVED" ? { label: tMuddakir("reqApproved"), tone: "success" }
     : s === "REJECTED" ? { label: tMuddakir("reqRejected"), tone: "danger" }
@@ -78,6 +87,11 @@ export default function MuddakirRequestsPage() {
           <strong>{typeLabel(r.type)}</strong>
           <Badge tone={sv.tone}>{sv.label}</Badge>
           {!mine && <span style={{ color: ui.color.muted, fontSize: ui.text.xs }}>{tMuddakir("reqRequestedBy")}: {r.requestedBy.slice(0, 8)}</span>}
+          {r.type === "ENROLL" && (
+            <a href={enrollPrefillHref(r)} style={{ color: ui.color.primary, fontSize: ui.text.xs }}>
+              {tMuddakir("openEnrollForm")}
+            </a>
+          )}
         </div>
         {r.decisionReason && <p style={{ margin: 0, fontSize: ui.text.xs, color: ui.color.muted }}>{tMuddakir("decisionReasonLabel")}: {r.decisionReason}</p>}
 

@@ -324,3 +324,80 @@ test("بعد الأسبوع المؤكَّد تظهر بطاقة النقاط ف
   // الوسام الأخير
   await expect(page.getByText("أوّل أسبوع")).toBeVisible();
 });
+
+// ─── ٧) المدير ينقل الحافظ من مشرفٍ إلى آخر ────────────────────────────────
+
+const SUPERVISOR_ROW_B = { id: "sup-2", name: "المشرف خالد", load: 1, max: 4, full: false };
+
+test("المدير ينقر «نقل» ويُسند الحافظ لمشرفٍ جديد", async ({ page }) => {
+  await injectSession(page, MANAGER_SESSION);
+
+  await page.route("**/api/me", (r) =>
+    r.fulfill({ json: { name: "المدير", roles: ["SUPER_ADMIN"], muddakirStaff: [] } }),
+  );
+  await page.route("**/api/muddakir/staff**", (r) =>
+    r.fulfill({ status: 403, json: { error: "forbidden" } }),
+  );
+
+  let postedBody: Record<string, unknown> | null = null;
+  await page.route("**/api/muddakir", async (r) => {
+    if (r.request().method() === "GET")
+      return r.fulfill({ json: { canManage: true, hafiz: [HAFIZ_IN_LIST], supervisors: [SUPERVISOR_ROW, SUPERVISOR_ROW_B], enrollable: [] } });
+    postedBody = JSON.parse(r.request().postData() ?? "{}") as Record<string, unknown>;
+    return r.fulfill({ status: 201, json: { executed: true } });
+  });
+
+  await page.goto("/admin/muddakir");
+
+  // انتظر ظهور الجدول
+  await expect(page.getByText("الحافظ محمد")).toBeVisible({ timeout: 15_000 });
+
+  // انقر «نقل» لفتح حقل الاختيار
+  await page.getByRole("button", { name: "نقل" }).first().click();
+
+  // اختر المشرف الجديد
+  await page.getByLabel("اختر مشرفًا").selectOption({ value: "sup-2" });
+
+  // أكِّد النقل
+  await page.getByRole("button", { name: "تأكيد النقل" }).click();
+
+  await page.waitForTimeout(500);
+  expect(postedBody).not.toBeNull();
+  expect(postedBody!["action"]).toBe("assign");
+  expect(postedBody!["studentId"]).toBe("s1");
+  expect(postedBody!["supervisorId"]).toBe("sup-2");
+});
+
+// ─── ٨) زرّ «فتح نموذج الإلحاق» في صفحة الطلبات يمرّر الـprefill ────────────
+
+test("زرّ فتح نموذج الإلحاق يملأ الحقول مسبقاً", async ({ page }) => {
+  await injectSession(page, MANAGER_SESSION);
+
+  await page.route("**/api/me", (r) =>
+    r.fulfill({ json: { name: "المدير", roles: ["SUPER_ADMIN"], muddakirStaff: [] } }),
+  );
+  await page.route("**/api/muddakir/staff**", (r) =>
+    r.fulfill({ status: 403, json: { error: "forbidden" } }),
+  );
+  await page.route("**/api/muddakir/requests**", (r) =>
+    r.fulfill({ json: { canManage: true, pending: [{ id: "req-1", type: "ENROLL", payload: { studentId: "s1", track: 2, supervisorId: "sup-1" }, studentId: "s1", requestedBy: "admin-1", requestedAt: "2026-11-17T10:00:00Z", status: "PENDING", decisionReason: null }], mine: [] } }),
+  );
+  await page.route("**/api/muddakir", (r) =>
+    r.fulfill({ json: { canManage: true, hafiz: [], supervisors: [SUPERVISOR_ROW], enrollable: [HAFIZ_ENROLLABLE] } }),
+  );
+
+  await page.goto("/admin/muddakir/requests");
+
+  // يظهر زرّ فتح نموذج الإلحاق
+  await expect(page.getByText("فتح نموذج الإلحاق")).toBeVisible({ timeout: 15_000 });
+
+  // انقر الرابط — ينتقل لشاشة الإلحاق بالـprefill
+  await page.getByText("فتح نموذج الإلحاق").click();
+
+  // انتظر الانتقال للصفحة
+  await page.waitForURL("**/admin/muddakir**", { timeout: 5_000 });
+
+  // تأكّد أنّ الـURL يحمل prefill_track=2
+  expect(page.url()).toContain("prefill_track=2");
+  expect(page.url()).toContain("prefill_supervisorId=sup-1");
+});
