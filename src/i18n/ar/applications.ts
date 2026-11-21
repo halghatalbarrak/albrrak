@@ -52,6 +52,9 @@ export const applicationsAr = {
   // بحث وتصفية القائمة
   searchPlaceholder: "ابحث بالاسم…",
   filterAllStatuses: "كل الحالات",
+
+  // إلحاق بمُدّكِر
+  btnEnrollMuddakir: "إلحاق بمُدّكِر",
 } as const;
 
 /** مفاتيح قاموس طلبات القيد (للتحقّق الثابت عند الاستدعاء). */

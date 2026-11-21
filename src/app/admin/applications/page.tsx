@@ -81,6 +81,22 @@ export default function AdminApplicationsPage() {
     else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("errDecide")); }
   }
 
+  async function enrollInMuddakir(appId: string) {
+    const tok = await token();
+    if (!tok) return;
+    const res = await fetch(`/api/applications/${encodeURIComponent(appId)}/decision`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ decision: "accept" }),
+    });
+    if (res.ok) {
+      const { studentId } = (await res.json()) as { studentId: string };
+      window.location.href = `/admin/muddakir?prefill_studentId=${encodeURIComponent(studentId)}`;
+    } else {
+      setErr(t("errDecide"));
+    }
+  }
+
   async function decide(id: string, decision: "accept" | "reject" | "waitlist") {
     const tok = await token();
     if (!tok) return;
@@ -151,7 +167,8 @@ export default function AdminApplicationsPage() {
     {
       key: "actions", header: t("colActions"), cell: (r) => (
         <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <Button size="sm" onClick={() => decide(r.id, "accept")}>{t("btnAccept")}</Button>
+          <Button size="sm" onClick={() => void enrollInMuddakir(r.id)}>{t("btnEnrollMuddakir")}</Button>
+          <Button size="sm" variant="ghost" onClick={() => decide(r.id, "accept")}>{t("btnAccept")}</Button>
           <Button variant="danger" size="sm" onClick={() => decide(r.id, "reject")}>{t("btnReject")}</Button>
           <Button variant="ghost" size="sm" onClick={() => decide(r.id, "waitlist")}>{t("btnWaitlist")}</Button>
           {canReveal && <Button variant="ghost" size="sm" onClick={() => revealId(r.id)}>{revealed[r.id] ? `${t("revealedIdPrefix")}${revealed[r.id]}` : t("btnRevealId")}</Button>}
