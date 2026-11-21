@@ -448,9 +448,9 @@ test("زرّ فتح نموذج الإلحاق يملأ الحقول مسبقاً
   expect(page.url()).toContain("prefill_supervisorId=sup-1");
 });
 
-// ─── ٩) زرّ «إلحاق بمُدّكِر» في صفحة الطلبات يقبل الطلب وينتقل بـprefill ───
+// ─── ٩) زرّ «إلحاق بمُدّكِر» يفتح نموذجاً inline بلا تغيير حالة الطلب ────────
 
-test("إلحاق بمُدّكِر من صفحة الطلبات يقبل ويفتح نموذج الإلحاق", async ({ page }) => {
+test("إلحاق بمُدّكِر يفتح نموذجاً inline بلا قبول مسبق", async ({ page }) => {
   await injectSession(page, MANAGER_SESSION);
 
   await page.route("**/api/me", (r) =>
@@ -461,27 +461,77 @@ test("إلحاق بمُدّكِر من صفحة الطلبات يقبل ويفت
       return r.fulfill({ json: { applications: [{ id: "app-1", name: "يوسف سعيد", age: 20, gender: "MALE", nationality: "سعودي", schoolStage: null, guardianPhone: "0501234567", studentPhone: null, priorHifzJuz: 15, status: "PENDING", createdAt: `${makkahToday()}T00:00:00Z` }] } });
     return r.fallback();
   });
-  await page.route("**/api/applications/*/decision", (r) =>
-    r.fulfill({ json: { studentId: "s_enroll_test", userId: "u_test", guardianLinked: false, createdStudentLogin: false } }),
-  );
   await page.route("**/api/muddakir/staff**", (r) =>
     r.fulfill({ status: 403, json: { error: "forbidden" } }),
   );
   await page.route("**/api/muddakir", (r) =>
-    r.fulfill({ json: { canManage: true, hafiz: [], supervisors: [SUPERVISOR_ROW], enrollable: [{ studentId: "s_enroll_test", name: "يوسف سعيد" }] } }),
+    r.fulfill({ json: { canManage: true, hafiz: [], supervisors: [SUPERVISOR_ROW], enrollable: [] } }),
   );
+  await page.route("**/api/admin/circles", (r) =>
+    r.fulfill({ json: { circles: [{ id: "c-1", nameAr: "حلقة الفجر", timeSlot: "FAJR", gender: "MALE" }], programs: [], teachers: [] } }),
+  );
+
+  // أيّ طلب لـ decision/ يعني أن الكود قَبِل قبل النموذج — يجب ألّا يُرسَل
+  let decisionCalled = false;
+  await page.route("**/api/applications/*/decision", () => { decisionCalled = true; });
 
   await page.goto("/admin/applications");
 
-  // تأكّد ظهور الزرّ
   await expect(page.getByRole("button", { name: "إلحاق بمُدّكِر" })).toBeVisible({ timeout: 15_000 });
 
-  // انقر الزرّ — يقبل الطلب وينتقل لشاشة الإلحاق
+  // انقر الزرّ — لا قبول، يظهر النموذج
   await page.getByRole("button", { name: "إلحاق بمُدّكِر" }).click();
 
-  // انتظر الانتقال للصفحة
-  await page.waitForURL("**/admin/muddakir**", { timeout: 5_000 });
+  // النموذج ظاهر
+  await expect(page.getByText("نموذج الإلحاق بالمُدّكِر")).toBeVisible({ timeout: 5_000 });
 
-  // تأكّد أنّ الـURL يحمل prefill_studentId للطالب المقبول
-  expect(page.url()).toContain("prefill_studentId=s_enroll_test");
+  // لا طلب قبول أُرسِل
+  expect(decisionCalled).toBe(false);
+});
+
+// ─── ١٠) فتح نموذج الإلحاق ثم إغلاقه يبقي الطلب «قيد المراجعة» ───────────
+
+test("فتح نموذج الإلحاق بالمُدّكِر ثم إلغاؤه يبقي الطلب في القائمة بلا قبول", async ({ page }) => {
+  await injectSession(page, MANAGER_SESSION);
+
+  await page.route("**/api/me", (r) =>
+    r.fulfill({ json: { name: "المدير", roles: ["SUPER_ADMIN"], muddakirStaff: [] } }),
+  );
+  await page.route("**/api/applications", async (r) => {
+    if (r.request().method() === "GET")
+      return r.fulfill({ json: { applications: [{ id: "app-2", name: "فهد الأحمدي", age: 18, gender: "MALE", nationality: "سعودي", schoolStage: null, guardianPhone: "0507654321", studentPhone: null, priorHifzJuz: 5, status: "PENDING", createdAt: `${makkahToday()}T00:00:00Z` }] } });
+    return r.fallback();
+  });
+  await page.route("**/api/muddakir/staff**", (r) =>
+    r.fulfill({ status: 403, json: { error: "forbidden" } }),
+  );
+  await page.route("**/api/muddakir", (r) =>
+    r.fulfill({ json: { canManage: true, hafiz: [], supervisors: [], enrollable: [] } }),
+  );
+  await page.route("**/api/admin/circles", (r) =>
+    r.fulfill({ json: { circles: [{ id: "c-1", nameAr: "حلقة الفجر", timeSlot: "FAJR", gender: "MALE" }], programs: [], teachers: [] } }),
+  );
+
+  let enrollCalled = false;
+  await page.route("**/api/applications/*/enroll-muddakir", () => { enrollCalled = true; });
+
+  await page.goto("/admin/applications");
+
+  await expect(page.getByText("فهد الأحمدي")).toBeVisible({ timeout: 15_000 });
+
+  // افتح النموذج
+  await page.getByRole("button", { name: "إلحاق بمُدّكِر" }).click();
+  await expect(page.getByText("نموذج الإلحاق بالمُدّكِر")).toBeVisible({ timeout: 5_000 });
+
+  // أغلق النموذج بالإلغاء
+  await page.getByRole("button", { name: "إلغاء" }).click();
+
+  // النموذج اختفى
+  await expect(page.getByText("نموذج الإلحاق بالمُدّكِر")).not.toBeVisible();
+
+  // الطالب ما زال في القائمة (الطلب لم يُقبَل)
+  await expect(page.getByText("فهد الأحمدي")).toBeVisible();
+
+  // لا طلب إلحاق أُرسِل
+  expect(enrollCalled).toBe(false);
 });

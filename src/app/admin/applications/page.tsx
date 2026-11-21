@@ -8,6 +8,9 @@ import { tApplications as t } from "@/i18n/ar/applications";
 import { AppShell, Card, Button, Badge, EmptyState, ListToolbar, Skeleton, Table, Tabs, intakeTabs, ui, sp, type Column } from "@/components/ui";
 import { normalizeArabic } from "@/lib/normalize-arabic";
 
+interface CircleOpt { id: string; nameAr: string }
+interface SupervisorOpt { id: string; name: string; full: boolean }
+
 interface Row {
   id: string;
   name: string;
@@ -35,6 +38,16 @@ export default function AdminApplicationsPage() {
   const [roles, setRoles] = useState<string[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
+
+  // نموذج الإلحاق بالمُدّكِر (inline)
+  const [enrollingApp, setEnrollingApp] = useState<Row | null>(null);
+  const [enrollCircles, setEnrollCircles] = useState<CircleOpt[]>([]);
+  const [enrollSupervisors, setEnrollSupervisors] = useState<SupervisorOpt[]>([]);
+  const [enrollCircleId, setEnrollCircleId] = useState("");
+  const [enrollSupervisorId, setEnrollSupervisorId] = useState("");
+  const [enrollTrack, setEnrollTrack] = useState<1 | 2 | 3>(1);
+  const [enrollDelivery, setEnrollDelivery] = useState<"IN_PERSON" | "REMOTE">("IN_PERSON");
+  const [enrolling, setEnrolling] = useState(false);
 
   const load = useCallback(async () => {
     const tok = await token();
@@ -81,19 +94,49 @@ export default function AdminApplicationsPage() {
     else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setErr(j.error ?? t("errDecide")); }
   }
 
-  async function enrollInMuddakir(appId: string) {
+  async function openEnrollForm(row: Row) {
+    setErr(null);
     const tok = await token();
     if (!tok) return;
-    const res = await fetch(`/api/applications/${encodeURIComponent(appId)}/decision`, {
+    const auth = { authorization: `Bearer ${tok}` };
+    const [mRes, cRes] = await Promise.all([
+      fetch("/api/muddakir", { headers: auth }),
+      fetch("/api/admin/circles", { headers: auth }),
+    ]);
+    if (!mRes.ok || !cRes.ok) { setErr(t("errLoadForm")); return; }
+    const mData = (await mRes.json()) as { supervisors?: { id: string; name: string; full: boolean }[] };
+    const cData = (await cRes.json()) as { circles?: { id: string; nameAr: string }[] };
+    setEnrollSupervisors(mData.supervisors ?? []);
+    setEnrollCircles((cData.circles ?? []).map((c) => ({ id: c.id, nameAr: c.nameAr })));
+    setEnrollCircleId("");
+    setEnrollSupervisorId("");
+    setEnrollTrack(1);
+    setEnrollDelivery("IN_PERSON");
+    setEnrollingApp(row);
+  }
+
+  async function submitEnroll() {
+    if (!enrollingApp || !enrollCircleId) return;
+    const tok = await token();
+    if (!tok) return;
+    setEnrolling(true);
+    const res = await fetch(`/api/applications/${encodeURIComponent(enrollingApp.id)}/enroll-muddakir`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
-      body: JSON.stringify({ decision: "accept" }),
+      body: JSON.stringify({
+        circleId: enrollCircleId,
+        track: enrollTrack,
+        supervisorId: enrollSupervisorId || undefined,
+        deliveryMode: enrollDelivery,
+      }),
     });
+    setEnrolling(false);
     if (res.ok) {
-      const { studentId } = (await res.json()) as { studentId: string };
-      window.location.href = `/admin/muddakir?prefill_studentId=${encodeURIComponent(studentId)}`;
+      setEnrollingApp(null);
+      void load();
     } else {
-      setErr(t("errDecide"));
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      setErr(j.error ?? t("errEnroll"));
     }
   }
 
@@ -167,7 +210,7 @@ export default function AdminApplicationsPage() {
     {
       key: "actions", header: t("colActions"), cell: (r) => (
         <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <Button size="sm" onClick={() => void enrollInMuddakir(r.id)}>{t("btnEnrollMuddakir")}</Button>
+          <Button size="sm" onClick={() => void openEnrollForm(r)}>{t("btnEnrollMuddakir")}</Button>
           <Button size="sm" variant="ghost" onClick={() => decide(r.id, "accept")}>{t("btnAccept")}</Button>
           <Button variant="danger" size="sm" onClick={() => decide(r.id, "reject")}>{t("btnReject")}</Button>
           <Button variant="ghost" size="sm" onClick={() => decide(r.id, "waitlist")}>{t("btnWaitlist")}</Button>
@@ -197,6 +240,39 @@ export default function AdminApplicationsPage() {
             <option value="WAITLISTED">{t("statusWaitlisted")}</option>
           </select>
         </ListToolbar>
+      )}
+
+      {enrollingApp && (
+        <Card style={{ marginBottom: sp(4), borderInlineStart: `4px solid ${ui.color.primary}`, display: "flex", flexDirection: "column", gap: sp(3), padding: sp(4) }}>
+          <strong>{t("enrollFormTitle")} — {enrollingApp.name}</strong>
+          <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center" }}>
+            <label style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{t("enrollFormCircle")}</label>
+            <select value={enrollCircleId} onChange={(e) => setEnrollCircleId(e.target.value)} style={selectStyle} aria-label={t("enrollFormCircle")}>
+              <option value="">{t("enrollFormCirclePlaceholder")}</option>
+              {enrollCircles.map((c) => <option key={c.id} value={c.id}>{c.nameAr}</option>)}
+            </select>
+            <label style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{t("enrollFormTrack")}</label>
+            <select value={String(enrollTrack)} onChange={(e) => setEnrollTrack(Number(e.target.value) as 1 | 2 | 3)} style={selectStyle} aria-label={t("enrollFormTrack")}>
+              <option value="1">{t("enrollFormTrack1")}</option>
+              <option value="2">{t("enrollFormTrack2")}</option>
+              <option value="3">{t("enrollFormTrack3")}</option>
+            </select>
+            <label style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{t("enrollFormDelivery")}</label>
+            <select value={enrollDelivery} onChange={(e) => setEnrollDelivery(e.target.value as "IN_PERSON" | "REMOTE")} style={selectStyle} aria-label={t("enrollFormDelivery")}>
+              <option value="IN_PERSON">{t("enrollFormDeliveryInPerson")}</option>
+              <option value="REMOTE">{t("enrollFormDeliveryRemote")}</option>
+            </select>
+            <label style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{t("enrollFormSupervisor")}</label>
+            <select value={enrollSupervisorId} onChange={(e) => setEnrollSupervisorId(e.target.value)} style={selectStyle} aria-label={t("enrollFormSupervisor")}>
+              <option value="">{t("enrollFormSupervisorPlaceholder")}</option>
+              {enrollSupervisors.filter((s) => !s.full).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div style={{ display: "flex", gap: sp(2) }}>
+            <Button size="sm" disabled={!enrollCircleId || enrolling} onClick={() => void submitEnroll()}>{t("enrollFormSubmit")}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setEnrollingApp(null)}>{t("enrollFormCancel")}</Button>
+          </div>
+        </Card>
       )}
 
       {rows && filtered!.length === 0 && <EmptyState title={t("emptyTitle")} description={t("emptyDescription")} />}

@@ -54,6 +54,7 @@ export interface EnrollMuddakirArgs {
   deliveryMode?: MuddakirDeliveryMode; // يحدّده المدير؛ الافتراضيّ IN_PERSON
   track?: number; // ١|٢|٣ أوجه/يوم؛ إن أُهمل يُحسَب من Setting
   supervisorId?: string; // يُسند فور الإلحاق إن مُرِّر
+  circleId?: string; // للطلاب الجدد بلا قيدٍ قائم — تُنشأ القيد الأوّل بهذه الحلقة
 }
 
 export interface EnrollMuddakirResult {
@@ -89,7 +90,7 @@ export async function enrollInMuddakir(
       return { enrollmentId: active.id, alreadyEnrolled: true };
     }
 
-    const circleId = active?.circleId;
+    const circleId = active?.circleId ?? args.circleId;
     if (!circleId) throw verr("hafizWithoutCircle");
 
     if (active) {
