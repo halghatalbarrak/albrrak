@@ -270,17 +270,20 @@ test("المشرف يؤكّد الأسبوع ويظهر «الأسبوع مؤك�
   );
 
   let postedAction: string | null = null;
+  let detailConfirmed = false;
   await page.route("**/api/muddakir/supervisor**", async (r) => {
     if (r.request().method() === "GET") {
       const url = r.request().url();
       if (url.includes("studentId=")) {
-        return r.fulfill({ json: SUP_DETAIL });
+        // بعد confirmWeek يعيد الخادم confirmed:true — يجب أن تعكسه المحاكاة
+        return r.fulfill({ json: { ...SUP_DETAIL, week: { ...SUP_DETAIL.week, confirmed: detailConfirmed } } });
       }
       return r.fulfill({ json: { hafiz: SUP_INDICATORS } });
     }
     // POST
     const body = JSON.parse(r.request().postData() ?? "{}") as Record<string, unknown>;
     postedAction = body["action"] as string;
+    if (postedAction === "confirmWeek") detailConfirmed = true;
     return r.fulfill({ json: { ok: true } });
   });
 
@@ -401,9 +404,8 @@ test("مدير البرنامج يغيّر «أقصى حفّاظ للمشرف» 
   // يغيّر «أقصى حفّاظ للمشرف» من ٤ إلى ٣
   await page.getByLabel("أقصى حفّاظ للمشرف").selectOption({ value: "3" });
 
-  // ينقر «حفظ» للإعداد
-  const settingRows = page.locator("div").filter({ hasText: "أقصى حفّاظ للمشرف" });
-  await settingRows.getByRole("button", { name: "حفظ" }).click();
+  // ينقر «حفظ» للإعداد — السيلكت أخو الزرّ مباشرةً في نفس السطر
+  await page.getByLabel("أقصى حفّاظ للمشرف").locator("xpath=following-sibling::button[1]").click();
 
   await page.waitForTimeout(500);
   expect(postedBody).not.toBeNull();
