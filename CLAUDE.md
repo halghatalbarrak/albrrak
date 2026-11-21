@@ -52,6 +52,7 @@
 ## الـruleset وسياقات الفحوصات المطلوبة
 
 - **لا يُضاف سياق إلى `required_status_checks`** إلا باسمه الحرفي كما يظهر في `gh pr checks` لـPR فعلي، وبعد اختبار PR تجريبي يُدمج بنجاح قبل الاعتماد.
+- **الفحوص الإلزامية الخمسة في `main-protection`:** `tsc + lint + build` · `server rule tests (Postgres)` · `prod schema in sync (migrate status)` · `تحقّق من بريد المؤلف (thmny88 فقط)` · `E2E (Playwright)` — أُضيف الأخير فحصاً إلزاميّاً خامساً في الـruleset.
 
 ## قواعد commit وPR (للوكيل)
 

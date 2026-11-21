@@ -447,3 +447,41 @@ test("زرّ فتح نموذج الإلحاق يملأ الحقول مسبقاً
   expect(page.url()).toContain("prefill_track=2");
   expect(page.url()).toContain("prefill_supervisorId=sup-1");
 });
+
+// ─── ٩) زرّ «إلحاق بمُدّكِر» في صفحة الطلبات يقبل الطلب وينتقل بـprefill ───
+
+test("إلحاق بمُدّكِر من صفحة الطلبات يقبل ويفتح نموذج الإلحاق", async ({ page }) => {
+  await injectSession(page, MANAGER_SESSION);
+
+  await page.route("**/api/me", (r) =>
+    r.fulfill({ json: { name: "المدير", roles: ["SUPER_ADMIN"], muddakirStaff: [] } }),
+  );
+  await page.route("**/api/applications", async (r) => {
+    if (r.request().method() === "GET")
+      return r.fulfill({ json: { applications: [{ id: "app-1", name: "يوسف سعيد", age: 20, gender: "MALE", nationality: "سعودي", schoolStage: null, guardianPhone: "0501234567", studentPhone: null, priorHifzJuz: 15, status: "PENDING", createdAt: `${makkahToday()}T00:00:00Z` }] } });
+    return r.fallback();
+  });
+  await page.route("**/api/applications/*/decision", (r) =>
+    r.fulfill({ json: { studentId: "s_enroll_test", userId: "u_test", guardianLinked: false, createdStudentLogin: false } }),
+  );
+  await page.route("**/api/muddakir/staff**", (r) =>
+    r.fulfill({ status: 403, json: { error: "forbidden" } }),
+  );
+  await page.route("**/api/muddakir", (r) =>
+    r.fulfill({ json: { canManage: true, hafiz: [], supervisors: [SUPERVISOR_ROW], enrollable: [{ studentId: "s_enroll_test", name: "يوسف سعيد" }] } }),
+  );
+
+  await page.goto("/admin/applications");
+
+  // تأكّد ظهور الزرّ
+  await expect(page.getByRole("button", { name: "إلحاق بمُدّكِر" })).toBeVisible({ timeout: 15_000 });
+
+  // انقر الزرّ — يقبل الطلب وينتقل لشاشة الإلحاق
+  await page.getByRole("button", { name: "إلحاق بمُدّكِر" }).click();
+
+  // انتظر الانتقال للصفحة
+  await page.waitForURL("**/admin/muddakir**", { timeout: 5_000 });
+
+  // تأكّد أنّ الـURL يحمل prefill_studentId للطالب المقبول
+  expect(page.url()).toContain("prefill_studentId=s_enroll_test");
+});

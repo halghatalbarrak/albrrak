@@ -202,7 +202,7 @@
 - الإعداد في `vitest.global-setup.ts` + `vitest.config.ts`؛ صمّام أمان في `testing/helpers.ts` يرفض أي `DATABASE_URL` لا يبدو محليًّا (حمايةٌ للإنتاج).
 - **الترحيلات على الإنتاج من PowerShell:** `npx prisma migrate deploy` (يقرأ `.env`) — **deploy فقط، لا `db push` ولا `reset` ولا `migrate dev`.**
 - التحقّق بعد الترحيل: `npx prisma migrate status` (يجب «up to date»)، واستعلامٌ مباشرٌ عبر `DIRECT_URL` للتأكّد من وجود الجدول فعليًّا.
-- **فحوص GitHub في الـPR مطلوبة** (CI يعمل منذ #191: 4 فحوص إلزامية). الاختبار المحليّ أوّلاً، ثم CI على GitHub.
+- **فحوص GitHub في الـPR مطلوبة** (CI يعمل منذ #191: **5 فحوص إلزامية** بعد إضافة E2E Playwright فحصاً خامساً في ruleset `main-protection`). الاختبار المحليّ أوّلاً، ثم CI على GitHub.
 
 ---
 
