@@ -36,6 +36,11 @@ const SUPERVISOR_ROW = { id: "sup-1", name: "المشرف أحمد", load: 0, ma
 
 const HAFIZ_ENROLLABLE = { studentId: "s1", name: "الحافظ محمد" };
 
+// تاريخ اليوم بتوقيت مكّة — يطابق تاريخ الأحداث المُنشأة بـbrowserDeps.now()
+function makkahToday() {
+  return new Date().toLocaleString("sv-SE", { timeZone: "Asia/Riyadh" }).slice(0, 10);
+}
+
 const HAFIZ_IN_LIST = {
   studentId: "s1",
   name: "الحافظ محمد",
@@ -48,7 +53,7 @@ const HAFIZ_IN_LIST = {
 };
 
 const TODAY_VIEW = {
-  dayDate: "2026-11-17",
+  dayDate: makkahToday(),
   track: 1,
   reviewOnly: false,
   status: "ACTIVE",
@@ -57,7 +62,7 @@ const TODAY_VIEW = {
   stage: { number: 1, startJuz: 1, endJuz: 5, faceInStage: 3, stageTotal: 50, currentPage: 5 },
   meeting: { day: "الأربعاء", facesToRead: 3 },
   plan: {
-    dayDate: "2026-11-17",
+    dayDate: makkahToday(),
     reviewOnly: false,
     excused: false,
     yesterday: [5],
@@ -152,6 +157,7 @@ test("المدير يُلحق حافظاً باختيار المسار والم�
   );
 
   let callCount = 0;
+  let postedBody: Record<string, unknown> | null = null;
   await page.route("**/api/muddakir", async (r) => {
     if (r.request().method() === "GET") {
       callCount++;
@@ -160,14 +166,8 @@ test("المدير يُلحق حافظاً باختيار المسار والم�
       return r.fulfill({ json: { canManage: true, hafiz, supervisors: [SUPERVISOR_ROW], enrollable: [HAFIZ_ENROLLABLE] } });
     }
     // POST — سجِّل الجسم وأجب بـ201
-    return r.fulfill({ status: 201, json: { executed: true } });
-  });
-
-  let postedBody: Record<string, unknown> | null = null;
-  await page.route("**/api/muddakir", async (r) => {
-    if (r.request().method() !== "POST") { await r.continue(); return; }
     postedBody = JSON.parse(r.request().postData() ?? "{}") as Record<string, unknown>;
-    await r.fulfill({ status: 201, json: { executed: true } });
+    return r.fulfill({ status: 201, json: { executed: true } });
   });
 
   await page.goto("/admin/muddakir");
