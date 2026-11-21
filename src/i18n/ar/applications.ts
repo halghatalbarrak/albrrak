@@ -55,6 +55,25 @@ export const applicationsAr = {
 
   // إلحاق بمُدّكِر
   btnEnrollMuddakir: "إلحاق بمُدّكِر",
+
+  // نموذج الإلحاق بالمُدّكِر (inline)
+  enrollFormTitle: "نموذج الإلحاق بالمُدّكِر",
+  enrollFormStudent: "الطالب",
+  enrollFormTrack: "المسار",
+  enrollFormTrack1: "وجه واحد",
+  enrollFormTrack2: "وجهان",
+  enrollFormTrack3: "ثلاثة أوجه",
+  enrollFormDelivery: "طريقة الحضور",
+  enrollFormDeliveryInPerson: "حضوري",
+  enrollFormDeliveryRemote: "عن بُعد",
+  enrollFormCircle: "الحلقة",
+  enrollFormCirclePlaceholder: "— اختر الحلقة —",
+  enrollFormSupervisor: "المشرف (اختياريّ)",
+  enrollFormSupervisorPlaceholder: "— بلا مشرف —",
+  enrollFormCancel: "إلغاء",
+  enrollFormSubmit: "إلحاق وقبول",
+  errEnroll: "تعذّر الإلحاق بالمُدّكِر.",
+  errLoadForm: "تعذّر تحميل بيانات النموذج.",
 } as const;
 
 /** مفاتيح قاموس طلبات القيد (للتحقّق الثابت عند الاستدعاء). */

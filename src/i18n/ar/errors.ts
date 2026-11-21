@@ -306,6 +306,7 @@ export const errorsAr = {
   // مسارات API (التحقّق من مُدخلات الطلب)
   activateNoToken: "لا رمز.",
   passwordRequired: "كلمة السرّ مطلوبة.",
+  circleRequired: "الحلقة مطلوبة.",
   circleTimeSlotInvalid: "وقت الحلقة غير صالح (عصر/مغرب).",
   circleGenderInvalid: "جنس الحلقة غير صالح.",
   programFieldRequired: "البرنامج مطلوب.",
