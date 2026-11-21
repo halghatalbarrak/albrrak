@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 
-export interface MeInfo { name: string; roles: string[]; muddakirStaff?: string[]; impersonating?: boolean }
+export interface MeInfo { name: string; roles: string[]; muddakirStaff?: string[]; isMuddakirHafiz?: boolean; impersonating?: boolean }
 
 // طلبٌ واحد في العمر — مشاركٌ بين كل مكوّناتٍ تستدعي useMe() في نفس التحميل.
 let _cache: { data: MeInfo | null; ts: number } | null = null;

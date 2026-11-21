@@ -21,7 +21,7 @@ export async function canExamine(
     where: { studentId: args.studentId },
     select: { circleId: true },
   });
-  const circleIds = enrollments.map((e) => e.circleId);
+  const circleIds = enrollments.map((e) => e.circleId).filter((id): id is string => !!id);
   if (circleIds.length === 0) return true;
 
   const teachesAny = await db.circleTeacher.findFirst({
@@ -67,7 +67,7 @@ export async function eligibleExaminers(
     select: { circleId: true },
   });
   const ownTeacherLinks = await db.circleTeacher.findMany({
-    where: { circleId: { in: enrollments.map((e) => e.circleId) } },
+    where: { circleId: { in: enrollments.map((e) => e.circleId).filter((id): id is string => !!id) } },
     select: { teacherId: true },
   });
   const ownTeacherIds = new Set(ownTeacherLinks.map((t) => t.teacherId));

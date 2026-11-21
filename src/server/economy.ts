@@ -630,7 +630,7 @@ export async function listGrantableStudents(
     .map((e) => ({
       studentId: e.student.id,
       name: e.student.user.nameAsInId,
-      circleName: e.circle.nameAr,
+      circleName: e.circle?.nameAr ?? "—",
     }))
     .sort((a, b) => a.name.localeCompare(b.name, "ar"));
 }

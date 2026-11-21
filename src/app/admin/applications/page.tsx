@@ -116,7 +116,7 @@ export default function AdminApplicationsPage() {
   }
 
   async function submitEnroll() {
-    if (!enrollingApp || !enrollCircleId) return;
+    if (!enrollingApp) return;
     const tok = await token();
     if (!tok) return;
     setEnrolling(true);
@@ -269,7 +269,7 @@ export default function AdminApplicationsPage() {
             </select>
           </div>
           <div style={{ display: "flex", gap: sp(2) }}>
-            <Button size="sm" disabled={!enrollCircleId || enrolling} onClick={() => void submitEnroll()}>{t("enrollFormSubmit")}</Button>
+            <Button size="sm" disabled={enrolling} onClick={() => void submitEnroll()}>{t("enrollFormSubmit")}</Button>
             <Button size="sm" variant="ghost" onClick={() => setEnrollingApp(null)}>{t("enrollFormCancel")}</Button>
           </div>
         </Card>

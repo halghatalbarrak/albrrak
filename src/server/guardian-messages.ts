@@ -37,7 +37,7 @@ export async function renderWeeklyReport(studentId: string, weekStart: Date, db:
   });
   if (!student) return null;
   const name = student.user.nameAsInId;
-  const circle = student.enrollments[0]?.circle.nameAr ?? "—";
+  const circle = student.enrollments[0]?.circle?.nameAr ?? "—";
 
   const wkStart = toDateOnly(weekStart);
   const wkEnd = new Date(wkStart.getTime() + 4 * 86400000); // الخميس

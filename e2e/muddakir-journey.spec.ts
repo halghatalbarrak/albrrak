@@ -535,3 +535,53 @@ test("فتح نموذج الإلحاق بالمُدّكِر ثم إلغاؤه ي
   // لا طلب إلحاق أُرسِل
   expect(enrollCalled).toBe(false);
 });
+
+// ─── ١١) إلحاق بمُدّكِر بلا حلقة ينجح (الحلقة اختيارية) ────────────────────
+
+test("إلحاق بمُدّكِر بلا حلقة ينجح", async ({ page }) => {
+  await injectSession(page, MANAGER_SESSION);
+
+  await page.route("**/api/me", (r) =>
+    r.fulfill({ json: { name: "المدير", roles: ["SUPER_ADMIN"], muddakirStaff: [] } }),
+  );
+  await page.route("**/api/muddakir/staff**", (r) =>
+    r.fulfill({ status: 403, json: { error: "forbidden" } }),
+  );
+  await page.route("**/api/muddakir", (r) =>
+    r.fulfill({ json: { canManage: true, hafiz: [], supervisors: [SUPERVISOR_ROW], enrollable: [] } }),
+  );
+  // قائمة حلقات فارغة — الحلقة اختيارية بلا خيارات
+  await page.route("**/api/admin/circles", (r) =>
+    r.fulfill({ json: { circles: [], programs: [], teachers: [] } }),
+  );
+
+  let loadCount = 0;
+  await page.route("**/api/applications", async (r) => {
+    if (r.request().method() === "GET") {
+      loadCount++;
+      if (loadCount === 1)
+        return r.fulfill({ json: { applications: [{ id: "app-nc", name: "علي المطيري", age: 19, gender: "MALE", nationality: "سعودي", schoolStage: null, guardianPhone: "0509999999", studentPhone: null, priorHifzJuz: 10, status: "PENDING", createdAt: `${makkahToday()}T00:00:00Z` }] } });
+      return r.fulfill({ json: { applications: [] } });
+    }
+    return r.fallback();
+  });
+
+  let enrollBody: Record<string, unknown> | null = null;
+  await page.route("**/api/applications/*/enroll-muddakir", async (r) => {
+    enrollBody = JSON.parse(r.request().postData() ?? "{}") as Record<string, unknown>;
+    return r.fulfill({ status: 200, json: { studentId: "s-no-circle" } });
+  });
+
+  await page.goto("/admin/applications");
+  await expect(page.getByRole("button", { name: "إلحاق بمُدّكِر" })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "إلحاق بمُدّكِر" }).click();
+  await expect(page.getByText("نموذج الإلحاق بالمُدّكِر")).toBeVisible({ timeout: 5_000 });
+
+  // أرسل النموذج بلا حلقة (قائمة الحلقات فارغة — الزرّ يعمل)
+  await page.getByRole("button", { name: "إلحاق وقبول" }).click();
+
+  await page.waitForTimeout(500);
+  expect(enrollBody).not.toBeNull();
+  // بما أن قائمة الحلقات فارغة، circleId يُرسَل فارغاً أو غير مُرسَل
+  expect(enrollBody!["circleId"]).toBeFalsy();
+});
