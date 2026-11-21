@@ -214,9 +214,9 @@ model Student {
 model Enrollment {
   id        String    @id @default(cuid())
   studentId String
-  circleId  String
+  circleId  String?
   student   Student   @relation(fields: [studentId], references: [id])
-  circle    Circle    @relation(fields: [circleId], references: [id])
+  circle    Circle?   @relation(fields: [circleId], references: [id])
   // ق١: البرنامج صفةٌ في القيد (لا في الحلقة). مبذورٌ من برنامج الحلقة للقيود القائمة.
   programId String?
   program   Program?  @relation(fields: [programId], references: [id])

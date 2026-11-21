@@ -53,10 +53,28 @@ describe("enrollInMuddakir — إلحاق idempotent", () => {
     expect(profiles[0]).toMatchObject({ track: 1, currentStageId: "1", mode: "ACTIVE", deliveryMode: "IN_PERSON" });
   });
 
-  it("يرفض الإلحاق بلا حلقةٍ نشطة", async () => {
-    await scaffold();
+  it("ينجح الإلحاق بلا حلقةٍ (الحلقة اختيارية في مُدّكِر) ويُنشئ قيدًا بـcircleId=null", async () => {
+    const { mud } = await scaffold();
     const { student } = await createStudent(prisma); // بلا قيد
-    await expect(enrollInMuddakir({ studentId: student.id, actorId: "x" })).rejects.toThrow();
+    const mgr = await createUser(prisma, { roles: [Role.CIRCLE_MANAGER] });
+    const result = await enrollInMuddakir({ studentId: student.id, actorId: mgr.id });
+    expect(result.alreadyEnrolled).toBe(false);
+    const active = await prisma.enrollment.findFirst({ where: { studentId: student.id, endedAt: null } });
+    expect(active).not.toBeNull();
+    expect(active!.programId).toBe(mud.id);
+    expect(active!.circleId).toBeNull();
+  });
+
+  it("يقبل args.circleId لطالبٍ جديدٍ ويُنشئ قيدًا بالحلقة المُمرَّرة", async () => {
+    const { mud, other, circle, mgr } = await scaffold();
+    const { student } = await createStudent(prisma); // بلا قيد
+    const result = await enrollInMuddakir({ studentId: student.id, actorId: mgr.id, circleId: circle.id });
+    expect(result.alreadyEnrolled).toBe(false);
+    const active = await prisma.enrollment.findFirst({ where: { studentId: student.id, endedAt: null } });
+    expect(active!.programId).toBe(mud.id);
+    expect(active!.circleId).toBe(circle.id);
+    // مُستخدَم للتأكيد فقط
+    void other;
   });
 });
 

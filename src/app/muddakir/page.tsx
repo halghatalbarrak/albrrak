@@ -4,8 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { arNum, formatAyah } from "@/lib/format";
-import { ui, sp, Button, Card, Modal, Input, Select, Badge } from "@/components/ui";
+import { ui, sp, Button, Card, Modal, Input, Select, Badge, AppShell } from "@/components/ui";
 import { tMuddakir as t, stageLabel } from "@/i18n/ar/muddakir";
+import { useMe } from "@/lib/useMe";
 import { tGami } from "@/i18n/ar/gamification";
 import {
   EventQueue,
@@ -57,6 +58,7 @@ async function token(): Promise<string | null> {
 const range = (a: number[]) => (a.length ? `${arNum(Math.min(...a))}–${arNum(Math.max(...a))}` : "—");
 
 export default function MuddakirHafizPage() {
+  const { me } = useMe();
   const [view, setView] = useState<TodayView | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "unauth" | "error">("loading");
   const [online, setOnline] = useState(true);
@@ -148,7 +150,11 @@ export default function MuddakirHafizPage() {
   // طور التثبيت/الدائم (§١٢): شاشة الورد بدل خطّة الحفظ.
   if (view.phase && view.phase !== "MEMORIZE" && view.ward) {
     const wardDoneToday = events.filter((e) => e.type === "WARD_COMPLETE" && makkahDayDate(new Date(e.occurredAt)) === view.ward!.dayDate).length;
-    return <WardHome ward={view.ward} doneToday={wardDoneToday} online={online} onComplete={() => void emit("WARD_COMPLETE")} />;
+    return (
+      <AppShell roles={me?.roles ?? []} muddakirStaff={me?.muddakirStaff ?? []} isHafiz={me?.isMuddakirHafiz} userName={me?.name} activeHref="/muddakir" title={t("hafizTitle")}>
+        <WardHome ward={view.ward} doneToday={wardDoneToday} online={online} onComplete={() => void emit("WARD_COMPLETE")} />
+      </AppShell>
+    );
   }
 
   const { stage, plan, settings } = view;
@@ -157,7 +163,8 @@ export default function MuddakirHafizPage() {
   const progress = stage ? stage.faceInStage / stage.stageTotal : 0;
 
   return (
-    <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, maxWidth: 480, margin: "0 auto", padding: sp(3), display: "flex", flexDirection: "column", gap: sp(3) }}>
+    <AppShell roles={me?.roles ?? []} muddakirStaff={me?.muddakirStaff ?? []} isHafiz={me?.isMuddakirHafiz} userName={me?.name} activeHref="/muddakir" title={t("hafizTitle")}>
+    <div style={{ maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column", gap: sp(3) }}>
       {/* الرأس */}
       <Card style={{ padding: sp(3) }}>
         <div style={{ fontWeight: 700, fontSize: ui.text.base }}>
@@ -332,7 +339,8 @@ export default function MuddakirHafizPage() {
           </div>
         </Modal>
       )}
-    </main>
+    </div>
+    </AppShell>
   );
 }
 
@@ -363,7 +371,7 @@ function LinkMark({ pos, note }: { pos: { surah: number; ayah: number }; note?: 
 function WardHome({ ward, doneToday, online, onComplete }: { ward: WardView; doneToday: number; online: boolean; onComplete: () => void }) {
   const title = ward.phase === "PERMANENT" ? t("permanentWardTitle") : t("wardTitle");
   return (
-    <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, maxWidth: 480, margin: "0 auto", padding: sp(3), display: "flex", flexDirection: "column", gap: sp(3) }}>
+    <div style={{ maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column", gap: sp(3) }}>
       <Card style={{ padding: sp(3) }}>
         <div style={{ fontWeight: 700, fontSize: ui.text.base }}>
           {title}
@@ -400,7 +408,7 @@ function WardHome({ ward, doneToday, online, onComplete }: { ward: WardView; don
           </Card>
         );
       })}
-    </main>
+    </div>
   );
 }
 

@@ -131,7 +131,7 @@ export async function searchAll(
       ...nidHits,
       ...students.map((s) => ({
         label: s.user.nameAsInId,
-        sub: s.enrollments[0]?.circle.nameAr ?? "طالب",
+        sub: s.enrollments[0]?.circle?.nameAr ?? "طالب",
         href: `/admin/students/${s.id}`,
       })),
     ],

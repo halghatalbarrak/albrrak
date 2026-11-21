@@ -31,7 +31,7 @@ export async function canRecite(
     where: { studentId: args.studentId },
     select: { circleId: true },
   });
-  const circleIds = enrollments.map((e) => e.circleId);
+  const circleIds = enrollments.map((e) => e.circleId).filter((id): id is string => !!id);
   if (circleIds.length === 0) return true;
 
   const teachesAny = await db.circleTeacher.findFirst({
