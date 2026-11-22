@@ -41,6 +41,7 @@ const ROLE_RANK: Record<Role, number> = {
   STUDENT: 1,
   GUARDIAN: 1,
   SELLER: 1,
+  DONOR: 1,
 };
 
 const highestRank = (roles: Role[]): number =>
