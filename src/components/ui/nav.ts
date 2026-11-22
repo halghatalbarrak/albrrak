@@ -143,6 +143,8 @@ export function navSections(roles: string[], muddakirStaff: string[] = [], optio
       { label: L.myJourney, href: "/me/journey" },
     ]);
   }
+  if (has("GUARDIAN"))
+    push("guardian", L.grpGuardian, [{ label: L.guardianChildren, href: "/guardian" }]);
   if (has("STUDENT") || has("GUARDIAN")) push("messages", L.grpMessages, [{ label: L.messages, href: "/messages" }]);
 
   return sections;
