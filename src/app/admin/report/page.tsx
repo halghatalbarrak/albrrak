@@ -52,7 +52,7 @@ function AttGrid({ att }: { att: { total: number; present: number; late: number;
 
 function TeacherReportView({ reports }: { reports: TeacherDailyReport[] }) {
   if (reports.length === 0)
-    return <Card><p style={{ color: ui.color.muted, margin: 0 }}>لا حلقات مسنَدة.</p></Card>;
+    return <Card><p style={{ color: ui.color.muted, margin: 0 }}>{tR("noCirclesAssigned")}</p></Card>;
 
   return (
     <>

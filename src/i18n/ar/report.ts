@@ -52,6 +52,8 @@ export const reportAr = {
   myPoints: "نقاطي اليوم",
   pointsUnit: "نقطة",
 
+  noCirclesAssigned: "لا حلقات مسنَدة.",
+
   // تقرير مُدّكِر
   muddakirTitle: "حفّاظي اليوم",
   muddakirCompleted: "أتمّوا",
