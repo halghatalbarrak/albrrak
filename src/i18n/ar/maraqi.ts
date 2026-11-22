@@ -14,7 +14,6 @@ export const maraqiAr = {
   consolidate: "رسّخ",
   noConsolidationYet: "لا ترسيخَ بعد",
   lastUnitsPrefix: "آخر ",
-  lastUnitsSuffix: " وحدة: ",
   review: "راجِع",
   noReviewTodayHoliday: "لا مراجعةَ اليوم (عطلة)",
   noConsolidatedForReview: "لا راسخَ للمراجعة بعد",

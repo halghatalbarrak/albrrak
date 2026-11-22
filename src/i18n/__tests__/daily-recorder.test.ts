@@ -4,15 +4,16 @@ import { dailyRecorderAr, tDailyRecorder } from "../ar/daily-recorder";
 
 describe("قاموس المُسجِّل اليومي المشترَك (العربيّة)", () => {
   it("يستدعى بمفتاح", () => {
-    expect(tDailyRecorder("sayAsIs")).toBe("أتقن المقرّر ✓");
+    expect(tDailyRecorder("masteredBtn")).toBe("أتقن ✓");
+    expect(tDailyRecorder("notMasteredBtn")).toBe("لم يُتقن");
     expect(tDailyRecorder("tarseekhDoneAsIs")).toBe("تمّ كما هو المطلوب");
     expect(tDailyRecorder("murajaahDoneAsIs")).toBe("تمّت كما هو المطلوب");
   });
 
   it("كل مفتاحٍ يُرجع الأصل حرفاً بحرف", () => {
     const expected: Record<keyof typeof dailyRecorderAr, string> = {
-      sayAsIs: "أتقن المقرّر ✓",
-      sayAsIsHint: "يسجّل المقرّر المعروض؛ عدّل النهاية أولاً إن اختلف",
+      masteredBtn: "أتقن ✓",
+      notMasteredBtn: "لم يُتقن",
       masteredToggle: "أتقن",
       notMasteredToggle: "لم يُتقن",
       minusAyah: "−آية",

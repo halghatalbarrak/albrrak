@@ -1,4 +1,4 @@
-import { formatAyah } from "@/lib/format";
+import { formatAyah, count } from "@/lib/format";
 import { tMaraqi } from "@/i18n/ar/maraqi";
 
 import { ui, sp } from "./tokens";
@@ -45,7 +45,7 @@ export function TodayTargetView({ t, forStudent = false }: { t: TTData; forStude
       <div style={line}>
         <Badge tone="bronze">{tMaraqi("consolidate")}</Badge>
         {t.tarseekh.length === 0 ? <span style={{ color: ui.color.muted }}>{tMaraqi("noConsolidationYet")}</span>
-          : <span><span style={{ color: ui.color.muted }}>{tMaraqi("lastUnitsPrefix")}{t.tarseekh.length}{tMaraqi("lastUnitsSuffix")}</span><Chips items={t.tarseekh} /></span>}
+          : <span><span style={{ color: ui.color.muted }}>{tMaraqi("lastUnitsPrefix")}{count(t.tarseekh.length, "وحدة", "وحدتان", "وحدات", "وحدة")}{": "}</span><Chips items={t.tarseekh} /></span>}
       </div>
 
       {/* ٣) المراجعة */}

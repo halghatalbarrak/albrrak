@@ -87,13 +87,17 @@ export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedT
         </p>
       )}
 
-      {/* النهاية الحاليّة + أزرار التعديل */}
-      <div style={row}>
-        <span style={{ fontSize: ui.text.xs }}>{t("endLabel")}</span>
-        <strong style={{ fontSize: ui.text.base }}>{surahName(st.toSurah)} {arNum(st.toAyah)}</strong>
-        <Button size="sm" variant="ghost" onClick={minusAyah}>{t("minusAyah")}</Button>
-        <Button size="sm" variant="ghost" onClick={plusAyah}>{t("plusAyah")}</Button>
-        <Button size="sm" variant="ghost" onClick={() => { setShowSurah((v) => !v); setSurahQ(""); }}>{t("surahLabel")} ▾</Button>
+      {/* النهاية الحاليّة + أزرار التعديل — سطران في الجوال (عرض < 400) */}
+      <div style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
+        <div style={{ display: "flex", gap: sp(2), alignItems: "baseline", flexWrap: "wrap" }}>
+          <span style={{ fontSize: ui.text.xs, flexShrink: 0 }}>{t("endLabel")}</span>
+          <strong style={{ fontSize: ui.text.base }}>{surahName(st.toSurah)} {arNum(st.toAyah)}</strong>
+        </div>
+        <div style={row}>
+          <Button size="sm" variant="ghost" data-testid="hifz-btn-minus-ayah" onClick={minusAyah}>{t("minusAyah")}</Button>
+          <Button size="sm" variant="ghost" data-testid="hifz-btn-plus-ayah" onClick={plusAyah}>{t("plusAyah")}</Button>
+          <Button size="sm" variant="ghost" onClick={() => { setShowSurah((v) => !v); setSurahQ(""); }}>{t("surahLabel")} ▾</Button>
+        </div>
       </div>
 
       {/* قائمة السور المنسدلة */}
@@ -129,28 +133,28 @@ export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedT
         ))}
       </div>
 
-      {/* أزرار الفعل الرئيسيّة: «أتقن المقرّر ✓» + «أتقن/لم يُتقن» */}
+      {/* زرّا الحفظ: كلاهما يرسل للخادم (البند ١/٢ — دُمج «أتقن/لم يُتقن» مع «أتقن المقرّر») */}
       {saveError && (
         <p style={{ margin: 0, fontSize: ui.text.xs, color: ui.color.danger, padding: `${sp(1.5)} ${sp(2)}`, background: "var(--color-danger-bg,#fff0f0)", borderRadius: ui.radius.sm }}>
           {saveError}
         </p>
       )}
-      <div style={{ display: "flex", gap: sp(3), flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 auto", display: "flex", flexDirection: "column", gap: sp(1) }}>
-          <button
-            disabled={saving}
-            style={{ width: "100%", minHeight: 52, background: saving ? ui.color.muted : ui.color.primary, color: "#fff", border: "none", borderRadius: ui.radius.md, fontFamily: ui.font, fontSize: ui.text.base, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", padding: `${sp(2)} ${sp(4)}`, opacity: saving ? 0.7 : 1 }}
-            onClick={() => { void onSave(st); }}
-          >
-            {saving ? "جارٍ التسجيل…" : t("sayAsIs")}
-          </button>
-          <p style={{ margin: 0, fontSize: ui.text.xs, color: ui.color.muted, textAlign: "center" }}>{t("sayAsIsHint")}</p>
-        </div>
+      <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
         <button
-          style={{ minHeight: 52, minWidth: 100, background: st.mastered ? ui.color.bronze : ui.color.surface, color: st.mastered ? "#fff" : ui.color.text, border: `1px solid ${st.mastered ? ui.color.bronze : ui.color.border}`, borderRadius: ui.radius.md, fontFamily: ui.font, fontSize: ui.text.base, fontWeight: 600, cursor: "pointer", padding: `${sp(2)} ${sp(4)}` }}
-          onClick={() => setSt((s) => ({ ...s, mastered: !s.mastered }))}
+          disabled={saving}
+          data-testid="hifz-btn-mastered"
+          style={{ flex: "1 1 44%", minHeight: 52, background: saving ? ui.color.muted : ui.color.primary, color: "#fff", border: "none", borderRadius: ui.radius.md, fontFamily: ui.font, fontSize: ui.text.base, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", padding: `${sp(2)} ${sp(3)}`, opacity: saving ? 0.7 : 1 }}
+          onClick={() => { void onSave({ ...st, mastered: true }); }}
         >
-          {st.mastered ? t("masteredToggle") : t("notMasteredToggle")}
+          {saving ? "جارٍ التسجيل…" : t("masteredBtn")}
+        </button>
+        <button
+          disabled={saving}
+          data-testid="hifz-btn-not-mastered"
+          style={{ flex: "1 1 44%", minHeight: 52, background: ui.color.surface, color: ui.color.text, border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, fontFamily: ui.font, fontSize: ui.text.base, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", padding: `${sp(2)} ${sp(3)}`, opacity: saving ? 0.7 : 1 }}
+          onClick={() => { void onSave({ ...st, mastered: false }); }}
+        >
+          {t("notMasteredBtn")}
         </button>
       </div>
 

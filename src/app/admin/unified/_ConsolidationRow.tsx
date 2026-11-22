@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button, sp, ui } from "@/components/ui";
-import { arNum, formatAyah } from "@/lib/format";
+import { arNum, count, formatAyah } from "@/lib/format";
 import { tUnified as tu } from "@/i18n/ar/unified";
 import { token } from "./_types";
 import type { Bound } from "./_types";
@@ -13,7 +13,7 @@ function boundsRangeLabel(bounds: Bound[]): string {
   const last = bounds[bounds.length - 1];
   const outer = formatAyah(first.fromSurah, first.fromAyah, last.toSurah, last.toAyah);
   if (bounds.length === 1) return outer;
-  return `${outer} (${arNum(bounds.length)} وحدة)`;
+  return `${outer} (${count(bounds.length, "وحدة", "وحدتان", "وحدات", "وحدة")})`;
 }
 
 export function ConsolidationRow({ label, bounds, studentId, date, onDone, onExtra }: {
@@ -71,23 +71,25 @@ export function ConsolidationRow({ label, bounds, studentId, date, onDone, onExt
     }
   };
 
-  const row: React.CSSProperties = { display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center" };
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
-      <div style={row}>
-        <span style={{ fontWeight: 700, fontSize: ui.text.base, minWidth: 36 }}>{label}</span>
-        <span style={{ fontSize: ui.text.xs, color: ui.color.muted, flex: 1, minWidth: 0 }}>{rangeText}</span>
-        <Button size="sm" variant="primary" onClick={() => onDone(true)}>{tu("consolidDone")}</Button>
-        <Button size="sm" variant="danger" onClick={() => onDone(false)}>{tu("consolidNotDone")}</Button>
+      {/* السطر الأوّل: العنوان + نطاق الوحدات (يملأ العرض كاملاً) */}
+      <div style={{ display: "flex", gap: sp(2), alignItems: "baseline", flexWrap: "wrap" }}>
+        <span style={{ fontWeight: 700, fontSize: ui.text.base, flexShrink: 0 }}>{label}</span>
+        <span style={{ fontSize: ui.text.xs, color: ui.color.muted, wordBreak: "break-word" }}>{rangeText}</span>
+      </div>
+      {/* السطر الثاني: الأزرار */}
+      <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center" }}>
+        <Button size="sm" variant="primary" data-testid="consol-btn-done" onClick={() => onDone(true)}>{tu("consolidDone")}</Button>
+        <Button size="sm" variant="danger" data-testid="consol-btn-not-done" onClick={() => onDone(false)}>{tu("consolidNotDone")}</Button>
         {bounds.length > 0 && (
-          <Button size="sm" variant="ghost" onClick={() => setErrorsOpen((v) => !v)}>
+          <Button size="sm" variant="ghost" data-testid="consol-btn-errors" onClick={() => setErrorsOpen((v) => !v)}>
             {errorsOpen
               ? tu("consolidHideErrors")
               : `${tu("consolidErrors")}${erroredCount > 0 ? ` ${arNum(erroredCount)}` : ""}`}
           </Button>
         )}
-        <Button size="sm" variant="ghost" onClick={onExtra}>{tu("addMore")}</Button>
+        <Button size="sm" variant="ghost" data-testid="consol-btn-extra" onClick={onExtra}>{tu("addMore")}</Button>
       </div>
 
       {errorsOpen && bounds.length > 0 && (

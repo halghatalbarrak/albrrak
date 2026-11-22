@@ -2,9 +2,10 @@
 // يُستدعى عبر tDailyRecorder. لا نصوص عربية مباشرة في JSX (قاعدة jsx:0).
 
 export const dailyRecorderAr = {
-  // الحفظ الجديد — أزرار الفعل الرئيسيّة
-  sayAsIs: "أتقن المقرّر ✓",
-  sayAsIsHint: "يسجّل المقرّر المعروض؛ عدّل النهاية أولاً إن اختلف",
+  // الحفظ الجديد — زرّا الفعل الرئيسيّان (كلاهما يحفظ — البند ١/٢)
+  masteredBtn: "أتقن ✓",
+  notMasteredBtn: "لم يُتقن",
+  // مستبقى للتوافق مع savedToday
   masteredToggle: "أتقن",
   notMasteredToggle: "لم يُتقن",
   // تعديل النهاية
