@@ -7,9 +7,9 @@ import {
   getAdminReport,
   getStudentReport,
   getMuddakirReport,
+  isActiveMuddakirSupervisor,
   reportToday,
 } from "@/server/report-daily";
-import { prisma } from "@/lib/prisma";
 
 // GET /api/report/daily?date=YYYY-MM-DD
 // يُعيد تقرير اليوم بحسب دور المستخدم.
@@ -27,11 +27,7 @@ export async function GET(req: Request): Promise<Response> {
 
     // مُدّكِر: ابحث عن إشراف نشط
     if (!roles.includes(Role.SUPER_ADMIN) && !roles.includes(Role.CIRCLE_MANAGER) && !roles.includes(Role.TEACHER)) {
-      const muddakirSup = await prisma.muddakirSupervision.findFirst({
-        where: { supervisorId: actor.id, endedAt: null },
-        select: { id: true },
-      });
-      if (muddakirSup) {
+      if (await isActiveMuddakirSupervisor(actor.id)) {
         const report = await getMuddakirReport(actor.id, date);
         return Response.json(report);
       }

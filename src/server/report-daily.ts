@@ -362,3 +362,8 @@ export type DailyReport =
 export function reportToday(): string {
   return makkahDayDate(new Date());
 }
+
+export async function isActiveMuddakirSupervisor(userId: string, db: PrismaClient = prisma): Promise<boolean> {
+  const count = await db.muddakirSupervision.count({ where: { supervisorId: userId, endedAt: null } });
+  return count > 0;
+}
