@@ -51,21 +51,17 @@ const CHILDREN_WITH_DATA = [
 ];
 
 test("وليٌّ مرتبطٌ بأبناء يرى بطاقاتهم", async ({ page }) => {
-  await page.context().addInitScript((s) => {
-    localStorage.setItem("sb-access-token", s);
-    localStorage.setItem("sb-localhost-auth-token", s);
+  await page.addInitScript((s) => {
+    const orig = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key: string) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) return s;
+      return orig.call(this, key);
+    };
   }, GUARDIAN_SESSION);
 
-  await page.route("**/auth/v1/token**", async (r) => { await r.fallback(); });
-  await page.route("**/auth/v1/user**", async (r) => { await r.fallback(); });
-
-  await page.route("**/api/me", async (r) => {
-    await r.fulfill({ json: ME_RESPONSE });
-  });
-
-  await page.route("**/api/guardian/children", async (r) => {
-    await r.fulfill({ json: CHILDREN_WITH_DATA });
-  });
+  await page.route("**supabase**", (r) => r.fulfill({ json: {} }));
+  await page.route("**/api/me", (r) => r.fulfill({ json: ME_RESPONSE }));
+  await page.route("**/api/guardian/children", (r) => r.fulfill({ json: CHILDREN_WITH_DATA }));
 
   await page.goto("/guardian");
 
@@ -87,18 +83,17 @@ test("وليٌّ مرتبطٌ بأبناء يرى بطاقاتهم", async ({ pa
 });
 
 test("وليٌّ بلا أبناء يرى رسالة فارغة", async ({ page }) => {
-  await page.context().addInitScript((s) => {
-    localStorage.setItem("sb-access-token", s);
-    localStorage.setItem("sb-localhost-auth-token", s);
+  await page.addInitScript((s) => {
+    const orig = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key: string) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) return s;
+      return orig.call(this, key);
+    };
   }, GUARDIAN_SESSION);
 
-  await page.route("**/api/me", async (r) => {
-    await r.fulfill({ json: ME_RESPONSE });
-  });
-
-  await page.route("**/api/guardian/children", async (r) => {
-    await r.fulfill({ json: [] });
-  });
+  await page.route("**supabase**", (r) => r.fulfill({ json: {} }));
+  await page.route("**/api/me", (r) => r.fulfill({ json: ME_RESPONSE }));
+  await page.route("**/api/guardian/children", (r) => r.fulfill({ json: [] }));
 
   await page.goto("/guardian");
 
@@ -107,18 +102,19 @@ test("وليٌّ بلا أبناء يرى رسالة فارغة", async ({ page 
 
 test("لا IDOR: البيانات مقيّدة بأبناء الوليّ — API لا تُرجع طلابٍ آخرين", async ({ page }) => {
   let capturedUrl = "";
-  await page.context().addInitScript((s) => {
-    localStorage.setItem("sb-access-token", s);
-    localStorage.setItem("sb-localhost-auth-token", s);
+  await page.addInitScript((s) => {
+    const orig = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key: string) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) return s;
+      return orig.call(this, key);
+    };
   }, GUARDIAN_SESSION);
 
-  await page.route("**/api/me", async (r) => {
-    await r.fulfill({ json: ME_RESPONSE });
-  });
-
-  await page.route("**/api/guardian/children", async (r) => {
+  await page.route("**supabase**", (r) => r.fulfill({ json: {} }));
+  await page.route("**/api/me", (r) => r.fulfill({ json: ME_RESPONSE }));
+  await page.route("**/api/guardian/children", (r) => {
     capturedUrl = r.request().url();
-    await r.fulfill({ json: [CHILDREN_WITH_DATA[0]] });
+    return r.fulfill({ json: [CHILDREN_WITH_DATA[0]] });
   });
 
   await page.goto("/guardian");
