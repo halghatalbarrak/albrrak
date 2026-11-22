@@ -23,7 +23,8 @@
     "puppeteer-core": "^25.3.0",
     "qrcode": "^1.5.4",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "recharts": "^3.11.0"
   },
   "overrides": {
     "zod": ">=4.6.6",
