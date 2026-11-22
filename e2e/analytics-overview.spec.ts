@@ -91,11 +91,11 @@ test("صفحة التحليلات تظهر مع قسمَي الحلقات ومُ
   await expect(page.locator("[data-testid='analytics-content']")).toBeVisible({ timeout: 15_000 });
 
   // قسم الحلقات موجود
-  await expect(page.getByText("الحلقات")).toBeVisible();
+  await expect(page.locator("[data-testid='circles-section']")).toBeVisible();
   // جدول الحلقات موجود
   await expect(page.getByText("حلقة النور")).toBeVisible();
   // قسم مُدّكِر موجود
-  await expect(page.getByText("مُدَّكِر")).toBeVisible();
+  await expect(page.locator("[data-testid='muddakir-section']")).toBeVisible();
 });
 
 // ═══ ٢) مبدّل الفترة يغيّر الطلب ═══

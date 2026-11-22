@@ -61,7 +61,7 @@ function CirclesSection({ data, donorMode }: { data: NonNullable<AnalyticsOvervi
   const sessSeries = data.series.map((s: ASeriesPoint) => ({ label: s.label, [tA("chartCompleted")]: s.sessions }));
 
   return (
-    <section>
+    <section data-testid="circles-section">
       <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(4) }}>{tA("grpCircles")}</h2>
 
       {/* KPIs */}
@@ -179,7 +179,7 @@ function MuddakirSection({ data }: { data: NonNullable<AnalyticsOverview["muddak
     [tA("chartTotal")]: s.total,
   }));
   return (
-    <section style={{ marginTop: sp(8) }}>
+    <section data-testid="muddakir-section" style={{ marginTop: sp(8) }}>
       <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(4) }}>{tA("grpMuddakir")}</h2>
       <div style={{ display: "flex", flexWrap: "wrap", gap: sp(3), marginBottom: sp(6) }}>
         <KpiCard label={tA("kpiActiveHuffaz")} value={arNum(data.activeHuffaz)} unit={tA("unit_students")} />
