@@ -48,6 +48,15 @@ function PageShell({ roles, userName, children }: { roles: string[]; userName?: 
   );
 }
 
+function KhatmBadge({ entry }: { entry: { kind: string; ts: number | null } | undefined }) {
+  if (!entry) return <Badge tone="neutral" style={{ whiteSpace: "nowrap" }}>{tu("khatmLoading")}</Badge>;
+  if (entry.kind === "COMPLETE") return <Badge tone="success" style={{ whiteSpace: "nowrap" }}>{tu("khatmComplete")}</Badge>;
+  if (entry.kind === "INSUFFICIENT_DATA") return <Badge tone="neutral" style={{ whiteSpace: "nowrap" }}>{tu("khatmInsufficient")}</Badge>;
+  if (entry.kind === "NO_TRACK") return <Badge tone="neutral" style={{ whiteSpace: "nowrap" }}>{tu("khatmNoTrack")}</Badge>;
+  if (entry.ts) return <Badge tone="neutral" style={{ whiteSpace: "nowrap" }} data-testid="khatm-badge">{new Date(entry.ts).toLocaleDateString("ar-SA", { year: "numeric", month: "short" })}</Badge>;
+  return null;
+}
+
 export default function UnifiedPage() {
   const { me } = useMe();
   const router = useRouter();
@@ -71,6 +80,8 @@ export default function UnifiedPage() {
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
   const [bulkItemId, setBulkItemId] = useState("");
   const [pendingStudents, setPendingStudents] = useState<ReadonlySet<string>>(new Set());
+  const [khatmSort, setKhatmSort] = useState(false);
+  const [khatmCache, setKhatmCache] = useState<Map<string, { kind: string; ts: number | null }>>(new Map());
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -267,11 +278,23 @@ export default function UnifiedPage() {
     setBulkItemId("");
   }
 
-  const filtered = (students ?? []).filter((s) => {
+  const filteredBase = (students ?? []).filter((s) => {
     if (setupFilter === "NEEDS_SETUP") return s.setupStatus != null && !s.setupStatus.isComplete;
     if (setupFilter === "MISSING_DATA") return (s.setupStatus?.warnings.length ?? 0) > 0;
     return true;
   });
+
+  // ترتيب بـ«يختم في»: الأقرب أوّلاً، ثم بلا بيانات، ثم بلا مسار
+  const filtered = khatmSort
+    ? [...filteredBase].sort((a, b) => {
+        const ka = khatmCache.get(a.studentId);
+        const kb = khatmCache.get(b.studentId);
+        const tsA = ka?.ts ?? Infinity;
+        const tsB = kb?.ts ?? Infinity;
+        return tsA - tsB;
+      })
+    : filteredBase;
+
   const cur = students?.find((s) => s.studentId === selected) ?? null;
 
   const nextStudent = useCallback(() => {
@@ -279,6 +302,32 @@ export default function UnifiedPage() {
     const idx = filtered.findIndex((s) => s.studentId === selected);
     if (idx >= 0 && idx < filtered.length - 1) selectStudent(filtered[idx + 1].studentId);
   }, [selected, filtered, selectStudent]);
+
+  const toggleKhatmSort = useCallback(async () => {
+    if (khatmSort) { setKhatmSort(false); return; }
+    setKhatmSort(true);
+    if (!students) return;
+    const missing = students.filter((s) => !khatmCache.has(s.studentId));
+    if (!missing.length) return;
+    const tok = await token(); if (!tok) return;
+    const results = await Promise.all(
+      missing.map((s) =>
+        fetch(`/api/students/${s.studentId}/khatm-estimate`, { headers: { authorization: `Bearer ${tok}` } })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j: { kind: string; date?: string } | null) => ({
+            id: s.studentId,
+            kind: j?.kind ?? "NO_TRACK",
+            ts: j?.kind === "DATE" && j.date ? new Date(j.date).getTime() : null,
+          }))
+          .catch(() => ({ id: s.studentId, kind: "NO_TRACK", ts: null })),
+      ),
+    );
+    setKhatmCache((prev) => {
+      const next = new Map(prev);
+      for (const r of results) next.set(r.id, { kind: r.kind, ts: r.ts });
+      return next;
+    });
+  }, [khatmSort, students, khatmCache]);
 
   if (status === "unauth") return <PageShell roles={me?.roles ?? []} userName={me?.name}><p>{tu("needLoginTeacherAdmin")}</p></PageShell>;
   if (status === "loading") return <PageShell roles={me?.roles ?? []} userName={me?.name}><Skeleton height={80} /></PageShell>;
@@ -310,6 +359,11 @@ export default function UnifiedPage() {
         <Button size="sm" variant={bulkMode ? "bronze" : "ghost"} onClick={() => { setBulkMode(!bulkMode); setBulkSelected(new Set()); setBulkItemId(""); }}>
           {bulkMode ? tu("bulkCancelBtn") : tu("bulkModeBtn")}
         </Button>
+        {!bulkMode && (
+          <Button size="sm" variant={khatmSort ? "bronze" : "ghost"} onClick={() => void toggleKhatmSort()} data-testid="khatm-sort-btn">
+            {tu("khatmColLabel")} {khatmSort ? "▲" : ""}
+          </Button>
+        )}
       </div>
 
       {students && students.length > 0 && (
@@ -389,6 +443,7 @@ export default function UnifiedPage() {
                             ? <Badge tone="danger" style={{ whiteSpace: "nowrap" }} data-testid="att-badge">{tu("notRaised")}</Badge>
                             : <Badge tone="neutral" style={{ whiteSpace: "nowrap" }} data-testid="att-badge">{tu("notRaised")}</Badge>}
                         {s.todayHifzDone && <Badge tone="bronze" style={{ whiteSpace: "nowrap" }}>{tu("hifzDone")}</Badge>}
+                        {khatmSort && <KhatmBadge entry={khatmCache.get(s.studentId)} />}
                       </span>
                     </button>
                     {!bulkMode && isOpen && (

@@ -94,6 +94,11 @@ describe("قاموس الشاشة الموحّدة (العربيّة)", () => {
       bulkGrantBtn: "منح",
       bulkGrantSelectItem: "— اختر بنداً —",
       bulkGrantDone: "مُنح.",
+      khatmColLabel: "يختم في",
+      khatmNoTrack: "—",
+      khatmInsufficient: "< أسبوعان",
+      khatmComplete: "أتمّ ✓",
+      khatmLoading: "…",
     };
     for (const key of Object.keys(expected) as (keyof typeof unifiedAr)[]) {
       expect(tUnified(key)).toBe(expected[key]);
