@@ -136,6 +136,9 @@ export function navSections(roles: string[], muddakirStaff: string[] = [], optio
   // ── البائع (م٦ب): نقطة بيع البيدر وحدها ──
   if (has("SELLER")) push("market", L.grpMarket, [{ label: L.sell, href: "/sell" }]);
 
+  // ── المانح: لوحة مؤشّراتٍ مجمّعة فقط ──
+  if (has("DONOR")) push("donor", L.grpDonor, [{ label: L.donorDashboard, href: "/admin/donor" }]);
+
   // ── الطالب والوليّ ──
   if (has("STUDENT")) {
     push("learn", L.grpLearn, [
