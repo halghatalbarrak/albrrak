@@ -1,0 +1,31 @@
+export const guardianAr = {
+  title: "متابعة الأبناء",
+  loading: "جارٍ التحميل…",
+  noChildren: "لا أبناء مرتبطون بحسابك حتى الآن.",
+  today: "اليوم",
+  attendance: "الحضور",
+  recited: "ما سُمِّع",
+  points: "النقاط",
+  nextStation: "مقرّر الغد",
+  present: "حاضر",
+  absent: "غائب",
+  late: "متأخّر",
+  excused: "معذور",
+  leftEarly: "انصرف مبكّرًا",
+  notRecorded: "لم يُسجَّل بعد",
+  noSession: "لا جلسة اليوم",
+  surah: "سورة",
+  from: "من",
+  to: "إلى",
+  tarseekhDone: "الترسيخ ✓",
+  murajaahDone: "المراجعة ✓",
+  pointsUnit: "نقطة",
+  noProgram: "بلا برنامج نشط",
+  noNextStation: "—",
+  prevDay: "‹ السابق",
+  nextDay: "التالي ›",
+  errLoad: "تعذّر جلب بيانات الأبناء.",
+} as const;
+
+export type GuardianKey = keyof typeof guardianAr;
+export function tG(key: GuardianKey): string { return guardianAr[key]; }

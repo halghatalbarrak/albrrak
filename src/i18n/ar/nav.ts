@@ -14,10 +14,12 @@ export const navAr = {
   grpMuddakirAdmin: "إدارة مُدَّكِر",
   grpMuddakirExam: "سرد مُدَّكِر",
   grpSettings: "الإعدادات",
+  grpTrash: "الأرشيف",
   grpMarket: "البيدر",
   grpLearn: "التعلّم",
   grpMessages: "الرسائل",
   grpDonor: "المانح",
+  grpGuardian: "متابعة الأبناء",
 
   // ── مداخل ──
   home: "الرئيسية",
@@ -52,11 +54,13 @@ export const navAr = {
   muddakirApp: "التطبيق",
   lists: "القوائم",
   users: "المستخدمون",
+  trash: "سلّة المحذوفات",
   sell: "الجَنْي",
   myPage: "صفحتي",
   myJourney: "رحلتي",
   messages: "الرسائل",
   donorDashboard: "لوحة المانح",
+  guardianChildren: "الأبناء",
 
   // ── عناوين التبويبات (شريط فوق المسارات المتقاربة) ──
   tabApplications: "الطلبات",

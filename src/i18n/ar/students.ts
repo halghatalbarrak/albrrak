@@ -218,6 +218,13 @@ export const studentsAr = {
   trackRecalcBtn: "احتساب المسار من التسكين",
   trackRecalcDone: "احتُسب المسار وعُيِّن تلقائيّاً.",
   trackAlreadySet: "الطالب لديه مسارٌ نشط — استعمل «تغيير المسار».",
+  editBtn: "تعديل",
+  editModalTitle: "تعديل الطالب",
+  fieldSchoolStage: "المرحلة الدراسية",
+  fieldEmergencyName: "اسم جهة اتصال الطوارئ",
+  fieldEmergencyPhone: "جوال جهة اتصال الطوارئ",
+  btnSave: "حفظ",
+  btnCancel: "إلغاء",
 } as const;
 
 /** مفاتيح قاموس شاشات الطلاب (للتحقّق الثابت عند الاستدعاء). */

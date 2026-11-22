@@ -103,6 +103,9 @@ export function navSections(roles: string[], muddakirStaff: string[] = [], optio
     push("settings", L.grpSettings, items);
   }
 
+  // ١٠. الأرشيف — سلّة المحذوفات (المشرف/المدير فقط).
+  if (supervises) push("trash", L.grpTrash, [{ label: L.trash, href: "/admin/trash" }]);
+
   // ── أقسام الأدوار المُحصَّرة (طاقم المُدَّكِر بلا دورٍ عامّ، §٢) ──
   if ((hasStaff("MANAGER") || hasStaff("ADMIN")) && !supervises) {
     const items: NavItem[] = [
@@ -143,6 +146,8 @@ export function navSections(roles: string[], muddakirStaff: string[] = [], optio
       { label: L.myJourney, href: "/me/journey" },
     ]);
   }
+  if (has("GUARDIAN"))
+    push("guardian", L.grpGuardian, [{ label: L.guardianChildren, href: "/guardian" }]);
   if (has("STUDENT") || has("GUARDIAN")) push("messages", L.grpMessages, [{ label: L.messages, href: "/messages" }]);
 
   return sections;

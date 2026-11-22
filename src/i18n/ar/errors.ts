@@ -476,6 +476,10 @@ export const errorsAr = {
   marketItemAlreadyDeleted: "الثمرة محذوفةٌ فعلاً.",
   applicationAlreadyDeleted: "الطلب محذوفٌ فعلاً.",
   applicationAcceptedCannotDelete: "الطلب مقبولٌ ومرتبطٌ بطالب — لا يُحذف.",
+  itemNotDeleted: "العنصر غير محذوف — لا يمكن استعادته أو حذفه نهائياً.",
+  userHasStudentRecord: "المستخدم مرتبطٌ بسجل طالب — لا يُحذف نهائيّاً.",
+  circleHasEnrollments: "الحلقة لها انتساباتٌ — لا تُحذف نهائيّاً.",
+  studentHasEnrollments: "الطالب لديه انتساباتٌ — لا يُحذف نهائيّاً.",
 } as const;
 
 /** مفاتيح أخطاء الخادم المُرحَّلة (تنمو كلّما رُحِّل مجال). */
