@@ -6,23 +6,23 @@
 /* الخطّ: IBM Plex Sans Arabic — يُحمَّل عبر next/font/google، متغيّر --font-sans مُعرَّفٌ في <html>. */
 
 :root {
-  /* هوية البراك البصريّة (قرار محمد): بنفسجيّ داكن + ذهبيّ عتيق + كريميّ. تباين النصوص ≥ AA. */
-  --color-primary:#5B3E96;  --color-primary-hover:#4a2f80;   /* بنفسجيّ ثانويّ — لون الأفعال (نصّ أبيض ٨:١) */
-  --color-bronze:#B8924A;   --color-bronze-hover:#9a7636;    /* ذهبيّ عتيق مميِّز — للإطارات والزخارف لا خلفيّةً لنصٍّ فاتح */
-  --color-bg:#F7F0E1;       --color-surface:#FCF8EF;         /* كريميّ، والبطاقات أفتح قليلاً */
-  --color-text:#1E1238;     --color-muted:#6E6280;   --color-border:#E6D6B4;  /* الخافت مُغمَّقٌ قليلاً عن #7A6E8A لحفظ AA */
-  --color-ghost-text:#5B3E96;   /* نصّ الزرّ الثانويّ (ghost) = لون الهوية */
-  --color-success:#1F5C3D;  --color-danger:#a1231d;
-  --color-soft:#F0E7D3;     --color-warn-bg:#fdf0d5;  --color-ok-bg:#e8f0ea;
-  /* الذهب العتيق — تدرّجٌ للإطارات والزخارف (خلفيّةٌ فقط) */
-  --gold:linear-gradient(135deg,#D9B877,#B8924A,#8C6A3D);
-  --gold-line:#B8924A;      /* خطٌّ ذهبيّ للإطارات والزخارف */
+  /* هوية البراك البصريّة (قرار محمد): بنّيّ دافئ + ذهبيّ فاتح + كريميّ. تباين النصوص ≥ AA. */
+  --color-primary:#756A5D;  --color-primary-hover:#5e5248;   /* بنّيّ دافئ — لون الأفعال */
+  --color-bronze:#C29A6F;   --color-bronze-hover:#a67d4f;    /* ذهبيّ فاتح مميِّز */
+  --color-bg:#F5EFE6;       --color-surface:#FAF5EC;         /* كريميّ دافئ، والبطاقات أفتح */
+  --color-text:#2C1E0F;     --color-muted:#7A6450;   --color-border:#D4C4A8;
+  --color-ghost-text:#756A5D;   /* نصّ الزرّ الثانويّ (ghost) = لون الهوية */
+  --color-success:#2D6A30;  --color-danger:#9B2222;
+  --color-soft:#EDE3D6;     --color-warn-bg:#F5EDD5;  --color-ok-bg:#E6EFE0;
+  /* الذهب — تدرّجٌ للإطارات والزخارف (خلفيّةٌ فقط) */
+  --gold:linear-gradient(135deg,#D4AE6E,#C29A6F,#9A7045);
+  --gold-line:#C29A6F;      /* خطٌّ ذهبيّ للإطارات والزخارف */
   --color-teal:#2E8B8B;     /* فيروزيٌّ نبويٌّ هادئ — لمسةٌ صغيرة */
-  /* الشريط الجانبيّ بنفسجيٌّ داكن في الوضعين (زخرفيٌّ داكنٌ بطبعه) */
-  --color-sidebar:#2B1A4F;  --color-sidebar-text:#EFE7D6;  --color-sidebar-muted:#B9A9C9;
-  --color-sidebar-accent:#B8924A;  --color-sidebar-active-bg:rgba(255,255,255,.07);
-  /* خلفيّة الدخول (كريميّ دافئ) — متغيّرةٌ بالوضع ليعمل الداكن */
-  --login-bg-from:#FBF6EC;  --login-bg-to:#F7F0E1;
+  /* الشريط الجانبيّ بنّيٌّ داكن */
+  --color-sidebar:#3D2B1A;  --color-sidebar-text:#F0E8D8;  --color-sidebar-muted:#C4A882;
+  --color-sidebar-accent:#C29A6F;  --color-sidebar-active-bg:rgba(255,255,255,.07);
+  /* خلفيّة الدخول — دافئة */
+  --login-bg-from:#FAF4EC;  --login-bg-to:#F5EFE6;
   /* تباعد (أساس ٤px) */
   --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px; --space-12:48px; --space-16:64px;
   /* نصف قطر */
@@ -62,24 +62,24 @@
 /* دفءٌ لا سواد قارس؛ البرونزيّ والنجاح/الخطر مرفوعةُ الإضاءة ليبقيا مقروءَين على الداكن. */
 /* ملاحظة: بلا `:root` لتعمل الحاوية المُتداخلة في صفحة معاينة الثيمات أيضاً. */
 [data-theme="dark"] {
-  --color-primary:#c9beb0;  --color-primary-hover:#ddd3c6;
-  --color-bronze:#c79a5f;   --color-bronze-hover:#d8ad72;
-  --color-bg:#1b1916;       --color-surface:#26231f;
-  --color-text:#ece7de;     --color-muted:#b8afa0;   --color-border:#4c463c;
-  --color-ghost-text:#e8dfd0;   /* نصّ الزرّ الثانويّ (ghost) — شبه أبيضَ دافئ، أوضح كثيراً من لون الهوية (#c9beb0) */
-  --color-success:#5fbf8f;  --color-danger:#e0736c;
-  --color-soft:#322d26;     --color-warn-bg:#3a3320;  --color-ok-bg:#22322a;
+  --color-primary:#BBA898;  --color-primary-hover:#CDB9AC;
+  --color-bronze:#C29A6F;   --color-bronze-hover:#D4AD82;
+  --color-bg:#1E1510;       --color-surface:#2A1F18;
+  --color-text:#EBE0D3;     --color-muted:#B8A090;   --color-border:#4A3A2C;
+  --color-ghost-text:#E8DDD3;
+  --color-success:#5FBF8F;  --color-danger:#E0736C;
+  --color-soft:#2E2218;     --color-warn-bg:#352918;  --color-ok-bg:#1E2D1E;
   --shadow-card:0 1px 3px rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.25);
   --shadow-panel:0 4px 16px rgba(0,0,0,.35);
   --shadow-elevated:0 2px 10px rgba(0,0,0,.45);
-  --shadow-gold:0 0 0 4px rgba(201,160,99,0.07),var(--shadow-card);
-  /* نصٌّ على الخلفيّات المُلوَّنة (تُعكَس إضاءتها في الوضع الداكن) */
-  --color-on-primary:#1b1916;  --color-on-bronze:#1b1916;
+  --shadow-gold:0 0 0 4px rgba(194,154,111,0.08),var(--shadow-card);
+  --color-on-primary:#1E1510;  --color-on-bronze:#1E1510;
   --color-warning:#d4a541;     --color-overlay:rgba(0,0,0,.55);
-  /* الذهب يبقى مقروءًا على الداكن؛ الفيروزيّ أرفع إضاءةً، وخلفيّة الدخول دافئةٌ داكنة. */
-  --gold-line:#cBA463;
+  --gold-line:#C4A472;
   --color-teal:#5FB3B3;
-  --login-bg-from:#26231f;  --login-bg-to:#1b1916;
+  --color-sidebar:#2A1A0E;  --color-sidebar-text:#F0E8D8;  --color-sidebar-muted:#C4A882;
+  --color-sidebar-accent:#C29A6F;  --color-sidebar-active-bg:rgba(255,255,255,.07);
+  --login-bg-from:#2A1F18;  --login-bg-to:#1E1510;
 }
 /* صور المصحف أحاديّةُ اللون على أبيض — لا تُقلَب ولا تُظلَم في الوضع الداكن (قرار محمد). */
 

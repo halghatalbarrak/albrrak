@@ -6,7 +6,7 @@ import { tMuddakir } from "@/i18n/ar/muddakir";
 
 export type Role =
   | "TECH_ADMIN" | "SUPER_ADMIN" | "CIRCLE_MANAGER" | "REGISTRAR"
-  | "TEACHER" | "RECITER" | "ARIF" | "STUDENT" | "GUARDIAN" | "SELLER";
+  | "TEACHER" | "RECITER" | "ARIF" | "STUDENT" | "GUARDIAN" | "SELLER" | "DONOR";
 
 // ── طاقم المدّكر (و١): إسنادٌ مُحصَّرٌ في MuddakirStaff، لا دورٌ عامّ. نصوصٌ من i18n العربي. ──
 export type MuddakirStaffRole = "MANAGER" | "ADMIN" | "SUPERVISOR" | "EXAMINER";
@@ -44,11 +44,12 @@ export function muddakirStaffCaps(roles: string[], staff: string[]) {
 
 // الأدوار القابلة للإسناد للكادر من الشاشة (لا STUDENT/GUARDIAN — تُنشأ بالقيد).
 // SELLER صلاحيّةٌ مستقلّة (م٦ب) تُمنح لأيّ حساب كادرٍ (معلّم/إداريّ/موظّف سوق).
-export const STAFF_ROLES: Role[] = ["TECH_ADMIN", "SUPER_ADMIN", "CIRCLE_MANAGER", "REGISTRAR", "TEACHER", "RECITER", "SELLER"];
+// DONOR: مانح — يرى مؤشّرات مجمّعة فقط، بلا بياناتٍ شخصيّة.
+export const STAFF_ROLES: Role[] = ["TECH_ADMIN", "SUPER_ADMIN", "CIRCLE_MANAGER", "REGISTRAR", "TEACHER", "RECITER", "SELLER", "DONOR"];
 export const ROLE_AR: Record<Role, string> = {
   TECH_ADMIN: "مدير تقنيّ", SUPER_ADMIN: "مشرف عام", CIRCLE_MANAGER: "مدير حلقات",
   REGISTRAR: "مُسجِّل", TEACHER: "معلّم", RECITER: "مُسمِّع", ARIF: "عريف",
-  STUDENT: "طالب", GUARDIAN: "وليّ", SELLER: "أمين البيدر",
+  STUDENT: "طالب", GUARDIAN: "وليّ", SELLER: "أمين البيدر", DONOR: "مانح",
 };
 
 export const toggleIn = (list: Role[], r: Role): Role[] => (list.includes(r) ? list.filter((x) => x !== r) : [...list, r]);

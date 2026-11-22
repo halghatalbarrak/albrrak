@@ -237,6 +237,12 @@ export default function AdminStudentsPage() {
   const [filterState, setFilterState] = useState("");
   const [filterCircle, setFilterCircle] = useState("");
   const [filterGuardian, setFilterGuardian] = useState("");
+  const [editStudent, setEditStudent] = useState<Row | null>(null);
+  const [editSchoolStage, setEditSchoolStage] = useState("");
+  const [editEmergencyName, setEditEmergencyName] = useState("");
+  const [editEmergencyPhone, setEditEmergencyPhone] = useState("");
+  const [editErr, setEditErr] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
 
   const load = useCallback(async () => {
     const tok = await token();
@@ -312,6 +318,35 @@ export default function AdminStudentsPage() {
   const canRecord = roles.includes("REGISTRAR") || roles.includes("SUPER_ADMIN");
   const canApprove = roles.includes("CIRCLE_MANAGER") || roles.includes("SUPER_ADMIN");
   const canAct = roles.includes("CIRCLE_MANAGER") || roles.includes("SUPER_ADMIN");
+
+  async function openEdit(r: Row) {
+    setEditErr(null);
+    const tok = await token();
+    if (!tok) return;
+    const res = await fetch(`/api/admin/students/${r.id}`, { headers: { authorization: `Bearer ${tok}` } });
+    if (res.ok) {
+      const j = (await res.json()) as { student?: { schoolStage?: string | null; emergencyName?: string | null; emergencyPhone?: string | null } };
+      setEditSchoolStage(j.student?.schoolStage ?? "");
+      setEditEmergencyName(j.student?.emergencyName ?? "");
+      setEditEmergencyPhone(j.student?.emergencyPhone ?? "");
+    }
+    setEditStudent(r);
+  }
+
+  async function saveEdit() {
+    if (!editStudent) return;
+    setEditSaving(true); setEditErr(null);
+    const tok = await token();
+    if (!tok) { setEditSaving(false); return; }
+    const res = await fetch(`/api/admin/students/${editStudent.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ schoolStage: editSchoolStage, emergencyName: editEmergencyName, emergencyPhone: editEmergencyPhone }),
+    });
+    setEditSaving(false);
+    if (res.ok || res.status === 204) { setEditStudent(null); }
+    else { const j = (await res.json().catch(() => ({}))) as { error?: string }; setEditErr(j.error ?? t("actionFailed")); }
+  }
   const qaidahCircles = circles;
   const pendingCount = rows?.filter((r) => r.pendingPlacementId).length ?? 0;
 
@@ -380,6 +415,7 @@ export default function AdminStudentsPage() {
           )}
           <Link href={`/admin/students/${r.id}/weakness`} style={linkBtn}>{t("weaknessMap")}</Link>
           <Link href={`/admin/students/${r.id}/placement`} style={linkBtn}>{t("placement")}</Link>
+          {canAct && <Button variant="ghost" size="sm" onClick={() => void openEdit(r)}>{t("editBtn")}</Button>}
           {canReveal && <Button variant="ghost" size="sm" onClick={() => revealId(r.id)}>{revealed[r.id] ? `${t("idPrefix")} ${revealed[r.id]}` : t("revealId")}</Button>}
           {canAct && !r.enrollmentId && r.state === "WITHDRAWN" && (
             <DeleteStudentCell studentId={r.id} onDeleted={(id) => setRows((prev) => prev?.filter((s) => s.id !== id) ?? null)} />
@@ -446,6 +482,27 @@ export default function AdminStudentsPage() {
           onDone={() => void load()}
         />
       )}
+
+      {/* نافذة تعديل بيانات الطالب */}
+      <Modal open={editStudent !== null} onClose={() => setEditStudent(null)}
+        title={editStudent ? `${t("editModalTitle")}: ${editStudent.name}` : ""}
+        footer={<><Button disabled={editSaving} onClick={() => void saveEdit()}>{editSaving ? "…" : t("btnSave")}</Button><Button variant="ghost" onClick={() => setEditStudent(null)}>{t("btnCancel")}</Button></>}>
+        <div style={{ display: "flex", flexDirection: "column", gap: sp(3) }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
+            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{t("fieldSchoolStage")}</span>
+            <input style={{ ...inputStyle }} value={editSchoolStage} onChange={(e) => setEditSchoolStage(e.target.value)} />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
+            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{t("fieldEmergencyName")}</span>
+            <input style={{ ...inputStyle }} value={editEmergencyName} onChange={(e) => setEditEmergencyName(e.target.value)} />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
+            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{t("fieldEmergencyPhone")}</span>
+            <input style={{ ...inputStyle, direction: "ltr" }} value={editEmergencyPhone} onChange={(e) => setEditEmergencyPhone(e.target.value)} />
+          </label>
+          {editErr && <p style={{ color: ui.color.danger, margin: 0, fontSize: ui.text.xs }}>{editErr}</p>}
+        </div>
+      </Modal>
     </AppShell>
   );
 }
