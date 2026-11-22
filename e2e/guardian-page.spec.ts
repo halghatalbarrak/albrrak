@@ -64,22 +64,23 @@ test("وليٌّ مرتبطٌ بأبناء يرى بطاقاتهم", async ({ pa
   await page.route("**/api/guardian/children", (r) => r.fulfill({ json: CHILDREN_WITH_DATA }));
 
   await page.goto("/guardian");
+  await page.waitForLoadState("networkidle");
 
-  // يرى اسم الابن الأول
-  await expect(page.getByText("محمد")).toBeVisible();
+  // يرى اسم الابن الأول (exact لتجنّب تطابق العنصر والأب)
+  await expect(page.getByText("محمد", { exact: true }).first()).toBeVisible();
   // يرى اسم الابن الثاني
-  await expect(page.getByText("عبدالرحمن")).toBeVisible();
+  await expect(page.getByText("عبدالرحمن", { exact: true }).first()).toBeVisible();
 
   // الحضور: محمد حاضر، عبدالرحمن غائب
-  await expect(page.getByText("حاضر")).toBeVisible();
-  await expect(page.getByText("غائب")).toBeVisible();
+  await expect(page.getByText("حاضر", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("غائب", { exact: true }).first()).toBeVisible();
 
   // النقاط بأرقام مشرقية (٤٢)
-  await expect(page.getByText(/٤٢.*نقطة/)).toBeVisible();
-  await expect(page.getByText(/١٥.*نقطة/)).toBeVisible();
+  await expect(page.getByText(/٤٢.*نقطة/).first()).toBeVisible();
+  await expect(page.getByText(/١٥.*نقطة/).first()).toBeVisible();
 
   // مقرّر الغد
-  await expect(page.getByText("الحزب الثاني")).toBeVisible();
+  await expect(page.getByText("الحزب الثاني", { exact: true }).first()).toBeVisible();
 });
 
 test("وليٌّ بلا أبناء يرى رسالة فارغة", async ({ page }) => {
@@ -118,11 +119,12 @@ test("لا IDOR: البيانات مقيّدة بأبناء الوليّ — API
   });
 
   await page.goto("/guardian");
+  await page.waitForLoadState("networkidle");
 
   // التحقّق: الطلب ذهب لمسار /api/guardian/children فقط (لا مسار طالبٍ بعينه)
   expect(capturedUrl).toMatch(/\/api\/guardian\/children$/);
 
   // يرى الابن الأوّل فقط (لا student-2)
-  await expect(page.getByText("محمد")).toBeVisible();
-  await expect(page.getByText("عبدالرحمن")).not.toBeVisible();
+  await expect(page.getByText("محمد", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("عبدالرحمن", { exact: true })).not.toBeVisible();
 });
