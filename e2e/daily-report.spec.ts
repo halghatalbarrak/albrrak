@@ -65,11 +65,15 @@ const STUDENT_REPORT = {
 };
 
 test("المعلّم يرى تقرير حلقته", async ({ page }) => {
-  await page.context().addInitScript((s) => {
-    localStorage.setItem("sb-access-token", s);
-    localStorage.setItem("sb-localhost-auth-token", s);
+  await page.addInitScript((s) => {
+    const orig = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key: string) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) return s;
+      return orig.call(this, key);
+    };
   }, TEACHER_SESSION);
 
+  await page.route("**supabase**", (r) => r.fulfill({ json: {} }));
   await page.route("**/api/me", (r) =>
     r.fulfill({ json: { name: "المعلّم", roles: ["TEACHER"], isMuddakirHafiz: false } }),
   );
@@ -78,19 +82,24 @@ test("المعلّم يرى تقرير حلقته", async ({ page }) => {
   );
 
   await page.goto("/admin/report");
+  await page.waitForLoadState("networkidle");
 
-  await expect(page.getByText("حلقة الفجر")).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText("أحمد")).toBeVisible();
+  await expect(page.getByText("حلقة الفجر").first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("أحمد", { exact: true }).first()).toBeVisible();
   // من لم يُسمَّع
-  await expect(page.getByText("خالد")).toBeVisible();
+  await expect(page.getByText("خالد", { exact: true }).first()).toBeVisible();
 });
 
 test("المشرف يرى ملخّص الحلقات", async ({ page }) => {
-  await page.context().addInitScript((s) => {
-    localStorage.setItem("sb-access-token", s);
-    localStorage.setItem("sb-localhost-auth-token", s);
+  await page.addInitScript((s) => {
+    const orig = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key: string) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) return s;
+      return orig.call(this, key);
+    };
   }, SUPERVISOR_SESSION);
 
+  await page.route("**supabase**", (r) => r.fulfill({ json: {} }));
   await page.route("**/api/me", (r) =>
     r.fulfill({ json: { name: "المشرف", roles: ["CIRCLE_MANAGER"], isMuddakirHafiz: false } }),
   );
@@ -99,17 +108,22 @@ test("المشرف يرى ملخّص الحلقات", async ({ page }) => {
   );
 
   await page.goto("/admin/report");
+  await page.waitForLoadState("networkidle");
 
-  await expect(page.getByText("حلقة الفجر")).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText("حلقة العشاء")).toBeVisible();
+  await expect(page.getByText("حلقة الفجر").first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("حلقة العشاء").first()).toBeVisible();
 });
 
 test("الطالب يرى يومه", async ({ page }) => {
-  await page.context().addInitScript((s) => {
-    localStorage.setItem("sb-access-token", s);
-    localStorage.setItem("sb-localhost-auth-token", s);
+  await page.addInitScript((s) => {
+    const orig = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key: string) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) return s;
+      return orig.call(this, key);
+    };
   }, STUDENT_SESSION);
 
+  await page.route("**supabase**", (r) => r.fulfill({ json: {} }));
   await page.route("**/api/me", (r) =>
     r.fulfill({ json: { name: "الطالب", roles: ["STUDENT"], isMuddakirHafiz: false } }),
   );
@@ -118,7 +132,8 @@ test("الطالب يرى يومه", async ({ page }) => {
   );
 
   await page.goto("/admin/report");
+  await page.waitForLoadState("networkidle");
 
-  await expect(page.getByText(/٢٥.*نقطة/)).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText("3:1 → 3:5")).toBeVisible();
+  await expect(page.getByText(/٢٥.*نقطة/).first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("3:1 → 3:5").first()).toBeVisible();
 });
