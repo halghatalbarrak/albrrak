@@ -209,6 +209,13 @@ describe("قاموس شاشات الطلاب (العربيّة)", () => {
       trackRecalcBtn: "احتساب المسار من التسكين",
       trackRecalcDone: "احتُسب المسار وعُيِّن تلقائيّاً.",
       trackAlreadySet: "الطالب لديه مسارٌ نشط — استعمل «تغيير المسار».",
+      editBtn: "تعديل",
+      editModalTitle: "تعديل الطالب",
+      fieldSchoolStage: "المرحلة الدراسية",
+      fieldEmergencyName: "اسم جهة اتصال الطوارئ",
+      fieldEmergencyPhone: "جوال جهة اتصال الطوارئ",
+      btnSave: "حفظ",
+      btnCancel: "إلغاء",
     };
     for (const key of Object.keys(expected) as (keyof typeof studentsAr)[]) {
       expect(tStudents(key)).toBe(expected[key]);

@@ -122,6 +122,73 @@ export async function softDeleteStudent(actorId: string, studentId: string, db: 
   ]);
 }
 
+export interface StudentEditData {
+  id: string;
+  name: string;
+  schoolStage: string | null;
+  priorHifzAmount: string | null;
+  emergencyName: string | null;
+  emergencyPhone: string | null;
+  emergencyRelationId: string | null;
+}
+
+export async function getStudentForEdit(studentId: string, db: PrismaClient = prisma): Promise<StudentEditData> {
+  const s = await db.student.findUnique({
+    where: { id: studentId, deletedAt: null },
+    select: {
+      id: true,
+      schoolStage: true,
+      priorHifzAmount: true,
+      emergencyName: true,
+      emergencyPhone: true,
+      emergencyRelationId: true,
+      user: { select: { nameAsInId: true } },
+    },
+  });
+  if (!s) throw verr("studentNotFound");
+  return {
+    id: s.id,
+    name: s.user.nameAsInId,
+    schoolStage: s.schoolStage ?? null,
+    priorHifzAmount: s.priorHifzAmount ?? null,
+    emergencyName: s.emergencyName ?? null,
+    emergencyPhone: s.emergencyPhone ?? null,
+    emergencyRelationId: s.emergencyRelationId ?? null,
+  };
+}
+
+export interface UpdateStudentInput {
+  schoolStage?: string | null;
+  priorHifzAmount?: string | null;
+  emergencyName?: string | null;
+  emergencyPhone?: string | null;
+  emergencyRelationId?: string | null;
+}
+
+export async function updateStudent(
+  actorId: string,
+  studentId: string,
+  input: UpdateStudentInput,
+  db: PrismaClient = prisma,
+): Promise<void> {
+  const s = await db.student.findUnique({ where: { id: studentId, deletedAt: null }, select: { id: true } });
+  if (!s) throw verr("studentNotFound");
+
+  const data: Record<string, string | null> = {};
+  if (input.schoolStage !== undefined) data.schoolStage = input.schoolStage ? input.schoolStage.trim() || null : null;
+  if (input.priorHifzAmount !== undefined) data.priorHifzAmount = input.priorHifzAmount ? input.priorHifzAmount.trim() || null : null;
+  if (input.emergencyName !== undefined) data.emergencyName = input.emergencyName ? input.emergencyName.trim() || null : null;
+  if (input.emergencyPhone !== undefined) data.emergencyPhone = input.emergencyPhone ? input.emergencyPhone.trim() || null : null;
+  if (input.emergencyRelationId !== undefined) data.emergencyRelationId = input.emergencyRelationId || null;
+
+  if (Object.keys(data).length === 0) return;
+
+  await db.$transaction([
+    db.student.update({ where: { id: studentId }, data }),
+    db.auditLog.create({ data: { action: "UPDATE", entity: "Student", entityId: studentId, actorId } }),
+  ]);
+}
+
 /**
  * كشف رقم هوية طالبٍ مقبول — للكادر المخوّل (م٥)، بطلبٍ صريح، وبسطرٍ في سجل الاطّلاع.
  * يمرّ عبر readNationalId (يتحقّق من الدور ويكتب السطر). غير المخوّل ⟵ 403.
