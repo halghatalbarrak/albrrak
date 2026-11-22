@@ -25,6 +25,13 @@ export const guardianAr = {
   prevDay: "‹ السابق",
   nextDay: "التالي ›",
   errLoad: "تعذّر جلب بيانات الأبناء.",
+  khatmTitle: "تقدير الختمة",
+  khatmNoTrack: "لم يُحدَّد مسار بعد",
+  khatmInsufficient: "يظهر التقدير بعد أسبوعين من الانتظام",
+  khatmComplete: "أتمّ الختمة ✓",
+  khatmDate: "يُقدَّر الختم بتاريخ: ",
+  khatmRegularity: "انتظام الحضور: ",
+  khatmRemaining: "الوحدات المتبقّية: ",
 } as const;
 
 export type GuardianKey = keyof typeof guardianAr;

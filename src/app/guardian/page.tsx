@@ -8,6 +8,44 @@ import { tG } from "@/i18n/ar/guardian";
 import { useMe } from "@/lib/useMe";
 import { makkahDayDate } from "@/lib/makkah-day";
 
+type KhatmKind = "DATE" | "INSUFFICIENT_DATA" | "NO_TRACK" | "COMPLETE";
+interface KhatmData {
+  kind: KhatmKind;
+  date?: string;
+  remainingUnits?: number;
+  regularityPct?: number;
+}
+
+function KhatmEstimate({ studentId, token }: { studentId: string; token: string }) {
+  const [data, setData] = useState<KhatmData | null>(null);
+
+  useEffect(() => {
+    void fetch(`/api/students/${studentId}/khatm-estimate`, {
+      headers: { authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: KhatmData | null) => setData(j))
+      .catch(() => null);
+  }, [studentId, token]);
+
+  if (!data) return null;
+  if (data.kind === "NO_TRACK") return null;
+
+  let text = "";
+  if (data.kind === "INSUFFICIENT_DATA") text = tG("khatmInsufficient");
+  else if (data.kind === "COMPLETE") text = tG("khatmComplete");
+  else if (data.kind === "DATE" && data.date) {
+    const d = new Date(data.date);
+    text = tG("khatmDate") + d.toLocaleDateString("ar-SA");
+  }
+
+  return (
+    <div style={{ marginTop: sp(2), fontSize: ui.text.xs, color: ui.color.muted }}>
+      {tG("khatmTitle")}: <span style={{ color: ui.color.text }}>{text}</span>
+    </div>
+  );
+}
+
 interface ChildAttendance {
   status: "PRESENT" | "LATE" | "LEFT_EARLY" | "EXCUSED" | "ABSENT" | null;
 }
@@ -66,7 +104,7 @@ function SessionLine({ session }: { session: ChildSession | null }) {
   return <span>{parts.join(" · ")}</span>;
 }
 
-function ChildCard({ child }: { child: ChildData }) {
+function ChildCard({ child, token }: { child: ChildData; token: string }) {
   return (
     <Card style={{ marginBottom: sp(4) }}>
       <div
@@ -115,6 +153,7 @@ function ChildCard({ child }: { child: ChildData }) {
         <span style={{ color: ui.color.muted, fontWeight: 600 }}>{tG("nextStation")}</span>
         <span>{child.nextStationLabel ?? tG("noNextStation")}</span>
       </div>
+      <KhatmEstimate studentId={child.studentId} token={token} />
     </Card>
   );
 }
@@ -136,6 +175,7 @@ export default function GuardianPage() {
   const todayStr = makkahDayDate(new Date());
   const [date, setDate] = useState<string>(todayStr);
   const [children, setChildren] = useState<ChildData[] | null>(null);
+  const [token, setToken] = useState<string>("");
   const [err, setErr] = useState<string | null>(null);
 
   const load = useCallback(
@@ -150,6 +190,7 @@ export default function GuardianPage() {
           window.location.href = "/login";
           return;
         }
+        setToken(session.access_token);
         const auth = { authorization: `Bearer ${session.access_token}` };
         const qs = d !== todayStr ? `?date=${d}` : "";
         const res = await fetch(`/api/guardian/children${qs}`, { headers: auth });
@@ -244,7 +285,7 @@ export default function GuardianPage() {
           </p>
         </Card>
       ) : (
-        children.map((child) => <ChildCard key={child.studentId} child={child} />)
+        children.map((child) => <ChildCard key={child.studentId} child={child} token={token} />)
       )}
     </AppShell>
   );

@@ -86,6 +86,12 @@ export const unifiedAr = {
   bulkGrantBtn: "منح",
   bulkGrantSelectItem: "— اختر بنداً —",
   bulkGrantDone: "مُنح.",
+  // عمود تقدير الختمة
+  khatmColLabel: "يختم في",
+  khatmNoTrack: "—",
+  khatmInsufficient: "< أسبوعان",
+  khatmComplete: "أتمّ ✓",
+  khatmLoading: "…",
 } as const;
 
 export type UnifiedKey = keyof typeof unifiedAr;
