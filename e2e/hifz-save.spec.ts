@@ -2,7 +2,7 @@
  * E2E — تسجيل الحفظ في الشاشة الموحّدة
  *
  * يتحقّق من أربع حالات حرجة بعد إصلاح خلل mastered:false الافتراضيّ:
- * ١) «أتقن المقرّر ✓» يُرسل mastered:true إلى الخادم.
+ * ١) «أتقن ✓» يُرسل mastered:true إلى الخادم.
  * ٢) بعد الحفظ الناجح تُبطَل البطاقة ويُعاد تحميلها (kind:"NEW" لا "REPEAT").
  * ٣) «+ حفظ إضافي» يُرسل طلباً إلى /extra.
  * ٤) حين يكون hifzKind:"REPEAT" تظهر تحذير الإعادة.
@@ -82,7 +82,7 @@ async function setupPage(page: import("@playwright/test").Page) {
 }
 
 // ═══ ١) «أتقن المقرّر ✓» يُرسل mastered:true ═══
-test("زرّ «أتقن المقرّر» يُرسل mastered:true إلى الخادم", async ({ page }) => {
+test("زرّ «أتقن ✓» يُرسل mastered:true إلى الخادم", async ({ page }) => {
   await setupPage(page);
   await page.route("**/api/circles/c1/unified**", (r) =>
     r.fulfill({ json: { students: ONE_STUDENT, absentDefault: false } }),
@@ -103,7 +103,7 @@ test("زرّ «أتقن المقرّر» يُرسل mastered:true إلى الخ�
   await expect(page.locator("[data-testid='student-inline-card']")).toBeVisible({ timeout: 10_000 });
 
   // انقر «أتقن المقرّر ✓»
-  await page.getByText("أتقن المقرّر ✓").click();
+  await page.locator("[data-testid='hifz-btn-mastered']").click();
 
   // تحقّق أن mastered=true وُصِل للخادم
   expect(capturedBody).not.toBeNull();
@@ -132,7 +132,7 @@ test("بعد حفظٍ ناجح تُعاد بطاقة الطالب بـkind:NEW",
   await expect(page.locator("[data-testid='student-inline-card']")).toBeVisible({ timeout: 10_000 });
 
   const beforeSave = panelCallCount;
-  await page.getByText("أتقن المقرّر ✓").click();
+  await page.locator("[data-testid='hifz-btn-mastered']").click();
 
   // انتظر إعادة تحميل البطاقة (panelCache تُبطَل بعد نجاح POST)
   await page.waitForTimeout(2_000);
@@ -195,14 +195,14 @@ test("خطأ من الخادم يُظهر رسالة حمراء داخل بطا�
   await page.locator("[data-testid='student-row']").first().click();
   await expect(page.locator("[data-testid='student-inline-card']")).toBeVisible({ timeout: 10_000 });
 
-  await page.getByText("أتقن المقرّر ✓").click();
+  await page.locator("[data-testid='hifz-btn-mastered']").click();
 
   // الخطأ يظهر داخل البطاقة (ضمن data-testid=student-inline-card)
   const card = page.locator("[data-testid='student-inline-card']");
   await expect(card.getByText("خطأ في الحفظ")).toBeVisible({ timeout: 5_000 });
 
   // الزر يعود قابلاً للنقر بعد انتهاء الطلب
-  await expect(page.getByText("أتقن المقرّر ✓")).toBeEnabled({ timeout: 3_000 });
+  await expect(page.locator("[data-testid='hifz-btn-mastered']")).toBeEnabled({ timeout: 3_000 });
 });
 
 // ═══ ٧) حين hifzKind:"REPEAT" يظهر تحذير الإعادة ═══
