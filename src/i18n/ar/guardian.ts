@@ -32,6 +32,17 @@ export const guardianAr = {
   khatmDate: "يُقدَّر الختم بتاريخ: ",
   khatmRegularity: "انتظام الحضور: ",
   khatmRemaining: "الوحدات المتبقّية: ",
+  // تبويبات الأبناء
+  tabChild: "ابن",
+  attendanceHistory: "سجل الحضور — آخر ٣٠ يومًا",
+  last30days: "٣٠ يومًا",
+  noHistory: "لا سجلّ حضور بعد.",
+  circleAvgLabel: "متوسّط الحلقة",
+  circleAvgRate: "نسبة الحضور في الحلقة",
+  statsPresent: "أيام حضور",
+  statsAbsent: "أيام غياب",
+  statsTotal: "أيام مسجّلة",
+  errLoadSummary: "تعذّر تحميل ملخّص الابن.",
 } as const;
 
 export type GuardianKey = keyof typeof guardianAr;
