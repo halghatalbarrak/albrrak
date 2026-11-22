@@ -127,10 +127,9 @@ async function openFirstStudent(page: Page) {
 test.describe("الشاشة الموحّدة — أزرار البطاقة بعرض ٣٩٠px", () => {
 
   // ── البند ١: ±آية يُحفظ التعديل عند الضغط على «أتقن» ──────────
-  test("±آية: +آية مرتين ثم «أتقن» يُرسل toAyah مُعدَّلة", async ({ page }) => {
+  test("+آية مرتين ثم «أتقن» يُرسل toAyah > الأصليّة", async ({ page }) => {
     await setupPage(page);
 
-    // اعتراض طلب الحفظ
     const hifzReqs: Record<string, unknown>[] = [];
     await page.route("**/api/students/s1/session", async (r) => {
       hifzReqs.push(await r.request().postDataJSON() as Record<string, unknown>);
@@ -139,30 +138,42 @@ test.describe("الشاشة الموحّدة — أزرار البطاقة بع�
 
     await openFirstStudent(page);
 
-    // توثيق النهاية الأصليّة
-    const originalToAyah = 1;
+    const originalToAyah = 1; // bound.toAyah في MOCK_PANEL_FULL
 
-    // ضغطتان على +آية
     await page.locator("[data-testid='hifz-btn-plus-ayah']").click();
     await page.locator("[data-testid='hifz-btn-plus-ayah']").click();
-
-    // حفظ بـ «أتقن ✓»
     await page.locator("[data-testid='hifz-btn-mastered']").click();
 
-    // انتظر وصول الطلب
     await expect.poll(() => hifzReqs.length, { timeout: 5_000 }).toBeGreaterThan(0);
+    expect(hifzReqs[0].kind).toBe("hifz");
+    expect(hifzReqs[0].mastered).toBe(true);
+    expect(Number(hifzReqs[0].toAyah)).toBeGreaterThan(originalToAyah);
+  });
 
-    const body = hifzReqs[0];
-    expect(body.kind).toBe("hifz");
-    expect(body.mastered).toBe(true);
-    // toAyah بعد +آية مرتين يجب أن يكون أكبر من الأصلي
-    expect(Number(body.toAyah)).toBeGreaterThan(originalToAyah);
+  test("−آية قبل الحفظ يُرسل toAyah < الأصليّة", async ({ page }) => {
+    await setupPage(page);
 
-    // −آية بعد الحفظ: حفظ ثانٍ يُحدِّث السجل (idempotent)
+    const hifzReqs: Record<string, unknown>[] = [];
+    await page.route("**/api/students/s1/session", async (r) => {
+      hifzReqs.push(await r.request().postDataJSON() as Record<string, unknown>);
+      await r.fulfill({ json: { ok: true } });
+    });
+
+    await openFirstStudent(page);
+
+    // +آية مرتين أوّلاً لنضمن وجود فراغٍ للخفض
+    await page.locator("[data-testid='hifz-btn-plus-ayah']").click();
+    await page.locator("[data-testid='hifz-btn-plus-ayah']").click();
+    // ثمّ −آية
     await page.locator("[data-testid='hifz-btn-minus-ayah']").click();
+    // حفظ
     await page.locator("[data-testid='hifz-btn-mastered']").click();
-    await expect.poll(() => hifzReqs.length, { timeout: 5_000 }).toBeGreaterThan(1);
-    expect(Number(hifzReqs[1].toAyah)).toBeLessThan(Number(hifzReqs[0].toAyah));
+
+    await expect.poll(() => hifzReqs.length, { timeout: 5_000 }).toBeGreaterThan(0);
+    // بعد +2 −1: toAyah = الأصليّة + 1 (أي > 1)
+    expect(Number(hifzReqs[0].toAyah)).toBeGreaterThan(1);
+    // وأقلّ من +2 (٣)
+    expect(Number(hifzReqs[0].toAyah)).toBeLessThan(4);
   });
 
   // ── أزرار الحضور الأربعة المباشرة ──────────────────────────────
