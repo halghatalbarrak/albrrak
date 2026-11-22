@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { arNum, formatAyah } from "@/lib/format";
-import { ui, sp, Button, Card, Modal, Input, Badge } from "@/components/ui";
+import { ui, sp, Button, Card, Modal, Input, Badge, AppShell } from "@/components/ui";
 import { tMuddakir as t, stageLabel } from "@/i18n/ar/muddakir";
+import { useMe } from "@/lib/useMe";
 
 // شاشة المشرف واللقاء الأسبوعيّ (المرحلة ٦، §٦) — للجوّال أوّلاً. المشرف يرى حفّاظه المُسندين
 // فقط (المدير الجميع)؛ كل كتابةٍ محميّةٌ في الخادم. النصوص من القاموس، والأرقام مشرقيّة.
@@ -37,6 +38,7 @@ async function token(): Promise<string | null> {
 const errSource = (s: string) => t(s === "SUPERVISOR" ? "errorSourceSupervisor" : s === "REVIEW" ? "errorSourceReview" : "errorSourceRibat");
 
 export default function MuddakirSupervisorPage() {
+  const { me } = useMe();
   const [list, setList] = useState<Indicators[] | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "unauth" | "error">("loading");
@@ -90,7 +92,8 @@ export default function MuddakirSupervisorPage() {
   if (status === "error") return <Center><p style={{ color: ui.color.danger }}>{t("loadFailed")}</p><Button size="sm" onClick={() => void loadList()}>{t("retry")}</Button></Center>;
 
   return (
-    <main dir="rtl" style={{ background: ui.color.bg, minHeight: "100dvh", fontFamily: ui.font, color: ui.color.text, maxWidth: 520, margin: "0 auto", padding: sp(3), display: "flex", flexDirection: "column", gap: sp(3) }}>
+    <AppShell roles={me?.roles ?? []} muddakirStaff={me?.muddakirStaff ?? []} isHafiz={me?.isMuddakirHafiz} userName={me?.name} activeHref="/muddakir/supervisor" title={t("supervisorTitle")}>
+    <div style={{ maxWidth: 520, margin: "0 auto", display: "flex", flexDirection: "column", gap: sp(3) }}>
       <h1 style={{ fontSize: ui.text.lg, fontWeight: 800, margin: 0 }}>{t("supervisorTitle")}</h1>
       {msg && <p style={{ color: ui.color.success, fontSize: ui.text.xs }}>{msg}</p>}
 
@@ -239,7 +242,8 @@ export default function MuddakirSupervisorPage() {
           )}
         </>
       )}
-    </main>
+    </div>
+    </AppShell>
   );
 }
 

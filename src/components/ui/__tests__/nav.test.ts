@@ -146,4 +146,17 @@ describe("navSections — أدوار المدّكر المُحصَّرة", () =>
   it("بلا roles وبلا أدوار مدّكر ⟵ []", () => {
     expect(navSections([], [])).toEqual([]);
   });
+
+  it("حافظٌ ملتحقٌ بالمدّكر (isHafiz) ⟵ قسم «مُدَّكِر» برابط التطبيق", () => {
+    const s = navSections(["STUDENT"], [], { isHafiz: true });
+    const muddakirSection = s.find((x) => x.key === "muddakirHafiz");
+    expect(muddakirSection).toBeDefined();
+    expect(muddakirSection!.items.map((i) => i.href)).toEqual(["/muddakir"]);
+    expect(muddakirSection!.items[0].label).toBe(L.muddakirApp);
+  });
+
+  it("بلا isHafiz ⟵ لا قسم muddakirHafiz (الافتراضيّ لا يتغيّر)", () => {
+    const s = navSections(["STUDENT"]);
+    expect(s.map((x) => x.key)).not.toContain("muddakirHafiz");
+  });
 });

@@ -627,11 +627,14 @@ export async function decideExcuse(
 
     // «مستأذن مسبقًا» ليومٍ لم يُرصد بعد ولا حلقة نشطة: يبقى الاعتماد، ويُطبَّق لاحقًا
     // كسولًا عند الرصد (recordSession يقرأ decidedBy من الاعتماد المعتمَد).
+    const circleId = existing?.circleId ?? enrollment?.circleId ?? null;
     if (!existing && !enrollment) return;
+    // طالب المدّكر بلا حلقة: لا حضور حلقة.
+    if (!circleId) return;
 
     await upsertAttendance(tx, {
       studentId,
-      circleId: existing?.circleId ?? enrollment!.circleId,
+      circleId,
       date,
       status: newStatus,
       recordedBy: args.decidedBy,

@@ -90,14 +90,15 @@ export async function enrollInMuddakir(
       return { enrollmentId: active.id, alreadyEnrolled: true };
     }
 
-    const circleId = active?.circleId ?? args.circleId;
-    if (!circleId) throw verr("hafizWithoutCircle");
+    const circleId = active?.circleId ?? args.circleId ?? null;
 
     if (active) {
       await tx.enrollment.update({ where: { id: active.id }, data: { endedAt: new Date() } });
       await closeProgramHistory(tx, args.studentId);
     }
-    const created = await tx.enrollment.create({ data: { studentId: args.studentId, circleId, programId } });
+    const created = await tx.enrollment.create({
+      data: { studentId: args.studentId, circleId: circleId ?? null, programId },
+    });
     await ensureMuddakirProfile(tx, args.studentId);
     if (args.deliveryMode) {
       await tx.muddakirProfile.update({ where: { studentId: args.studentId }, data: { deliveryMode: args.deliveryMode } });

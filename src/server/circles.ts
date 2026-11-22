@@ -35,7 +35,7 @@ export async function listCircles(db: PrismaClient = prisma): Promise<CircleRow[
   const countsByCircle = new Map<string, { programKey: ProgramKey; n: number }[]>();
   for (const g of grouped) {
     const key = g.programId ? keyById.get(g.programId) : undefined;
-    if (!key) continue; // قيدٌ بلا برنامجٍ معروف — يُتجاوَز في العدّاد
+    if (!key || !g.circleId) continue; // قيدٌ بلا برنامجٍ معروف أو بلا حلقة — يُتجاوَز في العدّاد
     const list = countsByCircle.get(g.circleId) ?? [];
     list.push({ programKey: key, n: g._count._all });
     countsByCircle.set(g.circleId, list);

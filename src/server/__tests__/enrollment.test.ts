@@ -167,3 +167,15 @@ describe("transferStudent — النقل الصحيح", () => {
     await expect(transferStudent(manager.id, student.id, c2.id, prisma)).resolves.toBeDefined();
   });
 });
+
+describe("قاعدة: الحلقة مطلوبة لأيّ برنامجٍ غير المُدَّكِر", () => {
+  it("enrollStudent بلا circleId ترفض (circleNotFound)", async () => {
+    const program = await createProgram(prisma, ProgramKey.MARAQI);
+    const { student } = await createStudent(prisma);
+    const manager = await createUser(prisma);
+    // circleId فارغٌ ⟵ يرمي لأنّ الحلقة غير موجودة
+    await expect(
+      enrollStudent({ studentId: student.id, circleId: "", programId: program.id, actorId: manager.id })
+    ).rejects.toMatchObject({ key: "circleNotFound" });
+  });
+});

@@ -40,6 +40,7 @@ async function assertActorTeachesStudent(
   });
   if (!enrollment) throw verr("sessionStudentNotEnrolled");
   if (actor.roles.some((r) => r === Role.SUPER_ADMIN || r === Role.CIRCLE_MANAGER)) return;
+  if (!enrollment.circleId) throw aerr("sessionOwnStudentsOnly");
   const link = await db.circleTeacher.findFirst({
     where: { circleId: enrollment.circleId, teacherId: actorId, endedAt: null },
     select: { circleId: true },
