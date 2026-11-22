@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { computeAge } from "./age-policy";
 
 import { emitEvent } from "./events";
 import { isSupervisorCapable } from "./muddakir-staff";
@@ -71,8 +72,18 @@ export async function enrollInMuddakir(
   args: EnrollMuddakirArgs,
   db: PrismaClient = prisma,
 ): Promise<EnrollMuddakirResult> {
-  const student = await db.student.findUnique({ where: { id: args.studentId }, select: { id: true } });
+  const student = await db.student.findUnique({
+    where: { id: args.studentId },
+    select: { id: true, user: { select: { birthDate: true } } },
+  });
   if (!student) throw verr("hafizNotFound");
+
+  // م٤: المُدَّكِر لمن عمره ١٣ فأكثر
+  const bd = student.user.birthDate;
+  if (bd && computeAge(bd, new Date()) < 13) {
+    throw verr("notYetThirteen");
+  }
+
   const programId = await muddakirProgramId(db);
 
   const result = await db.$transaction(async (tx) => {
