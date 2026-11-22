@@ -31,8 +31,13 @@ const FAKE_STATS = {
 
 test("صفحة المانح تعرض المؤشّرات الخمسة", async ({ page }) => {
   await page.addInitScript((s) => {
-    localStorage.setItem("sb-rsrsngtjbeschsslpklh-auth-token", s);
+    const orig = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key: string) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) return s;
+      return orig.call(this, key);
+    };
   }, FAKE_DONOR_SESSION);
+  await page.route("**supabase**", (r) => r.fulfill({ json: {} }));
 
   await page.route("**/api/donor/stats", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(FAKE_STATS) }),
@@ -56,8 +61,13 @@ test("صفحة المانح تعرض المؤشّرات الخمسة", async ({ 
 
 test("استجابة /api/donor/stats لا تحتوي على studentId أو اسم", async ({ page }) => {
   await page.addInitScript((s) => {
-    localStorage.setItem("sb-rsrsngtjbeschsslpklh-auth-token", s);
+    const orig = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key: string) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) return s;
+      return orig.call(this, key);
+    };
   }, FAKE_DONOR_SESSION);
+  await page.route("**supabase**", (r) => r.fulfill({ json: {} }));
 
   let captured: unknown = null;
   await page.route("**/api/donor/stats", async (route) => {
@@ -94,8 +104,17 @@ test("مستخدمٌ بدور TEACHER يتلقّى ٤٠٣ من API المانح"
     user: { id: "teacher-1", email: "teach@t.com", role: "authenticated" },
   });
   await page.addInitScript((s) => {
-    localStorage.setItem("sb-rsrsngtjbeschsslpklh-auth-token", s);
+    const orig = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key: string) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) return s;
+      return orig.call(this, key);
+    };
   }, teacherSession);
+  await page.route("**supabase**", (r) => r.fulfill({ json: {} }));
+
+  await page.route("**/api/me", (r) =>
+    r.fulfill({ json: { id: "teacher-1", name: "معلّم", roles: ["TEACHER"], muddakirStaff: [] } }),
+  );
 
   let status = 0;
   await page.route("**/api/donor/stats", async (route) => {
@@ -104,5 +123,6 @@ test("مستخدمٌ بدور TEACHER يتلقّى ٤٠٣ من API المانح"
   });
 
   await page.goto("/admin/donor");
+  await page.waitForLoadState("networkidle");
   expect(status).toBe(403);
 });
