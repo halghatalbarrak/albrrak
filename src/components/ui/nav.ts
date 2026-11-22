@@ -65,6 +65,11 @@ export function navSections(roles: string[], muddakirStaff: string[] = [], optio
     ]);
   }
 
+  // ٥ب. التقارير — المعلّم والمشرف/المدير والطالب.
+  if (teacher || supervises || has("STUDENT")) {
+    push("reports", L.grpReports, [{ label: L.dailyReport, href: "/admin/report" }]);
+  }
+
   // ٦. التحفيز — المشرف/المدير.
   if (supervises) {
     push("motivate", L.grpMotivate, [

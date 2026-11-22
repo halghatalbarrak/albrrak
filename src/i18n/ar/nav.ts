@@ -18,6 +18,7 @@ export const navAr = {
   grpMarket: "البيدر",
   grpLearn: "التعلّم",
   grpMessages: "الرسائل",
+  grpReports: "التقارير",
   grpDonor: "المانح",
   grpGuardian: "متابعة الأبناء",
 
@@ -59,6 +60,7 @@ export const navAr = {
   myPage: "صفحتي",
   myJourney: "رحلتي",
   messages: "الرسائل",
+  dailyReport: "التقرير اليومي",
   donorDashboard: "لوحة المانح",
   guardianChildren: "الأبناء",
 
