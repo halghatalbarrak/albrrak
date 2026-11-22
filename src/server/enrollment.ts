@@ -17,8 +17,8 @@ import { verr } from "./errors";
 
 export interface EnrollmentRow {
   id: string;
-  circleId: string;
-  circleNameAr: string;
+  circleId: string | null;
+  circleNameAr: string | null;
   startedAt: Date;
   endedAt: Date | null;
   /** برنامج القيد الفعليّ (ق١) — يُملأ للقيد النشط عبر المحلّل الواحد. */
@@ -52,7 +52,7 @@ export async function getActiveEnrollment(
     },
   });
   return e
-    ? { id: e.id, circleId: e.circleId, circleNameAr: e.circle.nameAr, startedAt: e.startedAt, endedAt: e.endedAt, programKey: view.programKey, pending: view.pending }
+    ? { id: e.id, circleId: e.circleId, circleNameAr: e.circle?.nameAr ?? null, startedAt: e.startedAt, endedAt: e.endedAt, programKey: view.programKey, pending: view.pending }
     : null;
 }
 
@@ -75,7 +75,7 @@ export async function getEnrollmentHistory(
   return rows.map((e) => ({
     id: e.id,
     circleId: e.circleId,
-    circleNameAr: e.circle.nameAr,
+    circleNameAr: e.circle?.nameAr ?? null,
     startedAt: e.startedAt,
     endedAt: e.endedAt,
   }));
@@ -156,7 +156,7 @@ export async function enrollStudent(
     return {
       id: created.id,
       circleId: created.circleId,
-      circleNameAr: created.circle.nameAr,
+      circleNameAr: created.circle?.nameAr ?? null,
       startedAt: created.startedAt,
       endedAt: created.endedAt,
     };
@@ -265,7 +265,7 @@ export async function transferStudent(
   if (!active) throw verr("noActiveEnrollmentForStudent");
   if (active.circleId === circleId) throw verr("studentAlreadyInThisCircle");
 
-  const fromName = active.circle.nameAr;
+  const fromName = active.circle?.nameAr ?? "—";
   await db.$transaction([
     db.enrollment.updateMany({
       where: { studentId, endedAt: null },

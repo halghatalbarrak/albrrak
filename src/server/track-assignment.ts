@@ -68,7 +68,8 @@ export async function assignMaraqiTrack(
     if (!actor) throw aerr("unauthorized");
     const isManager = actor.roles.some((r) => (MANAGER_ROLES as Set<string>).has(r));
     if (!isManager) {
-      // المعلّم: يعيَّن فقط لطلاب حلقته.
+      // المعلّم: يعيَّن فقط لطلاب حلقته (طالب المدّكر بلا حلقة: مديرٌ فقط).
+      if (!enrollment.circleId) throw aerr("unauthorized");
       const teaches = await (db as PrismaClient).circleTeacher.findFirst({
         where: { teacherId: actorId, circleId: enrollment.circleId, endedAt: null },
         select: { circleId: true },

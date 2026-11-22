@@ -81,6 +81,8 @@ async function activeCircle(
   // البرنامج صفةٌ في القيد (لا ارتداد للحلقة): قيدٌ بلا برنامجٍ خطأُ بيانات.
   const programKey = enrollment.program?.key;
   if (!programKey) throw verr("enrollmentHasNoProgram");
+  // طالب المدّكر بلا حلقة لا تُسجَّل له جلسةٌ عبر مسار الحلقة.
+  if (!enrollment.circleId) throw verr("sessionStudentHasNoCircle");
   return { studentId, circleId: enrollment.circleId, programKey };
 }
 

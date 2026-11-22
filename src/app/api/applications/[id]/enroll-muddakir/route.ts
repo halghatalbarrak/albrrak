@@ -3,7 +3,6 @@ import { acceptApplication } from "@/server/application";
 import { enrollInMuddakir } from "@/server/muddakir-enrollment";
 import { requireRoles } from "@/server/auth";
 import { errorResponse } from "@/server/http";
-import { verr } from "@/server/errors";
 
 // POST /api/applications/[id]/enroll-muddakir
 // يقبل الطلب ويُلحق الطالب بالمُدَّكِر في خطوةٍ واحدة (المدير فقط).
@@ -21,8 +20,6 @@ export async function POST(
       supervisorId?: string;
       deliveryMode?: string;
     };
-
-    if (!body.circleId) throw verr("circleRequired");
 
     const accepted = await acceptApplication({ applicationId: id, decidedBy: actor.id });
 

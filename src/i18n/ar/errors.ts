@@ -276,6 +276,7 @@ export const errorsAr = {
 
   // الجلسات (daily-session · qaidah-session · session-deferral · stage-exam · stage-exam-leave)
   sessionStudentNotEnrolledActive: "الطالب غير منتسبٍ لحلقة نشطة.",
+  sessionStudentHasNoCircle: "طالب المدّكر بلا حلقة — سجّل جلسته من تطبيق المدّكر.",
   sessionStudentNotEnrolled: "الطالب غير منتسبٍ لحلقة.",
   sessionOwnStudentsOnly: "لا تَرصد إلا جلسات طلابك (§٨٫٣).",
   sessionDailyForMaraqi: "الجلسة اليومية لطلاب مراقي.",

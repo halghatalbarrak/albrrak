@@ -96,7 +96,7 @@ export async function listStudentsForAdmin(
       age: r.user.birthDate ? computeAge(r.user.birthDate, asOf) : null,
       state: r.state,
       gender: r.user.gender,
-      circle: activeEnrollment?.circle.nameAr ?? null,
+      circle: activeEnrollment?.circle?.nameAr ?? null,
       guardian: g ? (g.phone ? `${g.nameAsInId} (${g.phone})` : g.nameAsInId) : null,
       pendingPlacementId: pendingByStudent.get(r.id) ?? null,
       enrollmentId: activeEnrollment?.id ?? null,
