@@ -15,6 +15,7 @@ import { navAr } from "@/i18n/ar/nav";
 import { token, type Circle, type DayLock, type GrantItem, type MarkAttFn, type PanelDetail, type PostFn, type Student } from "./_types";
 import { DayLockBar } from "./_DayLockBar";
 import { AutoAssignMissingBtn } from "./_AutoAssignMissingBtn";
+import { AddStudentInline } from "./_AddStudentInline";
 
 // تحميلٌ كسول — لا تُجلب حتى تُفتح أوّل بطاقة / يُفعَّل عرض البطاقات.
 const StudentPanel = dynamic(
@@ -82,6 +83,7 @@ export default function UnifiedPage() {
   const [pendingStudents, setPendingStudents] = useState<ReadonlySet<string>>(new Set());
   const [khatmSort, setKhatmSort] = useState(false);
   const [khatmCache, setKhatmCache] = useState<Map<string, { kind: string; ts: number | null }>>(new Map());
+  const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -349,6 +351,37 @@ export default function UnifiedPage() {
       {msg && <p style={{ color: msgKind === "ok" ? ui.color.success : ui.color.danger, fontSize: ui.text.xs, marginBottom: sp(2) }}>{msg}</p>}
 
       <AutoAssignMissingBtn students={students} circleId={circleId} onDone={() => void load(circleId)} />
+
+      {/* زر إضافة طالب — للمعلّم في حلقته وللمدير */}
+      {(me?.roles.includes("TEACHER") || me?.roles.includes("CIRCLE_MANAGER") || me?.roles.includes("SUPER_ADMIN")) && circleId && (
+        showAddForm ? (
+          <AddStudentInline
+            circleId={circleId}
+            onDone={(studentId, duplicate) => {
+              setShowAddForm(false);
+              void load(circleId);
+              if (duplicate) {
+                setMsg("الطالب موجود بالفعل في هذه الحلقة."); setMsgKind("ok");
+              } else {
+                setMsg("أُضيف الطالب بنجاح — أكمِل إعداده."); setMsgKind("ok");
+              }
+              selectStudent(studentId);
+            }}
+            onCancel={() => setShowAddForm(false)}
+          />
+        ) : (
+          <div style={{ marginBottom: sp(3) }}>
+            <Button
+              data-testid="add-student-btn"
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowAddForm(true)}
+            >
+              + إضافة طالب
+            </Button>
+          </div>
+        )
+      )}
 
       <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", marginBottom: sp(3) }}>
         <Button size="sm" variant={view === "list" ? "primary" : "ghost"} onClick={() => switchView("list")}>{tu("viewList")}</Button>
