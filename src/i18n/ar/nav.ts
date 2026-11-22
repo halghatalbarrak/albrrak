@@ -17,6 +17,7 @@ export const navAr = {
   grpMarket: "البيدر",
   grpLearn: "التعلّم",
   grpMessages: "الرسائل",
+  grpDonor: "المانح",
 
   // ── مداخل ──
   home: "الرئيسية",
@@ -55,6 +56,7 @@ export const navAr = {
   myPage: "صفحتي",
   myJourney: "رحلتي",
   messages: "الرسائل",
+  donorDashboard: "لوحة المانح",
 
   // ── عناوين التبويبات (شريط فوق المسارات المتقاربة) ──
   tabApplications: "الطلبات",

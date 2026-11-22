@@ -27,6 +27,7 @@ enum Role {
   STUDENT
   GUARDIAN
   SELLER
+  DONOR
 }
 
 enum Gender {
