@@ -61,6 +61,7 @@ export const navAr = {
   myJourney: "رحلتي",
   messages: "الرسائل",
   dailyReport: "التقرير اليومي",
+  analyticsOverview: "التحليلات الموحّدة",
   donorDashboard: "لوحة المانح",
   guardianChildren: "الأبناء",
 
