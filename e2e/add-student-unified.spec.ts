@@ -61,10 +61,13 @@ const NEW_STUDENT = {
 
 async function setupMocks(page: Page, addResult = { studentId: "std-new", duplicate: false }) {
   await page.addInitScript((session) => {
-    const key = `sb-${location.host.replace(/\./g, "")}-auth-token`;
-    localStorage.setItem(key, session);
-    localStorage.setItem("supabase.auth.token", session);
+    const orig = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key: string) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) return session;
+      return orig.call(this, key);
+    };
   }, FAKE_SESSION);
+  await page.route("**supabase**", (r) => r.fulfill({ json: {} }));
 
   await page.route("**/api/me", async (route) => {
     await route.fulfill({
