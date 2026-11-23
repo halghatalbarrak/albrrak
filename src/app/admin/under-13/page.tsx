@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { AppShell, Badge, Card, Skeleton, sp, ui } from "@/components/ui";
 import { useMe } from "@/lib/useMe";
+import { tUsers } from "@/i18n/ar/users";
 
 interface Under13Row {
   id: string;
@@ -62,7 +63,7 @@ export default function Under13Page() {
       const res = await fetch("/api/admin/under-13", {
         headers: { authorization: `Bearer ${session.access_token}` },
       });
-      if (!res.ok) { setErr("تعذّر التحميل."); return; }
+      if (!res.ok) { setErr(tUsers("under13ErrLoad")); return; }
       setData(await res.json() as PageData);
     })();
   }, []);
@@ -72,17 +73,16 @@ export default function Under13Page() {
   return (
     <AppShell roles={me.roles} userName={me.name ?? ""} activeHref="/admin" title="دون ١٣ — حسابات محجوبة" crumbs={CRUMBS}>
       <p style={{ color: ui.color.muted, fontSize: ui.text.xs, marginBottom: sp(3) }}>
-        هذه الحسابات مُنشأةٌ قبل تطبيق م٤، ومحجوبٌ دخولها تلقائيًّا. لا حذف — الكشف فقط.
-        تاريخ الميلاد الفارغ لا يمنع الدخول — يظهر هنا للاستكمال.
+        {tUsers("under13Note")}
       </p>
       {err && <p style={{ color: ui.color.danger }}>{err}</p>}
       {data === null ? <Skeleton /> : (
         <>
           <h3 style={{ fontSize: ui.text.xs, fontWeight: 700, marginBottom: sp(2), marginTop: 0 }}>
-            دون الثالثة عشرة ({data.under13.length})
+            {`دون الثالثة عشرة (${data.under13.length})`}
           </h3>
           {data.under13.length === 0 ? (
-            <Card><p style={{ color: ui.color.muted, textAlign: "center", margin: 0 }}>لا حسابات دون ١٣ سنة.</p></Card>
+            <Card><p style={{ color: ui.color.muted, textAlign: "center", margin: 0 }}>{tUsers("under13EmptyUnder")}</p></Card>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: sp(2), marginBottom: sp(4) }}>
               {data.under13.map((r) => <RowCard key={r.id} r={r} />)}
@@ -90,10 +90,10 @@ export default function Under13Page() {
           )}
 
           <h3 style={{ fontSize: ui.text.xs, fontWeight: 700, marginBottom: sp(2), marginTop: sp(4) }}>
-            تاريخ ميلاد غير مسجّل ({data.noBirthDate.length})
+            {`تاريخ ميلاد غير مسجّل (${data.noBirthDate.length})`}
           </h3>
           {data.noBirthDate.length === 0 ? (
-            <Card><p style={{ color: ui.color.muted, textAlign: "center", margin: 0 }}>لا حسابات بتاريخ ميلاد مفقود.</p></Card>
+            <Card><p style={{ color: ui.color.muted, textAlign: "center", margin: 0 }}>{tUsers("under13EmptyNoBd")}</p></Card>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: sp(2) }}>
               {data.noBirthDate.map((r) => <RowCard key={r.id} r={r} />)}
