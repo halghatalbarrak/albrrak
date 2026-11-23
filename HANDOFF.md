@@ -189,7 +189,7 @@
 | #264 | feat(guardian): ولي الأمر — تبويبات الأبناء + سجل حضور + IDOR | مدموج ✅ |
 | #265 | feat(unified): إضافة طالب سريعة + AuditLog + E2E | مدموج ✅ |
 | #266 | feat(estimate-khatm): estimateKhatmDate + API + عرض ولي الأمر/الموحّد/المانح | مدموج ✅ |
-| #267 | feat(under-13): م٤ — منع الحسابات لمن دون ١٣ + listUsersNoBirthDate + E2E 10yo/14yo | بانتظار CI ⏳ |
+| #267 | feat(under-13): م٤ — منع الحسابات لمن دون ١٣ + listUsersNoBirthDate + E2E 10yo/14yo | مدموج ✅ |
 
 ---
 
