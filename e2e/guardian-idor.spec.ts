@@ -118,14 +118,14 @@ test.describe("صفحة ولي الأمر — التبويبات وملخّص ا
     // ملخّص متوسّط الحلقة ظاهر
     const circleAvg = page.locator("[data-testid='circle-avg']");
     await expect(circleAvg).toBeVisible({ timeout: 8000 });
-    await expect(circleAvg).toContainText("٨٢٪");
+    await expect(circleAvg).toContainText("82٪");
   });
 
   test("النقر على تبويب الابن الثاني يُحمِّل ملخّصه", async ({ page }) => {
     await page.locator("[data-testid='tab-std-2']").click();
     const circleAvg = page.locator("[data-testid='circle-avg']");
     await expect(circleAvg).toBeVisible({ timeout: 8000 });
-    await expect(circleAvg).toContainText("٧٥٪");
+    await expect(circleAvg).toContainText("75٪");
   });
 
   test("لقطة شاشة 390px", async ({ page }) => {
