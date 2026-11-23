@@ -49,7 +49,7 @@ const SUMMARY_STD1 = {
 };
 
 async function setupMocks(page: Page) {
-  // وضع جلسة وهميّة
+  // وضع جلسة وهميّة — نعترض getItem لأيّ مفتاح sb-*-auth-token
   await page.addInitScript((session) => {
     const orig = Storage.prototype.getItem;
     Storage.prototype.getItem = function (key: string) {
@@ -145,6 +145,7 @@ test.describe("IDOR — رفض وليّ الأمر لطالب لا يملكه", 
     // نتحقّق عبر fetch مباشر من الصفحة
     await setupMocks(page);
     await page.goto("/guardian");
+    await page.waitForLoadState("networkidle");
 
     await page.waitForLoadState("networkidle");
     const status = await page.evaluate(async () => {
