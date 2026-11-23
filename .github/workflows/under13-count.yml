@@ -1,0 +1,29 @@
+name: Under-13 count (read-only)
+
+# قراءةٌ فقط: حصر الحسابات التي يُحجب دخولها بم٤ (عمر < ١٣ + authId)
+# ومن تاريخ ميلادهم غير مسجَّل. لا تغيير في البيانات.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  count:
+    name: count under-13 blocked accounts (read-only)
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Count under-13 (read-only)
+        run: node scripts/ops/count-under13-blocked.mjs
