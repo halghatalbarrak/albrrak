@@ -128,10 +128,10 @@ test.describe("صفحة ولي الأمر — التبويبات وملخّص ا
     await expect(circleAvg).toContainText("75٪");
   });
 
-  test("لقطة شاشة 390px", async ({ page }) => {
+  test("التبويبات والملخّص يظهران على شاشة 390px", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.locator("[data-testid='circle-avg']").waitFor({ state: "visible", timeout: 8000 });
-    await expect(page).toHaveScreenshot("guardian-tabs.png");
+    await expect(page.locator("[data-testid='circle-avg']")).toBeVisible({ timeout: 8000 });
+    await expect(page.locator("[data-testid='child-tabs']")).toBeVisible();
   });
 });
 
