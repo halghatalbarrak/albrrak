@@ -249,7 +249,6 @@ export default function GuardianPage() {
   const [children, setChildren] = useState<ChildData[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  // التبويبات
   const [activeChildId, setActiveChildId] = useState<string | null>(null);
   const [summaries, setSummaries] = useState<Record<string, ChildSummary>>({});
   const [summaryLoading, setSummaryLoading] = useState(false);
