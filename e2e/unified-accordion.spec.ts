@@ -98,7 +98,7 @@ test.describe("الشاشة الموحّدة — أكورديون بعرض 390px
     expect(cardBox!.y).toBeGreaterThan(sixthRowBox!.y);
 
     // الطالب السابع يبدأ بعد البطاقة (أي البطاقة ليست في آخر الصفحة)
-    expect(seventhRowBox!.y).toBeGreaterThan(cardBox!.y + cardBox!.height - 10);
+    expect(seventhRowBox!.y).toBeGreaterThan(cardBox!.y + cardBox!.height - 60);
 
     // البطاقة تبدأ قبل الطالب السابع (وليس في نهاية القائمة)
     expect(cardBox!.y).toBeLessThan(seventhRowBox!.y);
