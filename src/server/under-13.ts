@@ -42,3 +42,23 @@ export async function listUnder13WithAccounts(
       hasAuthAccount: !!u.authId,
     }));
 }
+
+/** يُعيد المستخدمين الذين لديهم authId وتاريخ ميلادهم غير مسجَّل (null). */
+export async function listUsersNoBirthDate(
+  db: PrismaClient = prisma,
+): Promise<Under13User[]> {
+  const rows = await db.user.findMany({
+    where: { birthDate: null, authId: { not: null }, deletedAt: null },
+    select: { id: true, nameAsInId: true, roles: true, isActive: true },
+    orderBy: { nameAsInId: "asc" },
+  });
+  return rows.map((u) => ({
+    id: u.id,
+    name: u.nameAsInId,
+    birthDate: null,
+    age: null,
+    roles: u.roles,
+    isActive: u.isActive,
+    hasAuthAccount: true,
+  }));
+}

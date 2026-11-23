@@ -13,7 +13,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { completeActivation } from "../user-management";
 import { enrollInMuddakir } from "../muddakir-enrollment";
-import { listUnder13WithAccounts } from "../under-13";
+import { listUnder13WithAccounts, listUsersNoBirthDate } from "../under-13";
 import { ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
 import { createUser, createStudent } from "../testing/factories";
@@ -50,10 +50,10 @@ describe("م٤ — completeActivation", () => {
     expect((err as ValidationError).key).toBe("noLoginUnderThirteen");
   });
 
-  it("ينجح لمستخدم عمره ١٣", async () => {
-    const user = await createUser(prisma, { roles: [Role.STUDENT], authId: "auth-13yo" });
-    await prisma.user.update({ where: { id: user.id }, data: { birthDate: ageDate(13) } });
-    const token = "tok-13yo";
+  it("ينجح لمستخدم عمره ١٤", async () => {
+    const user = await createUser(prisma, { roles: [Role.STUDENT], authId: "auth-14yo" });
+    await prisma.user.update({ where: { id: user.id }, data: { birthDate: ageDate(14) } });
+    const token = "tok-14yo";
     await prisma.activationLink.create({
       data: {
         userId: user.id, token,
@@ -117,6 +117,32 @@ describe("م٤ — listUnder13WithAccounts", () => {
     await prisma.user.update({ where: { id: u3.id }, data: { birthDate: ageDate(15), authId: "auth-15yo" } });
 
     const list = await listUnder13WithAccounts(new Date(), prisma);
+    const ids = list.map((r) => r.id);
+    expect(ids).toContain(u1.id);
+    expect(ids).not.toContain(u2.id);
+    expect(ids).not.toContain(u3.id);
+  });
+});
+
+// ══════════════════════════════════════════════════
+// listUsersNoBirthDate
+// ══════════════════════════════════════════════════
+
+describe("م٤ — listUsersNoBirthDate", () => {
+  it("تُعيد مستخدمين ذوي authId وبلا birthDate فقط", async () => {
+    // u1: بلا birthDate مع authId ← يظهر
+    const u1 = await createUser(prisma, { roles: [Role.STUDENT] });
+    await prisma.user.update({ where: { id: u1.id }, data: { birthDate: null, authId: "auth-nobd" } });
+
+    // u2: بلا birthDate وبلا authId ← لا يظهر
+    const u2 = await createUser(prisma, { roles: [Role.STUDENT] });
+    await prisma.user.update({ where: { id: u2.id }, data: { birthDate: null, authId: null } });
+
+    // u3: مع birthDate ← لا يظهر
+    const u3 = await createUser(prisma, { roles: [Role.STUDENT] });
+    await prisma.user.update({ where: { id: u3.id }, data: { birthDate: ageDate(14), authId: "auth-14yo-bd" } });
+
+    const list = await listUsersNoBirthDate(prisma);
     const ids = list.map((r) => r.id);
     expect(ids).toContain(u1.id);
     expect(ids).not.toContain(u2.id);
