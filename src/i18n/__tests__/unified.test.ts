@@ -99,6 +99,12 @@ describe("قاموس الشاشة الموحّدة (العربيّة)", () => {
       khatmInsufficient: "< أسبوعان",
       khatmComplete: "أتمّ ✓",
       khatmLoading: "…",
+      addStudentBtn: "+ إضافة طالب",
+      addStudentName: "الاسم",
+      addStudentBirthDate: "تاريخ الميلاد",
+      addStudentGender: "الجنس",
+      addStudentGuardianPhone: "جوال ولي الأمر",
+      addStudentProgram: "البرنامج",
     };
     for (const key of Object.keys(expected) as (keyof typeof unifiedAr)[]) {
       expect(tUnified(key)).toBe(expected[key]);
