@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { computeAge } from "./age-policy";
 import { type AuthProvider, defaultAuthProvider } from "./auth-provider";
 import { syntheticEmail, normalizeSaudiPhone } from "./account";
 import { emitEvent } from "./events";
@@ -537,8 +538,13 @@ export async function completeActivation(
   if (link.usedAt) throw verr("activationLinkUsed");
   if (link.expiresAt.getTime() < Date.now()) throw verr("activationLinkExpired");
 
-  const user = await db.user.findUnique({ where: { id: link.userId }, select: { authId: true } });
+  const user = await db.user.findUnique({ where: { id: link.userId }, select: { authId: true, birthDate: true } });
   if (!user?.authId) throw verr("userNoLogin");
+
+  // م٤: لا تفعيل لمن دون ١٣
+  if (user.birthDate && computeAge(user.birthDate, new Date()) < 13) {
+    throw verr("noLoginUnderThirteen");
+  }
 
   await provider.setPassword({ authId: user.authId, password });
 

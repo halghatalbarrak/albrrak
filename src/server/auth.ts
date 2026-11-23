@@ -6,6 +6,7 @@ import {
 } from "jose";
 import { Role, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { computeAge } from "./age-policy";
 import { AuthenticationError, aerr, authErr } from "./errors";
 import { enterRequestContext, setImpersonator } from "./request-context";
 import { parseImpCookie, verifyImpersonation } from "./impersonation";
@@ -116,9 +117,13 @@ export async function requireAuth(
   const sub = await verifiedSub(req);
   const realUser = await db.user.findUnique({
     where: { authId: sub },
-    select: { id: true, roles: true, isActive: true },
+    select: { id: true, roles: true, isActive: true, birthDate: true },
   });
   if (!realUser || !realUser.isActive) {
+    throw aerr("accountMissingOrDisabled");
+  }
+  // م٤: من دون ١٣ ليس له دخول — يُعامَل كحسابٍ معطَّل
+  if (realUser.birthDate && computeAge(realUser.birthDate, new Date()) < 13) {
     throw aerr("accountMissingOrDisabled");
   }
 
