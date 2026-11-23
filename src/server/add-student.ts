@@ -5,7 +5,7 @@
 import { Gender, Role, StudentState, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { findOrCreateGuardian } from "./account";
-import { aerr, ValidationError } from "./errors";
+import { aerr, verr } from "./errors";
 
 export interface QuickAddStudentInput {
   nameAsInId: string;
@@ -49,9 +49,9 @@ export async function quickAddStudent(
   input: QuickAddStudentInput,
   db: PrismaClient = prisma,
 ): Promise<QuickAddResult> {
-  if (!input.nameAsInId.trim()) throw new ValidationError("الاسم مطلوب");
-  if (!input.guardianPhone.trim()) throw new ValidationError("جوال ولي الأمر مطلوب");
-  if (!input.programId) throw new ValidationError("البرنامج مطلوب");
+  if (!input.nameAsInId.trim()) throw verr("quickAddNameRequired");
+  if (!input.guardianPhone.trim()) throw verr("quickAddGuardianPhoneRequired");
+  if (!input.programId) throw verr("quickAddProgramRequired");
 
   // تحقّق من التكرار: نفس الاسم في نفس الحلقة (إنذار لا حجب)
   const existingEnrollment = await db.enrollment.findFirst({

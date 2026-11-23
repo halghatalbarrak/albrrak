@@ -377,7 +377,7 @@ export default function UnifiedPage() {
               variant="ghost"
               onClick={() => setShowAddForm(true)}
             >
-              + إضافة طالب
+              {tu("addStudentBtn")}
             </Button>
           </div>
         )

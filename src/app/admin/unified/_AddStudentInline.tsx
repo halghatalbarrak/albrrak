@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, Card, sp, ui } from "@/components/ui";
+import { tUnified as tu } from "@/i18n/ar/unified";
 import { token } from "./_types";
 
 interface Program { id: string; key: string; nameAr: string }
@@ -92,12 +93,12 @@ export function AddStudentInline({ circleId, defaultProgramId, onDone, onCancel 
       style={{ marginBottom: sp(4), border: `1px solid ${ui.color.goldLine}` }}
     >
       <div style={{ fontWeight: 700, fontSize: ui.text.base, marginBottom: sp(3) }}>
-        + إضافة طالب
+        {tu("addStudentBtn")}
       </div>
       <form onSubmit={(e) => void handleSubmit(e)}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: sp(2), marginBottom: sp(2) }}>
           <label style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
-            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>الاسم</span>
+            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("addStudentName")}</span>
             <input
               data-testid="add-student-name"
               style={iStyle}
@@ -107,7 +108,7 @@ export function AddStudentInline({ circleId, defaultProgramId, onDone, onCancel 
             />
           </label>
           <label style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
-            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>تاريخ الميلاد</span>
+            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("addStudentBirthDate")}</span>
             <input
               data-testid="add-student-birthdate"
               type="date"
@@ -118,7 +119,7 @@ export function AddStudentInline({ circleId, defaultProgramId, onDone, onCancel 
             />
           </label>
           <label style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
-            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>الجنس</span>
+            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("addStudentGender")}</span>
             <select
               data-testid="add-student-gender"
               style={iStyle}
@@ -129,7 +130,7 @@ export function AddStudentInline({ circleId, defaultProgramId, onDone, onCancel 
             </select>
           </label>
           <label style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
-            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>جوال ولي الأمر</span>
+            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("addStudentGuardianPhone")}</span>
             <input
               data-testid="add-student-guardian-phone"
               style={iStyle}
@@ -140,7 +141,7 @@ export function AddStudentInline({ circleId, defaultProgramId, onDone, onCancel 
             />
           </label>
           <label style={{ display: "flex", flexDirection: "column", gap: sp(1), gridColumn: "1 / -1" }}>
-            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>البرنامج</span>
+            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("addStudentProgram")}</span>
             <select
               data-testid="add-student-program"
               style={iStyle}
@@ -165,7 +166,7 @@ export function AddStudentInline({ circleId, defaultProgramId, onDone, onCancel 
             {loading ? "جارٍ الحفظ…" : "حفظ"}
           </Button>
           <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-            إلغاء
+            {tu("cancelBtn")}
           </Button>
         </div>
       </form>

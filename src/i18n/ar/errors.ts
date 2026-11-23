@@ -469,6 +469,11 @@ export const errorsAr = {
   circleNameDuplicate: "اسم الحلقة موجودٌ فعلاً في حلقةٍ أخرى.",
   circleNameInTrash: "هذا الاسم موجودٌ في حلقةٍ محذوفة — أعِدها من قائمة الحلقات المؤرشفة.",
 
+  // إضافة طالب سريعة (add-student.ts)
+  quickAddNameRequired: "الاسم مطلوب",
+  quickAddGuardianPhoneRequired: "جوال ولي الأمر مطلوب",
+  quickAddProgramRequired: "البرنامج مطلوب",
+
   // الحذف الناعم — شاشة/موعد/بند/ثمرة/طلب (P4 — سلة المحذوفات)
   displayScreenAlreadyDeleted: "الشاشة محذوفةٌ فعلاً.",
   displayScheduleAlreadyDeleted: "الموعد محذوفٌ فعلاً.",

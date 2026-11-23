@@ -92,6 +92,13 @@ export const unifiedAr = {
   khatmInsufficient: "< أسبوعان",
   khatmComplete: "أتمّ ✓",
   khatmLoading: "…",
+  // نموذج إضافة طالب سريعة
+  addStudentBtn: "+ إضافة طالب",
+  addStudentName: "الاسم",
+  addStudentBirthDate: "تاريخ الميلاد",
+  addStudentGender: "الجنس",
+  addStudentGuardianPhone: "جوال ولي الأمر",
+  addStudentProgram: "البرنامج",
 } as const;
 
 export type UnifiedKey = keyof typeof unifiedAr;
