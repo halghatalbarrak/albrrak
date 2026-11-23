@@ -63,24 +63,31 @@ test("وليٌّ مرتبطٌ بأبناء يرى بطاقاتهم", async ({ pa
   await page.route("**/api/me", (r) => r.fulfill({ json: ME_RESPONSE }));
   await page.route("**/api/guardian/children", (r) => r.fulfill({ json: CHILDREN_WITH_DATA }));
 
+  const emptySummary = { history: [], circleAvgRate: null, presentCount: 0, absentCount: 0, totalDays: 0 };
+  await page.route("**/api/guardian/children/student-1", (r) =>
+    r.fulfill({ json: { ...emptySummary, studentId: "student-1" } }),
+  );
+  await page.route("**/api/guardian/children/student-2", (r) =>
+    r.fulfill({ json: { ...emptySummary, studentId: "student-2" } }),
+  );
+
   await page.goto("/guardian");
   await page.waitForLoadState("networkidle");
 
-  // يرى اسم الابن الأول (exact لتجنّب تطابق العنصر والأب)
+  // يرى اسم الابن الأول في التبويبات
   await expect(page.getByText("محمد", { exact: true }).first()).toBeVisible();
-  // يرى اسم الابن الثاني
+  // يرى اسم الابن الثاني في التبويبات
   await expect(page.getByText("عبدالرحمن", { exact: true }).first()).toBeVisible();
 
-  // الحضور: محمد حاضر، عبدالرحمن غائب
+  // بيانات الابن الأوّل (التبويب الافتراضيّ): حاضر + ٤٢ نقطة + الحزب الثاني
   await expect(page.getByText("حاضر", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("غائب", { exact: true }).first()).toBeVisible();
-
-  // النقاط بأرقام مشرقية (٤٢)
   await expect(page.getByText(/٤٢.*نقطة/).first()).toBeVisible();
-  await expect(page.getByText(/١٥.*نقطة/).first()).toBeVisible();
-
-  // مقرّر الغد
   await expect(page.getByText("الحزب الثاني", { exact: true }).first()).toBeVisible();
+
+  // بيانات الابن الثاني بعد النقر على تبويبه
+  await page.locator("[data-testid='tab-student-2']").click();
+  await expect(page.getByText("غائب", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/١٥.*نقطة/).first()).toBeVisible();
 });
 
 test("وليٌّ بلا أبناء يرى رسالة فارغة", async ({ page }) => {
