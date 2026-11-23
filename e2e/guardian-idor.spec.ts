@@ -51,11 +51,13 @@ const SUMMARY_STD1 = {
 async function setupMocks(page: Page) {
   // وضع جلسة وهميّة
   await page.addInitScript((session) => {
-    const key = `sb-${location.host.replace(/\./g, "")}-auth-token`;
-    localStorage.setItem(key, session);
-    // بعض المكتبات تقرأ من مفتاح ثابت
-    localStorage.setItem("supabase.auth.token", session);
+    const orig = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key: string) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) return session;
+      return orig.call(this, key);
+    };
   }, FAKE_SESSION);
+  await page.route("**supabase**", (r) => r.fulfill({ json: {} }));
 
   // mock /api/guardian/children
   await page.route("**/api/guardian/children", async (route) => {
@@ -144,6 +146,7 @@ test.describe("IDOR — رفض وليّ الأمر لطالب لا يملكه", 
     await setupMocks(page);
     await page.goto("/guardian");
 
+    await page.waitForLoadState("networkidle");
     const status = await page.evaluate(async () => {
       const r = await fetch("/api/guardian/children/std-99", {
         headers: { authorization: "Bearer fake-token" },
