@@ -192,7 +192,7 @@ test("حين يجب إعادة المقطع يظهر التحذير في الب�
   await page.locator("[data-testid='student-row']").first().click();
   await expect(page.locator("[data-testid='student-inline-card']")).toBeVisible({ timeout: 10_000 });
 
-  await expect(page.getByText("يعيد مقطع أمس")).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByText(/يعيد نفس المقطع/)).toBeVisible({ timeout: 5_000 });
 });
 
 // ═══ ٦) أتقن المقرّر → الطالب التالي → الرجوع → تُعاد قراءة بيانات البطاقة ═══
