@@ -128,6 +128,24 @@ describe("الحكم ١ — الفرص الثلاث ووقف الجديد قبل
     ).resolves.toBeUndefined();
   });
 
+  it("لم يُتقن أمس ← أي اختلاف في النطاق يُرفض (بداية أو نهاية)", async () => {
+    const { student, teacher } = await maraqiScaffold();
+    // أمس: 90:1 → 90:5، لم يُتقن.
+    await recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 90 }), toAyah: 5, date: D1, attempts: 3, mastered: false }, prisma);
+    // نهاية مختلفة ← يُرفض.
+    await expect(
+      recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 90 }), toAyah: 12, date: D2, attempts: 2, mastered: true }, prisma),
+    ).rejects.toBeInstanceOf(ValidationError);
+    // بداية مختلفة ← يُرفض.
+    await expect(
+      recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 91, toSurah: 90 }), toAyah: 5, date: D2, attempts: 2, mastered: true }, prisma),
+    ).rejects.toBeInstanceOf(ValidationError);
+    // المطابقة الكاملة ← مقبولة.
+    await expect(
+      recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 90 }), toAyah: 5, date: D2, attempts: 2, mastered: true }, prisma),
+    ).resolves.toBeUndefined();
+  });
+
   it("getHifzGate: يوجب الإعادة إن لم يُتقن السابق، وإلا فلا", async () => {
     const { student, teacher } = await maraqiScaffold();
     await recordHifz({ ...hifzArgs(student.id, teacher.id, { fromSurah: 90, toSurah: 95 }), date: D1, attempts: 3, mastered: false }, prisma);

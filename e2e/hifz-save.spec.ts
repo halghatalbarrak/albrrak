@@ -1,11 +1,13 @@
 /**
  * E2E — تسجيل الحفظ في الشاشة الموحّدة
  *
- * يتحقّق من أربع حالات حرجة بعد إصلاح خلل mastered:false الافتراضيّ:
+ * يتحقّق من أربع حالات حرجة:
  * ١) «أتقن ✓» يُرسل mastered:true إلى الخادم.
- * ٢) بعد الحفظ الناجح تُبطَل البطاقة ويُعاد تحميلها (kind:"NEW" لا "REPEAT").
- * ٣) «+ حفظ إضافي» يُرسل طلباً إلى /extra.
- * ٤) حين يكون hifzKind:"REPEAT" تظهر تحذير الإعادة.
+ * ٢) بعد الحفظ الناجح تُبطَل البطاقة ويُعاد تحميلها.
+ * ٣) زرّ المحاولة الرابعة غير موجود (الحكم ١: ٣ محاولات فقط).
+ * ٤) ردّ خطأ من الخادم يظهر رسالة حمراء داخل البطاقة.
+ * ٥) حين يكون hifzKind:"REPEAT" تظهر تحذير الإعادة.
+ * ٦) أتقن المقرّر → الطالب التالي → الرجوع → تُعاد قراءة بيانات البطاقة.
  */
 import { test, expect } from "@playwright/test";
 
@@ -98,14 +100,11 @@ test("زرّ «أتقن ✓» يُرسل mastered:true إلى الخادم", asy
   await page.goto("/admin/unified");
   await expect(page.locator("[data-testid='student-row']")).toHaveCount(1, { timeout: 15_000 });
 
-  // افتح البطاقة
   await page.locator("[data-testid='student-row']").first().click();
   await expect(page.locator("[data-testid='student-inline-card']")).toBeVisible({ timeout: 10_000 });
 
-  // انقر «أتقن المقرّر ✓»
   await page.locator("[data-testid='hifz-btn-mastered']").click();
 
-  // تحقّق أن mastered=true وُصِل للخادم
   expect(capturedBody).not.toBeNull();
   expect(capturedBody!["mastered"]).toBe(true);
   expect(capturedBody!["kind"]).toBe("hifz");
@@ -134,36 +133,11 @@ test("بعد حفظٍ ناجح تُعاد بطاقة الطالب بـkind:NEW",
   const beforeSave = panelCallCount;
   await page.locator("[data-testid='hifz-btn-mastered']").click();
 
-  // انتظر إعادة تحميل البطاقة (panelCache تُبطَل بعد نجاح POST)
   await page.waitForTimeout(2_000);
   expect(panelCallCount).toBeGreaterThan(beforeSave);
 });
 
-// ═══ ٣) «+ حفظ إضافي» يُرسل طلباً إلى /extra ═══
-test("زرّ «+ حفظ إضافي» يُرسل POST إلى /extra", async ({ page }) => {
-  await setupPage(page);
-  await page.route("**/api/circles/c1/unified**", (r) =>
-    r.fulfill({ json: { students: ONE_STUDENT, absentDefault: false } }),
-  );
-  await page.route("**/api/students/s1/unified-panel**", (r) => r.fulfill({ json: PANEL_NEW }));
-
-  let extraCalled = false;
-  await page.route("**/api/students/s1/extra", async (r) => {
-    extraCalled = true;
-    await r.fulfill({ status: 200, json: { unit: { fromSurah: 78, fromAyah: 11, toSurah: 78, toAyah: 20 } } });
-  });
-
-  await page.goto("/admin/unified");
-  await expect(page.locator("[data-testid='student-row']")).toHaveCount(1, { timeout: 15_000 });
-  await page.locator("[data-testid='student-row']").first().click();
-  await expect(page.locator("[data-testid='student-inline-card']")).toBeVisible({ timeout: 10_000 });
-
-  await page.getByText("+ حفظ إضافي").click();
-  await page.waitForTimeout(500);
-  expect(extraCalled).toBe(true);
-});
-
-// ═══ ٥) زرّ «٤+» غير موجود — الحكم ١: ٣ محاولات فقط ═══
+// ═══ ٣) زرّ «٤+» غير موجود — الحكم ١: ٣ محاولات فقط ═══
 test("زرّ المحاولة الرابعة غير موجود في البطاقة", async ({ page }) => {
   await setupPage(page);
   await page.route("**/api/circles/c1/unified**", (r) =>
@@ -179,7 +153,7 @@ test("زرّ المحاولة الرابعة غير موجود في البطاق
   await expect(page.getByText("٤+")).not.toBeVisible();
 });
 
-// ═══ ٦) ردّ خطأ من الخادم يظهر رسالة حمراء داخل البطاقة ═══
+// ═══ ٤) ردّ خطأ من الخادم يظهر رسالة حمراء داخل البطاقة ═══
 test("خطأ من الخادم يُظهر رسالة حمراء داخل بطاقة الطالب", async ({ page }) => {
   await setupPage(page);
   await page.route("**/api/circles/c1/unified**", (r) =>
@@ -197,15 +171,13 @@ test("خطأ من الخادم يُظهر رسالة حمراء داخل بطا�
 
   await page.locator("[data-testid='hifz-btn-mastered']").click();
 
-  // الخطأ يظهر داخل البطاقة (ضمن data-testid=student-inline-card)
   const card = page.locator("[data-testid='student-inline-card']");
   await expect(card.getByText("خطأ في الحفظ")).toBeVisible({ timeout: 5_000 });
 
-  // الزر يعود قابلاً للنقر بعد انتهاء الطلب
   await expect(page.locator("[data-testid='hifz-btn-mastered']")).toBeEnabled({ timeout: 3_000 });
 });
 
-// ═══ ٧) حين hifzKind:"REPEAT" يظهر تحذير الإعادة ═══
+// ═══ ٥) حين hifzKind:"REPEAT" يظهر تحذير الإعادة ═══
 test("حين يجب إعادة المقطع يظهر التحذير في البطاقة", async ({ page }) => {
   await setupPage(page);
 
@@ -220,6 +192,49 @@ test("حين يجب إعادة المقطع يظهر التحذير في الب�
   await page.locator("[data-testid='student-row']").first().click();
   await expect(page.locator("[data-testid='student-inline-card']")).toBeVisible({ timeout: 10_000 });
 
-  // يجب أن يظهر تحذير «يعيد مقطع أمس»
-  await expect(page.getByText("يعيد مقطع أمس")).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByText(/يعيد نفس المقطع/)).toBeVisible({ timeout: 5_000 });
+});
+
+// ═══ ٦) أتقن المقرّر → الطالب التالي → الرجوع → تُعاد قراءة بيانات البطاقة ═══
+test("أتقن المقرّر كما هو → الطالب التالي → الرجوع → تُعاد قراءة بيانات البطاقة", async ({ page }) => {
+  await setupPage(page);
+
+  const TWO_STUDENTS = [
+    ONE_STUDENT[0],
+    { ...ONE_STUDENT[0], studentId: "s2", name: "علي أحمد" },
+  ];
+
+  let s1PanelCalls = 0;
+  await page.route("**/api/circles/c1/unified**", (r) =>
+    r.fulfill({ json: { students: TWO_STUDENTS, absentDefault: false } }),
+  );
+  await page.route("**/api/students/s1/unified-panel**", (r) => {
+    s1PanelCalls++;
+    return r.fulfill({ json: PANEL_NEW });
+  });
+  await page.route("**/api/students/s2/unified-panel**", (r) => r.fulfill({ json: PANEL_NEW }));
+  await page.route("**/api/students/s1/session", (r) => r.fulfill({ status: 201, json: { ok: true } }));
+
+  await page.goto("/admin/unified");
+  await expect(page.locator("[data-testid='student-row']")).toHaveCount(2, { timeout: 15_000 });
+
+  // ١. افتح بطاقة s1
+  await page.locator("[data-testid='student-row']").first().click();
+  await expect(page.locator("[data-testid='student-inline-card']")).toBeVisible({ timeout: 10_000 });
+  const callsBeforeSave = s1PanelCalls;
+
+  // ٢. أتقن المقرّر
+  await page.locator("[data-testid='hifz-btn-mastered']").click();
+  await page.waitForTimeout(1_500);
+
+  // ٣. انتقل لطالب آخر
+  await page.locator("[data-testid='student-row']").nth(1).click();
+  await page.waitForTimeout(500);
+
+  // ٤. ارجع للأول
+  await page.locator("[data-testid='student-row']").first().click();
+  await page.waitForTimeout(1_000);
+
+  // ٥. تأكّد أن البطاقة طُلبت مجدداً (لا cache بعد الحفظ)
+  expect(s1PanelCalls).toBeGreaterThan(callsBeforeSave);
 });

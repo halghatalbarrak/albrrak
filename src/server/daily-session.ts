@@ -278,12 +278,18 @@ export async function recordHifz(input: HifzInput, db: PrismaClient = prisma): P
   }
   const date = toDateOnly(input.date);
 
-  // الحكم ١: لا حفظ جديد قبل إتقان السابق — يُعاد نفس المقطع.
+  // الحكم ١: لا حفظ جديد قبل إتقان السابق — يُعاد نفس المقطع المحدّد تماماً (بداية ونهاية).
   const repeat = await priorUnmasteredRange(input.studentId, date, db);
   if (repeat) {
-    const same = repeat.fromSurah === input.fromSurah && repeat.fromAyah === input.fromAyah &&
+    const sameRange =
+      repeat.fromSurah === input.fromSurah && repeat.fromAyah === input.fromAyah &&
       repeat.toSurah === input.toSurah && repeat.toAyah === input.toAyah;
-    if (!same) {
+    if (!sameRange) {
+      console.error("[hifz-gate] hifzNoNewBeforeMastery", {
+        studentId: input.studentId, date: input.date,
+        expected: `${repeat.fromSurah}:${repeat.fromAyah}→${repeat.toSurah}:${repeat.toAyah}`,
+        got: `${input.fromSurah}:${input.fromAyah}→${input.toSurah}:${input.toAyah}`,
+      });
       throw verr("hifzNoNewBeforeMastery");
     }
   }

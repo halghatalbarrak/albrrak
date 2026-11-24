@@ -495,6 +495,7 @@ export default function UnifiedPage() {
                           onNextStudent={nextStudent}
                           grantManual={grantManual}
                           markAtt={markAtt} isPending={pendingStudents.has(s.studentId)}
+                          canCorrectPosition={me?.roles.includes("CIRCLE_MANAGER") || me?.roles.includes("SUPER_ADMIN")}
                         />
                       </div>
                     )}
@@ -569,6 +570,7 @@ export default function UnifiedPage() {
                           onNextStudent={nextStudent}
                           grantManual={grantManual}
                           markAtt={markAtt} isPending={pendingStudents.has(cur.studentId)}
+                          canCorrectPosition={me?.roles.includes("CIRCLE_MANAGER") || me?.roles.includes("SUPER_ADMIN")}
                         />
                       </div>
                     )}

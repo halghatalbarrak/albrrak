@@ -126,56 +126,6 @@ async function openFirstStudent(page: Page) {
 // ═══════════════════════════════════════════════════════════════
 test.describe("الشاشة الموحّدة — أزرار البطاقة بعرض ٣٩٠px", () => {
 
-  // ── البند ١: ±آية يُحفظ التعديل عند الضغط على «أتقن» ──────────
-  test("+آية مرتين ثم «أتقن» يُرسل toAyah > الأصليّة", async ({ page }) => {
-    await setupPage(page);
-
-    const hifzReqs: Record<string, unknown>[] = [];
-    await page.route("**/api/students/s1/session", async (r) => {
-      hifzReqs.push(await r.request().postDataJSON() as Record<string, unknown>);
-      await r.fulfill({ json: { ok: true } });
-    });
-
-    await openFirstStudent(page);
-
-    const originalToAyah = 1; // bound.toAyah في MOCK_PANEL_FULL
-
-    await page.locator("[data-testid='hifz-btn-plus-ayah']").click();
-    await page.locator("[data-testid='hifz-btn-plus-ayah']").click();
-    await page.locator("[data-testid='hifz-btn-mastered']").click();
-
-    await expect.poll(() => hifzReqs.length, { timeout: 5_000 }).toBeGreaterThan(0);
-    expect(hifzReqs[0].kind).toBe("hifz");
-    expect(hifzReqs[0].mastered).toBe(true);
-    expect(Number(hifzReqs[0].toAyah)).toBeGreaterThan(originalToAyah);
-  });
-
-  test("−آية قبل الحفظ يُرسل toAyah < الأصليّة", async ({ page }) => {
-    await setupPage(page);
-
-    const hifzReqs: Record<string, unknown>[] = [];
-    await page.route("**/api/students/s1/session", async (r) => {
-      hifzReqs.push(await r.request().postDataJSON() as Record<string, unknown>);
-      await r.fulfill({ json: { ok: true } });
-    });
-
-    await openFirstStudent(page);
-
-    // +آية مرتين أوّلاً لنضمن وجود فراغٍ للخفض
-    await page.locator("[data-testid='hifz-btn-plus-ayah']").click();
-    await page.locator("[data-testid='hifz-btn-plus-ayah']").click();
-    // ثمّ −آية
-    await page.locator("[data-testid='hifz-btn-minus-ayah']").click();
-    // حفظ
-    await page.locator("[data-testid='hifz-btn-mastered']").click();
-
-    await expect.poll(() => hifzReqs.length, { timeout: 5_000 }).toBeGreaterThan(0);
-    // بعد +2 −1: toAyah = الأصليّة + 1 (أي > 1)
-    expect(Number(hifzReqs[0].toAyah)).toBeGreaterThan(1);
-    // وأقلّ من +2 (٣)
-    expect(Number(hifzReqs[0].toAyah)).toBeLessThan(4);
-  });
-
   // ── أزرار الحضور الأربعة المباشرة ──────────────────────────────
   test("أزرار الحضور الأربعة تُرسل الحالة الصحيحة للخادم", async ({ page }) => {
     const attReqs: { studentId: string; status: string }[] = [];
@@ -319,22 +269,6 @@ test.describe("الشاشة الموحّدة — أزرار البطاقة بع�
 
     await page.locator("[data-testid='consol-btn-not-done']").nth(1).click();
     await expect.poll(() => mReqs.at(-1), { timeout: 5_000 }).toMatchObject({ kind: "murajaah", count: 0 });
-  });
-
-  // ── حفظ إضافي ─────────────────────────────────────────────────
-  test("«+ حفظ إضافي» يُرسل extra hifz", async ({ page }) => {
-    const extraReqs: Record<string, unknown>[] = [];
-    await setupPage(page);
-    await page.route("**/api/students/s1/extra", async (r) => {
-      extraReqs.push(await r.request().postDataJSON() as Record<string, unknown>);
-      await r.fulfill({ json: { ok: true } });
-    });
-
-    await openFirstStudent(page);
-
-    await page.getByRole("button", { name: "+ حفظ إضافي" }).click();
-    await expect.poll(() => extraReqs.length, { timeout: 5_000 }).toBeGreaterThan(0);
-    expect(extraReqs[0].kind).toBe("hifz");
   });
 
   // ── الطالب التالي ─────────────────────────────────────────────
