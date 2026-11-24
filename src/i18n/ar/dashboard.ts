@@ -22,7 +22,7 @@ export const dashboardAr = {
   reasonNoProgress: "لا تقدّم ٧ أيام",
   reasonNoGuardian: "بلا وليّ أمر",
   reasonNoTrack: "بلا مسار",
-  reasonPaceTest: "ينتظر اختبار المستوى",
+  reasonPaceTest: "ينتظر اختبار الوتيرة",
   reasonMuddakirShortfall: "نقص في أيّام المدّكر",
   reasonMuddakirUnconfirmed: "أسبوع مدّكر غير مؤكَّد",
 
