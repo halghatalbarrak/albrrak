@@ -1,4 +1,4 @@
-import { ApprovalKind, ApprovalStatus, GuardianLinkStatus, ProgramKey, StudentState, type PrismaClient } from "@prisma/client";
+import { GuardianLinkStatus, ProgramKey, StudentState, type PrismaClient } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { maraqiKey, MARAQI_SURAH_ORDER } from "@/lib/maraqi-order";
@@ -14,7 +14,6 @@ import { computeAge } from "./age-policy";
 
 export type SetupBlocker =
   | { key: "NO_PROGRAM" }
-  | { key: "READING_TEST"; pendingApprovalId: string | null }
   | { key: "FRONTIER" }
   | { key: "NO_TRACK" };
 
@@ -37,7 +36,7 @@ function isActiveMaraqi(state: StudentState): boolean {
 
 /**
  * يحسب قائمة الإعدادات الناقصة للطالب بالترتيب:
- * NO_PROGRAM → READING_TEST → FRONTIER → NO_TRACK (موانع)
+ * NO_PROGRAM → FRONTIER → NO_TRACK (موانع)
  * NO_GUARDIAN → NO_PHONE (تنبيهات)
  */
 export async function getStudentSetupStatus(
@@ -83,18 +82,7 @@ export async function getStudentSetupStatus(
   const programKey = activeEnrollment.program?.key ?? null;
   const isMaraqi = programKey === ProgramKey.MARAQI;
 
-  // ٢. READING_TEST — بانتظار اختبار القراءة أو اعتماده
-  if (student.state === StudentState.AWAITING_READING_TEST) {
-    const pending = await db.approval.findFirst({
-      where: { kind: ApprovalKind.PLACEMENT_DECISION, subjectId: studentId, status: ApprovalStatus.PENDING },
-      select: { id: true },
-    });
-    blockers.push({ key: "READING_TEST", pendingApprovalId: pending?.id ?? null });
-    // لا نتحقّق من FRONTIER/NO_TRACK إذ لم يُحدَّد البرنامج بعد
-    return { studentId, isComplete: false, blockers, warnings };
-  }
-
-  // ٣ و٤. فحوص مراقي فقط (بعد تجاوز اختبار القراءة)
+  // ٢ و٣. فحوص مراقي فقط
   if (isMaraqi && isActiveMaraqi(student.state)) {
     // ٣. FRONTIER — لم يُسكَّن بعد (لا صفٌّ في MaraqiPlacement)
     const placement = await db.maraqiPlacement.findUnique({
@@ -159,21 +147,14 @@ export async function getStudentSetupStatusBatch(
     },
   });
 
-  const awaitingIds = rows.filter((r) => r.state === StudentState.AWAITING_READING_TEST).map((r) => r.id);
   const activeMaraqiIds = rows.filter((r) => {
     const pk = r.enrollments[0]?.program?.key;
     return pk === ProgramKey.MARAQI && isActiveMaraqi(r.state);
   }).map((r) => r.id);
 
-  const [pendingApprovals, placements] = await Promise.all([
-    awaitingIds.length
-      ? db.approval.findMany({ where: { kind: ApprovalKind.PLACEMENT_DECISION, subjectId: { in: awaitingIds }, status: ApprovalStatus.PENDING }, select: { id: true, subjectId: true } })
-      : Promise.resolve([]),
-    activeMaraqiIds.length
-      ? db.maraqiPlacement.findMany({ where: { studentId: { in: activeMaraqiIds } }, select: { studentId: true } })
-      : Promise.resolve([]),
-  ]);
-  const approvalBy = new Map(pendingApprovals.map((a) => [a.subjectId, a.id]));
+  const placements = activeMaraqiIds.length
+    ? await db.maraqiPlacement.findMany({ where: { studentId: { in: activeMaraqiIds } }, select: { studentId: true } })
+    : [];
   const hasPlacement = new Set(placements.map((p) => p.studentId));
   const today = new Date();
   const result = new Map<string, StudentSetupStatus>();
@@ -189,11 +170,6 @@ export async function getStudentSetupStatusBatch(
     }
     const programKey = activeEnrollment.program?.key ?? null;
     const isMaraqi = programKey === ProgramKey.MARAQI;
-    if (r.state === StudentState.AWAITING_READING_TEST) {
-      blockers.push({ key: "READING_TEST", pendingApprovalId: approvalBy.get(r.id) ?? null });
-      result.set(r.id, { studentId: r.id, isComplete: false, blockers, warnings });
-      continue;
-    }
     if (isMaraqi && isActiveMaraqi(r.state)) {
       if (!hasPlacement.has(r.id)) blockers.push({ key: "FRONTIER" });
       if (!r.trackAssignments.length) blockers.push({ key: "NO_TRACK" });

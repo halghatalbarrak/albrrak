@@ -1,9 +1,9 @@
-import { ApprovalKind, ApprovalStatus, ProgramKey, Role, StudentState } from "@prisma/client";
+import { ProgramKey, StudentState } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { getStudentSetupStatus, suggestTrackForStudent } from "../student-setup";
 import { prisma, resetDb } from "../testing/helpers";
-import { createCircle, createProgram, createStudent, createUser } from "../testing/factories";
+import { createCircle, createProgram, createStudent } from "../testing/factories";
 
 beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
@@ -27,44 +27,6 @@ describe("getStudentSetupStatus — NO_PROGRAM", () => {
     await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id } });
     const status = await getStudentSetupStatus(student.id, prisma);
     expect(status.blockers[0].key).toBe("NO_PROGRAM");
-  });
-});
-
-describe("getStudentSetupStatus — READING_TEST", () => {
-  it("يُرجع READING_TEST بلا approvalId إذا لم يُقترَح بعد", async () => {
-    const { student } = await createStudent(prisma);
-    const program = await createProgram(prisma, ProgramKey.MARAQI);
-    const circle = await createCircle(prisma, program.id);
-    await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
-    await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.AWAITING_READING_TEST } });
-
-    const status = await getStudentSetupStatus(student.id, prisma);
-    expect(status.isComplete).toBe(false);
-    expect(status.blockers[0].key).toBe("READING_TEST");
-    expect((status.blockers[0] as { key: "READING_TEST"; pendingApprovalId: string | null }).pendingApprovalId).toBeNull();
-  });
-
-  it("يُرجع READING_TEST مع approvalId إذا كان الاقتراح معلَّقاً", async () => {
-    const { student } = await createStudent(prisma);
-    const program = await createProgram(prisma, ProgramKey.MARAQI);
-    const circle = await createCircle(prisma, program.id);
-    await prisma.enrollment.create({ data: { studentId: student.id, circleId: circle.id, programId: program.id } });
-    await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.AWAITING_READING_TEST } });
-    const examiner = await createUser(prisma, { roles: [Role.REGISTRAR] });
-    const approval = await prisma.approval.create({
-      data: {
-        kind: ApprovalKind.PLACEMENT_DECISION,
-        subjectType: "Student",
-        subjectId: student.id,
-        proposedBy: examiner.id,
-        status: ApprovalStatus.PENDING,
-        payload: { readsFluently: true, notes: "جيّد", circleId: null },
-      },
-    });
-
-    const status = await getStudentSetupStatus(student.id, prisma);
-    expect(status.blockers[0].key).toBe("READING_TEST");
-    expect((status.blockers[0] as { key: "READING_TEST"; pendingApprovalId: string | null }).pendingApprovalId).toBe(approval.id);
   });
 });
 
