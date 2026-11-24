@@ -22,7 +22,7 @@ const ATT_BUTTONS: { status: string; label: string; tone: "primary" | "bronze" |
   { status: "LEFT_NO_PERMISSION", label: "خرج بلا إذن", tone: "danger" },
 ];
 
-export function StudentPanel({ s, date, items, post, detail, detailLoading, onNextStudent, grantManual, markAtt: markAttProp, isPending }: {
+export function StudentPanel({ s, date, items, post, detail, detailLoading, onNextStudent, grantManual, markAtt: markAttProp, isPending, canCorrectPosition }: {
   s: Student; date: string; items: GrantItem[];
   post: PostFn;
   detail: PanelDetail | null;
@@ -31,12 +31,18 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
   isPending: boolean;
   onNextStudent?: () => void;
   grantManual?: (studentId: string, pointItemId: string) => Promise<{ granted: boolean } | null>;
+  canCorrectPosition?: boolean;
 }) {
   const sid = s.studentId;
   const [localGranted, setLocalGranted] = useState<Set<string>>(new Set(detail?.manualGranted ?? []));
   const [hifzError, setHifzError] = useState<string | null>(null);
   const [hifzSaving, setHifzSaving] = useState(false);
   const [savedHifzToday, setSavedHifzToday] = useState<HifzSave | null>(null);
+  const [showCorrection, setShowCorrection] = useState(false);
+  const [corrForm, setCorrForm] = useState({ fromSurah: 78, fromAyah: 1, toSurah: 78, toAyah: 10, reason: "INPUT_ERROR" as "INPUT_ERROR" | "LEVEL_TEST" | "OTHER", reasonNote: "" });
+  const [corrSaving, setCorrSaving] = useState(false);
+  const [corrError, setCorrError] = useState<string | null>(null);
+  const [corrDone, setCorrDone] = useState(false);
 
   useEffect(() => {
     setLocalGranted(new Set(detail?.manualGranted ?? []));
@@ -45,6 +51,9 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
   useEffect(() => {
     setSavedHifzToday(null);
     setHifzError(null);
+    setShowCorrection(false);
+    setCorrDone(false);
+    setCorrError(null);
   }, [sid]);
 
   const excuse = () => {
@@ -131,31 +140,26 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
               {detail.today.newHifz?.kind === "COMPLETED" ? <p style={{ color: ui.color.success, margin: 0 }}>{tu("trackCompleted")}</p>
                 : detail.today.newHifz?.kind === "NO_TRACK" ? <TrackAssignInline studentId={sid} post={post} />
                 : (
-                  <>
-                    <HifzInput
-                      bound={(detail.today.newHifz?.kind === "NEW" || detail.today.newHifz?.kind === "REPEAT") ? (detail.today.newHifz.bound ?? null) : null}
-                      hifzKind={detail.today.newHifz?.kind ?? null}
-                      mustRepeat={detail.today.newHifz?.kind === "REPEAT"}
-                      mustRepeatBound={detail.today.newHifz?.kind === "REPEAT" ? (detail.today.newHifz.bound ?? null) : null}
-                      savedToday={savedHifzToday}
-                      saving={hifzSaving}
-                      saveError={hifzError}
-                      onSave={async (st) => {
-                        setHifzError(null);
-                        setHifzSaving(true);
-                        const r = await post(`/api/students/${sid}/session`, { kind: "hifz", date, ...st }, "سُجِّل الحفظ.", sid);
-                        setHifzSaving(false);
-                        if (r.ok) {
-                          setSavedHifzToday(st);
-                        } else {
-                          setHifzError(r.error ?? "تعذّر التسجيل.");
-                        }
-                      }}
-                    />
-                    <div style={{ ...row, marginTop: sp(2) }}>
-                      <Button size="sm" variant="ghost" onClick={() => void extra("hifz")}>{tu("addMoreHifz")}</Button>
-                    </div>
-                  </>
+                  <HifzInput
+                    bound={(detail.today.newHifz?.kind === "NEW" || detail.today.newHifz?.kind === "REPEAT") ? (detail.today.newHifz.bound ?? null) : null}
+                    hifzKind={detail.today.newHifz?.kind ?? null}
+                    mustRepeat={detail.today.newHifz?.kind === "REPEAT"}
+                    mustRepeatBound={detail.today.newHifz?.kind === "REPEAT" ? (detail.today.newHifz.bound ?? null) : null}
+                    savedToday={savedHifzToday}
+                    saving={hifzSaving}
+                    saveError={hifzError}
+                    onSave={async (st) => {
+                      setHifzError(null);
+                      setHifzSaving(true);
+                      const r = await post(`/api/students/${sid}/session`, { kind: "hifz", date, ...st }, "سُجِّل الحفظ.", sid);
+                      setHifzSaving(false);
+                      if (r.ok) {
+                        setSavedHifzToday(st);
+                      } else {
+                        setHifzError(r.error ?? "تعذّر التسجيل.");
+                      }
+                    }}
+                  />
                 )}
             </div>
 
@@ -186,6 +190,60 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
             )}
           </>
         )}
+
+      {/* تصحيح الموضع — للمشرف العام ومدير الحلقة فقط */}
+      {canCorrectPosition && (
+        <div>
+          {!showCorrection ? (
+            <Button size="sm" variant="ghost" data-testid="btn-correct-position" onClick={() => { setShowCorrection(true); setCorrError(null); setCorrDone(false); }}>
+              تصحيح موضع الطالب
+            </Button>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: sp(2), padding: sp(3), border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md }}>
+              <strong style={{ fontSize: ui.text.base }}>تصحيح الموضع</strong>
+              <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
+                <label style={{ fontSize: ui.text.xs }}>من سورة
+                  <input type="number" min={1} max={114} value={corrForm.fromSurah} onChange={(e) => setCorrForm((f) => ({ ...f, fromSurah: +e.target.value }))} style={{ width: 60, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
+                </label>
+                <label style={{ fontSize: ui.text.xs }}>آية
+                  <input type="number" min={1} value={corrForm.fromAyah} onChange={(e) => setCorrForm((f) => ({ ...f, fromAyah: +e.target.value }))} style={{ width: 55, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
+                </label>
+                <label style={{ fontSize: ui.text.xs }}>إلى سورة
+                  <input type="number" min={1} max={114} value={corrForm.toSurah} onChange={(e) => setCorrForm((f) => ({ ...f, toSurah: +e.target.value }))} style={{ width: 60, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
+                </label>
+                <label style={{ fontSize: ui.text.xs }}>آية
+                  <input type="number" min={1} value={corrForm.toAyah} onChange={(e) => setCorrForm((f) => ({ ...f, toAyah: +e.target.value }))} style={{ width: 55, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
+                </label>
+              </div>
+              <label style={{ fontSize: ui.text.xs }}>السبب
+                <select value={corrForm.reason} onChange={(e) => setCorrForm((f) => ({ ...f, reason: e.target.value as typeof corrForm.reason }))} style={{ marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }}>
+                  <option value="INPUT_ERROR">خطأ في الإدخال الأول</option>
+                  <option value="LEVEL_TEST">اختبار تحديد مستوى</option>
+                  <option value="OTHER">أخرى</option>
+                </select>
+              </label>
+              {corrForm.reason === "OTHER" && (
+                <input type="text" placeholder="السبب التفصيلي (مطلوب)" value={corrForm.reasonNote} onChange={(e) => setCorrForm((f) => ({ ...f, reasonNote: e.target.value }))} style={{ padding: `${sp(1)} ${sp(2)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font, fontSize: ui.text.xs }} />
+              )}
+              {corrError && <p style={{ margin: 0, color: ui.color.danger, fontSize: ui.text.xs }}>{corrError}</p>}
+              {corrDone && <p style={{ margin: 0, color: ui.color.success, fontSize: ui.text.xs }}>✓ تمّ تصحيح الموضع</p>}
+              <div style={{ display: "flex", gap: sp(2) }}>
+                <Button size="sm" variant="primary" disabled={corrSaving} data-testid="btn-correct-position-submit"
+                  onClick={async () => {
+                    if (corrForm.reason === "OTHER" && !corrForm.reasonNote.trim()) { setCorrError("السبب التفصيلي مطلوب."); return; }
+                    setCorrError(null); setCorrSaving(true);
+                    const r = await post(`/api/students/${sid}/position-correction`, { ...corrForm }, "تمّ التصحيح.", sid);
+                    setCorrSaving(false);
+                    if (r.ok) { setCorrDone(true); setShowCorrection(false); }
+                    else setCorrError(r.error ?? "تعذّر التصحيح.");
+                  }}
+                >{corrSaving ? "جارٍ…" : "تأكيد التصحيح"}</Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowCorrection(false)}>إلغاء</Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* نقاط اليوم — toggle */}
       {items.length > 0 && (
