@@ -346,7 +346,7 @@ export function EnrollStudentForm({ circleId, defaultProgramId, onDone, onCancel
                 value={state.gregMonth}
                 onChange={(e) => dispatch({ type: "SET", key: "gregMonth", value: e.target.value })}
               >
-                <option value="">الشهر</option>
+                <option value="">{tu("enrollBirthMonth")}</option>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                   <option key={m} value={m}>{m}</option>
                 ))}
@@ -357,7 +357,7 @@ export function EnrollStudentForm({ circleId, defaultProgramId, onDone, onCancel
                 value={state.gregDay}
                 onChange={(e) => dispatch({ type: "SET", key: "gregDay", value: e.target.value })}
               >
-                <option value="">اليوم</option>
+                <option value="">{tu("enrollBirthDay")}</option>
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
@@ -378,7 +378,7 @@ export function EnrollStudentForm({ circleId, defaultProgramId, onDone, onCancel
                 value={state.hijriMonth}
                 onChange={(e) => dispatch({ type: "SET", key: "hijriMonth", value: e.target.value })}
               >
-                <option value="">الشهر</option>
+                <option value="">{tu("enrollBirthMonth")}</option>
                 {["محرّم","صفر","ربيع الأول","ربيع الثاني","جمادى الأولى","جمادى الآخرة","رجب","شعبان","رمضان","شوّال","ذو القعدة","ذو الحجّة"].map((m, i) => (
                   <option key={i + 1} value={i + 1}>{m}</option>
                 ))}
@@ -389,7 +389,7 @@ export function EnrollStudentForm({ circleId, defaultProgramId, onDone, onCancel
                 value={state.hijriDay}
                 onChange={(e) => dispatch({ type: "SET", key: "hijriDay", value: e.target.value })}
               >
-                <option value="">اليوم</option>
+                <option value="">{tu("enrollBirthDay")}</option>
                 {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
@@ -576,12 +576,12 @@ export function EnrollStudentForm({ circleId, defaultProgramId, onDone, onCancel
                 value={state.schoolStage}
                 onChange={(e) => dispatch({ type: "SET", key: "schoolStage", value: e.target.value })}
               >
-                <option value="">—</option>
-                <option value="PRIMARY">ابتدائي</option>
-                <option value="INTERMEDIATE">متوسّط</option>
-                <option value="SECONDARY">ثانوي</option>
-                <option value="UNIVERSITY">جامعيّ</option>
-                <option value="OTHER">أخرى</option>
+                <option value="">{tu("enrollStagePlaceholder")}</option>
+                <option value="PRIMARY">{tu("enrollStagePrimary")}</option>
+                <option value="INTERMEDIATE">{tu("enrollStageIntermediate")}</option>
+                <option value="SECONDARY">{tu("enrollStageSecondary")}</option>
+                <option value="UNIVERSITY">{tu("enrollStageUniversity")}</option>
+                <option value="OTHER">{tu("enrollStageOther")}</option>
               </select>
             </label>
             <label style={labelWrap}>

@@ -134,6 +134,14 @@ export const unifiedAr = {
   // القسم الاختياريّ
   enrollOptionalSection: "بيانات إضافيّة",
   enrollSchoolStageLabel: "المرحلة الدراسيّة",
+  enrollStagePlaceholder: "—",
+  enrollStagePrimary: "ابتدائي",
+  enrollStageIntermediate: "متوسّط",
+  enrollStageSecondary: "ثانوي",
+  enrollStageUniversity: "جامعيّ",
+  enrollStageOther: "أخرى",
+  enrollBirthMonth: "الشهر",
+  enrollBirthDay: "اليوم",
   enrollStudentPhoneLabel: "جوال الطالب (١٣+)",
   enrollNotesLabel: "ملاحظات",
   // رسائل الحفظ
