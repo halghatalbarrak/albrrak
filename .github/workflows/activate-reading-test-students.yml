@@ -1,0 +1,30 @@
+name: Activate AWAITING_READING_TEST students
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "اكتب APPLY للتنفيذ الفعليّ (الافتراضي: dry-run)"
+        required: false
+        default: ""
+
+jobs:
+  activate:
+    name: activate awaiting-reading-test students
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: Activate students (dry-run / apply)
+        env:
+          CONFIRM: ${{ github.event.inputs.confirm }}
+        run: node scripts/ops/activate-awaiting-reading-test.mjs
