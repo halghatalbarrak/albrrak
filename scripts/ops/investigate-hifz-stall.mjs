@@ -32,22 +32,23 @@ async function main() {
     process.exit(1);
   }
 
-  const circle = await prisma.circle.findFirst({
+  const circles = await prisma.circle.findMany({
     where: { nameAr: { contains: CIRCLE_NAME } },
     select: { id: true, nameAr: true },
   });
-  if (!circle) {
+  if (!circles.length) {
     const all = await prisma.circle.findMany({ select: { nameAr: true }, orderBy: { nameAr: "asc" } });
     console.error(`لم يُعثَر على حلقة تحتوي: "${CIRCLE_NAME}"`);
     console.error("الحلقات المتاحة:");
     for (const c of all) console.error(`  • ${c.nameAr}`);
     process.exit(1);
   }
-  console.log(`\nالحلقة: ${circle.nameAr} (${circle.id.slice(0, 8)}…)\n`);
+  const circleIds = circles.map((c) => c.id);
+  console.log(`\nالحلقات المطابقة: ${circles.map((c) => c.nameAr).join(" | ")}\n`);
 
-  // جلب أوّل ٥ طلاب نشطين في الحلقة
+  // جلب أوّل ٥ طلاب نشطين من أيّ حلقة مطابقة
   const enrollments = await prisma.enrollment.findMany({
-    where: { circleId: circle.id, endedAt: null, student: { deletedAt: null } },
+    where: { circleId: { in: circleIds }, endedAt: null, student: { deletedAt: null } },
     select: {
       student: {
         select: {
