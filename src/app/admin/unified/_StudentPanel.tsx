@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, Button, Skeleton, sp, ui } from "@/components/ui";
 import { arNum } from "@/lib/format";
 import { HifzInput } from "@/components/session/HifzInput";
+import type { HifzSave } from "@/components/session/HifzInput";
 import { tUnified as tu } from "@/i18n/ar/unified";
 import { QaidahPanel } from "./_QaidahPanel";
 import { ConsolidationRow } from "./_ConsolidationRow";
@@ -35,10 +36,16 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
   const [localGranted, setLocalGranted] = useState<Set<string>>(new Set(detail?.manualGranted ?? []));
   const [hifzError, setHifzError] = useState<string | null>(null);
   const [hifzSaving, setHifzSaving] = useState(false);
+  const [savedHifzToday, setSavedHifzToday] = useState<HifzSave | null>(null);
 
   useEffect(() => {
     setLocalGranted(new Set(detail?.manualGranted ?? []));
   }, [detail?.manualGranted]);
+
+  useEffect(() => {
+    setSavedHifzToday(null);
+    setHifzError(null);
+  }, [sid]);
 
   const excuse = () => {
     const reason = window.prompt("سبب الاستئذان/العذر:");
@@ -128,6 +135,9 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
                     <HifzInput
                       bound={(detail.today.newHifz?.kind === "NEW" || detail.today.newHifz?.kind === "REPEAT") ? (detail.today.newHifz.bound ?? null) : null}
                       hifzKind={detail.today.newHifz?.kind ?? null}
+                      mustRepeat={detail.today.newHifz?.kind === "REPEAT"}
+                      mustRepeatBound={detail.today.newHifz?.kind === "REPEAT" ? (detail.today.newHifz.bound ?? null) : null}
+                      savedToday={savedHifzToday}
                       saving={hifzSaving}
                       saveError={hifzError}
                       onSave={async (st) => {
@@ -135,7 +145,11 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
                         setHifzSaving(true);
                         const r = await post(`/api/students/${sid}/session`, { kind: "hifz", date, ...st }, "سُجِّل الحفظ.", sid);
                         setHifzSaving(false);
-                        if (!r.ok) setHifzError(r.error ?? "تعذّر التسجيل.");
+                        if (r.ok) {
+                          setSavedHifzToday(st);
+                        } else {
+                          setHifzError(r.error ?? "تعذّر التسجيل.");
+                        }
                       }}
                     />
                     <div style={{ ...row, marginTop: sp(2) }}>

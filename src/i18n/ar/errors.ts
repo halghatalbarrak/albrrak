@@ -283,7 +283,7 @@ export const errorsAr = {
   hifzForMaraqiStudent: "تسجيل الحفظ لطالبٍ في مراقي.",
   hifzRangeReversed: "نطاق الحفظ معكوس (البداية بعد النهاية).",
   hifzAttemptsRange: "عدد المحاولات بين ١ و٣ (الفرص الثلاث — الحكم ١).",
-  hifzNoNewBeforeMastery: "لا حفظ جديد قبل إتقان مقطع اليوم السابق — أعِد المقطع نفسه (الحكم ١).",
+  hifzNoNewBeforeMastery: "يجب أن تبدأ الإعادة من نفس السورة والآية — لا تغيّر بداية المقطع (الحكم ١).",
   recitationByTeacherOrArif: "التسميع لمعلّم الحلقة أو عريفٍ مُسنَدٍ فيها (الأحكام ٦، ٨).",
   murajaahAmountInvalid: "مقدار المراجعة غير صالح (عددٌ صحيحٌ ≥ ٠).",
   murajaahErrorsInvalid: "عدد أخطاء المراجعة غير صالح.",
