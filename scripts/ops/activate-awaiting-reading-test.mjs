@@ -121,11 +121,11 @@ async function main() {
       });
       await tx.auditLog.create({
         data: {
-          actorId: null,
+          actorId: "SYSTEM",
           action: "ACTIVATE_FROM_READING_TEST",
-          targetType: "Student",
-          targetId: sid,
-          meta: { reason: "batch-activate-sec4", via: "workflow" },
+          entity: "Student",
+          entityId: sid,
+          label: "batch-activate-sec4 via workflow",
         },
       });
     });
