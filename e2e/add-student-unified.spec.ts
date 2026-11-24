@@ -136,7 +136,9 @@ test.describe("إضافة طالب من الشاشة الموحّدة", () => {
     await expect(page.locator("[data-testid='add-student-form']")).toBeVisible();
 
     await page.locator("[data-testid='add-student-name']").fill("أحمد الجديد");
-    await page.locator("[data-testid='add-student-birthdate']").fill("2010-01-01");
+    await page.locator("[data-testid='add-student-dob-day']").selectOption("1");
+    await page.locator("[data-testid='add-student-dob-month']").selectOption("1");
+    await page.locator("[data-testid='add-student-dob-year']").selectOption("2010");
     await page.locator("[data-testid='add-student-guardian-phone']").fill("0512345678");
 
     await page.locator("[data-testid='add-student-submit']").click();
@@ -148,7 +150,9 @@ test.describe("إضافة طالب من الشاشة الموحّدة", () => {
   test("الطالب يظهر بـ«إعداد ناقص» بعد الإضافة", async ({ page }) => {
     await page.locator("[data-testid='add-student-btn']").click();
     await page.locator("[data-testid='add-student-name']").fill("أحمد الجديد");
-    await page.locator("[data-testid='add-student-birthdate']").fill("2010-01-01");
+    await page.locator("[data-testid='add-student-dob-day']").selectOption("1");
+    await page.locator("[data-testid='add-student-dob-month']").selectOption("1");
+    await page.locator("[data-testid='add-student-dob-year']").selectOption("2010");
     await page.locator("[data-testid='add-student-guardian-phone']").fill("0512345678");
     await page.locator("[data-testid='add-student-submit']").click();
 

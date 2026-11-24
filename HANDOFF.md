@@ -195,6 +195,10 @@
 | #273 | fix(hifz): الحفظ لا يُسجَّل — حارس صارم + HifzInput مُبسَّط + تصحيح الموضع للمشرف | مدموج ✅ |
 | #274 | chore(ops): workflow أعداد AWAITING_READING_TEST (قراءة فقط) | مدموج ✅ |
 | #276 | fix(ops): nameAsInId في سكربت الأعداد | مدموج ✅ |
+| #277 | docs: HANDOFF #273/#274/#276 | مدموج ✅ |
+| #278 | fix(privacy,sec3,sec4): خصوصية + "ينتظر اختبار الوتيرة" + workflows التفعيل والتحقيق | مدموج ✅ |
+| #279 | fix(ops): إصلاح AuditLog schema + قائمة حلقات | مدموج ✅ |
+| #280 | feat(setup): إزالة مانع READING_TEST — القسم ٤ | مدموج ✅ |
 
 ---
 
