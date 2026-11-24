@@ -196,49 +196,49 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
         <div>
           {!showCorrection ? (
             <Button size="sm" variant="ghost" data-testid="btn-correct-position" onClick={() => { setShowCorrection(true); setCorrError(null); setCorrDone(false); }}>
-              تصحيح موضع الطالب
+              {tu("correctPositionBtn")}
             </Button>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: sp(2), padding: sp(3), border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md }}>
-              <strong style={{ fontSize: ui.text.base }}>تصحيح الموضع</strong>
+              <strong style={{ fontSize: ui.text.base }}>{tu("correctPositionTitle")}</strong>
               <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
-                <label style={{ fontSize: ui.text.xs }}>من سورة
+                <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionFromSurah")}
                   <input type="number" min={1} max={114} value={corrForm.fromSurah} onChange={(e) => setCorrForm((f) => ({ ...f, fromSurah: +e.target.value }))} style={{ width: 60, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
                 </label>
-                <label style={{ fontSize: ui.text.xs }}>آية
+                <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionAyah")}
                   <input type="number" min={1} value={corrForm.fromAyah} onChange={(e) => setCorrForm((f) => ({ ...f, fromAyah: +e.target.value }))} style={{ width: 55, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
                 </label>
-                <label style={{ fontSize: ui.text.xs }}>إلى سورة
+                <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionToSurah")}
                   <input type="number" min={1} max={114} value={corrForm.toSurah} onChange={(e) => setCorrForm((f) => ({ ...f, toSurah: +e.target.value }))} style={{ width: 60, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
                 </label>
-                <label style={{ fontSize: ui.text.xs }}>آية
+                <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionAyah")}
                   <input type="number" min={1} value={corrForm.toAyah} onChange={(e) => setCorrForm((f) => ({ ...f, toAyah: +e.target.value }))} style={{ width: 55, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
                 </label>
               </div>
-              <label style={{ fontSize: ui.text.xs }}>السبب
+              <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionReason")}
                 <select value={corrForm.reason} onChange={(e) => setCorrForm((f) => ({ ...f, reason: e.target.value as typeof corrForm.reason }))} style={{ marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }}>
-                  <option value="INPUT_ERROR">خطأ في الإدخال الأول</option>
-                  <option value="LEVEL_TEST">اختبار تحديد مستوى</option>
-                  <option value="OTHER">أخرى</option>
+                  <option value="INPUT_ERROR">{tu("correctPositionReasonInputError")}</option>
+                  <option value="LEVEL_TEST">{tu("correctPositionReasonLevelTest")}</option>
+                  <option value="OTHER">{tu("correctPositionReasonOther")}</option>
                 </select>
               </label>
               {corrForm.reason === "OTHER" && (
-                <input type="text" placeholder="السبب التفصيلي (مطلوب)" value={corrForm.reasonNote} onChange={(e) => setCorrForm((f) => ({ ...f, reasonNote: e.target.value }))} style={{ padding: `${sp(1)} ${sp(2)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font, fontSize: ui.text.xs }} />
+                <input type="text" placeholder={tu("correctPositionReasonNote")} value={corrForm.reasonNote} onChange={(e) => setCorrForm((f) => ({ ...f, reasonNote: e.target.value }))} style={{ padding: `${sp(1)} ${sp(2)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font, fontSize: ui.text.xs }} />
               )}
               {corrError && <p style={{ margin: 0, color: ui.color.danger, fontSize: ui.text.xs }}>{corrError}</p>}
-              {corrDone && <p style={{ margin: 0, color: ui.color.success, fontSize: ui.text.xs }}>✓ تمّ تصحيح الموضع</p>}
+              {corrDone && <p style={{ margin: 0, color: ui.color.success, fontSize: ui.text.xs }}>{tu("correctPositionDone")}</p>}
               <div style={{ display: "flex", gap: sp(2) }}>
                 <Button size="sm" variant="primary" disabled={corrSaving} data-testid="btn-correct-position-submit"
                   onClick={async () => {
-                    if (corrForm.reason === "OTHER" && !corrForm.reasonNote.trim()) { setCorrError("السبب التفصيلي مطلوب."); return; }
+                    if (corrForm.reason === "OTHER" && !corrForm.reasonNote.trim()) { setCorrError(tu("correctPositionNoteRequired")); return; }
                     setCorrError(null); setCorrSaving(true);
-                    const r = await post(`/api/students/${sid}/position-correction`, { ...corrForm }, "تمّ التصحيح.", sid);
+                    const r = await post(`/api/students/${sid}/position-correction`, { ...corrForm }, tu("correctPositionDone"), sid);
                     setCorrSaving(false);
                     if (r.ok) { setCorrDone(true); setShowCorrection(false); }
-                    else setCorrError(r.error ?? "تعذّر التصحيح.");
+                    else setCorrError(r.error ?? tu("correctPositionFailed"));
                   }}
-                >{corrSaving ? "جارٍ…" : "تأكيد التصحيح"}</Button>
-                <Button size="sm" variant="ghost" onClick={() => setShowCorrection(false)}>إلغاء</Button>
+                >{corrSaving ? tu("correctPositionSubmitting") : tu("correctPositionSubmit")}</Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowCorrection(false)}>{tu("correctPositionCancel")}</Button>
               </div>
             </div>
           )}

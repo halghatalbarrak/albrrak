@@ -105,6 +105,22 @@ describe("قاموس الشاشة الموحّدة (العربيّة)", () => {
       addStudentGender: "الجنس",
       addStudentGuardianPhone: "جوال ولي الأمر",
       addStudentProgram: "البرنامج",
+      correctPositionBtn: "تصحيح موضع الطالب",
+      correctPositionTitle: "تصحيح الموضع",
+      correctPositionFromSurah: "من سورة",
+      correctPositionAyah: "آية",
+      correctPositionToSurah: "إلى سورة",
+      correctPositionReason: "السبب",
+      correctPositionReasonInputError: "خطأ في الإدخال الأول",
+      correctPositionReasonLevelTest: "اختبار تحديد مستوى",
+      correctPositionReasonOther: "أخرى",
+      correctPositionReasonNote: "السبب التفصيلي (مطلوب)",
+      correctPositionSubmit: "تأكيد التصحيح",
+      correctPositionSubmitting: "جارٍ…",
+      correctPositionCancel: "إلغاء",
+      correctPositionDone: "✓ تمّ تصحيح الموضع",
+      correctPositionFailed: "تعذّر التصحيح.",
+      correctPositionNoteRequired: "السبب التفصيلي مطلوب.",
     };
     for (const key of Object.keys(expected) as (keyof typeof unifiedAr)[]) {
       expect(tUnified(key)).toBe(expected[key]);
