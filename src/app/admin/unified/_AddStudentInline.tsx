@@ -114,19 +114,19 @@ export function AddStudentInline({ circleId, defaultProgramId, onDone, onCancel 
             <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("addStudentBirthDate")}</span>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: sp(1) }}>
               <select data-testid="add-student-dob-day" style={iStyle} value={dobDay} onChange={(e) => setDobDay(e.target.value)}>
-                <option value="">يوم</option>
+                <option value="">{tu("addStudentDobDay")}</option>
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                   <option key={d} value={String(d)}>{d}</option>
                 ))}
               </select>
               <select data-testid="add-student-dob-month" style={iStyle} value={dobMonth} onChange={(e) => setDobMonth(e.target.value)}>
-                <option value="">شهر</option>
+                <option value="">{tu("addStudentDobMonth")}</option>
                 {["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"].map((m, i) => (
                   <option key={i + 1} value={String(i + 1)}>{m}</option>
                 ))}
               </select>
               <select data-testid="add-student-dob-year" style={iStyle} value={dobYear} onChange={(e) => setDobYear(e.target.value)}>
-                <option value="">سنة</option>
+                <option value="">{tu("addStudentDobYear")}</option>
                 {Array.from({ length: 50 }, (_, i) => new Date().getFullYear() - i).map((y) => (
                   <option key={y} value={String(y)}>{y}</option>
                 ))}
