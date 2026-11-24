@@ -474,6 +474,14 @@ export const errorsAr = {
   quickAddGuardianPhoneRequired: "جوال ولي الأمر مطلوب",
   quickAddProgramRequired: "البرنامج مطلوب",
 
+  // إضافة طالب كاملة (enroll-new-student.ts)
+  enrollNameRequired: "الاسم الرباعي مطلوب",
+  enrollBirthDateRequired: "تاريخ الميلاد مطلوب",
+  enrollStartSurahRequired: "موضع البداية (السورة) مطلوب",
+  enrollStartAyahRequired: "موضع البداية (الآية) مطلوب",
+  enrollTrackRequired: "المسار مطلوب",
+  enrollReadingTestRequired: "نتيجة اختبار القراءة مطلوبة",
+
   // الحذف الناعم — شاشة/موعد/بند/ثمرة/طلب (P4 — سلة المحذوفات)
   displayScreenAlreadyDeleted: "الشاشة محذوفةٌ فعلاً.",
   displayScheduleAlreadyDeleted: "الموعد محذوفٌ فعلاً.",
