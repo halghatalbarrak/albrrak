@@ -192,6 +192,9 @@
 | #267 | feat(under-13): م٤ — منع الحسابات لمن دون ١٣ + listUsersNoBirthDate + E2E 10yo/14yo | مدموج ✅ |
 | #269 | feat(ops): count-hifz-sessions.mjs + workflow_dispatch لعدّ جلسات التسميع | مدموج ✅ |
 | #270 | feat(analytics): لوحة عمل بأسماء — البند ١٠ المُعاد بناؤه (يحتاجون متابعة + اليوم في الحلقات + جدول الطلاب + مقارنة الحلقات + رسوم + مدّكِر) | مدموج ✅ |
+| #273 | fix(hifz): الحفظ لا يُسجَّل — حارس صارم + HifzInput مُبسَّط + تصحيح الموضع للمشرف | مدموج ✅ |
+| #274 | chore(ops): workflow أعداد AWAITING_READING_TEST (قراءة فقط) | مدموج ✅ |
+| #276 | fix(ops): nameAsInId في سكربت الأعداد | مدموج ✅ |
 
 ---
 
