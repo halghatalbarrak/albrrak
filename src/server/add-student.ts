@@ -96,7 +96,7 @@ export async function quickAddStudent(
     const student = await tx.student.create({
       data: {
         userId: user.id,
-        state: StudentState.AWAITING_READING_TEST,
+        state: StudentState.IN_MARAQI,
       },
     });
 

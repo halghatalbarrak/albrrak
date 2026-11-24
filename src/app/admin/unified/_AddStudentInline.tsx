@@ -34,7 +34,9 @@ const inputStyle = (ui: { font: string; text: { xs: string }; color: { text: str
 export function AddStudentInline({ circleId, defaultProgramId, onDone, onCancel }: Props) {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [name, setName] = useState("");
-  const [birthDate, setBirthDate] = useState("");
+  const [dobDay, setDobDay] = useState("");
+  const [dobMonth, setDobMonth] = useState("");
+  const [dobYear, setDobYear] = useState("");
   const [gender, setGender] = useState("MALE");
   const [guardianPhone, setGuardianPhone] = useState("");
   const [programId, setProgramId] = useState(defaultProgramId ?? "");
@@ -61,7 +63,8 @@ export function AddStudentInline({ circleId, defaultProgramId, onDone, onCancel 
     e.preventDefault();
     setErr(null);
     if (!name.trim()) { setErr("الاسم مطلوب"); return; }
-    if (!birthDate) { setErr("تاريخ الميلاد مطلوب"); return; }
+    if (!dobDay || !dobMonth || !dobYear) { setErr("تاريخ الميلاد مطلوب"); return; }
+    const birthDate = `${dobYear}-${dobMonth.padStart(2, "0")}-${dobDay.padStart(2, "0")}`;
     if (!guardianPhone.trim()) { setErr("جوال ولي الأمر مطلوب"); return; }
     if (!programId) { setErr("البرنامج مطلوب"); return; }
 
@@ -109,14 +112,26 @@ export function AddStudentInline({ circleId, defaultProgramId, onDone, onCancel 
           </label>
           <label style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
             <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("addStudentBirthDate")}</span>
-            <input
-              data-testid="add-student-birthdate"
-              type="date"
-              style={iStyle}
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              required
-            />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: sp(1) }}>
+              <select data-testid="add-student-dob-day" style={iStyle} value={dobDay} onChange={(e) => setDobDay(e.target.value)}>
+                <option value="">{tu("addStudentDobDay")}</option>
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={String(d)}>{d}</option>
+                ))}
+              </select>
+              <select data-testid="add-student-dob-month" style={iStyle} value={dobMonth} onChange={(e) => setDobMonth(e.target.value)}>
+                <option value="">{tu("addStudentDobMonth")}</option>
+                {["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"].map((m, i) => (
+                  <option key={i + 1} value={String(i + 1)}>{m}</option>
+                ))}
+              </select>
+              <select data-testid="add-student-dob-year" style={iStyle} value={dobYear} onChange={(e) => setDobYear(e.target.value)}>
+                <option value="">{tu("addStudentDobYear")}</option>
+                {Array.from({ length: 50 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                  <option key={y} value={String(y)}>{y}</option>
+                ))}
+              </select>
+            </div>
           </label>
           <label style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
             <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("addStudentGender")}</span>
