@@ -1,0 +1,29 @@
+name: Investigate hifz stall (read-only)
+on:
+  workflow_dispatch:
+    inputs:
+      circle_name:
+        description: "جزء من اسم الحلقة (مثال: أبي بكر)"
+        required: true
+
+jobs:
+  investigate:
+    name: investigate hifz stall
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: Investigate hifz stall (read-only)
+        env:
+          CIRCLE_NAME: ${{ github.event.inputs.circle_name }}
+        run: node scripts/ops/investigate-hifz-stall.mjs

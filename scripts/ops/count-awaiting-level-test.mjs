@@ -1,11 +1,14 @@
 // قراءةٌ فقط: حصر الطلاب النشطين الذين ينتظرون اختبار تحديد المستوى (AWAITING_READING_TEST) بكل حلقة.
 // لا تغيير في البيانات — للتشخيص فقط.
+// ⚠️ لا أسماء ولا بيانات شخصية في المخرجات — أعداد وأجزاء أوّلى من المعرّفات فقط.
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+/** يُخفي المعرّف: يُبقي أوّل ٨ أحرف فقط. */
+const maskId = (id) => `${id.slice(0, 8)}…`;
+
 async function main() {
-  // حصر الطلاب النشطين (قيدٌ نشط = endedAt null) في حالة AWAITING_READING_TEST
   const rows = await prisma.enrollment.findMany({
     where: {
       endedAt: null,
@@ -17,12 +20,7 @@ async function main() {
     select: {
       circleId: true,
       circle: { select: { nameAr: true } },
-      student: {
-        select: {
-          id: true,
-          user: { select: { nameAsInId: true } },
-        },
-      },
+      student: { select: { id: true } },
     },
     orderBy: [{ circleId: "asc" }],
   });
@@ -37,23 +35,23 @@ async function main() {
   for (const r of rows) {
     const key = r.circleId ?? "(بلا حلقة)";
     const name = r.circle?.nameAr ?? "(بلا حلقة)";
-    if (!byCircle.has(key)) byCircle.set(key, { name, students: [] });
-    byCircle.get(key).students.push(r.student.user.nameAsInId);
+    if (!byCircle.has(key)) byCircle.set(key, { name, ids: [] });
+    byCircle.get(key).ids.push(maskId(r.student.id));
   }
 
-  console.log(`\n📋 الطلاب المنتظرون اختبار تحديد المستوى — الإجمالي: ${rows.length}\n`);
+  console.log(`\n📋 AWAITING_READING_TEST — الإجمالي: ${rows.length}\n`);
   console.log("─".repeat(50));
 
-  for (const [, { name, students }] of byCircle) {
-    console.log(`\nالحلقة: ${name}  (${students.length} طالب)`);
-    for (const n of students) {
-      console.log(`  • ${n}`);
+  for (const [, { name, ids }] of byCircle) {
+    console.log(`\nالحلقة: ${name}  (${ids.length} طالب)`);
+    for (const id of ids) {
+      console.log(`  • ${id}`);
     }
   }
 
   console.log("\n" + "─".repeat(50));
   console.log(`الإجمالي: ${rows.length} طالب في ${byCircle.size} حلقة`);
-  console.log(`\nملاحظة: لا حقل «مستورد» في قاعدة البيانات — لا يمكن تمييز المستوردين برمجياً.`);
+  console.log(`\nملاحظة: معرّفات مقتطعة (٨ أحرف) فقط — لا أسماء في سجلات CI.`);
 }
 
 main()
