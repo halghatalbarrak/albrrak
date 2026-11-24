@@ -20,7 +20,7 @@ async function main() {
       student: {
         select: {
           id: true,
-          user: { select: { name: true } },
+          user: { select: { nameAsInId: true } },
         },
       },
     },
@@ -38,7 +38,7 @@ async function main() {
     const key = r.circleId ?? "(بلا حلقة)";
     const name = r.circle?.nameAr ?? "(بلا حلقة)";
     if (!byCircle.has(key)) byCircle.set(key, { name, students: [] });
-    byCircle.get(key).students.push(r.student.user.name);
+    byCircle.get(key).students.push(r.student.user.nameAsInId);
   }
 
   console.log(`\n📋 الطلاب المنتظرون اختبار تحديد المستوى — الإجمالي: ${rows.length}\n`);
