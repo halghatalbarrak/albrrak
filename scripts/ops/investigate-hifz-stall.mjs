@@ -37,7 +37,10 @@ async function main() {
     select: { id: true, nameAr: true },
   });
   if (!circle) {
+    const all = await prisma.circle.findMany({ select: { nameAr: true }, orderBy: { nameAr: "asc" } });
     console.error(`لم يُعثَر على حلقة تحتوي: "${CIRCLE_NAME}"`);
+    console.error("الحلقات المتاحة:");
+    for (const c of all) console.error(`  • ${c.nameAr}`);
     process.exit(1);
   }
   console.log(`\nالحلقة: ${circle.nameAr} (${circle.id.slice(0, 8)}…)\n`);
