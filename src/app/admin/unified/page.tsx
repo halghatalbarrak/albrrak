@@ -15,7 +15,7 @@ import { navAr } from "@/i18n/ar/nav";
 import { token, type Circle, type DayLock, type GrantItem, type MarkAttFn, type PanelDetail, type PostFn, type Student } from "./_types";
 import { DayLockBar } from "./_DayLockBar";
 import { AutoAssignMissingBtn } from "./_AutoAssignMissingBtn";
-import { AddStudentInline } from "./_AddStudentInline";
+import { EnrollStudentForm } from "./_EnrollStudentForm";
 
 // تحميلٌ كسول — لا تُجلب حتى تُفتح أوّل بطاقة / يُفعَّل عرض البطاقات.
 const StudentPanel = dynamic(
@@ -355,15 +355,17 @@ export default function UnifiedPage() {
       {/* زر إضافة طالب — للمعلّم في حلقته وللمدير */}
       {(me?.roles.includes("TEACHER") || me?.roles.includes("CIRCLE_MANAGER") || me?.roles.includes("SUPER_ADMIN")) && circleId && (
         showAddForm ? (
-          <AddStudentInline
+          <EnrollStudentForm
             circleId={circleId}
-            onDone={(studentId, duplicate) => {
+            onDone={(studentId, duplicate, setupComplete) => {
               setShowAddForm(false);
               void load(circleId);
               if (duplicate) {
-                setMsg("الطالب موجود بالفعل في هذه الحلقة."); setMsgKind("ok");
+                setMsg(tu("enrollDuplicateWarning")); setMsgKind("ok");
+              } else if (setupComplete) {
+                setMsg(tu("enrollSuccessReady")); setMsgKind("ok");
               } else {
-                setMsg("أُضيف الطالب بنجاح — أكمِل إعداده."); setMsgKind("ok");
+                setMsg(tu("enrollSuccessDefer")); setMsgKind("ok");
               }
               selectStudent(studentId);
             }}

@@ -20,8 +20,9 @@
 
 - الدفع وفتح الـ PR بحساب `halghatalbarrak`، وهويّة git للـ commits بريدها `thmny88@gmail.com`.
 - **صدِّر `GH_CONFIG_DIR` صراحةً في بداية كلّ أمرٍ فيه `gh` أو `git push`** (لا تعتمد على `.claude/settings.local.json` وحده):
-  - في Bash: `export GH_CONFIG_DIR="C:\Users\mmosa\.gh-albrrak"`
-  - في PowerShell: `$env:GH_CONFIG_DIR = "C:\Users\mmosa\.gh-albrrak"`
+  - **في أداة Bash حصراً:** `export GH_CONFIG_DIR="C:\Users\mmosa\.gh-albrrak" && gh ...` — الأمران معاً في سطرٍ واحد. **لا صيغة `$env:` أبداً في Bash** — هي PowerShell ولا تعمل في Bash وتُشغِّل `gh` بلا حارس.
+  - في PowerShell: `$env:GH_CONFIG_DIR = "C:\Users\mmosa\.gh-albrrak"; gh ...`
+- **قاعدة حديد:** أيّ ناتجٍ لـ`gh api user -q .login` غير `halghatalbarrak` = توقّف فوريّ وإبلاغ المدير. حتّى لو كان الظهور بسبب خطأ تقنيّ.
 - **الحارس قبل كلّ `push` أو دمج** — تحقّق أنّ الحساب النشط اسمه `halghatalbarrak` **تحديداً**، وإلّا فتوقّف:
   ```
   export GH_CONFIG_DIR="C:\Users\mmosa\.gh-albrrak"

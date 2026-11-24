@@ -131,36 +131,16 @@ test.describe("إضافة طالب من الشاشة الموحّدة", () => {
     await expect(page.locator("[data-testid='add-student-btn']")).toBeVisible({ timeout: 8000 });
   });
 
-  test("فتح النموذج والإضافة", async ({ page }) => {
+  test("فتح النموذج (نموذج التسجيل الكامل)", async ({ page }) => {
     await page.locator("[data-testid='add-student-btn']").click();
-    await expect(page.locator("[data-testid='add-student-form']")).toBeVisible();
-
-    await page.locator("[data-testid='add-student-name']").fill("أحمد الجديد");
-    await page.locator("[data-testid='add-student-birthdate']").fill("2010-01-01");
-    await page.locator("[data-testid='add-student-guardian-phone']").fill("0512345678");
-
-    await page.locator("[data-testid='add-student-submit']").click();
-
-    // بعد الإضافة: النموذج يُخفى ورسالة النجاح
-    await expect(page.locator("[data-testid='add-student-form']")).not.toBeVisible({ timeout: 6000 });
-  });
-
-  test("الطالب يظهر بـ«إعداد ناقص» بعد الإضافة", async ({ page }) => {
-    await page.locator("[data-testid='add-student-btn']").click();
-    await page.locator("[data-testid='add-student-name']").fill("أحمد الجديد");
-    await page.locator("[data-testid='add-student-birthdate']").fill("2010-01-01");
-    await page.locator("[data-testid='add-student-guardian-phone']").fill("0512345678");
-    await page.locator("[data-testid='add-student-submit']").click();
-
-    // بعد إعادة التحميل، يظهر الطالب الجديد مع «إعداد ناقص»
-    await expect(page.getByText("أحمد الجديد").first()).toBeVisible({ timeout: 8000 });
-    await expect(page.getByText("إعداد ناقص").first()).toBeVisible();
+    // النموذج الكامل استبدل نموذج الإضافة السريعة — الاختبارات المفصّلة في enroll-student.spec.ts
+    await expect(page.locator("[data-testid='enroll-student-form']")).toBeVisible({ timeout: 5000 });
   });
 
   test("النموذج يظهر على شاشة 390px", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator("[data-testid='add-student-btn']").waitFor({ state: "visible", timeout: 8000 });
     await page.locator("[data-testid='add-student-btn']").click();
-    await expect(page.locator("[data-testid='add-student-form']")).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("[data-testid='enroll-student-form']")).toBeVisible({ timeout: 5000 });
   });
 });
