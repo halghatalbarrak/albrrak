@@ -15,7 +15,8 @@ import { computeAge } from "./age-policy";
 export type SetupBlocker =
   | { key: "NO_PROGRAM" }
   | { key: "FRONTIER" }
-  | { key: "NO_TRACK" };
+  | { key: "NO_TRACK" }
+  | { key: "STATE_BLOCKS_HIFZ"; state: StudentState };
 
 export type SetupWarning =
   | { key: "NO_GUARDIAN" }
@@ -99,6 +100,17 @@ export async function getStudentSetupStatus(
     }
   }
 
+  // ٥. STATE_BLOCKS_HIFZ — الطالب في مراقي لكن حالته تمنع تسجيل الحفظ
+  //    (AWAITING_PACE_TEST, PACE_RETEST_SCHEDULED وما شابه — ليس IN_MARAQI ولا نهائي)
+  if (
+    isMaraqi &&
+    student.state !== StudentState.IN_MARAQI &&
+    student.state !== StudentState.COMPLETED &&
+    student.state !== StudentState.GRADUATED
+  ) {
+    blockers.push({ key: "STATE_BLOCKS_HIFZ", state: student.state });
+  }
+
   // التنبيهات (لا تقفل شيئاً)
   const today = new Date();
   const age = student.user.birthDate ? computeAge(student.user.birthDate, today) : null;
@@ -173,6 +185,15 @@ export async function getStudentSetupStatusBatch(
     if (isMaraqi && isActiveMaraqi(r.state)) {
       if (!hasPlacement.has(r.id)) blockers.push({ key: "FRONTIER" });
       if (!r.trackAssignments.length) blockers.push({ key: "NO_TRACK" });
+    }
+    // STATE_BLOCKS_HIFZ — حالة الطالب تمنع تسجيل الحفظ (ليس IN_MARAQI ولا نهائي)
+    if (
+      isMaraqi &&
+      r.state !== StudentState.IN_MARAQI &&
+      r.state !== StudentState.COMPLETED &&
+      r.state !== StudentState.GRADUATED
+    ) {
+      blockers.push({ key: "STATE_BLOCKS_HIFZ", state: r.state });
     }
     const age = r.user.birthDate ? computeAge(r.user.birthDate, today) : null;
     if (age !== null && age < 18 && !r.guardians.length) warnings.push({ key: "NO_GUARDIAN" });

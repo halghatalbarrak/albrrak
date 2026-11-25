@@ -93,6 +93,14 @@ describe("الحفظ (§٨٫٣) — على المعلم وحده (قاعدة م�
     await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.AWAITING_PACE_TEST } });
     await expect(recordHifz(hifzArgs(student.id, teacher.id), prisma)).rejects.toBeInstanceOf(ValidationError);
   });
+
+  it("يرمي خطأ بمفتاح hifzStudentStateBlocked لطالب في AWAITING_PACE_TEST", async () => {
+    const { student, teacher } = await maraqiScaffold();
+    await prisma.student.update({ where: { id: student.id }, data: { state: StudentState.AWAITING_PACE_TEST } });
+    const err = await recordHifz(hifzArgs(student.id, teacher.id), prisma).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ValidationError);
+    expect((err as ValidationError).key).toBe("hifzStudentStateBlocked");
+  });
 });
 
 describe("الحكم ١ — الفرص الثلاث ووقف الجديد قبل الإتقان", () => {

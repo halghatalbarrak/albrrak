@@ -238,3 +238,34 @@ test("أتقن المقرّر كما هو → الطالب التالي → ال
   // ٥. تأكّد أن البطاقة طُلبت مجدداً (لا cache بعد الحفظ)
   expect(s1PanelCalls).toBeGreaterThan(callsBeforeSave);
 });
+
+// ═══ ٧) طالب AWAITING_PACE_TEST — يظهر رسالة الحالة وزر «فتح الإعداد» ═══
+test("طالب AWAITING_PACE_TEST: خطأ hifzStudentStateBlocked يُظهر رسالة وزر فتح الإعداد", async ({ page }) => {
+  await setupPage(page);
+  await page.route("**/api/circles/c1/unified**", (r) =>
+    r.fulfill({ json: { students: ONE_STUDENT, absentDefault: false } }),
+  );
+  await page.route("**/api/students/s1/unified-panel**", (r) => r.fulfill({ json: PANEL_NEW }));
+  // الخادم يُرجع خطأ hifzStudentStateBlocked
+  await page.route("**/api/students/s1/session", (r) =>
+    r.fulfill({
+      status: 400,
+      json: { error: "حالة الطالب لا تسمح بتسجيل الحفظ — افتح الإعداد لاستكمال التسكين.", key: "hifzStudentStateBlocked" },
+    }),
+  );
+
+  await page.goto("/admin/unified");
+  await expect(page.locator("[data-testid='student-row']")).toHaveCount(1, { timeout: 15_000 });
+  await page.locator("[data-testid='student-row']").first().click();
+  await expect(page.locator("[data-testid='student-inline-card']")).toBeVisible({ timeout: 10_000 });
+
+  // محاولة الحفظ
+  await page.locator("[data-testid='hifz-btn-mastered']").click();
+
+  // يظهر مقطع الخطأ المخصّص
+  await expect(page.locator("[data-testid='hifz-state-blocked-error']")).toBeVisible({ timeout: 5_000 });
+  // تظهر الرسالة العربية
+  await expect(page.locator("[data-testid='hifz-state-blocked-error']")).toContainText("حالة الطالب", { timeout: 3_000 });
+  // يظهر زر «فتح الإعداد»
+  await expect(page.locator("[data-testid='btn-open-placement']")).toBeVisible({ timeout: 3_000 });
+});

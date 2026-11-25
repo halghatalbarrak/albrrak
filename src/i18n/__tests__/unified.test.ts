@@ -124,6 +124,9 @@ describe("قاموس الشاشة الموحّدة (العربيّة)", () => {
       correctPositionDone: "✓ تمّ تصحيح الموضع",
       correctPositionFailed: "تعذّر التصحيح.",
       correctPositionNoteRequired: "السبب التفصيلي مطلوب.",
+      hifzStateBlockedMsg: "حالة الطالب لا تسمح بتسجيل الحفظ — افتح الإعداد",
+      hifzStateBlockedBtn: "فتح الإعداد",
+      hifzSaveFailed: "تعذّر التسجيل.",
     };
     for (const key of Object.keys(expected) as (keyof typeof unifiedAr)[]) {
       expect(tUnified(key)).toBe(expected[key]);

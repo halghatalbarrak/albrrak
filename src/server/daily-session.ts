@@ -268,6 +268,15 @@ export async function recordHifz(input: HifzInput, db: PrismaClient = prisma): P
   }
   const student = await db.student.findUnique({ where: { id: input.studentId }, select: { state: true } });
   if (student?.state !== StudentState.IN_MARAQI) {
+    // إن كان الطالب في مراقي لكن حالته ليست IN_MARAQI (AWAITING_PACE_TEST, PACE_RETEST_SCHEDULED, ...)
+    // يُرمى خطأ مميَّز يُشير لفتح الإعداد، وإلا رسالة عامة.
+    const maraqi_active_states: StudentState[] = [
+      StudentState.AWAITING_PACE_TEST,
+      StudentState.PACE_RETEST_SCHEDULED,
+    ];
+    if (student && maraqi_active_states.includes(student.state)) {
+      throw verr("hifzStudentStateBlocked");
+    }
     throw verr("hifzForMaraqiStudent");
   }
   if (!pointLE(input.fromSurah, input.fromAyah, input.toSurah, input.toAyah)) {

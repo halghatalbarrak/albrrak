@@ -281,6 +281,7 @@ export const errorsAr = {
   sessionOwnStudentsOnly: "لا تَرصد إلا جلسات طلابك (§٨٫٣).",
   sessionDailyForMaraqi: "الجلسة اليومية لطلاب مراقي.",
   hifzForMaraqiStudent: "تسجيل الحفظ لطالبٍ في مراقي.",
+  hifzStudentStateBlocked: "حالة الطالب لا تسمح بتسجيل الحفظ — افتح الإعداد لاستكمال التسكين.",
   hifzRangeReversed: "نطاق الحفظ معكوس (البداية بعد النهاية).",
   hifzAttemptsRange: "عدد المحاولات بين ١ و٣ (الفرص الثلاث — الحكم ١).",
   hifzNoNewBeforeMastery: "يجب إعادة نفس المقطع المحدّد تماماً — لا تعديل في البداية أو النهاية (الحكم ١).",
