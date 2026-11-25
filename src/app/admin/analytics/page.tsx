@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useReducer } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useMe } from "@/lib/useMe";
 import { arNum } from "@/lib/format";
@@ -46,53 +46,115 @@ function reasonLabel(code: FollowUpCode): string {
 
 // ─── قسم ١: يحتاجون متابعة ────────────────────────────────────────────────────
 
-function FollowUpSection({ rows, today }: { rows: FollowUpStudent[]; today: string }) {
+const URGENT_CODES = new Set<FollowUpCode>(["ABSENT_CONSECUTIVE", "REPEATED_SECTION"]);
+
+function ReasonBadge({ code }: { code: FollowUpCode }) {
+  const urgent = URGENT_CODES.has(code);
+  return (
+    <span data-testid={`reason-${code}`} style={{
+      background: urgent ? ui.color.danger + "22" : ui.color.border,
+      color: urgent ? ui.color.danger : ui.color.text,
+      borderRadius: ui.radius.sm, padding: `0 ${sp(2)}`, fontSize: ui.text.xs,
+    }}>
+      {reasonLabel(code)}
+    </span>
+  );
+}
+
+function FollowUpSection({ rows }: { rows: FollowUpStudent[] }) {
+  // تجميع الطلاب حسب السبب الأوّل (الأعلى أولويّةً)
+  const groups = useMemo(() => {
+    const map = new Map<FollowUpCode, FollowUpStudent[]>();
+    for (const r of rows) {
+      const primary = r.reasons[0];
+      if (!primary) continue;
+      const list = map.get(primary) ?? [];
+      list.push(r);
+      map.set(primary, list);
+    }
+    return [...map.entries()].sort(([a], [b]) => {
+      // الأسباب العاجلة أوّلاً
+      const au = URGENT_CODES.has(a) ? 0 : 1;
+      const bu = URGENT_CODES.has(b) ? 0 : 1;
+      return au - bu;
+    });
+  }, [rows]);
+
+  const [collapsed, toggleGroup] = useReducer((state: Set<string>, code: string) => {
+    const next = new Set(state);
+    if (next.has(code)) next.delete(code); else next.add(code);
+    return next;
+  }, new Set<string>());
+
   return (
     <section data-testid="followup-section" style={{ marginBottom: sp(8) }}>
       <h2 style={{ fontSize: ui.text.lg, fontWeight: 700, marginBottom: sp(4) }}>{tD("s1Title")}</h2>
       {rows.length === 0
         ? <p style={{ color: ui.color.muted, fontSize: ui.text.xs }}>{tD("s1Empty")}</p>
         : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", fontSize: ui.text.xs, borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  {[tD("colName"), tD("colCircle"), tD("colTeacher"), tD("colReasons"), ""].map((h) => (
-                    <th key={h} style={{ padding: `${sp(2)} ${sp(2)}`, textAlign: "start", color: ui.color.muted, borderBottom: `1px solid ${ui.color.border}`, fontWeight: 600 }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.studentId} data-testid={`followup-row-${r.studentId}`}>
-                    <td style={{ padding: `${sp(2)} ${sp(2)}`, borderBottom: `1px solid ${ui.color.border}`, fontWeight: 600 }} data-testid="followup-name">{r.name}</td>
-                    <td style={{ padding: `${sp(2)} ${sp(2)}`, borderBottom: `1px solid ${ui.color.border}` }}>{r.circleName}</td>
-                    <td style={{ padding: `${sp(2)} ${sp(2)}`, borderBottom: `1px solid ${ui.color.border}` }}>{r.teacherName}</td>
-                    <td style={{ padding: `${sp(2)} ${sp(2)}`, borderBottom: `1px solid ${ui.color.border}` }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: sp(1) }}>
-                        {r.reasons.map((code) => (
-                          <span key={code} data-testid={`reason-${code}`} style={{
-                            background: code === "ABSENT_CONSECUTIVE" || code === "REPEATED_SECTION" ? ui.color.danger + "22" : ui.color.border,
-                            color: code === "ABSENT_CONSECUTIVE" || code === "REPEATED_SECTION" ? ui.color.danger : ui.color.text,
-                            borderRadius: ui.radius.sm, padding: `0 ${sp(2)}`, fontSize: ui.text.xs,
-                          }}>
-                            {reasonLabel(code)}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td style={{ padding: `${sp(2)} ${sp(2)}`, borderBottom: `1px solid ${ui.color.border}` }}>
-                      <a
-                        href={`/circles/${r.circleId}?date=${today}&student=${r.studentId}`}
-                        style={{ color: ui.color.primary, textDecoration: "none", fontSize: ui.text.xs }}
-                      >
-                        {tD("btnOpen")} ←
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: "flex", flexDirection: "column", gap: sp(3) }}>
+            {groups.map(([code, groupRows]) => {
+              const open = !collapsed.has(code);
+              return (
+                <div key={code} style={{ border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, overflow: "hidden" }}>
+                  {/* رأس المجموعة */}
+                  <button
+                    data-testid={`group-header-${code}`}
+                    onClick={() => toggleGroup(code)}
+                    style={{
+                      width: "100%", display: "flex", alignItems: "center", gap: sp(2),
+                      padding: `${sp(2)} ${sp(3)}`,
+                      background: URGENT_CODES.has(code) ? ui.color.danger + "11" : ui.color.surface,
+                      border: "none", cursor: "pointer", textAlign: "start", fontFamily: ui.font,
+                    }}
+                  >
+                    <span style={{ fontWeight: 700, fontSize: ui.text.base, color: URGENT_CODES.has(code) ? ui.color.danger : ui.color.text }}>
+                      {reasonLabel(code)}
+                    </span>
+                    <span style={{ fontSize: ui.text.xs, color: ui.color.muted, background: ui.color.border, borderRadius: 99, padding: `0 ${sp(2)}` }}>
+                      {arNum(groupRows.length)}
+                    </span>
+                    <span style={{ marginRight: "auto", fontSize: ui.text.xs, color: ui.color.muted }}>{open ? "▴" : "▾"}</span>
+                  </button>
+                  {/* صفوف الطلاب */}
+                  {open && (
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", fontSize: ui.text.xs, borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr>
+                            {[tD("colName"), tD("colCircle"), tD("colTeacher"), tD("colReasons"), ""].map((h) => (
+                              <th key={h} style={{ padding: `${sp(2)} ${sp(2)}`, textAlign: "start", color: ui.color.muted, borderBottom: `1px solid ${ui.color.border}`, fontWeight: 600 }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {groupRows.map((r) => (
+                            <tr key={r.studentId} data-testid={`followup-row-${r.studentId}`}>
+                              <td style={{ padding: `${sp(2)} ${sp(2)}`, borderBottom: `1px solid ${ui.color.border}`, fontWeight: 600 }} data-testid="followup-name">{r.name}</td>
+                              <td style={{ padding: `${sp(2)} ${sp(2)}`, borderBottom: `1px solid ${ui.color.border}` }}>{r.circleName}</td>
+                              <td style={{ padding: `${sp(2)} ${sp(2)}`, borderBottom: `1px solid ${ui.color.border}` }}>{r.teacherName}</td>
+                              <td style={{ padding: `${sp(2)} ${sp(2)}`, borderBottom: `1px solid ${ui.color.border}` }}>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: sp(1) }}>
+                                  {r.reasons.map((c) => <ReasonBadge key={c} code={c} />)}
+                                </div>
+                              </td>
+                              <td style={{ padding: `${sp(2)} ${sp(2)}`, borderBottom: `1px solid ${ui.color.border}` }}>
+                                <a
+                                  href={`/admin/unified?circle=${r.circleId}&student=${r.studentId}`}
+                                  style={{ color: ui.color.primary, textDecoration: "none", fontSize: ui.text.xs }}
+                                >
+                                  {tD("btnOpen")} ←
+                                </a>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
     </section>
@@ -476,7 +538,7 @@ export default function AnalyticsPage() {
               )
               : (
                 <>
-                  <FollowUpSection rows={data.followUp} today={data.todayIso} />
+                  <FollowUpSection rows={data.followUp} />
                   <TodayCirclesSection cards={data.todayCircles} />
                   <StudentsSection rows={data.students} />
                   <CircleCompSection rows={data.circleComparison} />
