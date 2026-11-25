@@ -48,3 +48,6 @@ v-*.png
 # قواعد Postgres المدمجة المؤقّتة للاختبار (احتياطًا — الأصل في مجلّد temp للنظام)
 .pgdata/
 .pg-embedded/
+
+# worktrees المتوازية (تُنشئها claude-code — لا تُرفع أبدًا)
+.claude/worktrees/
