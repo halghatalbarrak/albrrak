@@ -158,7 +158,13 @@ export default function UnifiedPage() {
       const cRes = await fetch("/api/attendance/circles", { headers: { authorization: `Bearer ${t}` } });
       if (cRes.ok) {
         const cs = ((await cRes.json()) as { circles?: Circle[] }).circles ?? [];
-        setCircles(cs); if (cs.length) setCircleId(cs[0].id); else setStatus("ready");
+        setCircles(cs);
+        if (cs.length) {
+          const preferred = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("circle") : null;
+          setCircleId(cs.find((c) => c.id === preferred)?.id ?? cs[0].id);
+        } else {
+          setStatus("ready");
+        }
       } else setStatus("error");
     })();
   }, []);
