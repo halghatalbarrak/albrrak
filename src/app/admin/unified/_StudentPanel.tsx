@@ -143,13 +143,13 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
                   <>
                   {hifzError === "STATE_BLOCKED" && (
                     <div data-testid="hifz-state-blocked-error" style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 12px", background: "#fff1f0", border: "1px solid #ffa39e", borderRadius: 6, marginBottom: 8 }}>
-                      <span style={{ color: "#cf1322", fontSize: ui.text.xs }}>حالة الطالب لا تسمح بتسجيل الحفظ — افتح الإعداد</span>
+                      <span style={{ color: "#cf1322", fontSize: ui.text.xs }}>{tu("hifzStateBlockedMsg")}</span>
                       <Button
                         size="sm"
                         variant="ghost"
                         data-testid="btn-open-placement"
                         onClick={() => window.open(`/admin/students/${sid}/placement`, "_blank")}
-                      >فتح الإعداد</Button>
+                      >{tu("hifzStateBlockedBtn")}</Button>
                     </div>
                   )}
                   <HifzInput
@@ -174,7 +174,7 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
                         if (isStateBlocked) {
                           setHifzError("STATE_BLOCKED");
                         } else {
-                          setHifzError(r.error ?? "تعذّر التسجيل.");
+                          setHifzError(r.error ?? tu("hifzSaveFailed"));
                         }
                       }
                     }}

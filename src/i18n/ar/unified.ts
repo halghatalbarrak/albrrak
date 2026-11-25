@@ -119,6 +119,10 @@ export const unifiedAr = {
   correctPositionDone: "✓ تمّ تصحيح الموضع",
   correctPositionFailed: "تعذّر التصحيح.",
   correctPositionNoteRequired: "السبب التفصيلي مطلوب.",
+  // رسالة حالة الطالب تمنع تسجيل الحفظ (STATE_BLOCKED)
+  hifzStateBlockedMsg: "حالة الطالب لا تسمح بتسجيل الحفظ — افتح الإعداد",
+  hifzStateBlockedBtn: "فتح الإعداد",
+  hifzSaveFailed: "تعذّر التسجيل.",
 } as const;
 
 export type UnifiedKey = keyof typeof unifiedAr;
