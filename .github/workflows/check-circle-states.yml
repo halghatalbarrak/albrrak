@@ -1,0 +1,35 @@
+name: فحص حالات طلاب حلقة (تشخيص)
+
+on:
+  workflow_dispatch:
+    inputs:
+      circle_name:
+        description: "جزء من اسم الحلقة بالعربية"
+        required: false
+        default: "أبي بكر"
+
+permissions:
+  contents: read
+
+jobs:
+  check-states:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: تثبيت الاعتمادات
+        run: npm ci
+
+      - name: توليد عميل Prisma
+        run: npx prisma generate
+
+      - name: فحص حالات الطلاب
+        run: node scripts/ops/check-circle-states.mjs "${{ inputs.circle_name }}"

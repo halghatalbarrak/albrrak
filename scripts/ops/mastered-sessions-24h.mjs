@@ -6,11 +6,11 @@ const prisma = new PrismaClient();
 
 async function main() {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const sinceStr = since.toISOString();
+  const sinceStr = since.toISOString().slice(0, 10);
 
   const rows = await prisma.dailySession.findMany({
     where: {
-      createdAt: { gte: since },
+      date: { gte: since },
       hifzMastered: true,
     },
     select: {
@@ -21,9 +21,9 @@ async function main() {
       hifzToSurah: true,
       hifzFromAyah: true,
       hifzToAyah: true,
-      createdAt: true,
+      date: true,
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { date: "desc" },
   });
 
   // إحصاء حسب الحلقة
