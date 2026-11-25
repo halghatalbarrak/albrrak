@@ -219,10 +219,10 @@ export default function UnifiedPage() {
       if (studentId) setPanelCache((p) => { const n = new Map(p); n.delete(studentId); return n; });
       return { ok: true };
     } else {
-      const j = await res.json().catch(() => ({})) as { error?: string };
+      const j = await res.json().catch(() => ({})) as { error?: string; key?: string };
       const errMsg = j.error ?? "تعذّر التسجيل.";
       setMsg(errMsg); setMsgKind("err");
-      return { ok: false, error: errMsg };
+      return { ok: false, error: errMsg, key: j.key };
     }
   }, [circleId, load]) as PostFn;
 

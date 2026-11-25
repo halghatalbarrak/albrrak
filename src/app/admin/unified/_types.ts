@@ -56,7 +56,7 @@ export type LockState = "OPEN" | "APPROVED" | "AUTO_LOCKED" | "TEMP_OPEN";
 export interface DayLock { state: LockState; locked: boolean; date: string }
 
 /** studentId اختياريّ: إن أُرسِل، يُبطَل cache بطاقة ذلك الطالب بعد نجاح POST. */
-export type PostFn = (url: string, body: Record<string, unknown>, okMsg: string, studentId?: string) => Promise<{ ok: boolean; error?: string }>;
+export type PostFn = (url: string, body: Record<string, unknown>, okMsg: string, studentId?: string) => Promise<{ ok: boolean; error?: string; key?: string }>;
 
 /** تأشير حضور: تحديثٌ متفائلٌ فوريّ — الزر يتغيّر قبل ردّ الخادم. */
 export type MarkAttFn = (studentId: string, status: string) => Promise<void>;
