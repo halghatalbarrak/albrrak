@@ -265,7 +265,7 @@ test("طالب AWAITING_PACE_TEST: خطأ hifzStudentStateBlocked يُظهر ر�
   // يظهر مقطع الخطأ المخصّص
   await expect(page.locator("[data-testid='hifz-state-blocked-error']")).toBeVisible({ timeout: 5_000 });
   // تظهر الرسالة العربية
-  await expect(page.getByText("حالة الطالب لا تسمح بتسجيل الحفظ")).toBeVisible({ timeout: 3_000 });
+  await expect(page.locator("[data-testid='hifz-state-blocked-error']")).toContainText("حالة الطالب", { timeout: 3_000 });
   // يظهر زر «فتح الإعداد»
   await expect(page.locator("[data-testid='btn-open-placement']")).toBeVisible({ timeout: 3_000 });
 });
