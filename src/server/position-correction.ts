@@ -126,3 +126,70 @@ export async function correctStudentPosition(
     // تعيين المسار لا يُوقف التصحيح إن فشل (الموضع صُحِّح)
   }
 }
+
+export interface BulkCorrectInput {
+  circleId: string;
+  corrections: Array<{
+    studentId: string;
+    fromSurah: number;
+    fromAyah: number;
+    toSurah: number;
+    toAyah: number;
+  }>;
+  reason: PositionCorrectionReason;
+  reasonNote?: string;
+  actorId: string;
+}
+
+export interface BulkCorrectResult {
+  corrected: number;
+  errors: Array<{ studentId: string; error: string }>;
+}
+
+/**
+ * تصحيح مواضع طلاب الحلقة دفعةً واحدة — للمشرف العام ومدير الحلقة.
+ * يتحقّق من انتساب كل طالب للحلقة، ثم يُنفّذ correctStudentPosition لكل طالب.
+ */
+export async function bulkCorrectCirclePositions(
+  input: BulkCorrectInput,
+  db: PrismaClient = prisma,
+): Promise<BulkCorrectResult> {
+  const enrollments = await db.enrollment.findMany({
+    where: { circleId: input.circleId, endedAt: null },
+    select: { studentId: true },
+  });
+  const circleStudentIds = new Set(enrollments.map((e) => e.studentId));
+
+  const errors: Array<{ studentId: string; error: string }> = [];
+  let corrected = 0;
+
+  for (const c of input.corrections) {
+    if (!circleStudentIds.has(c.studentId)) {
+      errors.push({ studentId: c.studentId, error: "studentNotInThisCircle" });
+      continue;
+    }
+    try {
+      await correctStudentPosition(
+        {
+          studentId: c.studentId,
+          actorId: input.actorId,
+          fromSurah: c.fromSurah,
+          fromAyah: c.fromAyah,
+          toSurah: c.toSurah,
+          toAyah: c.toAyah,
+          reason: input.reason,
+          reasonNote: input.reasonNote || "تصحيح بعد خلل تسجيل الحفظ",
+        },
+        db,
+      );
+      corrected++;
+    } catch (e) {
+      errors.push({
+        studentId: c.studentId,
+        error: e instanceof Error ? e.message : "خطأ غير معروف",
+      });
+    }
+  }
+
+  return { corrected, errors };
+}
