@@ -200,6 +200,7 @@
 | #279 | fix(ops): إصلاح AuditLog schema + قائمة حلقات | مدموج ✅ |
 | #280 | feat(setup): إزالة مانع READING_TEST — القسم ٤ | مدموج ✅ |
 | #281 | feat(registration): القسم ٥ — طالب ACTIVE فوراً + تاريخ ميلاد يوم/شهر/سنة | مدموج ✅ |
+| #282 | feat(analytics): القسم ٦ — رابط 404 + تجميع المتابعة + not-found | مدموج ✅ |
 
 ---
 
