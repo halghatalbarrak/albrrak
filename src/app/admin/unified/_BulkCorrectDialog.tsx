@@ -5,34 +5,7 @@ import { Button, sp, ui } from "@/components/ui";
 import { SURAH_AYAH_COUNTS_TANZIL, SURAH_NAMES } from "@/lib/surah-names";
 import type { Student } from "./_types";
 import { token } from "./_types";
-
-// ═══════════════════════════════════════════════════════════════
-// نصوص الواجهة (const T — لا نص عربي مباشر في JSX)
-// ═══════════════════════════════════════════════════════════════
-const T = {
-  title: "تصحيح الموضع الجماعي",
-  colName: "الطالب",
-  colFrom: "الموضع الحالي (من)",
-  colTo: "الموضع الجديد (إلى)",
-  surahLabel: "السورة",
-  ayahLabel: "الآية",
-  reasonLabel: "السبب",
-  reasonNote: "ملاحظة",
-  reasons: {
-    INPUT_ERROR: "خطأ إدخال",
-    LEVEL_TEST: "اختبار مستوى",
-    OTHER: "أخرى",
-  } as const,
-  save: "حفظ الجميع",
-  cancel: "إلغاء",
-  saving: "جارٍ الحفظ...",
-  successMsg: (n: number) => `صُحِّح موضع ${n} طالب.`,
-  partialMsg: (ok: number, fail: number) =>
-    `صُحِّح ${ok} طالب — فشل ${fail}.`,
-  errorRequired: "الرجاء اختيار السبب",
-  chooseReason: "اختر سبباً",
-  errorNoteRequired: "يلزم كتابة ملاحظة عند اختيار «أخرى»",
-} as const;
+import { tUnified as tu } from "@/i18n/ar/unified";
 
 // ═══════════════════════════════════════════════════════════════
 // مساعدات السور
@@ -175,18 +148,18 @@ export function BulkCorrectDialog({
 
   async function handleSave() {
     if (!reason) {
-      setMsg({ text: T.errorRequired, kind: "err" });
+      setMsg({ text: tu("bulkCorrectErrorRequired"), kind: "err" });
       return;
     }
     if (reason === "OTHER" && !reasonNote.trim()) {
-      setMsg({ text: T.errorNoteRequired, kind: "err" });
+      setMsg({ text: tu("bulkCorrectErrorNoteRequired"), kind: "err" });
       return;
     }
     setSaving(true);
     setMsg(null);
     const tok = await token();
     if (!tok) {
-      setMsg({ text: "انتهت الجلسة.", kind: "err" });
+      setMsg({ text: tu("bulkCorrectSessionEnded"), kind: "err" });
       setSaving(false);
       return;
     }
@@ -212,20 +185,20 @@ export function BulkCorrectDialog({
         request?: boolean;
       };
       if (j.request) {
-        setMsg({ text: "أُرسل الطلب — بانتظار الاعتماد.", kind: "ok" });
+        setMsg({ text: tu("bulkCorrectSuccess"), kind: "ok" });
         setTimeout(() => { onDone(); onClose(); }, 1200);
         return;
       }
       const ok = j.corrected ?? 0;
       const fail = (j.errors ?? []).length;
       if (fail === 0) {
-        setMsg({ text: T.successMsg(ok), kind: "ok" });
+        setMsg({ text: `${tu("bulkCorrectSuccess")} (${ok})`, kind: "ok" });
         setTimeout(() => { onDone(); onClose(); }, 900);
       } else {
-        setMsg({ text: T.partialMsg(ok, fail), kind: fail > 0 && ok === 0 ? "err" : "ok" });
+        setMsg({ text: `${tu("bulkCorrectPartial")} ✓${ok} ✗${fail}`, kind: fail > 0 && ok === 0 ? "err" : "ok" });
       }
     } catch {
-      setMsg({ text: "تعذّر الاتصال بالخادم.", kind: "err" });
+      setMsg({ text: tu("bulkCorrectNetworkError"), kind: "err" });
     }
     setSaving(false);
   }
@@ -276,15 +249,15 @@ export function BulkCorrectDialog({
   return (
     <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={dialog} role="dialog" aria-modal="true" data-testid="bulk-correct-dialog">
-        <h2 style={{ margin: 0, fontSize: ui.text.lg, fontWeight: 700 }}>{T.title}</h2>
+        <h2 style={{ margin: 0, fontSize: ui.text.lg, fontWeight: 700 }}>{tu("bulkCorrectTitle")}</h2>
 
         <div style={{ overflowX: "auto" }}>
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>{T.colName}</th>
-                <th style={{ ...thStyle, minWidth: 240 }}>{T.colFrom}</th>
-                <th style={{ ...thStyle, minWidth: 240 }}>{T.colTo}</th>
+                <th style={thStyle}>{tu("bulkCorrectColName")}</th>
+                <th style={{ ...thStyle, minWidth: 240 }}>{tu("bulkCorrectColFrom")}</th>
+                <th style={{ ...thStyle, minWidth: 240 }}>{tu("bulkCorrectColTo")}</th>
               </tr>
             </thead>
             <tbody>
@@ -331,7 +304,7 @@ export function BulkCorrectDialog({
         {/* السبب */}
         <div style={{ display: "flex", gap: sp(3), flexWrap: "wrap", alignItems: "flex-start" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
-            <label style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{T.reasonLabel}</label>
+            <label style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("bulkCorrectReasonLabel")}</label>
             <select
               value={reason}
               onChange={(e) => setReason(e.target.value as typeof reason)}
@@ -346,16 +319,16 @@ export function BulkCorrectDialog({
                 minWidth: 160,
               }}
             >
-              <option value="">{T.chooseReason}</option>
-              <option value="INPUT_ERROR">{T.reasons.INPUT_ERROR}</option>
-              <option value="LEVEL_TEST">{T.reasons.LEVEL_TEST}</option>
-              <option value="OTHER">{T.reasons.OTHER}</option>
+              <option value="">{tu("bulkCorrectChooseReason")}</option>
+              <option value="INPUT_ERROR">{tu("bulkCorrectReasonInputError")}</option>
+              <option value="LEVEL_TEST">{tu("bulkCorrectReasonLevelTest")}</option>
+              <option value="OTHER">{tu("bulkCorrectReasonOther")}</option>
             </select>
           </div>
 
           {reason === "OTHER" && (
             <div style={{ display: "flex", flexDirection: "column", gap: sp(1), flex: "1 1 220px" }}>
-              <label style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{T.reasonNote}</label>
+              <label style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("bulkCorrectReasonNote")}</label>
               <input
                 type="text"
                 value={reasonNote}
@@ -393,7 +366,7 @@ export function BulkCorrectDialog({
         {/* أزرار الحفظ والإلغاء */}
         <div style={{ display: "flex", gap: sp(2), justifyContent: "flex-end" }}>
           <Button size="sm" variant="ghost" onClick={onClose} disabled={saving}>
-            {T.cancel}
+            {tu("bulkCorrectCancel")}
           </Button>
           <Button
             size="sm"
@@ -402,7 +375,7 @@ export function BulkCorrectDialog({
             disabled={saving}
             data-testid="bulk-correct-save-btn"
           >
-            {saving ? T.saving : T.save}
+            {saving ? tu("bulkCorrectSaving") : tu("bulkCorrectSave")}
           </Button>
         </div>
       </div>

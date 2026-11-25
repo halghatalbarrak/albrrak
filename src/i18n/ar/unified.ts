@@ -123,6 +123,26 @@ export const unifiedAr = {
   hifzStateBlockedMsg: "حالة الطالب لا تسمح بتسجيل الحفظ — افتح الإعداد",
   hifzStateBlockedBtn: "فتح الإعداد",
   hifzSaveFailed: "تعذّر التسجيل.",
+  // تصحيح موضع الحلقة الجماعي
+  bulkCorrectTitle: "تصحيح الموضع الجماعي",
+  bulkCorrectColName: "الطالب",
+  bulkCorrectColFrom: "الموضع الحالي (من)",
+  bulkCorrectColTo: "الموضع الجديد (إلى)",
+  bulkCorrectReasonLabel: "السبب",
+  bulkCorrectReasonNote: "ملاحظة",
+  bulkCorrectReasonInputError: "خطأ إدخال",
+  bulkCorrectReasonLevelTest: "اختبار مستوى",
+  bulkCorrectReasonOther: "أخرى",
+  bulkCorrectSave: "حفظ الجميع",
+  bulkCorrectCancel: "إلغاء",
+  bulkCorrectSaving: "جارٍ الحفظ...",
+  bulkCorrectSuccess: "صُحِّح الموضع.",
+  bulkCorrectPartial: "صُحِّح جزئياً.",
+  bulkCorrectErrorRequired: "الرجاء اختيار السبب",
+  bulkCorrectChooseReason: "اختر سبباً",
+  bulkCorrectErrorNoteRequired: "يلزم كتابة ملاحظة عند اختيار «أخرى»",
+  bulkCorrectSessionEnded: "انتهت الجلسة.",
+  bulkCorrectNetworkError: "تعذّر الاتصال بالخادم.",
 } as const;
 
 export type UnifiedKey = keyof typeof unifiedAr;

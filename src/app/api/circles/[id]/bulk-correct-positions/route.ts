@@ -5,7 +5,7 @@ import { correctStudentPosition, type PositionCorrectionReason } from "@/server/
 import { verr } from "@/server/errors";
 import { prisma } from "@/lib/prisma";
 
-const ROLES = [Role.SUPER_ADMIN, Role.CIRCLE_MANAGER, Role.TEACHER];
+const ROLES = [Role.SUPER_ADMIN, Role.CIRCLE_MANAGER];
 
 interface CorrectionItem {
   studentId: string;
@@ -61,16 +61,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (!circleStudentIds.has(c.studentId)) {
         throw verr("studentNotInThisCircle");
       }
-    }
-
-    // دور المعلم: ينفّذ مباشرةً (لا اعتماد في هذه المرحلة)
-    const isTeacherOnly =
-      !actor.roles.includes(Role.SUPER_ADMIN) &&
-      !actor.roles.includes(Role.CIRCLE_MANAGER);
-
-    // إن كان المعلم بلا صلاحية مباشرة: أرجع طلب انتظار (بنية مستقبليّة)
-    if (isTeacherOnly) {
-      return Response.json({ request: true, pendingApproval: true });
     }
 
     // تطبيق التصحيح لكل طالب
