@@ -1,26 +1,14 @@
 // إصلاح طلاب AWAITING_PACE_TEST: تحديد الجبهة وتعيين المسار وترقيتهم إلى IN_MARAQI.
 // لا أسماء ولا بيانات شخصيّة — معرّفات مقتطعة (أوّل 8 أحرف) فقط.
 // الاستخدام:
-//   node scripts/ops/fix-pace-test-students.mjs          (dry-run افتراضياً)
-//   MODE=apply node scripts/ops/fix-pace-test-students.mjs
+//   npx tsx --tsconfig tsconfig.json scripts/ops/fix-pace-test-students.ts          (dry-run افتراضياً)
+//   MODE=apply npx tsx --tsconfig tsconfig.json scripts/ops/fix-pace-test-students.ts
 import { PrismaClient } from "@prisma/client";
+import { suggestTrackForStudent } from "@/server/student-setup";
+import { assignMaraqiTrack } from "@/server/track-assignment";
 
 const prisma = new PrismaClient();
 const MODE = process.env.MODE ?? "dry-run";
-
-// جدول تحديد المسار بحسب الجبهة (رقم السورة):
-// سورة ≥ 78 → ordinal 1 (المسار الأخفّ — النصف الأخير)
-// سورة ≥ 58 → ordinal 2
-// سورة ≥ 46 → ordinal 3
-// سورة ≥ 29 → ordinal 4
-// أدنى   → ordinal 5 (المسار الأثقل — البقرة)
-function targetOrdinalFromSurah(surah) {
-  if (surah >= 78) return 1;
-  if (surah >= 58) return 2;
-  if (surah >= 46) return 3;
-  if (surah >= 29) return 4;
-  return 5;
-}
 
 async function main() {
   // جلب جميع طلاب AWAITING_PACE_TEST (غير محذوفين)
@@ -52,8 +40,8 @@ async function main() {
   });
 
   // تجميع الطلاب حسب الحلقة
-  const byCircle = new Map(); // circleId → { nameAr, students[] }
-  const noCircle = [];
+  const byCircle = new Map<string, { nameAr: string; students: typeof students }>(); // circleId → { nameAr, students[] }
+  const noCircle: typeof students = [];
 
   for (const s of students) {
     const activeEnrollment = s.enrollments[0];
@@ -62,14 +50,14 @@ async function main() {
       if (!byCircle.has(cid)) {
         byCircle.set(cid, { nameAr: activeEnrollment.circle.nameAr, students: [] });
       }
-      byCircle.get(cid).students.push(s);
+      byCircle.get(cid)!.students.push(s);
     } else {
       noCircle.push(s);
     }
   }
 
   // حساب hasFrontier لكل طالب
-  function hasFrontier(s) {
+  function hasFrontier(s: typeof students[number]) {
     const hasPlacement =
       s.maraqiPlacements.length > 0 &&
       (s.maraqiPlacements[0].reachedSurah !== null ||
@@ -78,7 +66,7 @@ async function main() {
     return hasPlacement || hasSession;
   }
 
-  function hasTrack(s) {
+  function hasTrack(s: typeof students[number]) {
     return s.trackAssignments.length > 0;
   }
 
@@ -139,75 +127,37 @@ async function main() {
       continue;
     }
 
-    // تحديد رقم السورة الأعلى (الجبهة)
-    let frontierSurah = 0;
-    if (
-      s.maraqiPlacements.length > 0 &&
-      s.maraqiPlacements[0].reachedSurah !== null
-    ) {
-      frontierSurah = Math.max(frontierSurah, s.maraqiPlacements[0].reachedSurah);
-    }
-    if (s.sessions.length > 0 && s.sessions[0].hifzToSurah !== null) {
-      frontierSurah = Math.max(frontierSurah, s.sessions[0].hifzToSurah);
-    }
-
-    const targetOrdinal = targetOrdinalFromSurah(frontierSurah);
-
-    // إيجاد المسار المناسب
-    let track = await prisma.track.findFirst({
-      where: { ordinal: targetOrdinal, deletedAt: null },
-      orderBy: { ordinal: "asc" },
-    });
-    if (!track) {
-      // احتياطي: أيّ مسار نشط
-      track = await prisma.track.findFirst({
-        where: { deletedAt: null },
-        orderBy: { ordinal: "asc" },
-      });
-    }
-
-    if (!track) {
-      console.log(`⚠️ [${id8}…] — لا مسار متاح في قاعدة البيانات، يحتاج متابعة`);
+    const suggestion = await suggestTrackForStudent(s.id, prisma);
+    if (!suggestion.suggestedTrackId) {
+      console.log(`⚠️ [${id8}…] — لا مسار مقترح، يحتاج متابعة`);
       continue;
     }
 
-    // تنفيذ المعاملة
-    await prisma.$transaction([
-      // ١. تحديث حالة الطالب
-      prisma.student.update({
-        where: { id: s.id },
-        data: { state: "IN_MARAQI" },
-      }),
-      // ٢. إغلاق المسار الحاليّ إن وُجد
-      prisma.trackAssignment.updateMany({
-        where: { studentId: s.id, endedAt: null },
-        data: { endedAt: new Date() },
-      }),
-      // ٣. إنشاء تعيين مسار جديد
-      prisma.trackAssignment.create({
-        data: {
+    await prisma.$transaction(async (tx) => {
+      await tx.student.update({ where: { id: s.id }, data: { state: "IN_MARAQI" } });
+      await assignMaraqiTrack(
+        {
           studentId: s.id,
-          trackId: track.id,
-          reason: "AUTO_FROM_FRONTIER",
+          trackId: suggestion.suggestedTrackId!,
+          source: "AUTO_FROM_FRONTIER",
+          actorId: "system-pace-test-removal",
+          _skipAuth: true,
         },
-      }),
-      // ٤. سجل التدقيق
-      prisma.auditLog.create({
+        prisma,
+      );
+      await tx.auditLog.create({
         data: {
           action: "STATE_ADVANCE",
           entity: "Student",
           entityId: s.id,
           actorId: "system-pace-test-removal",
-          label: JSON.stringify({
-            from: "AWAITING_PACE_TEST",
-            to: "IN_MARAQI",
-            source: "AUTO_FROM_FRONTIER",
-          }),
+          label: JSON.stringify({ from: "AWAITING_PACE_TEST", to: "IN_MARAQI", source: "AUTO_FROM_FRONTIER" }),
         },
-      }),
-    ]);
+      });
+    });
 
-    console.log(`✅ [${id8}…] → IN_MARAQI مسار:#${track.ordinal}`);
+    const trackOrdinal = suggestion.availableTracks.find((t) => t.id === suggestion.suggestedTrackId!)?.ordinal ?? "?";
+    console.log(`✅ [${id8}…] → IN_MARAQI مسار:#${trackOrdinal}`);
   }
 
   console.log("✔ اكتملت العملية.");
