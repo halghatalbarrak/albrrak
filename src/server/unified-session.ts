@@ -41,6 +41,7 @@ export interface UnifiedStudent {
   attendanceStatus: AttendanceStatus | null;
   setupStatus: StudentSetupStatus;
   noTrack: boolean;
+  points: number;
 }
 
 export interface UnifiedBoard {
@@ -133,16 +134,24 @@ export async function getUnifiedBoard(
   const reviewDate = toDateOnly(date);
   const studentIds = board.students.map((s) => s.studentId);
 
-  const [attRows, setupMap, dayLock, trackRows] = await Promise.all([
+  const [attRows, setupMap, dayLock, trackRows, pointRows] = await Promise.all([
     db.attendance.findMany({ where: { circleId, date: reviewDate }, select: { studentId: true, status: true } }),
     getStudentSetupStatusBatch(studentIds, db),
     getAttendanceDayLock(circleId, date, db),
     studentIds.length
       ? db.trackAssignment.findMany({ where: { studentId: { in: studentIds }, endedAt: null }, select: { studentId: true } })
       : Promise.resolve([]),
+    studentIds.length
+      ? db.pointTransaction.groupBy({
+          by: ["studentId"],
+          where: { studentId: { in: studentIds } },
+          _sum: { amount: true },
+        })
+      : Promise.resolve([]),
   ]);
   const statusBy = new Map(attRows.map((r) => [r.studentId, r.status]));
   const withTrack = new Set(trackRows.map((r) => r.studentId));
+  const balanceMap = new Map(pointRows.map((r) => [r.studentId, r._sum.amount ?? 0]));
 
   const students: UnifiedStudent[] = board.students.map((s) => ({
     studentId: s.studentId,
@@ -161,6 +170,7 @@ export async function getUnifiedBoard(
     attendanceStatus: statusBy.get(s.studentId) ?? null,
     setupStatus: setupMap.get(s.studentId) ?? { studentId: s.studentId, isComplete: true, blockers: [], warnings: [] },
     noTrack: s.program === "MARAQI" && !withTrack.has(s.studentId),
+    points: balanceMap.get(s.studentId) ?? 0,
   }));
 
   return {

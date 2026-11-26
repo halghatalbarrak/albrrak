@@ -10,16 +10,19 @@ import { QaidahPanel } from "./_QaidahPanel";
 import { ConsolidationRow } from "./_ConsolidationRow";
 import { TrackAssignInline } from "./_TrackAssignInline";
 import type { GrantItem, MarkAttFn, PanelDetail, PostFn, Student } from "./_types";
+import { token } from "./_types";
+import { AyahSelect, maxAyah, SurahSelect } from "./_SurahAyahSelect";
+import { SURAH_NAMES } from "@/lib/surah-names";
 
 const ATT_LABEL: Record<string, string> = {
   PRESENT: "حاضر", LATE: "متأخّر", ABSENT_UNEXCUSED: "غائب", LEFT_NO_PERMISSION: "خرج بلا إذن",
   ABSENT_EXCUSED: "غائب بعذر", PRE_EXCUSED: "مستأذن", LEFT_EARLY: "خرج مبكّرًا",
 };
-const ATT_BUTTONS: { status: string; label: string; tone: "primary" | "bronze" | "danger" }[] = [
-  { status: "PRESENT", label: "حاضر", tone: "primary" },
-  { status: "LATE", label: "متأخّر", tone: "bronze" },
-  { status: "ABSENT_UNEXCUSED", label: "غائب", tone: "danger" },
-  { status: "LEFT_NO_PERMISSION", label: "خرج بلا إذن", tone: "danger" },
+const ATT_BUTTONS: { status: string; label: string }[] = [
+  { status: "PRESENT", label: "حاضر" },
+  { status: "LATE", label: "متأخّر" },
+  { status: "ABSENT_UNEXCUSED", label: "غائب" },
+  { status: "LEFT_NO_PERMISSION", label: "خرج بلا إذن" },
 ];
 
 export function StudentPanel({ s, date, items, post, detail, detailLoading, onNextStudent, grantManual, markAtt: markAttProp, isPending, canCorrectPosition }: {
@@ -35,11 +38,16 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
 }) {
   const sid = s.studentId;
   const [localGranted, setLocalGranted] = useState<Set<string>>(new Set(detail?.manualGranted ?? []));
+  const [grantingId, setGrantingId] = useState<string | null>(null);
+  const [attSavingStatus, setAttSavingStatus] = useState<string | null>(null);
   const [hifzError, setHifzError] = useState<string | null>(null);
   const [hifzSaving, setHifzSaving] = useState(false);
   const [savedHifzToday, setSavedHifzToday] = useState<HifzSave | null>(null);
+  const [savedTarseekh, setSavedTarseekh] = useState<boolean | null>(null);
+  const [savedMurajaah, setSavedMurajaah] = useState<boolean | null>(null);
   const [showCorrection, setShowCorrection] = useState(false);
-  const [corrForm, setCorrForm] = useState({ fromSurah: 78, fromAyah: 1, toSurah: 78, toAyah: 10, reason: "INPUT_ERROR" as "INPUT_ERROR" | "LEVEL_TEST" | "OTHER", reasonNote: "" });
+  const [corrForm, setCorrForm] = useState({ surah: 78, ayah: 10, reason: "INPUT_ERROR" as "INPUT_ERROR" | "LEVEL_TEST" | "OTHER", reasonNote: "" });
+  const [corrPreview, setCorrPreview] = useState<{ fromSurah: number; fromAyah: number; toSurah: number; toAyah: number } | null | "loading">("loading");
   const [corrSaving, setCorrSaving] = useState(false);
   const [corrError, setCorrError] = useState<string | null>(null);
   const [corrDone, setCorrDone] = useState(false);
@@ -54,7 +62,39 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
     setShowCorrection(false);
     setCorrDone(false);
     setCorrError(null);
+    setGrantingId(null);
+    setAttSavingStatus(null);
+    setSavedTarseekh(null);
+    setSavedMurajaah(null);
   }, [sid]);
+
+  useEffect(() => {
+    if (!showCorrection) return;
+    setCorrPreview("loading");
+    const ctrl = new AbortController();
+    void (async () => {
+      try {
+        const tok = await token();
+        const res = await fetch(
+          `/api/students/${sid}/position-preview?toSurah=${corrForm.surah}&toAyah=${corrForm.ayah}`,
+          { headers: tok ? { Authorization: `Bearer ${tok}` } : {}, signal: ctrl.signal },
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as { unit: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number } | null };
+        setCorrPreview(data.unit);
+      } catch {
+        // المعاينة اختياريّة — لا تعطّل النموذج
+      }
+    })();
+    return () => ctrl.abort();
+  }, [sid, corrForm.surah, corrForm.ayah, showCorrection]);
+
+  const handleMarkAtt = async (status: string) => {
+    if (isPending) return;
+    setAttSavingStatus(status);
+    await markAttProp(sid, status);
+    setAttSavingStatus(null);
+  };
 
   const excuse = () => {
     const reason = window.prompt("سبب الاستئذان/العذر:");
@@ -65,10 +105,12 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
   const qaidahDefer = () => post(`/api/students/${sid}/qaidah-session`, { defer: true }, "سُجِّل التأجيل.", sid);
 
   const handleToggle = async (pointItemId: string) => {
-    if (!grantManual) return;
+    if (!grantManual || grantingId) return;
     const wasGranted = localGranted.has(pointItemId);
+    setGrantingId(pointItemId);
     setLocalGranted((prev) => { const n = new Set(prev); wasGranted ? n.delete(pointItemId) : n.add(pointItemId); return n; });
     const result = await grantManual(sid, pointItemId);
+    setGrantingId(null);
     if (!result) {
       setLocalGranted((prev) => { const n = new Set(prev); wasGranted ? n.add(pointItemId) : n.delete(pointItemId); return n; });
     }
@@ -77,13 +119,21 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
   const H3: React.CSSProperties = { fontSize: ui.text.base, fontWeight: 700, margin: `0 0 ${sp(2)}` };
   const row: React.CSSProperties = { display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center" };
 
-  const posItems = items.filter((i) => i.value > 0);
-  const negItems = items.filter((i) => i.value < 0);
+  const isPresent = s.attendanceStatus === "PRESENT" || s.attendanceStatus === "LATE";
+  const posItems = items.filter((i) => i.value > 0 && (!i.requiresPresent || isPresent));
+  const negItems = items.filter((i) => i.value < 0 && (!i.requiresPresent || isPresent));
+  const todayEarned = posItems.filter((i) => localGranted.has(i.id));
+  const todayTotal = todayEarned.reduce((sum, i) => sum + i.value, 0);
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: sp(4) }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: sp(2) }}>
-        <strong style={{ fontSize: ui.text.lg }}>{s.name}</strong>
+        <div style={{ display: "flex", alignItems: "baseline", gap: sp(2) }}>
+          <strong style={{ fontSize: ui.text.lg }}>{s.name}</strong>
+          {(s.points ?? 0) > 0 && (
+            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("pointsBalance")}{arNum(s.points ?? 0)}</span>
+          )}
+        </div>
         {onNextStudent && (
           <Button size="sm" variant="ghost" onClick={onNextStudent}>{tu("nextStudentBtn")}</Button>
         )}
@@ -96,16 +146,22 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
           {isPending && <span style={{ fontSize: ui.text.xs, fontWeight: 400, color: ui.color.muted, marginInlineStart: 8 }}>{tu("savingPending")}</span>}
         </h3>
         <div style={row}>
-          {ATT_BUTTONS.map((b) => (
-            <Button
-              key={b.status}
-              size="sm"
-              variant={b.tone}
-              disabled={isPending}
-              data-testid={`att-btn-${b.status}`}
-              onClick={() => { if (!isPending) void markAttProp(sid, b.status); }}
-            >{b.label}</Button>
-          ))}
+          {ATT_BUTTONS.map((b) => {
+            const isActive = b.status === s.attendanceStatus;
+            const isSaving = attSavingStatus === b.status;
+            return (
+              <Button
+                key={b.status}
+                size="sm"
+                variant={isActive ? "success" : "ghost"}
+                disabled={isPending}
+                data-testid={`att-btn-${b.status}`}
+                data-active={isActive ? "true" : undefined}
+                data-saving={isSaving ? "true" : undefined}
+                onClick={() => void handleMarkAtt(b.status)}
+              >{isSaving ? tu("savingPending") : (isActive ? `✓ ${b.label}` : b.label)}</Button>
+            );
+          })}
           <Button size="sm" variant="ghost" disabled={isPending} onClick={excuse}>{tu("excused")}</Button>
         </div>
       </div>
@@ -136,7 +192,7 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
 
             {/* احفظ */}
             <div>
-              <h3 style={H3}>{tu("hifzSectionLabel")}</h3>
+              <h3 style={H3}>{tu("hifzSectionLabel")}{(s.todayHifzDone || !!savedHifzToday) && <span style={{ color: ui.color.success, marginInlineStart: 4 }}>✓</span>}</h3>
               {detail.today.newHifz?.kind === "COMPLETED" ? <p style={{ color: ui.color.success, margin: 0 }}>{tu("trackCompleted")}</p>
                 : detail.today.newHifz?.kind === "NO_TRACK" ? <TrackAssignInline studentId={sid} post={post} />
                 : (
@@ -190,7 +246,11 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
                 bounds={detail.today.tarseekh}
                 studentId={sid}
                 date={date}
-                onDone={(done) => void post(`/api/students/${sid}/session`, { kind: "tarseekh", date, done }, "سُجِّل الترسيخ.", sid)}
+                savedDone={savedTarseekh ?? (s.tarseekhDone != null ? s.tarseekhDone : null)}
+                onDone={async (done) => {
+                  const r = await post(`/api/students/${sid}/session`, { kind: "tarseekh", date, done }, "سُجِّل الترسيخ.", sid);
+                  if (r.ok) setSavedTarseekh(done);
+                }}
                 onExtra={() => void extra("tarseekh")}
               />
             )}
@@ -204,7 +264,11 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
                     bounds={detail.today.murajaah?.todaySlice ?? []}
                     studentId={sid}
                     date={date}
-                    onDone={(done) => void post(`/api/students/${sid}/session`, { kind: "murajaah", date, count: done ? (detail.today.murajaah?.todaySlice.length ?? 0) : 0 }, "سُجِّلت المراجعة.", sid)}
+                    savedDone={savedMurajaah}
+                    onDone={async (done) => {
+                      const r = await post(`/api/students/${sid}/session`, { kind: "murajaah", date, count: done ? (detail.today.murajaah?.todaySlice.length ?? 0) : 0 }, "سُجِّلت المراجعة.", sid);
+                      if (r.ok) setSavedMurajaah(done);
+                    }}
                     onExtra={() => void extra("murajaah")}
                   />
             )}
@@ -215,26 +279,38 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
       {canCorrectPosition && (
         <div>
           {!showCorrection ? (
-            <Button size="sm" variant="ghost" data-testid="btn-correct-position" onClick={() => { setShowCorrection(true); setCorrError(null); setCorrDone(false); }}>
+            <Button size="sm" variant="ghost" data-testid="btn-correct-position" onClick={() => { setShowCorrection(true); setCorrError(null); setCorrDone(false); setCorrPreview("loading"); }}>
               {tu("correctPositionBtn")}
             </Button>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: sp(2), padding: sp(3), border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md }}>
               <strong style={{ fontSize: ui.text.base }}>{tu("correctPositionTitle")}</strong>
-              <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
-                <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionFromSurah")}
-                  <input type="number" min={1} max={114} value={corrForm.fromSurah} onChange={(e) => setCorrForm((f) => ({ ...f, fromSurah: +e.target.value }))} style={{ width: 60, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
-                </label>
-                <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionAyah")}
-                  <input type="number" min={1} value={corrForm.fromAyah} onChange={(e) => setCorrForm((f) => ({ ...f, fromAyah: +e.target.value }))} style={{ width: 55, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
-                </label>
-                <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionToSurah")}
-                  <input type="number" min={1} max={114} value={corrForm.toSurah} onChange={(e) => setCorrForm((f) => ({ ...f, toSurah: +e.target.value }))} style={{ width: 60, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
-                </label>
-                <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionAyah")}
-                  <input type="number" min={1} value={corrForm.toAyah} onChange={(e) => setCorrForm((f) => ({ ...f, toAyah: +e.target.value }))} style={{ width: 55, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
-                </label>
+
+              {/* آخر ما أتقنه: سورة + آية */}
+              <div style={{ display: "flex", gap: sp(2), alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ fontSize: ui.text.xs, color: ui.color.muted, whiteSpace: "nowrap" }}>{tu("correctPositionLastMastered")}</span>
+                <SurahSelect
+                  value={corrForm.surah}
+                  onChange={(v) => setCorrForm((f) => ({ ...f, surah: v, ayah: Math.min(f.ayah, maxAyah(v)) }))}
+                />
+                <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("correctPositionAyah")}</span>
+                <AyahSelect
+                  surah={corrForm.surah}
+                  value={corrForm.ayah}
+                  onChange={(v) => setCorrForm((f) => ({ ...f, ayah: v }))}
+                />
               </div>
+
+              {/* معاينة مقرّر اليوم */}
+              <div data-testid="correction-preview" style={{ fontSize: ui.text.xs, color: ui.color.muted, padding: `${sp(1.5)} ${sp(2)}`, background: ui.color.surface, border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.sm }}>
+                {corrPreview === "loading"
+                  ? tu("correctPositionPreviewLoading")
+                  : corrPreview === null
+                  ? tu("correctPositionPreviewNone")
+                  : `${tu("correctPositionPreviewLabel")} ${SURAH_NAMES[corrPreview.fromSurah] ?? ""} من آية ${arNum(corrPreview.fromAyah)} إلى آية ${arNum(corrPreview.toAyah)}`}
+              </div>
+
+              {/* السبب */}
               <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionReason")}
                 <select value={corrForm.reason} onChange={(e) => setCorrForm((f) => ({ ...f, reason: e.target.value as typeof corrForm.reason }))} style={{ marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }}>
                   <option value="INPUT_ERROR">{tu("correctPositionReasonInputError")}</option>
@@ -252,7 +328,12 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
                   onClick={async () => {
                     if (corrForm.reason === "OTHER" && !corrForm.reasonNote.trim()) { setCorrError(tu("correctPositionNoteRequired")); return; }
                     setCorrError(null); setCorrSaving(true);
-                    const r = await post(`/api/students/${sid}/position-correction`, { ...corrForm }, tu("correctPositionDone"), sid);
+                    const r = await post(
+                      `/api/students/${sid}/position-correction`,
+                      { fromSurah: corrForm.surah, fromAyah: 1, toSurah: corrForm.surah, toAyah: corrForm.ayah, reason: corrForm.reason, reasonNote: corrForm.reasonNote || undefined },
+                      tu("correctPositionDone"),
+                      sid,
+                    );
                     setCorrSaving(false);
                     if (r.ok) { setCorrDone(true); setShowCorrection(false); }
                     else setCorrError(r.error ?? tu("correctPositionFailed"));
@@ -265,22 +346,34 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
         </div>
       )}
 
-      {/* نقاط اليوم — toggle */}
-      {items.length > 0 && (
+      {/* نقاط اليوم — toggle بثلاث حالات (default/loading/saved) */}
+      {(posItems.length > 0 || negItems.length > 0) && (
         <div>
-          <h3 style={H3}>{tu("dayPoints")}</h3>
+          <h3 style={H3}>
+            {tu("dayPoints")}
+            {todayEarned.length > 0 && (
+              <span style={{ fontSize: ui.text.xs, fontWeight: 400, color: ui.color.success, marginInlineStart: 8 }}>
+                +{arNum(todayTotal)}
+              </span>
+            )}
+          </h3>
           {posItems.length > 0 && (
             <div style={{ ...row, marginBottom: negItems.length ? sp(2) : 0 }}>
               {posItems.map((it) => {
                 const active = localGranted.has(it.id);
+                const isLoading = grantingId === it.id;
                 return (
                   <Button
                     key={it.id}
                     size="sm"
                     variant={active ? "primary" : "ghost"}
+                    disabled={isLoading || !!grantingId}
+                    data-testid={`grant-btn-${it.id}`}
+                    data-granted={active ? "true" : undefined}
+                    data-loading={isLoading ? "true" : undefined}
                     onClick={() => void handleToggle(it.id)}
                   >
-                    {it.nameAr} (+{it.value}){active ? " ✓" : ""}
+                    {isLoading ? tu("savingPending") : `${it.nameAr} (+${arNum(it.value)})${active ? " ✓" : ""}`}
                   </Button>
                 );
               })}
@@ -290,17 +383,29 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
             <div style={row}>
               {negItems.map((it) => {
                 const active = localGranted.has(it.id);
+                const isLoading = grantingId === it.id;
                 return (
                   <Button
                     key={it.id}
                     size="sm"
                     variant={active ? "danger" : "ghost"}
+                    disabled={isLoading || !!grantingId}
+                    data-testid={`grant-btn-${it.id}`}
+                    data-granted={active ? "true" : undefined}
+                    data-loading={isLoading ? "true" : undefined}
                     onClick={() => void handleToggle(it.id)}
                   >
-                    {it.nameAr} ({it.value}){active ? " ✓" : ""}
+                    {isLoading ? tu("savingPending") : `${it.nameAr} (${it.value})${active ? " ✓" : ""}`}
                   </Button>
                 );
               })}
+            </div>
+          )}
+          {/* تفصيل نقاط اليوم (6-ج) */}
+          {todayEarned.length > 0 && (
+            <div data-testid="today-earned-detail" style={{ fontSize: ui.text.xs, color: ui.color.success, marginTop: sp(2), padding: `${sp(1)} ${sp(2)}`, background: ui.color.surface, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}` }}>
+              {tu("todayEarnedLabel")}{" "}
+              {todayEarned.map((i) => `${i.nameAr} +${arNum(i.value)}`).join(" · ")}
             </div>
           )}
         </div>

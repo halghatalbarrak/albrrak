@@ -105,9 +105,11 @@ export const unifiedAr = {
   // تصحيح موضع الطالب (للمشرف/مدير الحلقة)
   correctPositionBtn: "تصحيح موضع الطالب",
   correctPositionTitle: "تصحيح الموضع",
-  correctPositionFromSurah: "من سورة",
+  correctPositionLastMastered: "آخر ما أتقنه:",
   correctPositionAyah: "آية",
-  correctPositionToSurah: "إلى سورة",
+  correctPositionPreviewLabel: "سيكون مقرّر اليوم:",
+  correctPositionPreviewNone: "أتمّ جميع محفوظات المسار ✓",
+  correctPositionPreviewLoading: "جارٍ الحساب…",
   correctPositionReason: "السبب",
   correctPositionReasonInputError: "خطأ في الإدخال الأول",
   correctPositionReasonLevelTest: "اختبار تحديد مستوى",
@@ -143,6 +145,9 @@ export const unifiedAr = {
   bulkCorrectErrorNoteRequired: "يلزم كتابة ملاحظة عند اختيار «أخرى»",
   bulkCorrectSessionEnded: "انتهت الجلسة.",
   bulkCorrectNetworkError: "تعذّر الاتصال بالخادم.",
+  pointsBalance: "نقاط: ",
+  todayEarnedLabel: "كُسب اليوم:",
+  grantUniformBtn: "منح الزي للحاضرين",
 } as const;
 
 export type UnifiedKey = keyof typeof unifiedAr;

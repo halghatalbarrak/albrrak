@@ -41,6 +41,7 @@ export interface Student {
   yesterday: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number; mastered: boolean } | null;
   required: { tarseekhCount: number; khums: number } | null;
   noTrack?: boolean;
+  points?: number;
 }
 
 /** تفاصيل البطاقة — محضَرةٌ per-student عند فتح البطاقة فقط، مع cache. */
@@ -51,7 +52,7 @@ export interface PanelDetail {
 }
 
 export interface Circle { id: string; nameAr: string }
-export interface GrantItem { id: string; nameAr: string; value: number; grantSource: string }
+export interface GrantItem { id: string; nameAr: string; value: number; grantSource: string; requiresPresent?: boolean }
 export type LockState = "OPEN" | "APPROVED" | "AUTO_LOCKED" | "TEMP_OPEN";
 export interface DayLock { state: LockState; locked: boolean; date: string }
 

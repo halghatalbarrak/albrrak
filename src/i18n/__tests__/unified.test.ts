@@ -110,9 +110,11 @@ describe("قاموس الشاشة الموحّدة (العربيّة)", () => {
       addStudentProgram: "البرنامج",
       correctPositionBtn: "تصحيح موضع الطالب",
       correctPositionTitle: "تصحيح الموضع",
-      correctPositionFromSurah: "من سورة",
+      correctPositionLastMastered: "آخر ما أتقنه:",
       correctPositionAyah: "آية",
-      correctPositionToSurah: "إلى سورة",
+      correctPositionPreviewLabel: "سيكون مقرّر اليوم:",
+      correctPositionPreviewNone: "أتمّ جميع محفوظات المسار ✓",
+      correctPositionPreviewLoading: "جارٍ الحساب…",
       correctPositionReason: "السبب",
       correctPositionReasonInputError: "خطأ في الإدخال الأول",
       correctPositionReasonLevelTest: "اختبار تحديد مستوى",
@@ -146,6 +148,9 @@ describe("قاموس الشاشة الموحّدة (العربيّة)", () => {
       bulkCorrectErrorNoteRequired: "يلزم كتابة ملاحظة عند اختيار «أخرى»",
       bulkCorrectSessionEnded: "انتهت الجلسة.",
       bulkCorrectNetworkError: "تعذّر الاتصال بالخادم.",
+      pointsBalance: "نقاط: ",
+      todayEarnedLabel: "كُسب اليوم:",
+      grantUniformBtn: "منح الزي للحاضرين",
     };
     for (const key of Object.keys(expected) as (keyof typeof unifiedAr)[]) {
       expect(tUnified(key)).toBe(expected[key]);

@@ -556,6 +556,7 @@ export interface GrantableItem {
   nameAr: string;
   value: number;
   grantSource: PointGrantSource;
+  requiresPresent: boolean;
 }
 
 /** البنود التي يحقّ للفاعل منحها يدويًّا: المفعّلة، ومصدرها مسموحٌ لأدواره (بلا AUTO). */
@@ -568,7 +569,7 @@ export async function listGrantableItems(
   const items = await db.pointItem.findMany({
     where: { active: true },
     orderBy: { createdAt: "asc" },
-    select: { id: true, nameAr: true, value: true, grantSource: true },
+    select: { id: true, nameAr: true, value: true, grantSource: true, requiresPresent: true },
   });
   return items.filter((i) => sourceAllowedForRoles(actor.roles, i.grantSource));
 }

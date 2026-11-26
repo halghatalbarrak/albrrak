@@ -269,6 +269,27 @@ export default function UnifiedPage() {
     }
   }, [circleId, date, students]);
 
+  // منح الزي لكل الحاضرين دفعةً واحدة (يستثني من سبق منحه — idempotent)
+  const grantUniformPresent = useCallback(async () => {
+    const uniformItems = items.filter((i) => i.requiresPresent);
+    if (!uniformItems.length) { setMsg("لا بنود تتطلّب حضوراً."); setMsgKind("err"); return; }
+    const presentIds = (students ?? [])
+      .filter((s) => s.attendanceStatus === "PRESENT" || s.attendanceStatus === "LATE")
+      .map((s) => s.studentId);
+    if (!presentIds.length) { setMsg("لا حاضرين بعد."); setMsgKind("err"); return; }
+    const tok = await token(); if (!tok) return;
+    let total = 0;
+    for (const item of uniformItems) {
+      const res = await fetch("/api/economy/grant-bulk", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${tok}` },
+        body: JSON.stringify({ studentIds: presentIds, pointItemId: item.id, date }),
+      });
+      if (res.ok) { const j = (await res.json()) as { granted: number }; total += j.granted; }
+    }
+    setMsg(`${tu("grantUniformBtn")} — ${arNum(total)} مُنح ✓`); setMsgKind("ok");
+  }, [items, students, date]);
+
   async function handleBulkGrant() {
     if (!bulkSelected.size || !bulkItemId) return;
     const tok = await token(); if (!tok) return;
@@ -410,6 +431,16 @@ export default function UnifiedPage() {
             {"تصحيح الموضع الجماعي"}
           </Button>
         )}
+        {items.some((i) => i.requiresPresent) && students && students.some((s) => s.attendanceStatus === "PRESENT" || s.attendanceStatus === "LATE") && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => void grantUniformPresent()}
+            data-testid="grant-uniform-btn"
+          >
+            {tu("grantUniformBtn")}
+          </Button>
+        )}
         {!bulkMode && (
           <Button size="sm" variant={khatmSort ? "bronze" : "ghost"} onClick={() => void toggleKhatmSort()} data-testid="khatm-sort-btn">
             {tu("khatmColLabel")} {khatmSort ? "▲" : ""}
@@ -535,6 +566,7 @@ export default function UnifiedPage() {
                     <button
                       key={s.studentId}
                       data-testid="student-row"
+                      data-student-id={s.studentId}
                       onClick={() => {
                         if (bulkMode) {
                           setBulkSelected((prev) => { const n = new Set(prev); n.has(s.studentId) ? n.delete(s.studentId) : n.add(s.studentId); return n; });

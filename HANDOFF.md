@@ -202,6 +202,11 @@
 | #281 | feat(registration): القسم ٥ — طالب ACTIVE فوراً + تاريخ ميلاد يوم/شهر/سنة | مدموج ✅ |
 | #282 | feat(analytics): القسم ٦ — رابط 404 + تجميع المتابعة + not-found | مدموج ✅ |
 | #283 | chore(ops): workflow + script حصر جلسات الإتقان في آخر ٢٤ ساعة (القسم ٧) | مدموج ✅ |
+| #289 | chore: إضافة .claude/worktrees/ إلى .gitignore | مدموج ✅ |
+| #288 | fix(hifz): رسالة خطأ مميّزة لـAWAITING_PACE_TEST + blocker STATE_BLOCKS_HIFZ + E2E | مدموج ✅ |
+| #287 | fix(ops): إصلاح check-circle-states + سكربت AWAITING_PACE_TEST (findMany بدلاً من select) + workflow | مدموج ✅ |
+| #286 | feat(unified): تصحيح الموضع الجماعي للحلقة — dialog + API + E2E (إصلاح selector السبب) | مدموج ✅ |
+| #290 | feat(unified): 6-ب و6-ج كاملاً — 3 حالات أزرار + الزي للحاضرين + تفصيل نقاط اليوم + E2E + نموذج تصحيح موضع مبسَّط | مفتوح 🔄 |
 
 ---
 

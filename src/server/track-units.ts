@@ -127,6 +127,23 @@ export async function nextUnitForStudent(studentId: string, db: PrismaClient = p
 }
 
 /**
+ * الوحدة التالية بعد موضع افتراضيّ (toSurah:toAyah) — للمعاينة قبل تصحيح الموضع، بلا قراءةٍ من السجلات الفعلية.
+ */
+export async function nextUnitAfterPosition(
+  studentId: string,
+  toSurah: number,
+  toAyah: number,
+  db: PrismaClient = prisma,
+): Promise<UnitRow | null> {
+  const trackId = await assignedTrackId(studentId, db);
+  if (!trackId) return null;
+  const units = await unitsForTrack(trackId, db);
+  if (units.length === 0) return null;
+  const fk = maraqiKey(toSurah, toAyah);
+  return units.find((u) => maraqiKey(u.startSurah, u.startAyah) > fk) ?? null;
+}
+
+/**
  * تقدّم الطالب في مساره: رقم وحدته الحاليّة (عدد الوحدات التي بلغها موضعه) من الإجماليّ،
  * ونسبةٌ مئويّة. لا مسارٌ مُسنَد ⟵ null. لم يبدأ ⟵ صفرٌ من الإجماليّ.
  */
