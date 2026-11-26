@@ -83,7 +83,12 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: sp(4) }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: sp(2) }}>
-        <strong style={{ fontSize: ui.text.lg }}>{s.name}</strong>
+        <div style={{ display: "flex", alignItems: "baseline", gap: sp(2) }}>
+          <strong style={{ fontSize: ui.text.lg }}>{s.name}</strong>
+          {(s.points ?? 0) > 0 && (
+            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("pointsBalance")}{arNum(s.points ?? 0)}</span>
+          )}
+        </div>
         {onNextStudent && (
           <Button size="sm" variant="ghost" onClick={onNextStudent}>{tu("nextStudentBtn")}</Button>
         )}
@@ -96,16 +101,19 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
           {isPending && <span style={{ fontSize: ui.text.xs, fontWeight: 400, color: ui.color.muted, marginInlineStart: 8 }}>{tu("savingPending")}</span>}
         </h3>
         <div style={row}>
-          {ATT_BUTTONS.map((b) => (
-            <Button
-              key={b.status}
-              size="sm"
-              variant={b.tone}
-              disabled={isPending}
-              data-testid={`att-btn-${b.status}`}
-              onClick={() => { if (!isPending) void markAttProp(sid, b.status); }}
-            >{b.label}</Button>
-          ))}
+          {ATT_BUTTONS.map((b) => {
+            const isActive = b.status === s.attendanceStatus;
+            return (
+              <Button
+                key={b.status}
+                size="sm"
+                variant={b.tone}
+                disabled={isPending}
+                data-testid={`att-btn-${b.status}`}
+                onClick={() => { if (!isPending) void markAttProp(sid, b.status); }}
+              >{isActive ? `✓ ${b.label}` : b.label}</Button>
+            );
+          })}
           <Button size="sm" variant="ghost" disabled={isPending} onClick={excuse}>{tu("excused")}</Button>
         </div>
       </div>
@@ -136,7 +144,7 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
 
             {/* احفظ */}
             <div>
-              <h3 style={H3}>{tu("hifzSectionLabel")}</h3>
+              <h3 style={H3}>{tu("hifzSectionLabel")}{(s.todayHifzDone || !!savedHifzToday) && <span style={{ color: ui.color.success, marginInlineStart: 4 }}>✓</span>}</h3>
               {detail.today.newHifz?.kind === "COMPLETED" ? <p style={{ color: ui.color.success, margin: 0 }}>{tu("trackCompleted")}</p>
                 : detail.today.newHifz?.kind === "NO_TRACK" ? <TrackAssignInline studentId={sid} post={post} />
                 : (
@@ -186,7 +194,7 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
             {/* رسّخ */}
             {detail.today.hasTarsikh && (
               <ConsolidationRow
-                label={tu("tarseekhSectionLabel")}
+                label={`${tu("tarseekhSectionLabel")}${s.tarseekhDone ? " ✓" : ""}`}
                 bounds={detail.today.tarseekh}
                 studentId={sid}
                 date={date}

@@ -143,6 +143,7 @@ export const unifiedAr = {
   bulkCorrectErrorNoteRequired: "يلزم كتابة ملاحظة عند اختيار «أخرى»",
   bulkCorrectSessionEnded: "انتهت الجلسة.",
   bulkCorrectNetworkError: "تعذّر الاتصال بالخادم.",
+  pointsBalance: "نقاط: ",
 } as const;
 
 export type UnifiedKey = keyof typeof unifiedAr;

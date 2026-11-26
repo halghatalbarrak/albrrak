@@ -146,6 +146,7 @@ describe("قاموس الشاشة الموحّدة (العربيّة)", () => {
       bulkCorrectErrorNoteRequired: "يلزم كتابة ملاحظة عند اختيار «أخرى»",
       bulkCorrectSessionEnded: "انتهت الجلسة.",
       bulkCorrectNetworkError: "تعذّر الاتصال بالخادم.",
+      pointsBalance: "نقاط: ",
     };
     for (const key of Object.keys(expected) as (keyof typeof unifiedAr)[]) {
       expect(tUnified(key)).toBe(expected[key]);
