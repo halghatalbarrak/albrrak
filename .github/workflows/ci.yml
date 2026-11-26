@@ -215,3 +215,22 @@ jobs:
 
       - name: Run E2E tests
         run: npx playwright test
+
+  smoke-teacher-items:
+    name: smoke — TEACHER items in production
+    # يعمل بعد كل دمجٍ على main — يتحقّق أن الإنتاج فيه بنود TEACHER نشطة.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: verify
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: node scripts/smoke-teacher-items.mjs

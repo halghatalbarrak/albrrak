@@ -1,0 +1,40 @@
+name: Economy setup — بنود النقاط الافتراضيّة
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'DRY_RUN = قراءة فقط | APPLY = أنشئ البنود الناقصة'
+        required: true
+        default: 'DRY_RUN'
+        type: choice
+        options: ['DRY_RUN', 'APPLY']
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    name: economy-setup (${{ inputs.confirm }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Economy setup (${{ inputs.confirm }})
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: node scripts/economy-setup.mjs

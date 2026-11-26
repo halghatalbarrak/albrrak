@@ -87,10 +87,10 @@ test.describe("تصحيح موضع فردي — النموذج المبسَّط"
 
     await setupPage(page);
 
-    // mock المعاينة: النبأ:١٠ → الوحدة التالية النبأ:١١→٢٠
+    // mock المعاينة: النبأ:١٠ → الوحدة التالية النبأ:١١→٢٠ (حقول UnitRow الحقيقية)
     await page.route("**/api/students/s1/position-preview**", (r) =>
       r.fulfill({
-        json: { unit: { fromSurah: 78, fromAyah: 11, toSurah: 78, toAyah: 20 } },
+        json: { unit: { startSurah: 78, startAyah: 11, endSurah: 78, endAyah: 20 } },
       }),
     );
 
@@ -112,9 +112,13 @@ test.describe("تصحيح موضع فردي — النموذج المبسَّط"
     const preview = page.locator("[data-testid='correction-preview']");
     await expect(preview).toBeVisible({ timeout: 5_000 });
 
-    // المعاينة تحتوي النبأ وأرقاماً مشرقية
+    // المعاينة تحتوي اسم السورة وأرقاماً مشرقية — ولا تحتوي "undefined"
     await expect(preview).toContainText("سيكون مقرّر اليوم:", { timeout: 5_000 });
     await expect(preview).toContainText("النبأ");
+    await expect(preview).not.toContainText("undefined");
+    // آية بداية (١١) + آية نهاية (٢٠) موجودتان
+    await expect(preview).toContainText("١١");
+    await expect(preview).toContainText("٢٠");
 
     // تأكيد التصحيح
     await page.locator("[data-testid='btn-correct-position-submit']").click();

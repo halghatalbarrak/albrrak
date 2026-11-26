@@ -47,7 +47,7 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
   const [savedMurajaah, setSavedMurajaah] = useState<boolean | null>(null);
   const [showCorrection, setShowCorrection] = useState(false);
   const [corrForm, setCorrForm] = useState({ surah: 78, ayah: 10, reason: "INPUT_ERROR" as "INPUT_ERROR" | "LEVEL_TEST" | "OTHER", reasonNote: "" });
-  const [corrPreview, setCorrPreview] = useState<{ fromSurah: number; fromAyah: number; toSurah: number; toAyah: number } | null | "loading">("loading");
+  const [corrPreview, setCorrPreview] = useState<{ startSurah: number; startAyah: number; endSurah: number; endAyah: number } | null | "loading">("loading");
   const [corrSaving, setCorrSaving] = useState(false);
   const [corrError, setCorrError] = useState<string | null>(null);
   const [corrDone, setCorrDone] = useState(false);
@@ -80,7 +80,7 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
           { headers: tok ? { Authorization: `Bearer ${tok}` } : {}, signal: ctrl.signal },
         );
         if (!res.ok) return;
-        const data = (await res.json()) as { unit: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number } | null };
+        const data = (await res.json()) as { unit: { startSurah: number; startAyah: number; endSurah: number; endAyah: number } | null };
         setCorrPreview(data.unit);
       } catch {
         // المعاينة اختياريّة — لا تعطّل النموذج
@@ -130,8 +130,11 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: sp(2) }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: sp(2) }}>
           <strong style={{ fontSize: ui.text.lg }}>{s.name}</strong>
-          {(s.points ?? 0) > 0 && (
-            <span data-testid="student-points" style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("pointsBalance")}{arNum(s.points ?? 0)}</span>
+          <span data-testid="student-points" style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("pointsBalance")}{arNum(s.points ?? 0)}</span>
+          {items.length > 0 && (
+            <span data-testid="today-points" style={{ fontSize: ui.text.xs, color: todayTotal > 0 ? ui.color.success : ui.color.muted }}>
+              {tu("dayPoints")}{": "}{todayTotal > 0 ? "+" : ""}{arNum(todayTotal)}
+            </span>
           )}
         </div>
         {onNextStudent && (
@@ -307,7 +310,7 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
                   ? tu("correctPositionPreviewLoading")
                   : corrPreview === null
                   ? tu("correctPositionPreviewNone")
-                  : `${tu("correctPositionPreviewLabel")} ${SURAH_NAMES[corrPreview.fromSurah] ?? ""} من آية ${arNum(corrPreview.fromAyah)} إلى آية ${arNum(corrPreview.toAyah)}`}
+                  : `${tu("correctPositionPreviewLabel")} ${SURAH_NAMES[corrPreview.startSurah] ?? ""} من آية ${arNum(corrPreview.startAyah)} إلى آية ${arNum(corrPreview.endAyah)}`}
               </div>
 
               {/* السبب */}
