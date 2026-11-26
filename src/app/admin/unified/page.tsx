@@ -16,6 +16,7 @@ import { token, type Circle, type DayLock, type GrantItem, type MarkAttFn, type 
 import { DayLockBar } from "./_DayLockBar";
 import { AutoAssignMissingBtn } from "./_AutoAssignMissingBtn";
 import { AddStudentInline } from "./_AddStudentInline";
+import { BulkCorrectDialog } from "./_BulkCorrectDialog";
 
 // تحميلٌ كسول — لا تُجلب حتى تُفتح أوّل بطاقة / يُفعَّل عرض البطاقات.
 const StudentPanel = dynamic(
@@ -84,6 +85,7 @@ export default function UnifiedPage() {
   const [khatmSort, setKhatmSort] = useState(false);
   const [khatmCache, setKhatmCache] = useState<Map<string, { kind: string; ts: number | null }>>(new Map());
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showBulkCorrect, setShowBulkCorrect] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -398,6 +400,16 @@ export default function UnifiedPage() {
         <Button size="sm" variant={bulkMode ? "bronze" : "ghost"} onClick={() => { setBulkMode(!bulkMode); setBulkSelected(new Set()); setBulkItemId(""); }}>
           {bulkMode ? tu("bulkCancelBtn") : tu("bulkModeBtn")}
         </Button>
+        {(me?.roles.includes("CIRCLE_MANAGER") || me?.roles.includes("SUPER_ADMIN")) && students && students.length > 0 && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowBulkCorrect(true)}
+            data-testid="bulk-correct-positions-btn"
+          >
+            {"تصحيح الموضع الجماعي"}
+          </Button>
+        )}
         {!bulkMode && (
           <Button size="sm" variant={khatmSort ? "bronze" : "ghost"} onClick={() => void toggleKhatmSort()} data-testid="khatm-sort-btn">
             {tu("khatmColLabel")} {khatmSort ? "▲" : ""}
@@ -590,6 +602,15 @@ export default function UnifiedPage() {
           students={filtered} absentDefault={absentDefault} date={date} items={items} post={post}
           panelCache={panelCache} panelLoading={panelLoading} onOpenStudent={loadDetail}
           markAtt={markAtt} pendingStudents={pendingStudents}
+        />
+      )}
+
+      {showBulkCorrect && students && (
+        <BulkCorrectDialog
+          students={students}
+          circleId={circleId}
+          onDone={() => void load(circleId)}
+          onClose={() => setShowBulkCorrect(false)}
         />
       )}
     </PageShell>
