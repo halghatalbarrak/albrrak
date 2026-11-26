@@ -150,8 +150,8 @@ test.describe("تصحيح مواضع ٣ طلاب دفعة واحدة", () => {
     await expect(dialog.getByText("محمد الثاني")).toBeVisible();
     await expect(dialog.getByText("عليّ الثالث")).toBeVisible();
 
-    // اختر السبب
-    await dialog.locator("select").first().selectOption("INPUT_ERROR");
+    // اختر السبب (data-testid لتجنّب الخلط مع قوائم السور)
+    await dialog.locator("[data-testid='bulk-correct-reason-select']").selectOption("INPUT_ERROR");
 
     // اضغط «حفظ الجميع»
     await dialog.locator("[data-testid='bulk-correct-save-btn']").click();

@@ -306,6 +306,7 @@ export function BulkCorrectDialog({
           <div style={{ display: "flex", flexDirection: "column", gap: sp(1) }}>
             <label style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("bulkCorrectReasonLabel")}</label>
             <select
+              data-testid="bulk-correct-reason-select"
               value={reason}
               onChange={(e) => setReason(e.target.value as typeof reason)}
               style={{
