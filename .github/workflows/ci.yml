@@ -1,13 +1,28 @@
 name: CI
 
 on:
+  # على فروع الـPR: تُشغَّل كل الفحوص الخمسة عند مزامنة الـPR.
+  # على main بعد الدمج: verify + test فقط (E2E مرّ على الـPR).
   push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+# إلغاء التشغيل القديم فور وصول push جديد على نفس الفرع/الـPR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
     name: tsc + lint + build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,6 +64,7 @@ jobs:
   test:
     name: server rule tests (Postgres)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # قاعدة العمل ٤: كل قاعدة مطلقة لها اختبار يثبت الرفض في الخادم.
     # تُشغَّل على Postgres حقيقي بعد تطبيق الترحيلات.
     services:
@@ -96,6 +112,7 @@ jobs:
     name: تحقّق من بريد المؤلف (thmny88 فقط)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
@@ -115,12 +132,14 @@ jobs:
 
   prod-schema-sync:
     name: prod schema in sync (migrate status)
+    # تُشغَّل على الـPR فقط — تحقّق قبل الدمج. لا يلزم بعد الدمج على main.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     # الكود يُنشَر تلقائيًّا، والمخطط ينتظر زرًّا بشريًّا (Migrate). بينهما فجوةٌ يعمل
     # فيها كودٌ جديد على قاعدةٍ قديمة (عطب P2022). هذه الوظيفة تُغلق الفجوة: تقرأ حالة
     # ترحيلات الإنتاج (بلا تطبيق)، وتفشل صراحةً إن كان الإنتاج متأخّرًا — فيستحيل الدمج
-    # ونحن ناسون. مبدأ الحلقات: لا انتقال بلا اعتماد. (CI الأخرى تُرحّل قاعدةً عابرة،
-    # فتخضرّ وهي عمياء عن الإنتاج — كعلّة SUPABASE_JWT_SECRET: خضرةٌ في الموضع الخطأ.)
-    runs-on: ubuntu-latest
+    # ونحن ناسون.
     env:
       # قاعدة الإنتاج — قراءةٌ فقط. DIRECT_URL اتصالٌ مباشر (منفذ الجلسة) للترحيلات.
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -154,7 +173,10 @@ jobs:
 
   e2e:
     name: E2E (Playwright)
+    # تُشغَّل على الـPR فقط — مرّت على PR قبل الدمج، لا يلزم تكرارها على main.
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: verify
     env:
       # متغيّرات مؤقّتة للبناء والتشغيل — الاختبارات تُزيَّف كل طلبات الشبكة (page.route).
@@ -179,6 +201,14 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            playwright-chromium-
 
       - name: Install Playwright Chromium
         run: npx playwright install chromium --with-deps
