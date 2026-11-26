@@ -131,7 +131,7 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
         <div style={{ display: "flex", alignItems: "baseline", gap: sp(2) }}>
           <strong style={{ fontSize: ui.text.lg }}>{s.name}</strong>
           {(s.points ?? 0) > 0 && (
-            <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("pointsBalance")}{arNum(s.points ?? 0)}</span>
+            <span data-testid="student-points" style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("pointsBalance")}{arNum(s.points ?? 0)}</span>
           )}
         </div>
         {onNextStudent && (

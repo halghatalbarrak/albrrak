@@ -212,7 +212,7 @@ test.describe("6-ج: تفصيل نقاط اليوم", () => {
     await page.locator("[data-testid='student-row']").first().click();
 
     // s1 لديه points=50 — يظهر بجانب الاسم
-    await expect(page.locator("strong:has-text('أحمد الأوّل') ~ span, strong:has-text('أحمد الأوّل') + span")).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator("[data-testid='student-points']")).toBeVisible({ timeout: 5_000 });
   });
 
   test("تفصيل نقاط اليوم يظهر بعد المنح", async ({ page }) => {
