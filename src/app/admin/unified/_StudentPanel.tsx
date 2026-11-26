@@ -43,7 +43,6 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
   const [hifzError, setHifzError] = useState<string | null>(null);
   const [hifzSaving, setHifzSaving] = useState(false);
   const [savedHifzToday, setSavedHifzToday] = useState<HifzSave | null>(null);
-  // حالة الترسيخ والمراجعة بعد الحفظ: true=تمّ، false=لم يتمّ، null=لم يُسجَّل
   const [savedTarseekh, setSavedTarseekh] = useState<boolean | null>(null);
   const [savedMurajaah, setSavedMurajaah] = useState<boolean | null>(null);
   const [showCorrection, setShowCorrection] = useState(false);
