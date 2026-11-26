@@ -22,10 +22,6 @@ async function main() {
           circle: { select: { id: true, nameAr: true } },
         },
       },
-      maraqiPlacements: {
-        where: { studentId: { not: undefined } },
-        select: { reachedSurah: true, reachedAyah: true },
-      },
       sessions: {
         where: { hifzToSurah: { not: null } },
         orderBy: { hifzToSurah: "desc" },
@@ -38,6 +34,14 @@ async function main() {
       },
     },
   });
+
+  // MaraqiPlacement لا توجد كـrelation عكسيّة على Student (studentId @unique لكن بلا relation field)
+  // نجلبها دفعةً واحدة ونبني Map
+  const placements = await prisma.maraqiPlacement.findMany({
+    where: { studentId: { in: students.map((s) => s.id) } },
+    select: { studentId: true, reachedSurah: true, reachedAyah: true },
+  });
+  const placementMap = new Map(placements.map((p) => [p.studentId, p]));
 
   // تجميع الطلاب حسب الحلقة
   const byCircle = new Map<string, { nameAr: string; students: typeof students }>(); // circleId → { nameAr, students[] }
@@ -58,10 +62,8 @@ async function main() {
 
   // حساب hasFrontier لكل طالب
   function hasFrontier(s: typeof students[number]) {
-    const hasPlacement =
-      s.maraqiPlacements.length > 0 &&
-      (s.maraqiPlacements[0].reachedSurah !== null ||
-        s.maraqiPlacements[0].reachedAyah !== null);
+    const p = placementMap.get(s.id);
+    const hasPlacement = p != null && (p.reachedSurah != null || p.reachedAyah != null);
     const hasSession = s.sessions.length > 0;
     return hasPlacement || hasSession;
   }
