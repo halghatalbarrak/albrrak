@@ -566,6 +566,7 @@ export default function UnifiedPage() {
                     <button
                       key={s.studentId}
                       data-testid="student-row"
+                      data-student-id={s.studentId}
                       onClick={() => {
                         if (bulkMode) {
                           setBulkSelected((prev) => { const n = new Set(prev); n.has(s.studentId) ? n.delete(s.studentId) : n.add(s.studentId); return n; });

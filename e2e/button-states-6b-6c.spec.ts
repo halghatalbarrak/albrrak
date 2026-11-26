@@ -229,8 +229,8 @@ test.describe("حالات أزرار راجِع", () => {
     // الـ ConsolidationRow الثاني هو قسم راجِع
     await page.locator("[data-testid='consol-btn-done']").nth(1).click();
     await expect(
-      page.locator("[data-testid='consol-btn-done'][data-saved='true']").nth(1)
-    ).toBeVisible({ timeout: 5_000 });
+      page.locator("[data-testid='consol-btn-done']").nth(1)
+    ).toHaveAttribute("data-saved", "true", { timeout: 5_000 });
   });
 
 });

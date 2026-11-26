@@ -87,14 +87,14 @@ export function ConsolidationRow({ label, bounds, studentId, date, onDone, onExt
           variant={savedDone === true ? "success" : "ghost"}
           data-testid="consol-btn-done"
           data-saved={savedDone === true ? "true" : undefined}
-          onClick={() => { if (savedDone == null) onDone(true); }}
+          onClick={() => { if (savedDone !== true) onDone(true); }}
         >{savedDone === true ? `✓ ${tu("consolidDone")}` : tu("consolidDone")}</Button>
         <Button
           size="sm"
           variant={savedDone === false ? "success" : "ghost"}
           data-testid="consol-btn-not-done"
           data-saved={savedDone === false ? "true" : undefined}
-          onClick={() => { if (savedDone == null) onDone(false); }}
+          onClick={() => { if (savedDone !== false) onDone(false); }}
         >{savedDone === false ? `✓ ${tu("consolidNotDone")}` : tu("consolidNotDone")}</Button>
         {bounds.length > 0 && (
           <Button size="sm" variant="ghost" data-testid="consol-btn-errors" onClick={() => setErrorsOpen((v) => !v)}>
