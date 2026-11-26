@@ -13,7 +13,7 @@ import { normalizeArabic } from "@/lib/normalize-arabic";
 import {
   type Role, type MuddakirStaffRole, STAFF_ROLES, ROLE_AR, toggleIn,
   MUDDAKIR_STAFF, MUDDAKIR_STAFF_AR, MUDDAKIR_SECTION, MUDDAKIR_NO_PERM, MUDDAKIR_SENT,
-  MUDDAKIR_EXCLUSIVE, MUDDAKIR_NONE, violatesExclusivity,
+  MUDDAKIR_EXCLUSIVE, MUDDAKIR_NONE, violatesExclusivity, conflictReason,
   muddakirStaffCaps, LinkBox, linkBoxCard,
 } from "./shared";
 
@@ -189,7 +189,7 @@ export default function AdminUsersPage() {
         {u.roles.map((r) => <Badge key={r} tone="primary">{ROLE_AR[r]}</Badge>)}
         {u.muddakirStaff.map((r) => <Badge key={r} tone="bronze">{MUDDAKIR_STAFF_AR[r]}</Badge>)}
         {violatesExclusivity(u.roles, u.muddakirStaff) && (
-          <span title={t("conflictTooltip")} style={{ cursor: "help", color: ui.color.danger, fontSize: ui.text.xs }}>⚠</span>
+          <span title={conflictReason(u.roles, u.muddakirStaff) ?? t("conflictTooltip")} style={{ cursor: "help", color: ui.color.danger, fontSize: ui.text.xs }}>⚠</span>
         )}
       </span>
     ) },

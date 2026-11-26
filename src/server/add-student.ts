@@ -2,17 +2,23 @@
  * إضافة طالب سريعة من الشاشة الموحّدة.
  * الخادم يتحقّق من الصلاحية (معلّم الحلقة أو مدير)، والتكرار، ثم يسجّل في AuditLog.
  */
-import { Gender, Role, StudentState, type PrismaClient } from "@prisma/client";
+import { Gender, ProgramKey, Role, StudentState, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { findOrCreateGuardian } from "./account";
 import { aerr, verr } from "./errors";
+import { placeMaraqiInternal, placeQaidahInternal } from "./placement-actions";
+import { enrollInMuddakir } from "./muddakir-enrollment";
 
 export interface QuickAddStudentInput {
   nameAsInId: string;
   birthDate: Date;
   gender: Gender;
   guardianPhone: string;
+  guardianName?: string;
   programId: string;
+  maraqi?: { reachedSurah: number; reachedAyah: number };
+  qaidah?: { currentLessonId: string };
+  muddakir?: { track?: number };
 }
 
 export interface QuickAddResult {
@@ -75,13 +81,20 @@ export async function quickAddStudent(
     };
   }
 
+  // استعلام عن برنامج الطالب لتحديد الحالة الصحيحة
+  const program = await db.program.findUnique({ where: { id: input.programId }, select: { key: true } });
+  if (!program) throw verr("quickAddProgramRequired");
+
+  const initState: StudentState =
+    program.key === ProgramKey.QAIDAH_MADANIYYAH ? StudentState.IN_QAIDAH : StudentState.IN_MARAQI;
+
   // إنشاء الولي (أو البحث عنه)
   const guardian = await findOrCreateGuardian(db, {
     guardianPhone: input.guardianPhone,
     guardianGender: Gender.MALE, // افتراضيّ — يُحدَّث لاحقًا في إعداد الطالب
   });
 
-  return db.$transaction(async (tx) => {
+  const result = await db.$transaction(async (tx) => {
     // سجلّ المستخدم (بلا authId — الطالب أقلّ من ١٣ أو لم يُكمَّل الإعداد)
     const user = await tx.user.create({
       data: {
@@ -96,7 +109,7 @@ export async function quickAddStudent(
     const student = await tx.student.create({
       data: {
         userId: user.id,
-        state: StudentState.IN_MARAQI,
+        state: initState,
       },
     });
 
@@ -118,6 +131,14 @@ export async function quickAddStudent(
       },
     });
 
+    // تحديث اسم الولي إن أُعطي وكان الاسم الحاليّ مولَّدًا تلقائيّاً
+    if (input.guardianName?.trim()) {
+      const gUser = await tx.user.findUnique({ where: { id: guardian.id }, select: { nameAsInId: true } });
+      if (gUser?.nameAsInId.startsWith("ولي أمر (")) {
+        await tx.user.update({ where: { id: guardian.id }, data: { nameAsInId: input.guardianName.trim() } });
+      }
+    }
+
     // AuditLog
     await tx.auditLog.create({
       data: {
@@ -131,4 +152,15 @@ export async function quickAddStudent(
 
     return { studentId: student.id, userId: user.id, duplicate: false };
   });
+
+  // التسكين بعد إتمام المعاملة
+  if (program.key === ProgramKey.MARAQI && input.maraqi) {
+    await placeMaraqiInternal({ actorId, studentId: result.studentId, ...input.maraqi }, db);
+  } else if (program.key === ProgramKey.QAIDAH_MADANIYYAH && input.qaidah) {
+    await placeQaidahInternal({ actorId, studentId: result.studentId, currentLessonId: input.qaidah.currentLessonId }, db);
+  } else if (program.key === ProgramKey.MUDDAKIR) {
+    await enrollInMuddakir({ studentId: result.studentId, actorId, track: input.muddakir?.track, circleId }, db);
+  }
+
+  return result;
 }

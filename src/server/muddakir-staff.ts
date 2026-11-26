@@ -24,11 +24,15 @@ export const SINGLE_FUNCTION_MSG = "موظّف المدّكر لا يحمل أد
 /**
  * يتحقّق من الحصر على الحالة النهائيّة: إن كانت هناك وظيفة مدّكرٍ واحدةٌ على الأقلّ فيجب ألّا يصحبها
  * دورٌ عامّ، وألّا تتجاوز الوظائف واحدة. (لا قيدَ على من لا وظيفة مدّكرٍ له — حافظٌ أو كادرٌ عامّ.)
+ * استثناء واحد مُصرَّح به: معلّم (TEACHER) مع مدير برنامج المدّكر (MANAGER) — صلاحيّاتٌ منفصلة.
  */
 export function assertMuddakirExclusivity(roles: readonly string[], staff: readonly string[]): void {
   if (staff.length === 0) return;
   if (staff.length > 1) throw new ValidationError(SINGLE_FUNCTION_MSG, "muddakirSingleFunction");
-  if (roles.length > 0) throw new ValidationError(SINGLE_FUNCTION_MSG, "muddakirSingleFunction");
+  if (roles.length === 0) return;
+  // الاستثناء المُصرَّح به: معلّم فقط + مدير المدّكر فقط
+  if (roles.length === 1 && roles[0] === "TEACHER" && staff.length === 1 && staff[0] === "MANAGER") return;
+  throw new ValidationError(SINGLE_FUNCTION_MSG, "muddakirSingleFunction");
 }
 
 /** أدوار المدّكر النشطة لمستخدم (endedAt = null). */
