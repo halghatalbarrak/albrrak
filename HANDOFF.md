@@ -208,6 +208,7 @@
 | #286 | feat(unified): تصحيح الموضع الجماعي للحلقة — dialog + API + E2E (إصلاح selector السبب) | مدموج ✅ |
 | #290 | feat(unified): 6-ب و6-ج كاملاً — 3 حالات أزرار + الزي للحاضرين + تفصيل نقاط اليوم + E2E + نموذج تصحيح موضع مبسَّط | مدموج ✅ |
 | #291 | chore(ci): تخفيض استهلاك Actions — concurrency + pull_request فقط + paths-ignore + كاش Playwright + timeout | مدموج ✅ |
+| #292 | fix(economy+preview): معاينة الموضع (startSurah/startAyah/endAyah) + رأس البطاقة (رصيد + نقاط اليوم دائماً) + بنود الاقتصاد (6 TEACHER + 4 AUTO) + smoke check على main | مدموج ✅ |
 
 ---
 

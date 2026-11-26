@@ -2,7 +2,8 @@ import { MuddakirRequestStatus, MuddakirStaffRole, Role } from "@prisma/client";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { setMuddakirStaffRoles, decideRequest } from "../muddakir-requests";
-import { assignStaff, activeStaffRoles } from "../muddakir-staff";
+import { assignStaff, activeStaffRoles, muddakirCaps } from "../muddakir-staff";
+import { assertCanPlace } from "../placement-actions";
 import { setRoles, setRolesAndStaff } from "../user-management";
 import { AuthorizationError, ValidationError } from "../errors";
 import { prisma, resetDb } from "../testing/helpers";
@@ -165,10 +166,45 @@ describe("setRolesAndStaff: الحفظ الموحّد الذرّيّ (و١)", ()
     expect(await activeStaffRoles(prisma, u.id)).toEqual([]);
   });
 
-  it("يرفض الجمع (دورٌ عامّ + وظيفة) والفراغ التامّ", async () => {
+  it("يرفض الجمع العامّ (دورٌ غير معلّم + وظيفة) والفراغ التامّ", async () => {
     const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
     const u = await createUser(prisma, { roles: [] });
-    await expect(setRolesAndStaff(platform.id, u.id, [Role.TEACHER], [MuddakirStaffRole.MANAGER], prisma)).rejects.toBeInstanceOf(ValidationError);
+    // RECITER + MANAGER ممنوع (ليس استثناءً)
+    await expect(setRolesAndStaff(platform.id, u.id, [Role.RECITER], [MuddakirStaffRole.MANAGER], prisma)).rejects.toBeInstanceOf(ValidationError);
+    // فراغٌ تامّ ممنوع
     await expect(setRolesAndStaff(platform.id, u.id, [], [], prisma)).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("يقبل الجمع المُصرَّح به: معلّم + مدير برنامج المدّكر", async () => {
+    const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
+    const u = await createUser(prisma, { roles: [Role.TEACHER] });
+    const r = await setRolesAndStaff(platform.id, u.id, [Role.TEACHER], [MuddakirStaffRole.MANAGER], prisma);
+    expect(r.roles).toContain(Role.TEACHER);
+    expect(await activeStaffRoles(prisma, u.id)).toContain(MuddakirStaffRole.MANAGER);
+  });
+});
+
+describe("عزل الصلاحيّات: معلّم+مدير المدّكر لا يتلوّثان (§٢)", () => {
+  it("المعلّم ذو وظيفة MANAGER لا يملك صلاحيّة إدارة المدّكر من دور TEACHER وحده", async () => {
+    const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
+    const u = await createUser(prisma, { roles: [Role.TEACHER] });
+    await setRolesAndStaff(platform.id, u.id, [Role.TEACHER], [MuddakirStaffRole.MANAGER], prisma);
+    // muddakirCaps: يجب أن manage=true بفضل وظيفة MANAGER
+    const caps = await muddakirCaps(prisma, { id: u.id, roles: [Role.TEACHER] });
+    expect(caps.manage).toBe(true);
+  });
+
+  it("مدير المدّكر (MANAGER فقط بلا دورٍ عامّ) لا يستطيع التسكين في مراقي", async () => {
+    const platform = await createUser(prisma, { roles: [Role.SUPER_ADMIN] });
+    const mgr = await createUser(prisma, { roles: [] });
+    await assignStaff({ actorUserId: platform.id, targetUserId: mgr.id, role: MuddakirStaffRole.MANAGER }, prisma);
+    // assertCanPlace يتحقّق من أدوار User.roles لا MuddakirStaff
+    await expect(assertCanPlace(prisma, mgr.id)).rejects.toBeInstanceOf(AuthorizationError);
+  });
+
+  it("معلّم (TEACHER فقط) لا يملك صلاحيّة إدارة المدّكر", async () => {
+    const teacher = await createUser(prisma, { roles: [Role.TEACHER] });
+    const caps = await muddakirCaps(prisma, { id: teacher.id, roles: [Role.TEACHER] });
+    expect(caps.manage).toBe(false);
   });
 });

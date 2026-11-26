@@ -150,6 +150,69 @@ export async function setCircleDefaultProgram(
   await db.circle.update({ where: { id: args.circleId }, data: { programId: args.programId } });
 }
 
+// ═══════════════ دوال داخليّة (بلا قيد صلاحيّة — للاستخدام من إضافة الطالب) ═══════════════
+
+/** قائمة دروس القاعدة المدنيّة (للنموذج — بلا قيد صلاحيّة). */
+export async function getQaidahLessons(db: PrismaClient = prisma): Promise<{ id: string; nameAr: string; chapterName: string | null }[]> {
+  const prog = await db.program.findUnique({ where: { key: ProgramKey.QAIDAH_MADANIYYAH }, select: { id: true } });
+  if (!prog) return [];
+  const rows = await db.stage.findMany({
+    where: { programId: prog.id, kind: StageKind.LESSON },
+    orderBy: { ordinal: "asc" },
+    select: { id: true, nameAr: true, parent: { select: { nameAr: true } } },
+  });
+  return rows.map((r) => ({ id: r.id, nameAr: r.nameAr, chapterName: r.parent?.nameAr ?? null }));
+}
+
+/** تسكين مراقي داخليّ — يُنشئ أو يُحدِّث الموضع ويُسند المسار تلقائيًّا. */
+export async function placeMaraqiInternal(
+  args: { actorId: string; studentId: string; reachedSurah: number; reachedAyah: number },
+  db: PrismaClient = prisma,
+): Promise<void> {
+  await db.$transaction(async (tx) => {
+    await tx.maraqiPlacement.upsert({
+      where: { studentId: args.studentId },
+      update: { reachedSurah: args.reachedSurah, reachedAyah: args.reachedAyah, outOfOrder: [] },
+      create: { studentId: args.studentId, reachedSurah: args.reachedSurah, reachedAyah: args.reachedAyah, outOfOrder: [] },
+    });
+    const hasTrack = await tx.trackAssignment.findFirst({ where: { studentId: args.studentId, endedAt: null }, select: { id: true } });
+    if (!hasTrack) {
+      const suggestion = await suggestTrackForStudent(args.studentId, db);
+      if (suggestion.suggestedTrackId) {
+        await assignMaraqiTrackInTx(tx, { studentId: args.studentId, trackId: suggestion.suggestedTrackId, source: "AUTO_FROM_FRONTIER", actorId: args.actorId });
+      }
+    }
+    await emitEvent(tx, { type: "MARAQI_PLACED", subjectType: "Student", subjectId: args.studentId, actorId: args.actorId, payload: { reachedSurah: args.reachedSurah, outOfOrder: 0, afterFirstSession: false } });
+  });
+}
+
+/** تسكين القاعدة داخليّ — يُكمل الدروس السابقة بمصدر PLACEMENT. */
+export async function placeQaidahInternal(
+  args: { actorId: string; studentId: string; currentLessonId: string },
+  db: PrismaClient = prisma,
+): Promise<void> {
+  const prog = await db.program.findUnique({ where: { key: ProgramKey.QAIDAH_MADANIYYAH }, select: { id: true } });
+  if (!prog) return;
+  const lessons = await db.stage.findMany({
+    where: { programId: prog.id, kind: StageKind.LESSON },
+    orderBy: { ordinal: "asc" },
+    select: { id: true },
+  });
+  const idx = lessons.findIndex((l) => l.id === args.currentLessonId);
+  if (idx < 0) return;
+  const before = lessons.slice(0, idx);
+  await db.$transaction(async (tx) => {
+    for (const l of before) {
+      await tx.stageProgress.upsert({
+        where: { studentId_stageId: { studentId: args.studentId, stageId: l.id } },
+        update: { state: ProgressState.COMPLETED, completedAt: new Date() },
+        create: { studentId: args.studentId, stageId: l.id, state: ProgressState.COMPLETED, startedAt: new Date(), completedAt: new Date(), source: PlacementSource.PLACEMENT },
+      });
+    }
+    await emitEvent(tx, { type: "QAIDAH_PLACED", subjectType: "Student", subjectId: args.studentId, actorId: args.actorId, payload: { currentLessonId: args.currentLessonId, placedBefore: before.length, afterFirstSession: false } });
+  });
+}
+
 /** ق٧: تغيير برنامج الطالب يدويًّا — يُلغي أيّ انتقالٍ معلّق (ضابط ٤) ويسجّل التاريخ. */
 export async function changeStudentProgram(
   args: { actorId: string; studentId: string; programId: string },

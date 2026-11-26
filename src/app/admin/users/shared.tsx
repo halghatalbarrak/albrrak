@@ -22,9 +22,20 @@ export const MUDDAKIR_EXCLUSIVE = tMuddakir("rolesWinExclusive");
 export const MUDDAKIR_NONE = tMuddakir("rolesWinNone");
 export const MUDDAKIR_EXCESS = tMuddakir("rolesWinExcessWarn");
 
+/** هل الجمع مستثنًى من الحصر؟ (معلّم فقط + مدير المدّكر فقط — قرار المدير §٢) */
+const isAllowedCombination = (roles: readonly string[], staff: readonly string[]): boolean =>
+  roles.length === 1 && roles[0] === "TEACHER" && staff.length === 1 && staff[0] === "MANAGER";
+
 /** هل يجمع المستخدم اليوم وظيفة مدّكرٍ مع غيرها (دورٌ عامّ أو وظيفةٌ ثانية)؟ — تنبيه «أزل الزائد». */
 export const violatesExclusivity = (roles: readonly string[], staff: readonly string[]): boolean =>
-  staff.length > 0 && (roles.length > 0 || staff.length > 1);
+  staff.length > 0 && (roles.length > 0 || staff.length > 1) && !isAllowedCombination(roles, staff);
+
+/** سبب التعارض بالعربيّة (للتلميح). يُرجع null إن لم يكن تعارض. */
+export function conflictReason(roles: readonly string[], staff: readonly string[]): string | null {
+  if (!violatesExclusivity(roles, staff)) return null;
+  if (staff.length > 1) return "وظيفتان في المدّكر — لا يُجمَع بين وظيفتين";
+  return "دورٌ عامٌّ في المنصّة مع وظيفة المدّكر — الوظيفة حصريّة";
+}
 export const toggleStaff = (list: MuddakirStaffRole[], r: MuddakirStaffRole): MuddakirStaffRole[] =>
   list.includes(r) ? list.filter((x) => x !== r) : [...list, r];
 
