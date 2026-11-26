@@ -47,7 +47,7 @@ const PANEL_NO_TARSEEKH = {
 };
 
 async function setupBase(page: Page, students: unknown[], panel = PANEL_WITH_TARSEEKH_MURAJAAH) {
-  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.setViewportSize({ width: 390, height: 844 });
 
   await page.addInitScript((session) => {
     const orig = Storage.prototype.getItem;
@@ -181,9 +181,9 @@ test.describe("حالات أزرار رسّخ", () => {
     await setupBase(page, [makeStudent()]);
     await openFirstCard(page);
 
-    // القسم الأوّل من consol هو رسّخ
-    await expect(page.locator("[data-testid='consol-btn-done'][data-saved='true']").first()).toHaveCount(0);
-    await expect(page.locator("[data-testid='consol-btn-not-done'][data-saved='true']").first()).toHaveCount(0);
+    // لا يجب أن يكون أيّ زرّ رسّخ محفوظاً في البداية
+    await expect(page.locator("[data-testid='consol-btn-done'][data-saved='true']")).toHaveCount(0);
+    await expect(page.locator("[data-testid='consol-btn-not-done'][data-saved='true']")).toHaveCount(0);
   });
 
   test("«رسّخ تمّ» يصبح data-saved='true' بعد نجاح الخادم", async ({ page }) => {
