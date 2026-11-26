@@ -206,6 +206,7 @@
 | #288 | fix(hifz): رسالة خطأ مميّزة لـAWAITING_PACE_TEST + blocker STATE_BLOCKS_HIFZ + E2E | مدموج ✅ |
 | #287 | fix(ops): إصلاح check-circle-states + سكربت AWAITING_PACE_TEST (findMany بدلاً من select) + workflow | مدموج ✅ |
 | #286 | feat(unified): تصحيح الموضع الجماعي للحلقة — dialog + API + E2E (إصلاح selector السبب) | مدموج ✅ |
+| #290 | feat(unified): 6-ب و6-ج — ✓ على الأزرار النشطة + رصيد النقاط | مفتوح 🔄 |
 
 ---
 
