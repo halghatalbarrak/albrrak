@@ -13,12 +13,20 @@ async function main() {
     select: {
       id: true,
       nameAr: true,
-      students: {
-        where: { deletedAt: null },
+      enrollments: {
+        where: { endedAt: null, student: { deletedAt: null } },
         select: {
-          id: true,
-          state: true,
-          track: true,
+          student: {
+            select: {
+              id: true,
+              state: true,
+              trackAssignments: {
+                where: { endedAt: null },
+                select: { track: { select: { ordinal: true } } },
+                take: 1,
+              },
+            },
+          },
         },
       },
     },
@@ -30,7 +38,7 @@ async function main() {
   }
 
   for (const circle of circles) {
-    const students = circle.students;
+    const students = circle.enrollments.map((e) => e.student);
     console.log(`\n📋 حلقة: [${circle.id.slice(0, 8)}…] — ${students.length} طالب\n`);
 
     // إحصاء الحالات
@@ -47,7 +55,8 @@ async function main() {
     console.log("\nأوّل ٥ طلاب (معرّف مقتطع — حالة — مسار):");
     for (const s of students.slice(0, 5)) {
       const sid = s.id.slice(0, 8);
-      console.log(`  ${sid}…  state:${s.state}  track:${s.track ?? "—"}`);
+      const trackOrdinal = s.trackAssignments[0]?.track?.ordinal ?? null;
+      console.log(`  ${sid}…  state:${s.state}  track:${trackOrdinal !== null ? `#${trackOrdinal}` : "—"}`);
     }
   }
 }

@@ -1,0 +1,26 @@
+name: إصلاح AWAITING_PACE_TEST (dry-run / apply)
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run أو apply"
+        required: false
+        default: "dry-run"
+permissions:
+  contents: read
+jobs:
+  fix-states:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      MODE: ${{ inputs.mode }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx tsx --tsconfig tsconfig.json scripts/ops/fix-pace-test-students.ts
