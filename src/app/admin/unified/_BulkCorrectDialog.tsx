@@ -2,23 +2,10 @@
 
 import { useState } from "react";
 import { Button, sp, ui } from "@/components/ui";
-import { SURAH_AYAH_COUNTS_TANZIL, SURAH_NAMES } from "@/lib/surah-names";
 import type { Student } from "./_types";
 import { token } from "./_types";
 import { tUnified as tu } from "@/i18n/ar/unified";
-
-// ═══════════════════════════════════════════════════════════════
-// مساعدات السور
-// ═══════════════════════════════════════════════════════════════
-const MAX_SURAH = 114;
-const surahOptions = Array.from({ length: MAX_SURAH }, (_, i) => ({
-  num: i + 1,
-  name: SURAH_NAMES[i + 1] ?? "",
-}));
-
-function maxAyah(surah: number): number {
-  return SURAH_AYAH_COUNTS_TANZIL[surah] ?? 1;
-}
+import { AyahSelect, SurahSelect } from "./_SurahAyahSelect";
 
 // ═══════════════════════════════════════════════════════════════
 // نوع حالة بند التصحيح لكل طالب
@@ -29,81 +16,6 @@ interface CorrRow {
   fromAyah: number;
   toSurah: number;
   toAyah: number;
-}
-
-// ═══════════════════════════════════════════════════════════════
-// select السورة
-// ═══════════════════════════════════════════════════════════════
-function SurahSelect({
-  value,
-  onChange,
-  id,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  id?: string;
-}) {
-  return (
-    <select
-      id={id}
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      style={{
-        fontFamily: ui.font,
-        fontSize: ui.text.xs,
-        padding: `${sp(1)} ${sp(1.5)}`,
-        borderRadius: ui.radius.sm,
-        border: `1px solid ${ui.color.border}`,
-        background: ui.color.surface,
-        color: ui.color.text,
-        maxWidth: 130,
-      }}
-    >
-      {surahOptions.map((s) => (
-        <option key={s.num} value={s.num}>
-          {s.num}. {s.name}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════
-// select الآية
-// ═══════════════════════════════════════════════════════════════
-function AyahSelect({
-  surah,
-  value,
-  onChange,
-}: {
-  surah: number;
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  const max = maxAyah(surah);
-  const opts = Array.from({ length: max }, (_, i) => i + 1);
-  return (
-    <select
-      value={Math.min(value, max)}
-      onChange={(e) => onChange(Number(e.target.value))}
-      style={{
-        fontFamily: ui.font,
-        fontSize: ui.text.xs,
-        padding: `${sp(1)} ${sp(1.5)}`,
-        borderRadius: ui.radius.sm,
-        border: `1px solid ${ui.color.border}`,
-        background: ui.color.surface,
-        color: ui.color.text,
-        width: 68,
-      }}
-    >
-      {opts.map((n) => (
-        <option key={n} value={n}>
-          {n}
-        </option>
-      ))}
-    </select>
-  );
 }
 
 // ═══════════════════════════════════════════════════════════════

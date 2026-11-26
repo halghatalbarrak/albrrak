@@ -10,6 +10,9 @@ import { QaidahPanel } from "./_QaidahPanel";
 import { ConsolidationRow } from "./_ConsolidationRow";
 import { TrackAssignInline } from "./_TrackAssignInline";
 import type { GrantItem, MarkAttFn, PanelDetail, PostFn, Student } from "./_types";
+import { token } from "./_types";
+import { AyahSelect, maxAyah, SurahSelect } from "./_SurahAyahSelect";
+import { SURAH_NAMES } from "@/lib/surah-names";
 
 const ATT_LABEL: Record<string, string> = {
   PRESENT: "حاضر", LATE: "متأخّر", ABSENT_UNEXCUSED: "غائب", LEFT_NO_PERMISSION: "خرج بلا إذن",
@@ -39,7 +42,8 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
   const [hifzSaving, setHifzSaving] = useState(false);
   const [savedHifzToday, setSavedHifzToday] = useState<HifzSave | null>(null);
   const [showCorrection, setShowCorrection] = useState(false);
-  const [corrForm, setCorrForm] = useState({ fromSurah: 78, fromAyah: 1, toSurah: 78, toAyah: 10, reason: "INPUT_ERROR" as "INPUT_ERROR" | "LEVEL_TEST" | "OTHER", reasonNote: "" });
+  const [corrForm, setCorrForm] = useState({ surah: 78, ayah: 10, reason: "INPUT_ERROR" as "INPUT_ERROR" | "LEVEL_TEST" | "OTHER", reasonNote: "" });
+  const [corrPreview, setCorrPreview] = useState<{ fromSurah: number; fromAyah: number; toSurah: number; toAyah: number } | null | "loading">("loading");
   const [corrSaving, setCorrSaving] = useState(false);
   const [corrError, setCorrError] = useState<string | null>(null);
   const [corrDone, setCorrDone] = useState(false);
@@ -55,6 +59,27 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
     setCorrDone(false);
     setCorrError(null);
   }, [sid]);
+
+  useEffect(() => {
+    if (!showCorrection) return;
+    setCorrPreview("loading");
+    const ctrl = new AbortController();
+    void (async () => {
+      try {
+        const tok = await token();
+        const res = await fetch(
+          `/api/students/${sid}/position-preview?toSurah=${corrForm.surah}&toAyah=${corrForm.ayah}`,
+          { headers: tok ? { Authorization: `Bearer ${tok}` } : {}, signal: ctrl.signal },
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as { unit: { fromSurah: number; fromAyah: number; toSurah: number; toAyah: number } | null };
+        setCorrPreview(data.unit);
+      } catch {
+        // المعاينة اختياريّة — لا تعطّل النموذج
+      }
+    })();
+    return () => ctrl.abort();
+  }, [sid, corrForm.surah, corrForm.ayah, showCorrection]);
 
   const excuse = () => {
     const reason = window.prompt("سبب الاستئذان/العذر:");
@@ -223,26 +248,38 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
       {canCorrectPosition && (
         <div>
           {!showCorrection ? (
-            <Button size="sm" variant="ghost" data-testid="btn-correct-position" onClick={() => { setShowCorrection(true); setCorrError(null); setCorrDone(false); }}>
+            <Button size="sm" variant="ghost" data-testid="btn-correct-position" onClick={() => { setShowCorrection(true); setCorrError(null); setCorrDone(false); setCorrPreview("loading"); }}>
               {tu("correctPositionBtn")}
             </Button>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: sp(2), padding: sp(3), border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md }}>
               <strong style={{ fontSize: ui.text.base }}>{tu("correctPositionTitle")}</strong>
-              <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
-                <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionFromSurah")}
-                  <input type="number" min={1} max={114} value={corrForm.fromSurah} onChange={(e) => setCorrForm((f) => ({ ...f, fromSurah: +e.target.value }))} style={{ width: 60, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
-                </label>
-                <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionAyah")}
-                  <input type="number" min={1} value={corrForm.fromAyah} onChange={(e) => setCorrForm((f) => ({ ...f, fromAyah: +e.target.value }))} style={{ width: 55, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
-                </label>
-                <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionToSurah")}
-                  <input type="number" min={1} max={114} value={corrForm.toSurah} onChange={(e) => setCorrForm((f) => ({ ...f, toSurah: +e.target.value }))} style={{ width: 60, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
-                </label>
-                <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionAyah")}
-                  <input type="number" min={1} value={corrForm.toAyah} onChange={(e) => setCorrForm((f) => ({ ...f, toAyah: +e.target.value }))} style={{ width: 55, marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }} />
-                </label>
+
+              {/* آخر ما أتقنه: سورة + آية */}
+              <div style={{ display: "flex", gap: sp(2), alignItems: "center", flexWrap: "wrap" }}>
+                <span style={{ fontSize: ui.text.xs, color: ui.color.muted, whiteSpace: "nowrap" }}>{tu("correctPositionLastMastered")}</span>
+                <SurahSelect
+                  value={corrForm.surah}
+                  onChange={(v) => setCorrForm((f) => ({ ...f, surah: v, ayah: Math.min(f.ayah, maxAyah(v)) }))}
+                />
+                <span style={{ fontSize: ui.text.xs, color: ui.color.muted }}>{tu("correctPositionAyah")}</span>
+                <AyahSelect
+                  surah={corrForm.surah}
+                  value={corrForm.ayah}
+                  onChange={(v) => setCorrForm((f) => ({ ...f, ayah: v }))}
+                />
               </div>
+
+              {/* معاينة مقرّر اليوم */}
+              <div data-testid="correction-preview" style={{ fontSize: ui.text.xs, color: ui.color.muted, padding: `${sp(1.5)} ${sp(2)}`, background: ui.color.surface, border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.sm }}>
+                {corrPreview === "loading"
+                  ? tu("correctPositionPreviewLoading")
+                  : corrPreview === null
+                  ? tu("correctPositionPreviewNone")
+                  : `${tu("correctPositionPreviewLabel")} ${SURAH_NAMES[corrPreview.fromSurah] ?? ""} من آية ${arNum(corrPreview.fromAyah)} إلى آية ${arNum(corrPreview.toAyah)}`}
+              </div>
+
+              {/* السبب */}
               <label style={{ fontSize: ui.text.xs }}>{tu("correctPositionReason")}
                 <select value={corrForm.reason} onChange={(e) => setCorrForm((f) => ({ ...f, reason: e.target.value as typeof corrForm.reason }))} style={{ marginInlineStart: 4, padding: `${sp(0.5)} ${sp(1)}`, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}`, fontFamily: ui.font }}>
                   <option value="INPUT_ERROR">{tu("correctPositionReasonInputError")}</option>
@@ -260,7 +297,12 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
                   onClick={async () => {
                     if (corrForm.reason === "OTHER" && !corrForm.reasonNote.trim()) { setCorrError(tu("correctPositionNoteRequired")); return; }
                     setCorrError(null); setCorrSaving(true);
-                    const r = await post(`/api/students/${sid}/position-correction`, { ...corrForm }, tu("correctPositionDone"), sid);
+                    const r = await post(
+                      `/api/students/${sid}/position-correction`,
+                      { fromSurah: corrForm.surah, fromAyah: 1, toSurah: corrForm.surah, toAyah: corrForm.ayah, reason: corrForm.reason, reasonNote: corrForm.reasonNote || undefined },
+                      tu("correctPositionDone"),
+                      sid,
+                    );
                     setCorrSaving(false);
                     if (r.ok) { setCorrDone(true); setShowCorrection(false); }
                     else setCorrError(r.error ?? tu("correctPositionFailed"));
