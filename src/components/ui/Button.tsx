@@ -2,15 +2,15 @@ import type { ButtonHTMLAttributes } from "react";
 
 import { ui, sp } from "./tokens";
 
-type Variant = "primary" | "bronze" | "ghost" | "danger";
+type Variant = "primary" | "bronze" | "ghost" | "danger" | "success";
 type Size = "md" | "sm";
 
 const bg: Record<Variant, string> = {
-  primary: ui.color.primary, bronze: ui.color.bronze, ghost: "transparent", danger: ui.color.danger,
+  primary: ui.color.primary, bronze: ui.color.bronze, ghost: "transparent", danger: ui.color.danger, success: ui.color.success,
 };
 const fg: Record<Variant, string> = {
   // onPrimary/onBronze يتكيّفان مع الوضع الداكن (يُصبحان داكنَين على الخلفيّة الفاتحة).
-  primary: ui.color.onPrimary, bronze: ui.color.onBronze, ghost: ui.color.ghostText, danger: ui.color.onPrimary,
+  primary: ui.color.onPrimary, bronze: ui.color.onBronze, ghost: ui.color.ghostText, danger: ui.color.onPrimary, success: "#fff",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -29,7 +29,7 @@ export function Button({ variant = "primary", size = "md", style, ...props }: Bu
         fontSize: size === "sm" ? ui.text.xs : ui.text.base,
         color: fg[variant],
         background: bg[variant],
-        border: `1px solid ${variant === "ghost" ? ui.color.border : bg[variant]}`,
+        border: `1px solid ${variant === "ghost" ? ui.color.border : variant === "success" ? ui.color.success : bg[variant]}`,
         borderRadius: ui.radius.md,
         padding: size === "sm" ? `${sp(1.5)} ${sp(2.5)}` : `${sp(2.5)} ${sp(4)}`,
         cursor: props.disabled ? "not-allowed" : "pointer",

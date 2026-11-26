@@ -16,11 +16,13 @@ function boundsRangeLabel(bounds: Bound[]): string {
   return `${outer} (${count(bounds.length, "وحدة", "وحدتان", "وحدات", "وحدة")})`;
 }
 
-export function ConsolidationRow({ label, bounds, studentId, date, onDone, onExtra }: {
+export function ConsolidationRow({ label, bounds, studentId, date, onDone, onExtra, savedDone }: {
   label: string; bounds: Bound[];
   studentId: string; date: string;
   onDone: (done: boolean) => void;
   onExtra: () => void;
+  /** الحالة المحفوظة: true=تمّ، false=لم يتمّ، null/undefined=لم يُسجَّل بعد */
+  savedDone?: boolean | null;
 }) {
   const [errorsOpen, setErrorsOpen] = useState(false);
   const [unitErrors, setUnitErrors] = useState<Record<number, 0 | 1 | 2 | 3>>(() => {
@@ -78,10 +80,22 @@ export function ConsolidationRow({ label, bounds, studentId, date, onDone, onExt
         <span style={{ fontWeight: 700, fontSize: ui.text.base, flexShrink: 0 }}>{label}</span>
         <span style={{ fontSize: ui.text.xs, color: ui.color.muted, wordBreak: "break-word" }}>{rangeText}</span>
       </div>
-      {/* السطر الثاني: الأزرار */}
+      {/* السطر الثاني: الأزرار — neutral افتراضياً، success للمحفوظ فقط */}
       <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center" }}>
-        <Button size="sm" variant="primary" data-testid="consol-btn-done" onClick={() => onDone(true)}>{tu("consolidDone")}</Button>
-        <Button size="sm" variant="danger" data-testid="consol-btn-not-done" onClick={() => onDone(false)}>{tu("consolidNotDone")}</Button>
+        <Button
+          size="sm"
+          variant={savedDone === true ? "success" : "ghost"}
+          data-testid="consol-btn-done"
+          data-saved={savedDone === true ? "true" : undefined}
+          onClick={() => { if (savedDone == null) onDone(true); }}
+        >{savedDone === true ? `✓ ${tu("consolidDone")}` : tu("consolidDone")}</Button>
+        <Button
+          size="sm"
+          variant={savedDone === false ? "success" : "ghost"}
+          data-testid="consol-btn-not-done"
+          data-saved={savedDone === false ? "true" : undefined}
+          onClick={() => { if (savedDone == null) onDone(false); }}
+        >{savedDone === false ? `✓ ${tu("consolidNotDone")}` : tu("consolidNotDone")}</Button>
         {bounds.length > 0 && (
           <Button size="sm" variant="ghost" data-testid="consol-btn-errors" onClick={() => setErrorsOpen((v) => !v)}>
             {errorsOpen

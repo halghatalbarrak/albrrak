@@ -37,16 +37,19 @@ interface HifzInputProps {
   onSave: (s: HifzSave) => void | Promise<void>;
 }
 
-const btnStyle = (active: boolean): React.CSSProperties => ({
+const btnStyle = (active: boolean, saved = false): React.CSSProperties => ({
   minWidth: 44, minHeight: 44,
-  background: active ? ui.color.primary : ui.color.surface,
-  color: active ? "#fff" : ui.color.text,
-  border: `1px solid ${active ? ui.color.primary : ui.color.border}`,
+  background: saved ? ui.color.success : active ? ui.color.surface : ui.color.surface,
+  color: saved ? "#fff" : ui.color.text,
+  border: `1px solid ${saved ? ui.color.success : active ? ui.color.primary : ui.color.border}`,
   borderRadius: ui.radius.md,
   fontFamily: ui.font,
   fontSize: ui.text.base,
+  fontWeight: saved ? 700 : 400,
   cursor: "pointer",
   padding: `${sp(1)} ${sp(2.5)}`,
+  outline: active && !saved ? `2px solid ${ui.color.primary}` : "none",
+  outlineOffset: "1px",
 });
 
 export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedToday, saveError, saving, onSave }: HifzInputProps) {
@@ -86,11 +89,15 @@ export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedT
       {/* أزرار المحاولات — ٣ فقط (الحكم ١) */}
       <div style={row}>
         <span style={{ fontSize: ui.text.xs }}>{t("attemptsLabel")}</span>
-        {([1, 2, 3] as const).map((n, i) => (
-          <button key={n} style={btnStyle(attempts === n)} onClick={() => setAttempts(n)}>
-            {["١", "٢", "٣"][i]}
-          </button>
-        ))}
+        {([1, 2, 3] as const).map((n, i) => {
+          const isSelected = attempts === n;
+          const isSaved = !!savedToday && savedToday.attempts === n;
+          return (
+            <button key={n} style={btnStyle(isSelected, isSaved)} onClick={() => !savedToday && setAttempts(n)}>
+              {isSaved ? `✓ ${["١", "٢", "٣"][i]}` : ["١", "٢", "٣"][i]}
+            </button>
+          );
+        })}
       </div>
 
       {saveError && (
@@ -100,20 +107,32 @@ export function HifzInput({ bound, hifzKind, mustRepeat, mustRepeatBound, savedT
       )}
       <div style={{ display: "flex", gap: sp(2), flexWrap: "wrap" }}>
         <button
-          disabled={saving}
+          disabled={saving || !!savedToday}
           data-testid="hifz-btn-mastered"
-          style={{ flex: "1 1 44%", minHeight: 52, background: saving ? ui.color.muted : ui.color.primary, color: "#fff", border: "none", borderRadius: ui.radius.md, fontFamily: ui.font, fontSize: ui.text.base, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", padding: `${sp(2)} ${sp(3)}`, opacity: saving ? 0.7 : 1 }}
-          onClick={() => { void onSave(buildSave(true)); }}
+          data-saved={savedToday?.mastered === true ? "true" : undefined}
+          style={{
+            flex: "1 1 44%", minHeight: 52, borderRadius: ui.radius.md, fontFamily: ui.font, fontSize: ui.text.base, fontWeight: 700, cursor: (saving || savedToday) ? "default" : "pointer", padding: `${sp(2)} ${sp(3)}`, opacity: saving ? 0.7 : 1,
+            background: savedToday?.mastered === true ? ui.color.success : ui.color.surface,
+            color: savedToday?.mastered === true ? "#fff" : ui.color.text,
+            border: `1px solid ${savedToday?.mastered === true ? ui.color.success : ui.color.border}`,
+          }}
+          onClick={() => { if (!saving && !savedToday) void onSave(buildSave(true)); }}
         >
-          {saving ? "جارٍ التسجيل…" : t("masteredBtn")}
+          {saving ? "جارٍ التسجيل…" : savedToday?.mastered === true ? `✓ ${t("masteredBtn")}` : t("masteredBtn")}
         </button>
         <button
-          disabled={saving}
+          disabled={saving || !!savedToday}
           data-testid="hifz-btn-not-mastered"
-          style={{ flex: "1 1 44%", minHeight: 52, background: ui.color.surface, color: ui.color.text, border: `1px solid ${ui.color.border}`, borderRadius: ui.radius.md, fontFamily: ui.font, fontSize: ui.text.base, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", padding: `${sp(2)} ${sp(3)}`, opacity: saving ? 0.7 : 1 }}
-          onClick={() => { void onSave(buildSave(false)); }}
+          data-saved={savedToday?.mastered === false ? "true" : undefined}
+          style={{
+            flex: "1 1 44%", minHeight: 52, borderRadius: ui.radius.md, fontFamily: ui.font, fontSize: ui.text.base, fontWeight: 600, cursor: (saving || savedToday) ? "default" : "pointer", padding: `${sp(2)} ${sp(3)}`, opacity: saving ? 0.7 : 1,
+            background: savedToday?.mastered === false ? ui.color.success : ui.color.surface,
+            color: savedToday?.mastered === false ? "#fff" : ui.color.text,
+            border: `1px solid ${savedToday?.mastered === false ? ui.color.success : ui.color.border}`,
+          }}
+          onClick={() => { if (!saving && !savedToday) void onSave(buildSave(false)); }}
         >
-          {t("notMasteredBtn")}
+          {savedToday?.mastered === false ? `✓ ${t("notMasteredBtn")}` : t("notMasteredBtn")}
         </button>
       </div>
 

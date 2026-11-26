@@ -147,6 +147,7 @@ export const unifiedAr = {
   bulkCorrectNetworkError: "تعذّر الاتصال بالخادم.",
   pointsBalance: "نقاط: ",
   todayEarnedLabel: "كُسب اليوم:",
+  grantUniformBtn: "منح الزي للحاضرين",
 } as const;
 
 export type UnifiedKey = keyof typeof unifiedAr;

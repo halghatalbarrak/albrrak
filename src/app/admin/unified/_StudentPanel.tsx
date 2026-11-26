@@ -18,11 +18,11 @@ const ATT_LABEL: Record<string, string> = {
   PRESENT: "حاضر", LATE: "متأخّر", ABSENT_UNEXCUSED: "غائب", LEFT_NO_PERMISSION: "خرج بلا إذن",
   ABSENT_EXCUSED: "غائب بعذر", PRE_EXCUSED: "مستأذن", LEFT_EARLY: "خرج مبكّرًا",
 };
-const ATT_BUTTONS: { status: string; label: string; tone: "primary" | "bronze" | "danger" }[] = [
-  { status: "PRESENT", label: "حاضر", tone: "primary" },
-  { status: "LATE", label: "متأخّر", tone: "bronze" },
-  { status: "ABSENT_UNEXCUSED", label: "غائب", tone: "danger" },
-  { status: "LEFT_NO_PERMISSION", label: "خرج بلا إذن", tone: "danger" },
+const ATT_BUTTONS: { status: string; label: string }[] = [
+  { status: "PRESENT", label: "حاضر" },
+  { status: "LATE", label: "متأخّر" },
+  { status: "ABSENT_UNEXCUSED", label: "غائب" },
+  { status: "LEFT_NO_PERMISSION", label: "خرج بلا إذن" },
 ];
 
 export function StudentPanel({ s, date, items, post, detail, detailLoading, onNextStudent, grantManual, markAtt: markAttProp, isPending, canCorrectPosition }: {
@@ -43,6 +43,9 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
   const [hifzError, setHifzError] = useState<string | null>(null);
   const [hifzSaving, setHifzSaving] = useState(false);
   const [savedHifzToday, setSavedHifzToday] = useState<HifzSave | null>(null);
+  // حالة الترسيخ والمراجعة بعد الحفظ: true=تمّ، false=لم يتمّ، null=لم يُسجَّل
+  const [savedTarseekh, setSavedTarseekh] = useState<boolean | null>(null);
+  const [savedMurajaah, setSavedMurajaah] = useState<boolean | null>(null);
   const [showCorrection, setShowCorrection] = useState(false);
   const [corrForm, setCorrForm] = useState({ surah: 78, ayah: 10, reason: "INPUT_ERROR" as "INPUT_ERROR" | "LEVEL_TEST" | "OTHER", reasonNote: "" });
   const [corrPreview, setCorrPreview] = useState<{ fromSurah: number; fromAyah: number; toSurah: number; toAyah: number } | null | "loading">("loading");
@@ -62,6 +65,8 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
     setCorrError(null);
     setGrantingId(null);
     setAttSavingStatus(null);
+    setSavedTarseekh(null);
+    setSavedMurajaah(null);
   }, [sid]);
 
   useEffect(() => {
@@ -149,9 +154,10 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
               <Button
                 key={b.status}
                 size="sm"
-                variant={b.tone}
+                variant={isActive ? "success" : "ghost"}
                 disabled={isPending}
                 data-testid={`att-btn-${b.status}`}
+                data-active={isActive ? "true" : undefined}
                 data-saving={isSaving ? "true" : undefined}
                 onClick={() => void handleMarkAtt(b.status)}
               >{isSaving ? tu("savingPending") : (isActive ? `✓ ${b.label}` : b.label)}</Button>
@@ -237,11 +243,15 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
             {/* رسّخ */}
             {detail.today.hasTarsikh && (
               <ConsolidationRow
-                label={`${tu("tarseekhSectionLabel")}${s.tarseekhDone ? " ✓" : ""}`}
+                label={tu("tarseekhSectionLabel")}
                 bounds={detail.today.tarseekh}
                 studentId={sid}
                 date={date}
-                onDone={(done) => void post(`/api/students/${sid}/session`, { kind: "tarseekh", date, done }, "سُجِّل الترسيخ.", sid)}
+                savedDone={savedTarseekh ?? (s.tarseekhDone != null ? s.tarseekhDone : null)}
+                onDone={async (done) => {
+                  const r = await post(`/api/students/${sid}/session`, { kind: "tarseekh", date, done }, "سُجِّل الترسيخ.", sid);
+                  if (r.ok) setSavedTarseekh(done);
+                }}
                 onExtra={() => void extra("tarseekh")}
               />
             )}
@@ -255,7 +265,11 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
                     bounds={detail.today.murajaah?.todaySlice ?? []}
                     studentId={sid}
                     date={date}
-                    onDone={(done) => void post(`/api/students/${sid}/session`, { kind: "murajaah", date, count: done ? (detail.today.murajaah?.todaySlice.length ?? 0) : 0 }, "سُجِّلت المراجعة.", sid)}
+                    savedDone={savedMurajaah}
+                    onDone={async (done) => {
+                      const r = await post(`/api/students/${sid}/session`, { kind: "murajaah", date, count: done ? (detail.today.murajaah?.todaySlice.length ?? 0) : 0 }, "سُجِّلت المراجعة.", sid);
+                      if (r.ok) setSavedMurajaah(done);
+                    }}
                     onExtra={() => void extra("murajaah")}
                   />
             )}
