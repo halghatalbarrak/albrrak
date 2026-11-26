@@ -87,7 +87,7 @@ export function CardsView({ students, absentDefault, date, items, post, panelCac
                       </strong>
                     </span>
                   )}
-                  {s.weeklyPercent != null && (
+                  {s.weeklyPercent != null && Number.isFinite(s.weeklyPercent) && (
                     <span>{tu("weeklyCyclePrefix")}<strong style={{ color: s.weeklyComplete ? ui.color.success : ui.color.text }}>{arNum(s.weeklyPercent)}٪</strong></span>
                   )}
                 </div>

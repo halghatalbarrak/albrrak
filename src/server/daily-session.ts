@@ -877,7 +877,9 @@ export async function getCircleSessionBoard(
         required: consolidation
           ? { tarseekhCount: consolidation.tarseekh.segments.length, khums: consolidation.review.khums }
           : null,
-        weeklyPercent: (weeklyReview?.required ?? 0) > 0 ? weeklyReview!.percent : null,
+        weeklyPercent: (weeklyReview?.required ?? 0) > 0
+          ? (Number.isFinite(weeklyReview!.percent) ? weeklyReview!.percent : 0)
+          : null,
         weeklyComplete: weeklyReview?.complete ?? false,
         mustRepeat: hifzGate?.mustRepeat ?? false,
         nextStep: suggestNextStep(v),

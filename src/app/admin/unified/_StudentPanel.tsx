@@ -51,6 +51,7 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
   const [corrSaving, setCorrSaving] = useState(false);
   const [corrError, setCorrError] = useState<string | null>(null);
   const [corrDone, setCorrDone] = useState(false);
+  const [pendingConfirmId, setPendingConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
     setLocalGranted(new Set(detail?.manualGranted ?? []));
@@ -66,6 +67,7 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
     setAttSavingStatus(null);
     setSavedTarseekh(null);
     setSavedMurajaah(null);
+    setPendingConfirmId(null);
   }, [sid]);
 
   useEffect(() => {
@@ -185,7 +187,7 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
                     {s.hizb != null ? <>{tu("hizbInline")}{arNum(s.hizb)}</> : ""}
                   </span>
                 )}
-                {s.weeklyPercent != null && (
+                {s.weeklyPercent != null && Number.isFinite(s.weeklyPercent) && (
                   <span>
                     {tu("weeklyCyclePrefix")}<strong style={{ color: s.weeklyComplete ? ui.color.success : ui.color.text }}>{arNum(s.weeklyPercent)}٪</strong>
                   </span>
@@ -374,7 +376,7 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
                     data-testid={`grant-btn-${it.id}`}
                     data-granted={active ? "true" : undefined}
                     data-loading={isLoading ? "true" : undefined}
-                    onClick={() => void handleToggle(it.id)}
+                    onClick={() => { setPendingConfirmId(null); void handleToggle(it.id); }}
                   >
                     {isLoading ? tu("savingPending") : `${it.nameAr} (+${arNum(it.value)})${active ? " ✓" : ""}`}
                   </Button>
@@ -383,22 +385,26 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
             </div>
           )}
           {negItems.length > 0 && (
-            <div style={row}>
+            <div style={{ ...row, borderTop: posItems.length ? `1px solid ${ui.color.border}` : undefined, paddingTop: posItems.length ? sp(2) : undefined }}>
               {negItems.map((it) => {
                 const active = localGranted.has(it.id);
                 const isLoading = grantingId === it.id;
+                const isPending = pendingConfirmId === it.id;
                 return (
                   <Button
                     key={it.id}
                     size="sm"
-                    variant={active ? "danger" : "ghost"}
+                    variant={isPending || active ? "danger" : "ghost"}
                     disabled={isLoading || !!grantingId}
                     data-testid={`grant-btn-${it.id}`}
                     data-granted={active ? "true" : undefined}
                     data-loading={isLoading ? "true" : undefined}
-                    onClick={() => void handleToggle(it.id)}
+                    onClick={() => {
+                      if (isPending) { setPendingConfirmId(null); void handleToggle(it.id); }
+                      else { setPendingConfirmId(it.id); }
+                    }}
                   >
-                    {isLoading ? tu("savingPending") : `${it.nameAr} (${it.value})${active ? " ✓" : ""}`}
+                    {isLoading ? tu("savingPending") : isPending ? "تأكيد؟ ←" : `${it.nameAr} (${it.value})${active ? " ✓" : ""}`}
                   </Button>
                 );
               })}
