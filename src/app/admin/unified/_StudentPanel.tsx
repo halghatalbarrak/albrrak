@@ -38,6 +38,8 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
 }) {
   const sid = s.studentId;
   const [localGranted, setLocalGranted] = useState<Set<string>>(new Set(detail?.manualGranted ?? []));
+  const [grantingId, setGrantingId] = useState<string | null>(null);
+  const [attSavingStatus, setAttSavingStatus] = useState<string | null>(null);
   const [hifzError, setHifzError] = useState<string | null>(null);
   const [hifzSaving, setHifzSaving] = useState(false);
   const [savedHifzToday, setSavedHifzToday] = useState<HifzSave | null>(null);
@@ -58,6 +60,8 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
     setShowCorrection(false);
     setCorrDone(false);
     setCorrError(null);
+    setGrantingId(null);
+    setAttSavingStatus(null);
   }, [sid]);
 
   useEffect(() => {
@@ -81,6 +85,13 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
     return () => ctrl.abort();
   }, [sid, corrForm.surah, corrForm.ayah, showCorrection]);
 
+  const handleMarkAtt = async (status: string) => {
+    if (isPending) return;
+    setAttSavingStatus(status);
+    await markAttProp(sid, status);
+    setAttSavingStatus(null);
+  };
+
   const excuse = () => {
     const reason = window.prompt("سبب الاستئذان/العذر:");
     if (reason?.trim()) void post("/api/attendance/excuse", { studentId: sid, date, reason, kind: "EXCUSE" }, "قُدِّم طلب العذر — بانتظار اعتماد صاحب الصلاحية.", sid);
@@ -90,10 +101,12 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
   const qaidahDefer = () => post(`/api/students/${sid}/qaidah-session`, { defer: true }, "سُجِّل التأجيل.", sid);
 
   const handleToggle = async (pointItemId: string) => {
-    if (!grantManual) return;
+    if (!grantManual || grantingId) return;
     const wasGranted = localGranted.has(pointItemId);
+    setGrantingId(pointItemId);
     setLocalGranted((prev) => { const n = new Set(prev); wasGranted ? n.delete(pointItemId) : n.add(pointItemId); return n; });
     const result = await grantManual(sid, pointItemId);
+    setGrantingId(null);
     if (!result) {
       setLocalGranted((prev) => { const n = new Set(prev); wasGranted ? n.add(pointItemId) : n.delete(pointItemId); return n; });
     }
@@ -102,8 +115,11 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
   const H3: React.CSSProperties = { fontSize: ui.text.base, fontWeight: 700, margin: `0 0 ${sp(2)}` };
   const row: React.CSSProperties = { display: "flex", gap: sp(2), flexWrap: "wrap", alignItems: "center" };
 
-  const posItems = items.filter((i) => i.value > 0);
-  const negItems = items.filter((i) => i.value < 0);
+  const isPresent = s.attendanceStatus === "PRESENT" || s.attendanceStatus === "LATE";
+  const posItems = items.filter((i) => i.value > 0 && (!i.requiresPresent || isPresent));
+  const negItems = items.filter((i) => i.value < 0 && (!i.requiresPresent || isPresent));
+  const todayEarned = posItems.filter((i) => localGranted.has(i.id));
+  const todayTotal = todayEarned.reduce((sum, i) => sum + i.value, 0);
 
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: sp(4) }}>
@@ -128,6 +144,7 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
         <div style={row}>
           {ATT_BUTTONS.map((b) => {
             const isActive = b.status === s.attendanceStatus;
+            const isSaving = attSavingStatus === b.status;
             return (
               <Button
                 key={b.status}
@@ -135,8 +152,9 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
                 variant={b.tone}
                 disabled={isPending}
                 data-testid={`att-btn-${b.status}`}
-                onClick={() => { if (!isPending) void markAttProp(sid, b.status); }}
-              >{isActive ? `✓ ${b.label}` : b.label}</Button>
+                data-saving={isSaving ? "true" : undefined}
+                onClick={() => void handleMarkAtt(b.status)}
+              >{isSaving ? tu("savingPending") : (isActive ? `✓ ${b.label}` : b.label)}</Button>
             );
           })}
           <Button size="sm" variant="ghost" disabled={isPending} onClick={excuse}>{tu("excused")}</Button>
@@ -315,22 +333,34 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
         </div>
       )}
 
-      {/* نقاط اليوم — toggle */}
-      {items.length > 0 && (
+      {/* نقاط اليوم — toggle بثلاث حالات (default/loading/saved) */}
+      {(posItems.length > 0 || negItems.length > 0) && (
         <div>
-          <h3 style={H3}>{tu("dayPoints")}</h3>
+          <h3 style={H3}>
+            {tu("dayPoints")}
+            {todayEarned.length > 0 && (
+              <span style={{ fontSize: ui.text.xs, fontWeight: 400, color: ui.color.success, marginInlineStart: 8 }}>
+                +{arNum(todayTotal)}
+              </span>
+            )}
+          </h3>
           {posItems.length > 0 && (
             <div style={{ ...row, marginBottom: negItems.length ? sp(2) : 0 }}>
               {posItems.map((it) => {
                 const active = localGranted.has(it.id);
+                const isLoading = grantingId === it.id;
                 return (
                   <Button
                     key={it.id}
                     size="sm"
                     variant={active ? "primary" : "ghost"}
+                    disabled={isLoading || !!grantingId}
+                    data-testid={`grant-btn-${it.id}`}
+                    data-granted={active ? "true" : undefined}
+                    data-loading={isLoading ? "true" : undefined}
                     onClick={() => void handleToggle(it.id)}
                   >
-                    {it.nameAr} (+{it.value}){active ? " ✓" : ""}
+                    {isLoading ? tu("savingPending") : `${it.nameAr} (+${arNum(it.value)})${active ? " ✓" : ""}`}
                   </Button>
                 );
               })}
@@ -340,17 +370,29 @@ export function StudentPanel({ s, date, items, post, detail, detailLoading, onNe
             <div style={row}>
               {negItems.map((it) => {
                 const active = localGranted.has(it.id);
+                const isLoading = grantingId === it.id;
                 return (
                   <Button
                     key={it.id}
                     size="sm"
                     variant={active ? "danger" : "ghost"}
+                    disabled={isLoading || !!grantingId}
+                    data-testid={`grant-btn-${it.id}`}
+                    data-granted={active ? "true" : undefined}
+                    data-loading={isLoading ? "true" : undefined}
                     onClick={() => void handleToggle(it.id)}
                   >
-                    {it.nameAr} ({it.value}){active ? " ✓" : ""}
+                    {isLoading ? tu("savingPending") : `${it.nameAr} (${it.value})${active ? " ✓" : ""}`}
                   </Button>
                 );
               })}
+            </div>
+          )}
+          {/* تفصيل نقاط اليوم (6-ج) */}
+          {todayEarned.length > 0 && (
+            <div data-testid="today-earned-detail" style={{ fontSize: ui.text.xs, color: ui.color.success, marginTop: sp(2), padding: `${sp(1)} ${sp(2)}`, background: ui.color.surface, borderRadius: ui.radius.sm, border: `1px solid ${ui.color.border}` }}>
+              {tu("todayEarnedLabel")}{" "}
+              {todayEarned.map((i) => `${i.nameAr} +${arNum(i.value)}`).join(" · ")}
             </div>
           )}
         </div>

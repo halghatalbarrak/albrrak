@@ -149,6 +149,7 @@ describe("قاموس الشاشة الموحّدة (العربيّة)", () => {
       bulkCorrectSessionEnded: "انتهت الجلسة.",
       bulkCorrectNetworkError: "تعذّر الاتصال بالخادم.",
       pointsBalance: "نقاط: ",
+      todayEarnedLabel: "كُسب اليوم:",
     };
     for (const key of Object.keys(expected) as (keyof typeof unifiedAr)[]) {
       expect(tUnified(key)).toBe(expected[key]);

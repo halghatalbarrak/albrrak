@@ -908,9 +908,10 @@ model PointItem {
   nameAr      String
   value       Int // موجب = كسب، سالب = خصم
   grantSource PointGrantSource
-  limitCount  Int? // عدد مرّات المنح المسموح بها في الفترة (null/الفترة NONE = بلا حدّ)
-  limitPeriod PointLimitPeriod @default(NONE)
-  active      Boolean          @default(true)
+  limitCount      Int? // عدد مرّات المنح المسموح بها في الفترة (null/الفترة NONE = بلا حدّ)
+  limitPeriod     PointLimitPeriod @default(NONE)
+  requiresPresent Boolean          @default(false) // إن true: يُعرض للحاضرين فقط (الزي وما شابهه)
+  active          Boolean          @default(true)
   createdAt   DateTime         @default(now())
   deletedAt   DateTime?        @db.Timestamp(3)
   deletedById String?
