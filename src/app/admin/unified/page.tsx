@@ -155,7 +155,7 @@ export default function UnifiedPage() {
       // grant غير حاجز — يُحمَّل في الخلفية بعد ظهور القائمة.
       fetch("/api/economy/grant", { headers: { authorization: `Bearer ${t}` } })
         .then((r) => (r.ok ? (r.json() as Promise<{ items?: GrantItem[] }>) : null))
-        .then((j) => { if (j) setItems((j.items ?? []).filter((i) => i.value > 0)); })
+        .then((j) => { if (j) setItems(j.items ?? []); })
         .catch(() => {});
       const cRes = await fetch("/api/attendance/circles", { headers: { authorization: `Bearer ${t}` } });
       if (cRes.ok) {
