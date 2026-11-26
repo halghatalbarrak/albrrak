@@ -209,6 +209,7 @@
 | #290 | feat(unified): 6-ب و6-ج كاملاً — 3 حالات أزرار + الزي للحاضرين + تفصيل نقاط اليوم + E2E + نموذج تصحيح موضع مبسَّط | مدموج ✅ |
 | #291 | chore(ci): تخفيض استهلاك Actions — concurrency + pull_request فقط + paths-ignore + كاش Playwright + timeout | مدموج ✅ |
 | #292 | fix(economy+preview): معاينة الموضع (startSurah/startAyah/endAyah) + رأس البطاقة (رصيد + نقاط اليوم دائماً) + بنود الاقتصاد (6 TEACHER + 4 AUTO) + smoke check على main | مدموج ✅ |
+| #293 | feat(unified+roles): نموذج إضافة طالب كامل (مراقي/قاعدة/مدّكر) + حقول شرطيّة + تسكين ذرّيّ + إصلاح تعارض المعلّم/مدير المدّكر | مفتوح 🔄 |
 
 ---
 
